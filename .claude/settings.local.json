@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(git init:*)",
-      "Bash(git remote:*)"
+      "Bash(git remote:*)",
+      "Bash(composer create-project:*)",
+      "Bash(where composer:*)",
+      "Bash(php -r \"readfile\\('https://getcomposer.org/download.php'\\)\" && php composer.phar create-project --prefer-dist laravel/laravel .)",
+      "Bash(php -r \"readfile\\('https://getcomposer.org/download.php'\\)\" | tee composer.phar && chmod +x composer.phar)",
+      "Bash(powershell -Command \"Invoke-WebRequest -Uri 'https://getcomposer.org/download.php' -OutFile composer.phar\" && php composer.phar --version)",
+      "Bash(powershell -Command \"Invoke-WebRequest -Uri 'https://getcomposer.org/installer' -OutFile composer.phar\" && php composer.phar --version)"
     ]
   }
 }

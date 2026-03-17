@@ -1,0 +1,54 @@
+# Laravel
+*.log
+.env
+.env.backup
+.env.production
+.env.local
+.env.*.local
+/auth.json
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+/database/database.sqlite
+/database/database.sqlite-journal
+
+# Composer
+composer.phar
+
+# PHP
+.phpactor.json
+.phpunit.result.cache
+.phpunit.cache
+*.phpunit.result.cache
+
+# IDE & Editors
+/.fleet
+/.idea
+/.nova
+/.vscode
+/.zed
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# OSPanel (локальная конфигурация)
+/.osp
+
+# Laravel / Dev
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+.npm
+.yarn-integrity

@@ -161,6 +161,7 @@ jobs:
 
           preserve_move ".htaccess"
           preserve_move "public/.htaccess"
+          preserve_move "public/images"
 
           if [ -f "$DEST/composer.lock" ]; then
             cp -f "$DEST/composer.lock" "$PRES/composer.lock" || true
@@ -168,7 +169,9 @@ jobs:
 
           preserve_move "vendor"
 
-          find "$DEST" -mindepth 1 -maxdepth 1 -exec rm -rf {} \;
+          # 🔴 CRITICAL FIX: Ignore release/ preserve/ deploy.tgz during wipe 
+          # otherwise if DEPLOY_TMP == DEPLOY_PATH, it deletes the new code before copying it!
+          find "$DEST" -mindepth 1 -maxdepth 1 ! -name "release" ! -name "preserve" ! -name "deploy.tgz" ! -name "cgi-bin" -exec rm -rf {} \;
 
           cp -R "$REL"/. "$DEST"/
 
@@ -187,6 +190,7 @@ jobs:
 
           restore_back ".htaccess"
           restore_back "public/.htaccess"
+          restore_back "public/images"
 
           restore_back "vendor"
 

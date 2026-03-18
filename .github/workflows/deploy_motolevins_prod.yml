@@ -47,7 +47,7 @@ jobs:
             ${{ runner.os }}-composer-
 
       - name: Install Composer deps
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+        run: composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -69,6 +69,10 @@ jobs:
           mkdir -p /tmp/deploy-src
 
           git archive --format=tar HEAD | tar -x -C /tmp/deploy-src
+
+          if [ -d vendor ]; then
+            cp -R vendor /tmp/deploy-src/vendor
+          fi
 
           rm -f /tmp/deploy-src/.env || true
           rm -f /tmp/deploy-src/.env.* || true
@@ -163,11 +167,7 @@ jobs:
           preserve_move "public/.htaccess"
           preserve_move "public/images"
 
-          if [ -f "$DEST/composer.lock" ]; then
-            cp -f "$DEST/composer.lock" "$PRES/composer.lock" || true
-          fi
 
-          preserve_move "vendor"
 
           # 🔴 CRITICAL FIX: Ignore release/ preserve/ deploy.tgz during wipe 
           # otherwise if DEPLOY_TMP == DEPLOY_PATH, it deletes the new code before copying it!
@@ -192,14 +192,7 @@ jobs:
           restore_back "public/.htaccess"
           restore_back "public/images"
 
-          restore_back "vendor"
 
-          if [ -f "$PRES/composer.lock" ] && [ -f "$DEST/composer.lock" ]; then
-            if ! diff -q "$PRES/composer.lock" "$DEST/composer.lock" >/dev/null 2>&1; then
-              echo "composer.lock changed -> removing preserved vendor"
-              rm -rf "$DEST/vendor" || true
-            fi
-          fi
 
           mkdir -p "$DEST/storage/framework/cache/data"
           mkdir -p "$DEST/storage/framework/sessions"
@@ -210,21 +203,9 @@ jobs:
           chmod -R 775 "$DEST/storage" 2>/dev/null || true
           chmod -R 775 "$DEST/bootstrap/cache" 2>/dev/null || true
 
-          echo "=== Running composer install ==="
-          cd "$DEST"
-          export COMPOSER_MEMORY_LIMIT=-1
 
-          if [ -f "$DEST/composer" ]; then
-            php "$DEST/composer" install --no-dev --optimize-autoloader --no-interaction
-          elif [ -f "$DEST/composer.phar" ]; then
-            php "$DEST/composer.phar" install --no-dev --optimize-autoloader --no-interaction
-          elif command -v composer >/dev/null 2>&1; then
-            composer install --no-dev --optimize-autoloader --no-interaction
-          else
-            echo "ERROR: composer not found"
-            exit 1
-          fi
 
+          echo "=== Running artisan post-deploy tasks ==="
           if [ -f artisan ]; then
             php artisan storage:link || true
             php artisan config:clear || true

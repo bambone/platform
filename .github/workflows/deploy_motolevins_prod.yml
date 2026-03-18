@@ -167,10 +167,6 @@ jobs:
           preserve_move "public/.htaccess"
           preserve_move "public/images"
 
-
-
-          # 🔴 CRITICAL FIX: Ignore release/ preserve/ deploy.tgz during wipe 
-          # otherwise if DEPLOY_TMP == DEPLOY_PATH, it deletes the new code before copying it!
           find "$DEST" -mindepth 1 -maxdepth 1 ! -name "release" ! -name "preserve" ! -name "deploy.tgz" ! -name "cgi-bin" -exec rm -rf {} \;
 
           cp -R "$REL"/. "$DEST"/

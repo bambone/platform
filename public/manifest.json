@@ -3,6 +3,7 @@
   "short_name": "Moto Levins",
   "description": "Элитарный прокат мотоциклов на Черноморском побережье.",
   "start_url": "./?source=pwa",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0c0c0e",
   "theme_color": "#0c0c0e",

@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
     <!-- PWA Settings -->
-    <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
     <meta name="theme-color" content="#0c0c0e">
     <link rel="apple-touch-icon" href="{{ asset('images/icons/icon-192.png') }}">
 

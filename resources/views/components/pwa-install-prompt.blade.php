@@ -12,28 +12,44 @@
     
     <div class="flex items-start gap-4">
         <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-moto-amber to-orange-700 flex items-center justify-center shrink-0 shadow-lg">
-            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
             </svg>
         </div>
         <div class="flex-1">
             <h4 class="text-white font-bold text-base mb-1">Установить Moto Levins</h4>
-            <p class="text-silver/90 text-sm leading-snug mb-4">Добавьте на главный экран для быстрого доступа к каталогу в 1 клик.</p>
+            <p class="text-silver/90 text-sm leading-snug mb-3">Добавьте на главный экран для быстрого доступа к каталогу в 1 клик.</p>
+            
+            <!-- iOS Instructions -->
+            <div x-show="isIos" class="bg-white/5 rounded-lg p-3 text-sm text-silver mb-4 border border-white/5" style="display: none;">
+                Нажмите значок <svg class="inline w-4 h-4 mx-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> <b>Поделиться</b><br>
+                и выберите <b>«На экран Домой»</b>
+            </div>
+
             <div class="flex gap-3">
-                <button @click="installApp()" class="flex-1 bg-moto-amber hover:bg-orange-600 text-white font-bold text-sm py-2 px-4 rounded-lg transition-colors shadow-lg shadow-moto-amber/20">Установить</button>
-                <button @click="dismissPrompt()" class="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-sm font-medium rounded-lg transition-colors border border-white/10">Позже</button>
+                <button x-show="!isIos" @click="installApp()" class="flex-1 bg-moto-amber hover:bg-orange-600 text-white font-bold text-sm py-2 px-4 rounded-lg transition-colors shadow-lg shadow-moto-amber/20">Установить</button>
+                <button @click="dismissPrompt()" class="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-sm font-medium rounded-lg transition-colors border border-white/10">Позже</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+// Capture the event globally as early as possible
+window.pwaDeferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    window.pwaDeferredPrompt = e;
+});
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('pwaInstallPrompt', () => ({
         deferredPrompt: null,
         showPrompt: false,
+        isIos: false,
         
         initPrompt() {
+            this.deferredPrompt = window.pwaDeferredPrompt;
             // Prevent showing if already installed/standalone
             if (window.matchMedia('(display-mode: standalone)').matches) return;
 
@@ -44,26 +60,26 @@ document.addEventListener('alpine:init', () => {
                 if (daysPassed < 7) return; 
             }
 
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                this.deferredPrompt = e;
-                
-                // Contextual trigger 1: Time
-                setTimeout(() => {
-                    if (this.deferredPrompt) this.showPrompt = true;
-                }, 15000);
+            // Detect iOS strictly
+            const ua = window.navigator.userAgent;
+            this.isIos = !!ua.match(/iPad/i) || !!ua.match(/iPhone/i) || (ua.match(/Mac/) && navigator.maxTouchPoints > 1);
 
-                // Contextual trigger 2: Meaningful scroll
-                const scrollHandler = () => {
-                    if (window.scrollY > window.innerHeight * 0.5) {
-                        this.showPrompt = true;
-                        window.removeEventListener('scroll', scrollHandler);
-                    }
-                };
-                window.addEventListener('scroll', scrollHandler, { passive: true });
-            });
+
             
-            // Listen for successful install cleanly
+            // Contextual trigger 1: Time
+            setTimeout(() => {
+                if (this.deferredPrompt || this.isIos) this.showPrompt = true;
+            }, 10000); // 10s for production confidence
+
+            // Contextual trigger 2: Meaningful scroll
+            const scrollHandler = () => {
+                if (window.scrollY > window.innerHeight * 0.5) {
+                    if (this.deferredPrompt || this.isIos) this.showPrompt = true;
+                    window.removeEventListener('scroll', scrollHandler);
+                }
+            };
+            window.addEventListener('scroll', scrollHandler, { passive: true });
+            
             window.addEventListener('appinstalled', () => {
                 this.showPrompt = false;
                 this.deferredPrompt = null;

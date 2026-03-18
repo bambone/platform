@@ -2,8 +2,15 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <!-- PWA -->
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    <meta name="theme-color" content="#0c0c0e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="{{ asset('images/icons/icon-192.png') }}">
 
     <title>{{ config('app.name', 'Moto Levins') }}</title>
 
@@ -38,5 +45,18 @@
 
     <x-contact-cta />
 
+    <x-pwa-install-prompt />
+
+    @if (!request()->routeIs('offline'))
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register("{{ asset('sw.js') }}").catch(err => {
+                    console.warn('SW registration failed:', err);
+                });
+            });
+        }
+    </script>
+    @endif
 </body>
 </html>

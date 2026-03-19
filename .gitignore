@@ -1,4 +1,4 @@
-# Laravel
+﻿# Laravel
 *.log
 .env
 .env.backup
@@ -18,6 +18,11 @@
 /database/database.sqlite
 /database/database.sqlite-journal
 
+# Laravel compiled/cache (backup if nested .gitignore missing)
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/views/*.php
+
 # Composer
 composer.phar
 
@@ -30,6 +35,7 @@ composer.phar
 /coverage
 
 # IDE & Editors
+/.claude
 /.cursor
 /.fleet
 /.idea

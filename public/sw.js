@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'moto-levins-v1';
+const CACHE_VERSION = 'moto-levins-v7';
 const OFFLINE_URL = 'offline';
 
 const CACHES = {

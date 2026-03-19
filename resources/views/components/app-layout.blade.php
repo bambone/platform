@@ -21,6 +21,11 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     @else
         <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = { theme: { extend: {
+                colors: { obsidian: '#0A0A0C', carbon: '#141417', silver: '#A1A1A6', 'moto-amber': '#E85D04' }
+            }}};
+        </script>
     @endif
 
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>

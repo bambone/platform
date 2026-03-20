@@ -76,3 +76,11 @@ resources/views/
 php artisan serve
 npm run dev
 ```
+
+## Платформа и админки
+
+- **Platform Website** — маршруты на `config('app.platform_host')`, Blade в `resources/views/platform/` (без tenant context).
+- **Platform Console** — Filament panel `platform`, код в `app/Filament/Platform/` (Resources, Pages, Widgets).
+- **Tenant Admin** — Filament panel `admin`, код в `app/Filament/Tenant/`.
+
+Документация: [ACCESS_MATRIX.md](ACCESS_MATRIX.md), установка и URL: [SETUP_ADMIN.md](SETUP_ADMIN.md), приёмка: [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md).

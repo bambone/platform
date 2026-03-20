@@ -2,23 +2,27 @@
 
 namespace App\Filament\Platform\Pages;
 
-use App\Filament\Platform\Pages\Concerns\GrantsPlatformPageAccess;
-use Filament\Pages\Page;
 use UnitEnum;
 
-class IntegrationsHealthPage extends Page
+class IntegrationsHealthPage extends PlatformPlaceholderPage
 {
-    use GrantsPlatformPageAccess;
+    protected static ?string $navigationLabel = 'Состояние интеграций';
 
-    protected string $view = 'filament.pages.platform.placeholder';
-
-    protected static ?string $navigationLabel = 'Интеграции';
-
-    protected static ?string $title = 'Integrations Health';
+    protected static ?string $title = 'Интеграции платформы';
 
     protected static ?string $slug = 'integrations-health';
 
     protected static ?string $panel = 'platform';
 
     protected static string|UnitEnum|null $navigationGroup = 'Платформа';
+
+    protected static function placeholderMeta(): array
+    {
+        return [
+            'headline' => 'Здоровье интеграций',
+            'intro' => 'Обзор внешних сервисов, от которых зависит платформа: статусы API, очереди, ошибки webhook.',
+            'future' => 'Сводка по ключевым интеграциям, последние ошибки, ссылки в логи.',
+            'audience' => 'Администраторы платформы и DevOps.',
+        ];
+    }
 }

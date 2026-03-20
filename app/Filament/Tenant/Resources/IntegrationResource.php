@@ -7,11 +7,11 @@ use App\Filament\Tenant\Resources\IntegrationResource\RelationManagers\LogsRelat
 use App\Models\Integration;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\KeyValue;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -31,27 +31,38 @@ class IntegrationResource extends Resource
     {
         return $schema
             ->components([
-                Section::make()
+                Section::make('Подключение')
+                    ->description('Связь с внешней системой (учёт парка, бронирования и т.д.).')
                     ->schema([
                         Select::make('type')
-                            ->label('Тип')
+                            ->label('Тип интеграции')
                             ->options(Integration::types())
                             ->required()
-                            ->native(false),
+                            ->native(false)
+                            ->helperText('Определяет, какие поля и API используются.'),
                         TextInput::make('name')
-                            ->label('Название')
+                            ->label('Название для списка')
                             ->maxLength(255)
-                            ->placeholder('RentProg'),
+                            ->placeholder('Например: RentProg основной')
+                            ->helperText('Удобное имя для вашей команды.'),
                         Toggle::make('is_enabled')
                             ->label('Включена')
-                            ->default(false),
+                            ->default(false)
+                            ->helperText('Пока выключено, синхронизация не выполняется.'),
+                    ]),
+
+                Section::make('Параметры API (для разработчика)')
+                    ->description('Ключи, URL и секреты. Не передавайте посторонним. Неверные значения ломают обмен данными.')
+                    ->schema([
                         KeyValue::make('config')
-                            ->label('Настройки (API key, URL и т.д.)')
-                            ->keyLabel('Ключ')
+                            ->label('Настройки')
+                            ->keyLabel('Параметр')
                             ->valueLabel('Значение')
                             ->addActionLabel('Добавить')
-                            ->helperText('Пример: api_key, base_url'),
-                    ]),
+                            ->helperText('Типовые ключи зависят от интеграции (api_key, base_url и т.д.) — уточняйте у разработки.'),
+                    ])
+                    ->collapsed()
+                    ->collapsible(),
             ]);
     }
 
@@ -59,18 +70,26 @@ class IntegrationResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->sortable(),
                 TextColumn::make('type')
+                    ->label('Тип')
                     ->formatStateUsing(fn (?string $state): string => $state ? (Integration::types()[$state] ?? $state) : '')
                     ->badge(),
-                TextColumn::make('display_name')->label('Название'),
-                IconColumn::make('is_enabled')->boolean()->label('Вкл.'),
-                TextColumn::make('logs_count')->counts('logs')->label('Логов'),
+                TextColumn::make('display_name')
+                    ->label('Название'),
+                IconColumn::make('is_enabled')
+                    ->label('Вкл.')
+                    ->boolean(),
+                TextColumn::make('logs_count')
+                    ->counts('logs')
+                    ->label('Записей в журнале'),
             ])
             ->defaultSort('id')
             ->actions([
                 EditAction::make(),
-            ]);
+            ])
+            ->emptyStateHeading('Интеграций нет')
+            ->emptyStateDescription('Подключите внешнюю систему, когда будете синхронизировать парк или бронирования.')
+            ->emptyStateIcon('heroicon-o-puzzle-piece');
     }
 
     public static function getRelations(): array

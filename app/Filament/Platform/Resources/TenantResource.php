@@ -28,6 +28,8 @@ class TenantResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Клиенты';
 
+    protected static ?string $navigationLabel = 'Клиенты';
+
     protected static ?string $panel = 'platform';
 
     public static function getEloquentQuery(): Builder
@@ -40,30 +42,87 @@ class TenantResource extends Resource
         return $schema
             ->components([
                 Section::make('Основное')
+                    ->description('Клиент платформы — отдельный сайт и данные. Название и URL-идентификатор часто видны в адресах и внутренних списках.')
                     ->schema([
-                        TextInput::make('name')->required()->maxLength(255),
-                        TextInput::make('slug')->required()->unique(ignoreRecord: true)->maxLength(255),
-                        TextInput::make('brand_name')->maxLength(255),
+                        TextInput::make('name')
+                            ->label('Название')
+                            ->required()
+                            ->maxLength(255)
+                            ->placeholder('Например: ООО «Прокат»'),
+                        TextInput::make('legal_name')
+                            ->label('Юридическое название')
+                            ->maxLength(255)
+                            ->helperText('Для договоров и счетов, если отличается от краткого названия.'),
+                        TextInput::make('slug')
+                            ->label('URL-идентификатор')
+                            ->required()
+                            ->unique(ignoreRecord: true)
+                            ->maxLength(255)
+                            ->helperText('Используется в техническом поддомене и ссылках. Латиница, цифры и дефис.'),
+                        TextInput::make('brand_name')
+                            ->label('Бренд на сайте')
+                            ->maxLength(255)
+                            ->helperText('Как называть клиента для посетителей; можно совпадать с названием.'),
                         Select::make('status')
+                            ->label('Статус клиента')
                             ->options(Tenant::statuses())
                             ->default('trial')
-                            ->required(),
+                            ->required()
+                            ->helperText('Пробный — ограниченный период. Активен — полноценная работа. Приостановлен — доступ ограничен.'),
                         Select::make('plan_id')
+                            ->label('Тариф')
                             ->relationship('plan', 'name')
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->helperText('Определяет лимиты и доступные функции.'),
                         Select::make('template_preset_id')
-                            ->label('Шаблон сайта')
+                            ->label('Шаблон сайта при создании')
                             ->options(TemplatePreset::where('is_active', true)->pluck('name', 'id'))
+                            ->searchable()
+                            ->preload()
+                            ->visibleOn('create')
+                            ->helperText('После сохранения шаблон копируется в сайт клиента. При редактировании клиента поле скрыто — шаблон уже применён.'),
+                    ])->columns(2),
+
+                Section::make('Ответственные')
+                    ->description('Не обязательно сразу. Владелец и менеджер поддержки помогают ориентироваться в карточке клиента.')
+                    ->schema([
+                        Select::make('owner_user_id')
+                            ->label('Владелец (контакт)')
+                            ->relationship('owner', 'name')
+                            ->searchable()
+                            ->preload(),
+                        Select::make('support_manager_id')
+                            ->label('Менеджер поддержки')
+                            ->relationship('supportManager', 'name')
                             ->searchable()
                             ->preload(),
                     ])->columns(2),
-                Section::make('Локализация')
+
+                Section::make('Регион и валюта')
+                    ->description('Влияет на время, формат и отображение цен в кабинете и на сайте.')
                     ->schema([
-                        TextInput::make('timezone')->default('Europe/Moscow')->maxLength(50),
-                        TextInput::make('locale')->default('ru')->maxLength(10),
-                        TextInput::make('country')->maxLength(2),
-                        TextInput::make('currency')->default('RUB')->maxLength(3),
+                        TextInput::make('timezone')
+                            ->label('Часовой пояс')
+                            ->default('Europe/Moscow')
+                            ->maxLength(50)
+                            ->helperText('Например: Europe/Moscow — для календаря и бронирований.'),
+                        TextInput::make('locale')
+                            ->label('Локаль')
+                            ->default('ru')
+                            ->maxLength(10)
+                            ->helperText('Язык интерфейса кабинета и сайта, если поддерживается темой.'),
+                        TextInput::make('country')
+                            ->label('Страна (код)')
+                            ->maxLength(2)
+                            ->placeholder('RU')
+                            ->helperText('Двухбуквенный код ISO, если нужен для настроек.'),
+                        TextInput::make('currency')
+                            ->label('Валюта')
+                            ->default('RUB')
+                            ->maxLength(3)
+                            ->placeholder('RUB')
+                            ->helperText('Трёхбуквенный код для цен и отчётов.'),
                     ])->columns(2),
             ]);
     }
@@ -73,13 +132,27 @@ class TenantResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')
+                    ->label('Название')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('slug')
-                    ->searchable(),
+                    ->label('Идентификатор')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
-                    ->badge(),
-                TextColumn::make('plan.name'),
+                    ->label('Статус')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => $state ? (Tenant::statuses()[$state] ?? $state) : '—')
+                    ->color(fn (?string $state): string => match ($state) {
+                        'active' => 'success',
+                        'trial' => 'warning',
+                        'suspended' => 'danger',
+                        'archived' => 'gray',
+                        default => 'gray',
+                    }),
+                TextColumn::make('plan.name')
+                    ->label('Тариф')
+                    ->placeholder('—'),
             ])
             ->filters([
                 //
@@ -89,9 +162,14 @@ class TenantResource extends Resource
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->modalHeading('Удалить выбранных клиентов?')
+                        ->modalDescription('Действие необратимо: клиенты и связанные данные могут быть удалены из базы. Сайты перестанут открываться. Продолжайте только если это осознанное решение.'),
                 ]),
-            ]);
+            ])
+            ->emptyStateHeading('Клиентов пока нет')
+            ->emptyStateDescription('Создайте первого клиента мастером «Новый клиент» или кнопкой «Создать».')
+            ->emptyStateIcon('heroicon-o-building-office-2');
     }
 
     public static function getRelations(): array

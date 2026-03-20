@@ -64,12 +64,12 @@ class MotorcycleResource extends Resource
                                         }
                                     }),
                                 TextInput::make('slug')
-                                    ->label('URL (slug)')
+                                    ->label('URL-идентификатор')
                                     ->id('motorcycle-slug')
                                     ->required()
                                     ->maxLength(255)
                                     ->unique(ignoreRecord: true)
-                                    ->helperText('Уникальный идентификатор в URL'),
+                                    ->helperText('Адрес карточки в каталоге, например /catalog/your-slug. Латиница, цифры и дефис.'),
                                 TextInput::make('brand')
                                     ->label('Бренд')
                                     ->id('motorcycle-brand')
@@ -130,19 +130,21 @@ class MotorcycleResource extends Resource
                                     ->columns(1)
                                     ->compact()
                                     ->secondary(),
-                                Section::make('Дополнительные параметры')
-                                    ->description('Вес, высота седла, расход и т.д.')
+                                Section::make('Дополнительные характеристики (расширенный режим)')
+                                    ->description('Пары «название — значение» для редких полей. Основные поля выше предпочтительнее. Не используйте без необходимости — опечатки в ключах не попадут на сайт автоматически.')
                                     ->schema([
                                         KeyValue::make('specs_json')
-                                            ->label('')
+                                            ->label('Произвольные параметры')
                                             ->id('motorcycle-specs-json')
-                                            ->keyLabel('Параметр')
+                                            ->keyLabel('Название')
                                             ->valueLabel('Значение')
                                             ->reorderable(),
                                     ])
                                     ->columns(1)
                                     ->compact()
-                                    ->secondary(),
+                                    ->secondary()
+                                    ->collapsed()
+                                    ->collapsible(),
                             ])
                             ->columns(1),
 
@@ -228,22 +230,35 @@ class MotorcycleResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')
+                    ->label('Название')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('brand')
+                    ->label('Бренд')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('category.name')
+                    ->label('Категория')
                     ->sortable(),
                 TextColumn::make('price_per_day')
+                    ->label('Цена / сутки')
                     ->money('RUB')
                     ->sortable(),
                 TextColumn::make('status')
+                    ->label('Статус')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => Motorcycle::statuses()[$state] ?? $state),
+                    ->formatStateUsing(fn (string $state): string => Motorcycle::statuses()[$state] ?? $state)
+                    ->color(fn (string $state): string => match ($state) {
+                        'available' => 'success',
+                        'booked', 'maintenance' => 'warning',
+                        'hidden', 'archived' => 'gray',
+                        default => 'gray',
+                    }),
                 IconColumn::make('show_on_home')
+                    ->label('На главной')
                     ->boolean(),
                 IconColumn::make('show_in_catalog')
+                    ->label('В каталоге')
                     ->boolean(),
             ])
             ->filters([
@@ -261,7 +276,10 @@ class MotorcycleResource extends Resource
                     RestoreBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('sort_order');
+            ->defaultSort('sort_order')
+            ->emptyStateHeading('В каталоге пока пусто')
+            ->emptyStateDescription('Добавьте карточку техники — её увидят посетители, если включён показ в каталоге.')
+            ->emptyStateIcon('heroicon-o-truck');
     }
 
     public static function getRelations(): array

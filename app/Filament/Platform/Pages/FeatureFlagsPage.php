@@ -2,23 +2,27 @@
 
 namespace App\Filament\Platform\Pages;
 
-use App\Filament\Platform\Pages\Concerns\GrantsPlatformPageAccess;
-use Filament\Pages\Page;
 use UnitEnum;
 
-class FeatureFlagsPage extends Page
+class FeatureFlagsPage extends PlatformPlaceholderPage
 {
-    use GrantsPlatformPageAccess;
+    protected static ?string $navigationLabel = 'Функции (флаги)';
 
-    protected string $view = 'filament.pages.platform.placeholder';
-
-    protected static ?string $navigationLabel = 'Feature Flags';
-
-    protected static ?string $title = 'Feature Flags';
+    protected static ?string $title = 'Функции платформы';
 
     protected static ?string $slug = 'feature-flags';
 
     protected static ?string $panel = 'platform';
 
     protected static string|UnitEnum|null $navigationGroup = 'Платформа';
+
+    protected static function placeholderMeta(): array
+    {
+        return [
+            'headline' => 'Управление функциями',
+            'intro' => 'Раздел для поэтапного включения возможностей платформы у клиентов без публикации нового кода.',
+            'future' => 'Список функций, включение для выбранных клиентов или тарифов, журнал изменений.',
+            'audience' => 'Владелец платформы и администраторы.',
+        ];
+    }
 }

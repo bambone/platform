@@ -2,14 +2,15 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Tenant\Pages\TenantDashboard;
 use App\Filament\Tenant\Widgets\StatsOverviewWidget;
+use App\Filament\Tenant\Widgets\TenantDashboardIntroWidget;
 use App\Http\Middleware\EnsureTenantContext;
 use App\Http\Middleware\EnsureTenantMembership;
 use App\Http\Middleware\ResolveTenantFromDomain;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -46,7 +47,7 @@ class AdminPanelProvider extends PanelProvider
                 return Blade::render(
                     <<<'HTML'
                     <div class="fi-tenant-context hidden sm:flex items-center me-4 text-sm font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                        <span class="opacity-70 me-1">Tenant:</span>
+                        <span class="opacity-70 me-1">Клиент:</span>
                         <span class="text-gray-950 dark:text-white">{{ $label }}</span>
                     </div>
                     HTML,
@@ -67,10 +68,11 @@ class AdminPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Tenant/Resources'), for: 'App\\Filament\\Tenant\\Resources')
             ->discoverPages(in: app_path('Filament/Tenant/Pages'), for: 'App\\Filament\\Tenant\\Pages')
             ->pages([
-                Dashboard::class,
+                TenantDashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Tenant/Widgets'), for: 'App\\Filament\\Tenant\\Widgets')
             ->widgets([
+                TenantDashboardIntroWidget::class,
                 StatsOverviewWidget::class,
                 AccountWidget::class,
             ])

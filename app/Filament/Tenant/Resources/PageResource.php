@@ -33,14 +33,32 @@ class PageResource extends Resource
     {
         return $schema
             ->components([
-                Section::make()
+                Section::make('Страница на сайте')
+                    ->description('Контентные страницы сайта для посетителей. Черновик не виден публично; опубликованная — доступна по URL.')
                     ->schema([
-                        TextInput::make('name')->required()->maxLength(255)
+                        TextInput::make('name')
+                            ->label('Название в меню и списках')
+                            ->required()
+                            ->maxLength(255)
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn ($set, ?string $state) => $set('slug', Str::slug($state ?? ''))),
-                        TextInput::make('slug')->required()->maxLength(255)->unique(ignoreRecord: true),
-                        Select::make('template')->options(['default' => 'По умолчанию'])->default('default'),
-                        Select::make('status')->options(Page::statuses())->required()->default('draft'),
+                        TextInput::make('slug')
+                            ->label('URL-идентификатор')
+                            ->required()
+                            ->maxLength(255)
+                            ->unique(ignoreRecord: true)
+                            ->helperText('Часть адреса страницы, например: about-us → /about-us'),
+                        Select::make('template')
+                            ->label('Макет')
+                            ->options(['default' => 'По умолчанию'])
+                            ->default('default')
+                            ->helperText('Определяет структуру отображения, если тема поддерживает несколько макетов.'),
+                        Select::make('status')
+                            ->label('Статус публикации')
+                            ->options(Page::statuses())
+                            ->required()
+                            ->default('draft')
+                            ->helperText('Черновик — только в кабинете. Опубликован — на сайте. Скрыт — не в меню, но может открываться по прямой ссылке (зависит от темы).'),
                     ])->columns(2),
                 SeoMetaFields::make(),
             ]);
@@ -50,18 +68,38 @@ class PageResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->sortable(),
-                TextColumn::make('name')->searchable()->sortable(),
-                TextColumn::make('slug')->searchable(),
-                TextColumn::make('status')->badge()->formatStateUsing(fn (?string $state): string => $state ? (Page::statuses()[$state] ?? $state) : ''),
-                TextColumn::make('sections_count')->counts('sections')->label('Секций'),
+                TextColumn::make('name')
+                    ->label('Название')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('slug')
+                    ->label('URL')
+                    ->searchable(),
+                TextColumn::make('status')
+                    ->label('Статус')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => $state ? (Page::statuses()[$state] ?? $state) : '')
+                    ->color(fn (?string $state): string => match ($state) {
+                        'published' => 'success',
+                        'draft' => 'warning',
+                        'hidden' => 'gray',
+                        default => 'gray',
+                    }),
+                TextColumn::make('sections_count')
+                    ->counts('sections')
+                    ->label('Блоков'),
             ])
             ->filters([
-                SelectFilter::make('status')->options(Page::statuses()),
+                SelectFilter::make('status')
+                    ->label('Статус')
+                    ->options(Page::statuses()),
             ])
             ->actions([
                 EditAction::make(),
-            ]);
+            ])
+            ->emptyStateHeading('Страниц пока нет')
+            ->emptyStateDescription('Создайте страницу — например «О нас», «Контакты» или лендинг.')
+            ->emptyStateIcon('heroicon-o-document-text');
     }
 
     public static function getRelations(): array

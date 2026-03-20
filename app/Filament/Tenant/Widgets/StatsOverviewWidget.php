@@ -43,8 +43,8 @@ class StatsOverviewWidget extends BaseWidget
                 ->description('Новые + в работе')
                 ->descriptionIcon('heroicon-m-clock')
                 ->url('/admin/leads'),
-            Stat::make('Мотоциклов в каталоге', $motorcyclesCount)
-                ->description('Доступны для бронирования')
+            Stat::make('Карточек в каталоге', $motorcyclesCount)
+                ->description('Доступны для бронирования (статус «Доступен» и показ в каталоге)')
                 ->descriptionIcon('heroicon-m-truck')
                 ->url('/admin/motorcycles'),
             Stat::make('Без SEO', $missingSeo)

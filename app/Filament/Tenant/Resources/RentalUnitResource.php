@@ -17,35 +17,43 @@ class RentalUnitResource extends Resource
 {
     protected static ?string $model = RentalUnit::class;
 
-    protected static ?string $navigationLabel = 'Арендные единицы';
+    protected static ?string $navigationLabel = 'Единицы парка';
 
-    protected static ?string $modelLabel = 'Арендная единица';
+    protected static ?string $modelLabel = 'Единица парка';
 
-    protected static ?string $pluralModelLabel = 'Арендные единицы';
+    protected static ?string $pluralModelLabel = 'Единицы парка';
 
     public static function form(Schema $schema): Schema
     {
         return $schema
             ->components([
-                Section::make()
+                Section::make('Связь с каталогом и внешними системами')
+                    ->description('**Единица парка** — конкретный экземпляр техники (например с номером или VIN), привязанный к **карточке в каталоге**. На сайте посетитель обычно видит карточку; единица парка нужна для учёта доступности и бронирований.')
                     ->schema([
                         Select::make('motorcycle_id')
+                            ->label('Карточка в каталоге')
                             ->relationship('motorcycle', 'name')
                             ->required()
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->helperText('Модель/карточка, к которой относится эта физическая единица.'),
                         Select::make('integration_id')
+                            ->label('Интеграция')
                             ->relationship('integration', 'name')
                             ->searchable()
                             ->preload()
-                            ->placeholder('Без интеграции'),
+                            ->placeholder('Без внешней системы')
+                            ->helperText('Если учёт ведётся во внешней программе (например RentProg).'),
                         TextInput::make('external_id')
-                            ->label('Внешний ID')
+                            ->label('ID во внешней системе')
                             ->maxLength(255)
-                            ->placeholder('ID в RentProg'),
+                            ->placeholder('Например: ID в RentProg')
+                            ->helperText('Заполняется, когда единица синхронизируется с интеграцией.'),
                         Select::make('status')
+                            ->label('Статус единицы')
                             ->options(RentalUnit::statuses())
-                            ->default('active'),
+                            ->default('active')
+                            ->helperText('Активна — участвует в выдаче. На обслуживании — временно недоступна.'),
                     ]),
             ]);
     }
@@ -54,16 +62,34 @@ class RentalUnitResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->sortable(),
-                TextColumn::make('motorcycle.name')->searchable()->sortable(),
-                TextColumn::make('integration.display_name')->label('Интеграция')->placeholder('—'),
-                TextColumn::make('external_id')->placeholder('—'),
-                TextColumn::make('status')->badge()->formatStateUsing(fn (?string $state): string => $state ? (RentalUnit::statuses()[$state] ?? $state) : ''),
+                TextColumn::make('motorcycle.name')
+                    ->label('Карточка каталога')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('integration.display_name')
+                    ->label('Интеграция')
+                    ->placeholder('—'),
+                TextColumn::make('external_id')
+                    ->label('Внешний ID')
+                    ->placeholder('—'),
+                TextColumn::make('status')
+                    ->label('Статус')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => $state ? (RentalUnit::statuses()[$state] ?? $state) : '')
+                    ->color(fn (?string $state): string => match ($state) {
+                        'active' => 'success',
+                        'maintenance' => 'warning',
+                        'inactive' => 'gray',
+                        default => 'gray',
+                    }),
             ])
             ->defaultSort('id')
             ->actions([
                 EditAction::make(),
-            ]);
+            ])
+            ->emptyStateHeading('Единиц парка пока нет')
+            ->emptyStateDescription('Добавьте единицу, когда нужно отличать конкретные мотоциклы внутри одной карточки каталога.')
+            ->emptyStateIcon('heroicon-o-cube');
     }
 
     public static function getPages(): array

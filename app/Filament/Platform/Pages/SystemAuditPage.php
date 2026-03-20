@@ -2,23 +2,27 @@
 
 namespace App\Filament\Platform\Pages;
 
-use App\Filament\Platform\Pages\Concerns\GrantsPlatformPageAccess;
-use Filament\Pages\Page;
 use UnitEnum;
 
-class SystemAuditPage extends Page
+class SystemAuditPage extends PlatformPlaceholderPage
 {
-    use GrantsPlatformPageAccess;
-
-    protected string $view = 'filament.pages.platform.placeholder';
-
     protected static ?string $navigationLabel = 'Аудит и здоровье';
 
-    protected static ?string $title = 'System Audit / Health';
+    protected static ?string $title = 'Аудит и состояние системы';
 
     protected static ?string $slug = 'system-audit';
 
     protected static ?string $panel = 'platform';
 
     protected static string|UnitEnum|null $navigationGroup = 'Платформа';
+
+    protected static function placeholderMeta(): array
+    {
+        return [
+            'headline' => 'Аудит и мониторинг',
+            'intro' => 'Централизованный обзор важных событий, ошибок и проверок работоспособности окружения.',
+            'future' => 'Журнал действий, проверки интеграций, метрики доступности и уведомления о сбоях.',
+            'audience' => 'Администраторы платформы и техническая поддержка.',
+        ];
+    }
 }

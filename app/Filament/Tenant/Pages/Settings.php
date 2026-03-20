@@ -16,7 +16,7 @@ class Settings extends Page
 {
     protected static ?string $navigationLabel = 'Настройки';
 
-    protected static ?string $title = 'Настройки';
+    protected static ?string $title = 'Настройки сайта';
 
     protected string $view = 'filament.pages.settings';
 
@@ -77,35 +77,56 @@ class Settings extends Page
             ->statePath('data')
             ->components([
                 Section::make('Общие')
+                    ->description('Базовая информация о сайте для посетителей и для служебных ссылок.')
                     ->schema([
-                        TextInput::make('general_site_name')->label('Название сайта'),
-                        TextInput::make('general_domain')->label('Домен')->url(),
+                        TextInput::make('general_site_name')
+                            ->label('Название сайта')
+                            ->helperText('Показывается в шапке, заголовках и письмах, если тема не задаёт иначе.')
+                            ->placeholder('Например: MotoLevins Сочи'),
+                        TextInput::make('general_domain')
+                            ->label('Основной URL сайта')
+                            ->url()
+                            ->helperText('Полный адрес с https://. Используется в ссылках и настройках, где нужен «канонический» домен.'),
                     ])->columns(2),
 
                 Section::make('Брендинг')
+                    ->description('Логотип и цвета влияют на оформление **сайта для посетителей**. Полноэкранный предпросмотр шапки можно добавить позже; сейчас проверяйте результат на опубликованном сайте.')
                     ->schema([
-                        TextInput::make('branding_logo')->label('URL логотипа'),
-                        TextInput::make('branding_primary_color')->label('Основной цвет')->type('color'),
-                        TextInput::make('branding_favicon')->label('URL favicon'),
+                        TextInput::make('branding_logo')
+                            ->label('URL логотипа')
+                            ->url()
+                            ->placeholder('https://...')
+                            ->helperText('Прямая ссылка на файл изображения (PNG/SVG). Лучше горизонтальный логотип на прозрачном фоне.'),
+                        TextInput::make('branding_primary_color')
+                            ->label('Основной цвет')
+                            ->type('color')
+                            ->helperText('Акцентные кнопки и ссылки на сайте. Рядом — текущий выбранный цвет (стандартный виджет браузера).'),
+                        TextInput::make('branding_favicon')
+                            ->label('URL иконки сайта (favicon)')
+                            ->url()
+                            ->placeholder('https://...')
+                            ->helperText('Маленькая иконка во вкладке браузера; обычно 32×32 или .ico.'),
                     ])->columns(2)->visible(fn () => \currentTenant() !== null),
 
                 Section::make('Контакты')
+                    ->description('Телефоны и мессенджеры обычно выводятся в шапке, подвале и на странице контактов.')
                     ->schema([
-                        TextInput::make('contacts_phone')->label('Телефон')->tel(),
-                        TextInput::make('contacts_phone_alt')->label('Телефон доп.')->tel(),
-                        TextInput::make('contacts_email')->label('Email')->email(),
-                        TextInput::make('contacts_whatsapp')->label('WhatsApp')->tel(),
-                        TextInput::make('contacts_telegram')->label('Telegram'),
+                        TextInput::make('contacts_phone')->label('Телефон')->tel()->placeholder('+7 …'),
+                        TextInput::make('contacts_phone_alt')->label('Дополнительный телефон')->tel(),
+                        TextInput::make('contacts_email')->label('Email')->email()->placeholder('hello@example.com'),
+                        TextInput::make('contacts_whatsapp')->label('WhatsApp')->tel()->placeholder('Только номер или ссылка wa.me'),
+                        TextInput::make('contacts_telegram')->label('Telegram')->placeholder('@username или ссылка t.me/…'),
                         Textarea::make('contacts_address')->label('Адрес')->rows(2),
-                        Textarea::make('contacts_hours')->label('Часы работы')->rows(2),
+                        Textarea::make('contacts_hours')->label('Часы работы')->rows(2)->placeholder('Например: Пн–Вс 9:00–21:00'),
                     ])->columns(2),
 
                 Section::make('SEO')
+                    ->description('Файл robots.txt сообщает поисковикам, что можно индексировать. Если оставить пустым, платформа может сформировать его автоматически.')
                     ->schema([
                         Textarea::make('seo_robots_txt')
-                            ->label('robots.txt (пусто = автогенерация)')
+                            ->label('Содержимое robots.txt')
                             ->rows(10)
-                            ->placeholder("User-agent: *\nAllow: /\nDisallow: /admin\nSitemap: ..."),
+                            ->placeholder("User-agent: *\nAllow: /\nDisallow: /admin\nSitemap: https://ваш-сайт/sitemap.xml"),
                     ]),
             ]);
     }

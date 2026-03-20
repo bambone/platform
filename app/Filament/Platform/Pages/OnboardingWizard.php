@@ -25,9 +25,9 @@ class OnboardingWizard extends Page
 
     protected string $view = 'filament.pages.platform.onboarding-wizard';
 
-    protected static ?string $title = 'Создание клиента';
+    protected static ?string $title = 'Мастер: новый клиент';
 
-    protected static ?string $navigationLabel = 'Новый клиент (Wizard)';
+    protected static ?string $navigationLabel = 'Новый клиент (мастер)';
 
     protected static ?string $slug = 'onboarding';
 
@@ -54,50 +54,86 @@ class OnboardingWizard extends Page
                     ->tabs([
                         Tab::make('1. Клиент')
                             ->schema([
-                                Section::make('Основные данные')
+                                Section::make('Компания и адрес в системе')
+                                    ->description(
+                                        'Создаётся запись **клиента платформы** (отдельный сайт и данные). '.
+                                        '**Можно изменить позже:** название, URL-идентификатор, часовой пояс, язык и валюта — в карточке клиента в разделе «Клиенты».'
+                                    )
                                     ->schema([
                                         TextInput::make('name')
-                                            ->label('Название компании')
+                                            ->label('Название компании или проекта')
                                             ->required()
                                             ->live(onBlur: true)
-                                            ->afterStateUpdated(fn ($state, callable $set) => $set('slug', Str::slug($state))),
+                                            ->afterStateUpdated(fn ($state, callable $set) => $set('slug', Str::slug($state)))
+                                            ->placeholder('Например: MotoRent Сочи'),
                                         TextInput::make('slug')
                                             ->label('URL-идентификатор')
                                             ->required()
-                                            ->unique('tenants', 'slug'),
+                                            ->unique('tenants', 'slug')
+                                            ->helperText('Используется в адресе технического поддомена. Латиница, цифры и дефис.'),
+                                        TextInput::make('timezone')
+                                            ->label('Часовой пояс')
+                                            ->default('Europe/Moscow')
+                                            ->helperText('Для бронирований, писем и отображения времени.'),
+                                        TextInput::make('locale')
+                                            ->label('Локаль')
+                                            ->default('ru')
+                                            ->helperText('Например: ru, en.'),
+                                        TextInput::make('currency')
+                                            ->label('Валюта')
+                                            ->default('RUB')
+                                            ->helperText('Трёхбуквенный код, например RUB.'),
                                     ])->columns(2),
                             ]),
                         Tab::make('2. Шаблон')
                             ->schema([
-                                Section::make('Выберите шаблон сайта')
+                                Section::make('Стартовый сайт')
+                                    ->description(
+                                        'Из шаблона копируются страницы и настройки **как черновик**. Уже созданные сайты клиентов от шаблона не зависят — правки шаблона задним числом их не меняют. '.
+                                        '**Можно изменить позже:** контент и структуру можно править в кабинете клиента; другой шаблон «переключить» задним числом нельзя — только вручную переносить контент.'
+                                    )
                                     ->schema([
                                         Select::make('template_preset_id')
-                                            ->label('Шаблон')
+                                            ->label('Шаблон сайта')
                                             ->options(TemplatePreset::where('is_active', true)->pluck('name', 'id'))
                                             ->required()
-                                            ->searchable(),
+                                            ->searchable()
+                                            ->helperText('Выберите активный шаблон из списка.'),
                                     ]),
                             ]),
                         Tab::make('3. Брендинг')
                             ->schema([
-                                Section::make('Внешний вид')
+                                Section::make('Внешний вид на сайте')
+                                    ->description(
+                                        'Эти данные попадут в настройки сайта клиента и обычно видны посетителям. '.
+                                        '**Можно изменить позже:** всё в кабинете клиента → «Настройки сайта» (брендинг).'
+                                    )
                                     ->schema([
                                         TextInput::make('brand_name')
-                                            ->label('Бренд / название для сайта'),
+                                            ->label('Название на сайте')
+                                            ->placeholder('Как показывать бренд посетителям'),
                                         TextInput::make('logo_url')
                                             ->label('URL логотипа')
-                                            ->url(),
+                                            ->url()
+                                            ->placeholder('https://…'),
                                         TextInput::make('primary_color')
                                             ->label('Основной цвет')
-                                            ->default('#E85D04'),
+                                            ->type('color')
+                                            ->default('#E85D04')
+                                            ->helperText('Акцентные элементы на публичном сайте.'),
                                     ])->columns(2),
                             ]),
                         Tab::make('4. Контакты')
                             ->schema([
-                                Section::make('Контактная информация')
+                                Section::make('Связь с клиентом')
+                                    ->description(
+                                        'Телефон и мессенджеры обычно выводятся в шапке и на странице контактов. '.
+                                        '**Можно изменить позже:** раздел «Настройки сайта» → контакты.'
+                                    )
                                     ->schema([
                                         TextInput::make('contact_phone')
-                                            ->label('Телефон'),
+                                            ->label('Телефон')
+                                            ->tel(),
                                         TextInput::make('contact_email')
                                             ->label('Email')
                                             ->email(),
@@ -106,6 +142,24 @@ class OnboardingWizard extends Page
                                         TextInput::make('contact_whatsapp')
                                             ->label('WhatsApp'),
                                     ])->columns(2),
+                            ]),
+                        Tab::make('5. Транспорт')
+                            ->schema([
+                                Section::make('Каталог техники')
+                                    ->description(
+                                        'На этом шаге в будущем можно будет добавить первые **карточки в каталоге** или импорт. '.
+                                        'Сейчас данные вносятся в **кабинете клиента** после создания. '.
+                                        '**Можно изменить позже:** полностью в кабинете клиента → каталог.'
+                                    ),
+                            ]),
+                        Tab::make('6. Публикация')
+                            ->schema([
+                                Section::make('Запуск сайта')
+                                    ->description(
+                                        'Здесь позже появится чеклист: домен, SSL, опубликованные страницы. '.
+                                        'Сейчас после создания клиента откроется карточка клиента — назначьте тариф, проверьте домен и передайте доступ в кабинет. '.
+                                        '**Можно изменить позже:** статус публикации и домены — в консоли платформы (клиент, домены).'
+                                    ),
                             ]),
                     ])
                     ->columnSpanFull(),

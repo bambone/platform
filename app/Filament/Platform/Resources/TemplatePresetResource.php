@@ -37,14 +37,47 @@ class TemplatePresetResource extends Resource
     {
         return $schema
             ->components([
-                Section::make()->schema([
-                    TextInput::make('name')->required()->maxLength(255),
-                    TextInput::make('slug')->required()->maxLength(255)->unique(ignoreRecord: true),
-                    Textarea::make('description')->rows(3)->columnSpanFull(),
-                    KeyValue::make('config_json')->label('Конфиг')->columnSpanFull(),
-                    TextInput::make('sort_order')->numeric()->default(0),
-                    Toggle::make('is_active')->default(true),
-                ])->columns(2),
+                Section::make('О шаблоне')
+                    ->description('Шаблон — это **стартовая копия** сайта для нового клиента. После создания клиента его сайт живёт отдельно: изменения шаблона не переписывают уже созданные сайты.')
+                    ->schema([
+                        TextInput::make('name')
+                            ->label('Название')
+                            ->required()
+                            ->maxLength(255)
+                            ->placeholder('Например: Базовый прокат'),
+                        TextInput::make('slug')
+                            ->label('URL-идентификатор')
+                            ->required()
+                            ->maxLength(255)
+                            ->unique(ignoreRecord: true)
+                            ->helperText('Внутреннее имя; латиница и дефис.'),
+                        Textarea::make('description')
+                            ->label('Описание для администраторов')
+                            ->rows(3)
+                            ->columnSpanFull()
+                            ->helperText('Не показывается на сайте клиента; помогает выбрать шаблон в списке.'),
+                        TextInput::make('sort_order')
+                            ->label('Порядок в списке')
+                            ->numeric()
+                            ->default(0),
+                        Toggle::make('is_active')
+                            ->label('Доступен при создании клиента')
+                            ->default(true)
+                            ->helperText('Выключенные шаблоны не предлагаются в мастере и формах.'),
+                    ])->columns(2),
+
+                Section::make('Технический конфиг (для разработчика)')
+                    ->description('Структурированные параметры клонирования. Неверные ключи могут сломать развёртывание шаблона — меняйте только по согласованию с разработкой.')
+                    ->schema([
+                        KeyValue::make('config_json')
+                            ->label('Параметры')
+                            ->keyLabel('Ключ')
+                            ->valueLabel('Значение')
+                            ->addActionLabel('Добавить')
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsed()
+                    ->collapsible(),
             ]);
     }
 
@@ -52,15 +85,32 @@ class TemplatePresetResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')->searchable()->sortable(),
-                TextColumn::make('slug')->searchable(),
-                IconColumn::make('is_active')->boolean(),
-                TextColumn::make('sort_order')->sortable(),
+                TextColumn::make('name')
+                    ->label('Название')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('slug')
+                    ->label('Идентификатор')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('is_active')
+                    ->label('Активен')
+                    ->boolean(),
+                TextColumn::make('sort_order')
+                    ->label('Порядок')
+                    ->sortable(),
             ])
             ->actions([EditAction::make()])
             ->bulkActions([
-                BulkActionGroup::make([DeleteBulkAction::make()]),
-            ]);
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->modalHeading('Удалить шаблоны?')
+                        ->modalDescription('Новые клиенты не смогут выбрать удалённый шаблон. Уже созданные сайты не изменятся.'),
+                ]),
+            ])
+            ->emptyStateHeading('Шаблонов пока нет')
+            ->emptyStateDescription('Создайте шаблон, чтобы быстро запускать новых клиентов с готовой структурой сайта.')
+            ->emptyStateIcon('heroicon-o-document-duplicate');
     }
 
     public static function getPages(): array

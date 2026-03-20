@@ -2,7 +2,7 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Auth\AccessRoles;
+use App\Filament\Support\RoleLabels;
 use App\Filament\Tenant\Resources\UserResource\Pages;
 use App\Models\User;
 use Filament\Actions\EditAction;
@@ -43,11 +43,6 @@ class UserResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        $roleOptions = array_combine(
-            AccessRoles::tenantMembershipRolesForPanel(),
-            AccessRoles::tenantMembershipRolesForPanel()
-        );
-
         return $schema
             ->components([
                 Section::make('Профиль')
@@ -61,19 +56,21 @@ class UserResource extends Resource
                             ->required(fn (string $operation): bool => $operation === 'create')
                             ->maxLength(255),
                         Select::make('status')
+                            ->label('Статус учётной записи')
                             ->options(User::statuses())
                             ->default('active')
                             ->required(),
                     ])->columns(2),
 
                 Section::make('Роль в этом клиенте')
-                    ->description('Доступ в Tenant Admin определяется membership и этой ролью (не путать с Platform Console).')
+                    ->description('Определяет, что пользователь может делать в **кабинете клиента**. Роли **консоли платформы** здесь не настраиваются.')
                     ->schema([
                         Select::make('tenant_role')
                             ->label('Роль')
-                            ->options($roleOptions)
+                            ->options(RoleLabels::tenantMembershipRoleOptions())
                             ->default('operator')
-                            ->required(),
+                            ->required()
+                            ->helperText('Выберите уровень доступа согласно обязанностям сотрудника.'),
                     ]),
             ]);
     }
@@ -82,7 +79,6 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->sortable(),
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('email')->searchable()->sortable(),
                 TextColumn::make('status')->badge()->formatStateUsing(fn (?string $state): string => $state ? (User::statuses()[$state] ?? $state) : ''),
@@ -94,11 +90,11 @@ class UserResource extends Resource
                             return '—';
                         }
                         $row = $record->tenants()->where('tenant_id', $tenant->id)->first();
+                        $role = $row?->pivot->role;
 
-                        return $row?->pivot->role ?? '—';
+                        return $role ? RoleLabels::labelForTenantMembershipRole($role) : '—';
                     }),
                 TextColumn::make('last_login_at')->dateTime('d.m.Y H:i')->sortable()->placeholder('—'),
-                TextColumn::make('created_at')->dateTime('d.m.Y H:i')->sortable(),
             ])
             ->filters([
                 SelectFilter::make('status')->options(User::statuses()),

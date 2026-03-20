@@ -2,23 +2,27 @@
 
 namespace App\Filament\Platform\Pages;
 
-use App\Filament\Platform\Pages\Concerns\GrantsPlatformPageAccess;
-use Filament\Pages\Page;
 use UnitEnum;
 
-class SupportImpersonationPage extends Page
+class SupportImpersonationPage extends PlatformPlaceholderPage
 {
-    use GrantsPlatformPageAccess;
+    protected static ?string $navigationLabel = 'Поддержка и вход от имени';
 
-    protected string $view = 'filament.pages.platform.placeholder';
-
-    protected static ?string $navigationLabel = 'Support / Impersonation';
-
-    protected static ?string $title = 'Support / Impersonation';
+    protected static ?string $title = 'Поддержка клиентов';
 
     protected static ?string $slug = 'support-impersonation';
 
     protected static ?string $panel = 'platform';
 
     protected static string|UnitEnum|null $navigationGroup = 'Платформа';
+
+    protected static function placeholderMeta(): array
+    {
+        return [
+            'headline' => 'Инструменты поддержки',
+            'intro' => 'Безопасные сценарии помощи клиенту: просмотр контекста и (при политике компании) вход от имени пользователя с журналированием.',
+            'future' => 'Запрос доступа к кабинету клиента, ограниченное время сессии, отчёт кто и когда выполнял действия.',
+            'audience' => 'Специалисты поддержки и администраторы платформы.',
+        ];
+    }
 }

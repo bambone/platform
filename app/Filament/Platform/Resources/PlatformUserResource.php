@@ -5,6 +5,7 @@ namespace App\Filament\Platform\Resources;
 use App\Auth\AccessRoles;
 use App\Filament\Platform\Resources\Concerns\GrantsPlatformPanelAccess;
 use App\Filament\Platform\Resources\PlatformUserResource\Pages;
+use App\Filament\Support\RoleLabels;
 use App\Models\User;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
@@ -42,34 +43,44 @@ class PlatformUserResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        $labels = [
-            'platform_owner' => 'platform_owner',
-            'platform_admin' => 'platform_admin',
-            'support_manager' => 'support_manager',
-        ];
-
         return $schema
             ->components([
                 Section::make('Профиль')
-                    ->description('Только роли Platform Console. Tenant membership настраивается отдельно (в клиенте).')
+                    ->description('Сотрудник входит только в **консоль платформы**. Доступ к **кабинету клиента** настраивается отдельно у каждого клиента.')
                     ->schema([
-                        TextInput::make('name')->required()->maxLength(255),
-                        TextInput::make('email')->email()->required()->unique(ignoreRecord: true),
+                        TextInput::make('name')
+                            ->label('Имя')
+                            ->required()
+                            ->maxLength(255),
+                        TextInput::make('email')
+                            ->label('Email')
+                            ->email()
+                            ->required()
+                            ->unique(ignoreRecord: true)
+                            ->helperText('Используется для входа в консоль платформы.'),
                         TextInput::make('password')
+                            ->label('Пароль')
                             ->password()
                             ->dehydrateStateUsing(fn ($state) => filled($state) ? Hash::make($state) : null)
                             ->dehydrated(fn ($state) => filled($state))
                             ->required(fn (string $operation): bool => $operation === 'create')
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->helperText(fn (string $operation): string => $operation === 'edit'
+                                ? 'Оставьте пустым, чтобы не менять пароль.'
+                                : ''),
                         Select::make('status')
+                            ->label('Статус учётной записи')
                             ->options(User::statuses())
                             ->default('active')
-                            ->required(),
-                        CheckboxList::make('platform_roles')
-                            ->label('Роли платформы')
-                            ->options($labels)
                             ->required()
-                            ->columns(1),
+                            ->helperText('Заблокированный пользователь не сможет войти ни в одну панель.'),
+                        CheckboxList::make('platform_roles')
+                            ->label('Роли в консоли платформы')
+                            ->options(RoleLabels::platformRoleOptions())
+                            ->descriptions(RoleLabels::platformRoleDescriptions())
+                            ->required()
+                            ->columns(1)
+                            ->bulkToggleable(),
                     ]),
             ]);
     }
@@ -80,15 +91,20 @@ class PlatformUserResource extends Resource
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('email')->searchable()->sortable(),
-                TextColumn::make('status')->badge(),
+                TextColumn::make('status')
+                    ->label('Статус')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => $state ? (User::statuses()[$state] ?? $state) : '—'),
                 TextColumn::make('platform_roles_list')
-                    ->label('Роли платформы')
-                    ->getStateUsing(fn (User $record): string => $record->roles
-                        ->whereIn('name', AccessRoles::platformRoles())
-                        ->pluck('name')
-                        ->join(', ')),
+                    ->label('Роли')
+                    ->getStateUsing(fn (User $record): string => RoleLabels::formatPlatformRolesList(
+                        $record->roles->whereIn('name', AccessRoles::platformRoles())->pluck('name')->all()
+                    )),
             ])
-            ->actions([EditAction::make()]);
+            ->actions([EditAction::make()])
+            ->emptyStateHeading('Сотрудников пока нет')
+            ->emptyStateDescription('Добавьте пользователя с ролью в консоли платформы.')
+            ->emptyStateIcon('heroicon-o-users');
     }
 
     public static function getPages(): array

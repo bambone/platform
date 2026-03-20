@@ -2,16 +2,10 @@
 
 namespace App\Filament\Platform\Pages;
 
-use App\Filament\Platform\Pages\Concerns\GrantsPlatformPageAccess;
-use Filament\Pages\Page;
 use UnitEnum;
 
-class BillingPage extends Page
+class BillingPage extends PlatformPlaceholderPage
 {
-    use GrantsPlatformPageAccess;
-
-    protected string $view = 'filament.pages.platform.placeholder';
-
     protected static ?string $navigationLabel = 'Биллинг';
 
     protected static ?string $title = 'Биллинг';
@@ -21,4 +15,14 @@ class BillingPage extends Page
     protected static ?string $panel = 'platform';
 
     protected static string|UnitEnum|null $navigationGroup = 'Платформа';
+
+    protected static function placeholderMeta(): array
+    {
+        return [
+            'headline' => 'Биллинг и оплата',
+            'intro' => 'Здесь будет сводка по подпискам и оплатам клиентов платформы: тарифы, счета, статусы оплаты.',
+            'future' => 'Счета, история платежей, напоминания об оплате и связка с платёжными провайдерами — по мере подключения биллинга.',
+            'audience' => 'Владелец платформы и финансовые роли.',
+        ];
+    }
 }

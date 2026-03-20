@@ -1,3 +1,4 @@
+@props(['section' => null])
 <section class="py-20 lg:py-28 relative z-10 bg-obsidian overflow-hidden">
     <div class="max-w-7xl mx-auto px-4 md:px-8">
         <div class="text-center mb-16 max-w-2xl mx-auto">

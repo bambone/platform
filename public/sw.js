@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'moto-levins-v7';
+const CACHE_VERSION = 'moto-levins-v9';
 const OFFLINE_URL = 'offline';
 
 const CACHES = {
@@ -55,6 +55,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip admin panel - dynamic content, no offline need
+  if (url.pathname.startsWith('/admin')) {
+    return;
+  }
+
   // 1. SAFETY: Never cache POST, dynamic endpoints, or external tracking
   if (request.method !== 'GET' || url.pathname.startsWith('/api') || url.pathname.includes('booking')) {
     return;
@@ -65,11 +70,14 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
         const fetchPromise = fetch(request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHES.images).then((cache) => {
-              cache.put(request, networkResponse.clone());
-              trimCache(CACHES.images, IMAGE_CACHE_LIMIT);
-            });
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            try {
+              const clone = networkResponse.clone();
+              caches.open(CACHES.images).then((cache) => {
+                cache.put(request, clone).catch(() => {});
+                trimCache(CACHES.images, IMAGE_CACHE_LIMIT);
+              });
+            } catch (_) { /* body already used */ }
           }
           return networkResponse;
         }).catch(() => null);
@@ -96,9 +104,11 @@ self.addEventListener('fetch', (event) => {
         fetch(request).then((response) => {
           clearTimeout(timeoutId);
           if (!timeoutTriggered) {
-            if (response && response.status === 200) {
-              const responseClone = response.clone();
-              caches.open(CACHES.html).then((cache) => cache.put(request, responseClone));
+            if (response && response.status === 200 && response.type === 'basic') {
+              try {
+                const responseClone = response.clone();
+                caches.open(CACHES.html).then((cache) => cache.put(request, responseClone).catch(() => {}));
+              } catch (_) { /* body already used */ }
             }
             resolve(response);
           }
@@ -120,8 +130,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
         const fetchPromise = fetch(request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHES.static).then((cache) => cache.put(request, networkResponse.clone()));
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            try {
+              const clone = networkResponse.clone();
+              caches.open(CACHES.static).then((cache) => cache.put(request, clone).catch(() => {}));
+            } catch (_) { /* body already used */ }
           }
           return networkResponse;
         }).catch(() => null);

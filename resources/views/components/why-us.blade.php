@@ -1,3 +1,4 @@
+@props(['section' => null])
 <section class="py-20 lg:py-28 relative z-10 bg-[#0c0c0e] border-y border-white/[0.02]">
     <div class="max-w-7xl mx-auto px-4 md:px-8">
         <div class="mb-12 md:max-w-2xl">

@@ -1,3 +1,9 @@
+@props(['section' => null])
+@php
+    $heading = $section['heading'] ?? 'Забронируйте мотоцикл и отправляйтесь в поездку уже сегодня';
+    $description = $section['description'] ?? 'Экипировка включена. Цена фиксирована. Ограниченное количество техники — не откладывайте.';
+    $buttonText = $section['button_text'] ?? 'Забронировать';
+@endphp
 <section class="py-32 lg:py-40 relative z-10 border-t border-white/[0.02] overflow-hidden">
     <!-- Atmospheric Background Image with heavy darkening -->
     <div class="absolute inset-0 z-0">
@@ -13,16 +19,16 @@
     <div class="max-w-4xl mx-auto px-4 md:px-8 text-center relative z-10">
         <img src="{{ asset('images/logo-round-dark.png') }}" alt="Moto Levins" class="w-16 h-16 md:w-20 md:h-20 mx-auto mb-6 opacity-90 object-contain" />
         <h2 class="text-4xl md:text-6xl lg:text-7xl font-black text-white mb-6 tracking-tight drop-shadow-2xl">
-            Забронируйте мотоцикл и отправляйтесь в поездку уже сегодня
+            {{ $heading }}
         </h2>
         <p class="text-silver/90 text-lg md:text-2xl mb-12 max-w-2xl mx-auto leading-relaxed drop-shadow-lg">
-            Экипировка включена. Цена фиксирована. Ограниченное количество техники — не откладывайте.
+            {{ $description }}
         </p>
         
         <div class="flex flex-col sm:flex-row items-center justify-center gap-6">
             <!-- Primary Final CTA -->
             <button @click="document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})" class="w-full sm:w-auto px-10 py-5 bg-moto-amber hover:bg-orange-600 text-white font-bold rounded-xl transition-all duration-300 shadow-2xl shadow-moto-amber/30 hover:shadow-moto-amber/50 hover:-translate-y-1 text-xl">
-                Забронировать
+                {{ $buttonText }}
             </button>
             
             <!-- Secondary Contact Link -->

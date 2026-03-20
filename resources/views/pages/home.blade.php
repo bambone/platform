@@ -1,14 +1,15 @@
 @php
     $bikeIdsJson = $bikes->pluck('id')->toJson();
+    $sections = $sections ?? [];
 @endphp
-<x-app-layout>
+<x-app-layout :meta="$seoMeta ?? null">
     <!-- Alpine App State -->
     <div x-data="globalBookingState()" data-bike-ids="{{ $bikeIdsJson }}">
         
         <!-- Extracted Hero Component -->
-        <x-hero />
+        <x-hero :section="$sections['hero'] ?? null" />
 
-        <x-experience-block />
+        <x-experience-block :section="$sections['route_cards'] ?? null" />
 
         <!-- Catalog Section -->
         <section id="catalog" class="py-20 lg:py-28 relative z-10 bg-[#0c0c0e] border-t border-white/[0.02]">
@@ -46,17 +47,17 @@
             </div>
         </section>
 
-        <x-why-us />
+        <x-why-us :section="$sections['why_us'] ?? null" />
 
-        <x-how-it-works />
+        <x-how-it-works :section="$sections['how_it_works'] ?? null" />
 
-        <x-rental-conditions />
+        <x-rental-conditions :section="$sections['rental_conditions'] ?? null" />
 
-        <x-social-proof />
+        <x-social-proof :section="$sections['reviews_block'] ?? null" :reviews="$reviews ?? []" />
 
-        <x-faq-block />
+        <x-faq-block :section="$sections['faq_block'] ?? null" :faqs="$faqs ?? []" />
 
-        <x-final-cta />
+        <x-final-cta :section="$sections['final_cta'] ?? null" />
 
         <x-booking-modal />
     </div>

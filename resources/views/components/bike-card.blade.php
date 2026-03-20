@@ -1,17 +1,25 @@
 @props(['bike', 'badge' => null])
-
+@php
+    $imageUrl = $bike->cover_url ?? null;
+    if (!$imageUrl && ($img = $bike->cover_image ?? $bike->image ?? null)) {
+        $imageUrl = str_starts_with($img, 'motorcycles/') ? asset('storage/' . $img) : asset('images/' . $img);
+    }
+    $type = $bike->model ?? $bike->type ?? '';
+    $engine = $bike->engine_cc ?? $bike->engine ?? 0;
+    $description = $bike->short_description ?? $bike->description ?? 'Идеален для города и путешествий.';
+@endphp
 <div class="bg-carbon rounded-2xl overflow-hidden flex flex-col h-full group relative transition-all duration-400 hover:scale-[1.02] hover:-translate-y-1.5 border border-white/5 hover:border-white/10 shadow-xl shadow-black/40 hover:shadow-2xl hover:shadow-moto-amber/5 cursor-pointer"
-     @click="$dispatch('open-booking-modal', { id: {{ $bike->id }}, name: '{{ $bike->name }}', price: {{ $bike->price_per_day }}, start: filters.start_date, end: filters.end_date })">
+     @click="$dispatch('open-booking-modal', { id: {{ $bike->id }}, name: {!! json_encode($bike->name) !!}, price: {{ $bike->price_per_day }}, start: filters.start_date, end: filters.end_date })">
     
     <!-- Restrained Background Amber Glow -->
     <div class="absolute inset-0 bg-moto-amber/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -z-10 rounded-2xl"></div>
 
     <!-- Image Zone (Fixed h-64 target 60%) -->
     <div class="relative h-64 bg-[#0a0a0c] overflow-hidden shrink-0 border-b border-white/[0.03]">
-        @if($bike->image)
-            <img src="{{ asset('images/' . $bike->image) }}" alt="{{ $bike->name }}" class="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+        @if($imageUrl)
+            <img src="{{ $imageUrl }}" alt="{{ $bike->name }}" class="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
         @endif
-        <div class="absolute inset-0 flex items-center justify-center text-silver text-sm img-fallback {{ $bike->image ? 'hidden' : '' }}">
+        <div class="absolute inset-0 flex items-center justify-center text-silver text-sm img-fallback {{ $imageUrl ? 'hidden' : '' }}">
             <svg class="w-12 h-12 text-white/5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
         </div>
         
@@ -26,7 +34,9 @@
             @if($badge)
                 <span class="bg-moto-amber/90 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-lg">{{ $badge }}</span>
             @endif
-            <span class="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 text-[10px] font-bold text-moto-amber uppercase tracking-widest">{{ $bike->type }}</span>
+            @if($type)
+            <span class="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 text-[10px] font-bold text-moto-amber uppercase tracking-widest">{{ $type }}</span>
+            @endif
         </div>
     </div>
 
@@ -35,15 +45,15 @@
         <h3 class="text-[22px] font-bold text-white mt-1 mb-1.5 leading-tight group-hover:text-moto-amber transition-colors line-clamp-1 drop-shadow-sm" title="{{ $bike->name }}">{{ $bike->name }}</h3>
         
         <!-- Advantage -->
-        <p class="text-sm text-silver/90 leading-relaxed mb-5 h-10 line-clamp-2" title="{{ $bike->description ?? 'Идеален для города и путешествий.' }}">
-            {{ $bike->description ?? 'Идеален для города и путешествий.' }}
+        <p class="text-sm text-silver/90 leading-relaxed mb-5 h-10 line-clamp-2" title="{{ $description }}">
+            {{ $description }}
         </p>
 
         <!-- Specs Row (Soft depth separator) -->
         <div class="flex items-center gap-4 text-[13px] text-silver font-medium mt-auto mb-5 py-3 border-y border-white/[0.03] bg-white/[0.01] -mx-6 px-6">
             <div class="flex items-center gap-2 flex-shrink-0">
                 <svg class="w-4 h-4 text-silver/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                {{ $bike->engine }} cc
+                {{ $engine }} cc
             </div>
             @if($bike->license_category)
             <div class="flex items-center gap-2 flex-shrink-0">

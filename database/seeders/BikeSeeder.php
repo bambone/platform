@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Bike;
 use Illuminate\Database\Seeder;
 
 class BikeSeeder extends Seeder
@@ -24,7 +24,7 @@ class BikeSeeder extends Seeder
         ];
 
         foreach ($bikes as $bike) {
-            \App\Models\Bike::create($bike);
+            Bike::create($bike);
         }
     }
 }

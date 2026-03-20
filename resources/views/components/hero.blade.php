@@ -1,6 +1,12 @@
+@props(['section' => null])
 @php
-    $videoPoster = asset('images/hero-bg.png');
-    $videoSrc = asset('videos/Moto_levins_1.mp4');
+    $videoPoster = $section['video_poster'] ?? 'images/hero-bg.png';
+    $videoPoster = str_starts_with($videoPoster, 'http') ? $videoPoster : asset($videoPoster);
+    $videoSrc = $section['video_src'] ?? 'videos/Moto_levins_1.mp4';
+    $videoSrc = str_starts_with($videoSrc, 'http') ? $videoSrc : asset($videoSrc);
+    $heading = $section['heading'] ?? 'Аренда мотоциклов на Чёрном море';
+    $subheading = $section['subheading'] ?? 'от 4 000 ₽/сутки';
+    $description = $section['description'] ?? 'Геленджик · Анапа · Новороссийск — без скрытых платежей, экипировка и страховка включены';
 @endphp
 <section x-data="heroVideo()"
          x-init="init()"
@@ -57,15 +63,15 @@
         <div class="max-w-6xl mx-auto w-full" :class="videoPlaying && 'opacity-0 pointer-events-none'">
             <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-[4.25rem] xl:text-[5rem] leading-[1.08] font-extrabold tracking-tight text-white mb-6"
                 style="text-shadow: 0 4px 16px rgba(0,0,0,0.8);">
-                Аренда мотоциклов на&nbsp;Чёрном море
-                <span class="block mt-1 md:mt-2 text-transparent bg-clip-text bg-gradient-to-r from-moto-amber via-orange-400 to-orange-500">от&nbsp;4&nbsp;000&nbsp;₽/сутки</span>
+                {!! nl2br(e($heading)) !!}
+                <span class="block mt-1 md:mt-2 text-transparent bg-clip-text bg-gradient-to-r from-moto-amber via-orange-400 to-orange-500">{{ $subheading }}</span>
             </h1>
         </div>
 
         <div class="max-w-2xl mx-auto w-full mb-8" :class="videoPlaying && 'opacity-0 pointer-events-none'">
             <p class="text-base md:text-lg text-white/90 font-medium leading-relaxed max-w-2xl mx-auto"
                style="text-shadow: 0 2px 8px rgba(0,0,0,0.6);">
-                Геленджик · Анапа · Новороссийск — без скрытых платежей, экипировка и страховка включены
+                {{ $description }}
             </p>
         </div>
 

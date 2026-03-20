@@ -1,3 +1,4 @@
+@props(['section' => null])
 <section class="py-16 lg:py-24 relative z-10 bg-carbon border-t border-white/[0.02]">
     <div class="max-w-4xl mx-auto px-4 md:px-8">
         <h2 class="text-2xl md:text-3xl font-bold text-white mb-10 text-center">Условия аренды</h2>

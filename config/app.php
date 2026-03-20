@@ -123,4 +123,8 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'tenant_default_host' => env('TENANT_DEFAULT_HOST', 'motolevins.local'),
+
+    'platform_host' => env('PLATFORM_HOST', 'platform.motolevins.local'),
+
 ];

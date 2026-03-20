@@ -225,7 +225,7 @@ document.addEventListener('alpine:init', () => {
             this.isLoading = true;
 
             try {
-                const response = await fetch('/api/bookings', {
+                const response = await fetch('/api/leads', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -233,8 +233,13 @@ document.addEventListener('alpine:init', () => {
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify({
-                        bike_id: this.bike.id,
-                        ...this.form
+                        motorcycle_id: this.bike.id,
+                        name: this.form.customer_name,
+                        phone: this.form.phone,
+                        comment: this.form.customer_comment,
+                        rental_date_from: this.form.start_date,
+                        rental_date_to: this.form.end_date,
+                        source: 'booking_form'
                     })
                 });
 

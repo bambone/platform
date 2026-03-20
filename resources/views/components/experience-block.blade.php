@@ -1,3 +1,4 @@
+@props(['section' => null])
 <section class="py-20 lg:py-28 relative z-10 bg-obsidian">
     <div class="max-w-7xl mx-auto px-4 md:px-8">
         <div class="flex flex-col md:flex-row justify-between md:items-end mb-12 gap-4">

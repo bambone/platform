@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Booking;
+use App\DTO\BookingData;
 use App\Http\Requests\StoreBookingRequest;
 use App\Http\Requests\UpdateBookingRequest;
+use App\Models\Booking;
+use App\Services\BookingService;
 
 class BookingController extends Controller
 {
@@ -27,10 +29,10 @@ class BookingController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(\App\Http\Requests\StoreBookingRequest $request, \App\Services\BookingService $bookingService)
+    public function store(StoreBookingRequest $request, BookingService $bookingService)
     {
         try {
-            $data = \App\DTO\BookingData::fromRequest($request);
+            $data = BookingData::fromRequest($request);
             $booking = $bookingService->createBooking($data);
 
             return response()->json([
@@ -41,7 +43,7 @@ class BookingController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 422);
         }
     }

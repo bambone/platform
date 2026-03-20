@@ -2,15 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+use Database\Factories\BikeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Bike extends Model
 {
-    /** @use HasFactory<\Database\Factories\BikeFactory> */
-    use HasFactory, \Illuminate\Database\Eloquent\SoftDeletes;
+    /** @use HasFactory<BikeFactory> */
+    use BelongsToTenant, HasFactory, \Illuminate\Database\Eloquent\SoftDeletes;
 
     protected $fillable = [
+        'tenant_id',
         'name',
         'type',
         'engine',

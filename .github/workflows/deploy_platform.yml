@@ -1,4 +1,4 @@
-name: Deploy motolevins
+name: Deploy platform
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch: {}
 
 concurrency:
-  group: deploy-motolevins
+  group: deploy-platform
   cancel-in-progress: true
 
 jobs:
@@ -52,7 +52,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Build assets
@@ -76,30 +76,16 @@ jobs:
 
           rm -f /tmp/deploy-src/.env || true
           rm -f /tmp/deploy-src/.env.* || true
-          rm -f /tmp/deploy-src/error_log || true
-          rm -f /tmp/deploy-src/.ftpquota || true
 
           rm -rf /tmp/deploy-src/storage || true
           rm -rf /tmp/deploy-src/bootstrap/cache || true
 
-          rm -rf /tmp/deploy-src/public/storage || true
-          rm -rf /tmp/deploy-src/public/uploads || true
-          rm -rf /tmp/deploy-src/uploads || true
-          rm -rf /tmp/deploy-src/public/.well-known || true
-
           mkdir -p /tmp/deploy-src/public/build
           cp -r public/build/. /tmp/deploy-src/public/build/
-
-          rm -rf /tmp/deploy-src/public/hot || true
 
           rm -rf /tmp/deploy-src/node_modules || true
           rm -rf /tmp/deploy-src/tests || true
           rm -f /tmp/deploy-src/phpunit.xml || true
-          rm -f /tmp/deploy-src/vite.config.js || true
-          rm -f /tmp/deploy-src/package.json || true
-          rm -f /tmp/deploy-src/package-lock.json || true
-          rm -f /tmp/deploy-src/yarn.lock || true
-          rm -f /tmp/deploy-src/pnpm-lock.yaml || true
 
           tar -C /tmp/deploy-src -czf deploy.tgz .
 
@@ -151,44 +137,28 @@ jobs:
           }
 
           preserve_move ".env"
-          preserve_move ".env.production"
-          preserve_move "error_log"
-          preserve_move ".ftpquota"
-
           preserve_move "storage"
           preserve_move "bootstrap/cache"
-
           preserve_move "public/storage"
           preserve_move "public/uploads"
           preserve_move "uploads"
           preserve_move "public/.well-known"
-
-          preserve_move ".htaccess"
-          preserve_move "public/.htaccess"
           preserve_move "public/images"
 
-          find "$DEST" -mindepth 1 -maxdepth 1 ! -name "release" ! -name "preserve" ! -name "deploy.tgz" ! -name "cgi-bin" -exec rm -rf {} \;
+          find "$DEST" -mindepth 1 -maxdepth 1 \
+            ! -name ".deploy_tmp" \
+            -exec rm -rf {} \;
 
           cp -R "$REL"/. "$DEST"/
 
           restore_back ".env"
-          restore_back ".env.production"
-          restore_back "error_log"
-          restore_back ".ftpquota"
-
           restore_back "storage"
           restore_back "bootstrap/cache"
-
           restore_back "public/storage"
           restore_back "public/uploads"
           restore_back "uploads"
           restore_back "public/.well-known"
-
-          restore_back ".htaccess"
-          restore_back "public/.htaccess"
           restore_back "public/images"
-
-
 
           mkdir -p "$DEST/storage/framework/cache/data"
           mkdir -p "$DEST/storage/framework/sessions"
@@ -199,14 +169,9 @@ jobs:
           chmod -R 775 "$DEST/storage" 2>/dev/null || true
           chmod -R 775 "$DEST/bootstrap/cache" 2>/dev/null || true
 
-
-
-          echo "=== Running artisan post-deploy tasks ==="
-          if [ -f artisan ]; then
+          if [ -f "$DEST/artisan" ]; then
+            cd "$DEST"
             php artisan storage:link || true
-            php artisan config:clear || true
-            php artisan route:clear || true
-            php artisan view:clear || true
             php artisan optimize:clear || true
             php artisan config:cache || true
             php artisan route:cache || true
@@ -214,6 +179,5 @@ jobs:
             php artisan migrate --force || true
           fi
 
-          echo "=== Deployment complete ==="
           rm -rf "$REL" "$PRES" 2>/dev/null || true
           EOF

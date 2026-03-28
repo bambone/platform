@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\TenantSetting;
 use App\Models\User;
 use App\Services\CurrentTenantManager;
+use App\Services\Tenancy\TenantViewResolver;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
@@ -22,6 +23,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(CurrentTenantManager::class);
+        $this->app->singleton(TenantViewResolver::class);
     }
 
     /**

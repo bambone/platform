@@ -1,6 +1,6 @@
 # Presentation layer: platform marketing, tenant engine, themes
 
-Один Laravel-приложение, один `public/`; разделение по **хостам** (уже сделано) и по **каталогам views/controllers** (в процессе).
+Один Laravel-приложение, один `public/`; разделение по **хостам** (уже сделано) и по **каталогам views/controllers**; **Phase 3 (theme layer)** для публичного tenant-сайта — выполнена в минимальном безопасном объёме.
 
 ## Целевая структура каталогов
 
@@ -19,10 +19,10 @@ resources/views/
 │   ├── booking/             # публичный flow бронирования
 │   ├── components/          # anonymous <x-*> для tenant public (Blade::anonymousComponentPath)
 │   ├── sitemap.blade.php    # XML-шаблон для SitemapController
-│   └── themes/              # Phase 3+
-│       ├── default/
-│       ├── moto/
-│       └── auto/
+│   └── themes/              # Phase 3 — пресеты тем (не по slug)
+│       ├── default/pages/   # тонкие обёртки → engine (`tenant.pages.*`)
+│       ├── moto/pages/      # точечные override (пример: home)
+│       └── auto/pages/      # зарезервировано под пресет
 ├── layouts/
 │   └── partials/            # legacy: не используются текущими шаблонами (можно удалить отдельным PR)
 ├── errors/                  # domain-not-connected и др.
@@ -61,12 +61,14 @@ storage/app/public/tenants/{tenant_id}/favicon/
 - **Views:** `resources/views/platform/marketing/*`, layout `platform/layouts/marketing.blade.php`.
 - **Controllers:** отдельных классов нет (только views).
 
-### Tenant public (Phase 2 — выполнено)
+### Tenant public (Phase 2 — выполнено; Phase 3 — частично на resolver)
 
 - **Controllers (все под `EnsureTenantContext`, namespaces без изменений):**  
-  `HomeController`, `PageController`, `MotorcycleController`, `PublicBookingController`, `SitemapController`, `RobotsController` — отдают tenant HTML/XML; в коде используются имена views `tenant.pages.*`, `tenant.booking.*`, `tenant.sitemap`.  
+  `HomeController`, `PageController`, `MotorcycleController` — публичные HTML-страницы с выбором view через **`App\Services\Tenancy\TenantViewResolver`** и логическими именами `pages.home`, `pages.page`, `pages.motorcycle`.  
+  `PublicBookingController`, `SitemapController`, `RobotsController` и статические `Route::view` в `routes/web.php` по-прежнему указывают напрямую на `tenant.pages.*`, `tenant.booking.*`, `tenant.sitemap` (вне theme layer на этом этапе).  
   `BookingController`, `LeadController` — JSON API для форм с tenant-сайта.
-- **Views:** `resources/views/tenant/layouts/app.blade.php` (единый layout), `tenant/pages/**`, `tenant/booking/**`, `tenant/components/**`, `tenant/pages/offline.blade.php`, `tenant/sitemap.blade.php`. Совместимостных shim-файлов в старых путях (`pages.*`, `booking.*`, корневой `offline` / `sitemap`) **нет**.
+- **Views:** `resources/views/tenant/layouts/app.blade.php` (единый layout), `tenant/pages/**`, `tenant/booking/**`, `tenant/components/**`, `tenant/pages/offline.blade.php`, `tenant/sitemap.blade.php`, плюс **`tenant/themes/{theme_key}/**`** для пресетов. Совместимостных shim-файлов в старых путях (`pages.*`, `booking.*`, корневой `offline` / `sitemap`) **нет**.
+- **`theme_key`:** колонка на `tenants`, default `default`. Тема задаётся **только** этим полем; **не** выводится из `slug` и **не** требует каталогов `resources/views/tenants/{slug}/`.
 - **Регистрация компонентов:** `AppServiceProvider` — `Blade::anonymousComponentPath(resource_path('views/tenant/components'))`.
 - **Filament:** `resources/views/filament/*` — не трогалось.
 
@@ -77,15 +79,23 @@ storage/app/public/tenants/{tenant_id}/favicon/
 
 ---
 
-## Theme resolution (рекомендации)
+## Theme resolution (Phase 3 — реализовано)
 
-1. **Источник `theme_key`:** колонка на `tenants` (например `theme_key` string, default `default`) или JSON в `tenant_settings` / `platform_settings` с наследованием от плана.
-2. **Разрешение имени view:** сервис `TenantViewResolver` или хелпер:
-   - попытка `tenant.themes.{theme_key}.{logicalName}` (например `tenant.themes.moto.pages.home`);
-   - fallback `tenant.themes.default.{logicalName}`;
-   - опционально второй fallback на текущий путь `pages.home` на время миграции.
-3. **Не хардкодить motolevins:** только `theme_key` из БД; пресет `moto` — один из вариантов темы, не привязка к `slug`.
-4. **Filament:** не использовать theme resolver для панелей; только публичный сайт.
+**Контракт логического имени:** строка без префикса `tenant.`, с точками как в пути под `resources/views/tenant/`, например `pages.home`, `pages.page`, `pages.motorcycle`, в будущем `booking.index`.
+
+**Цепочка fallback (`TenantViewResolver::resolve`):**
+
+1. `tenant.themes.{theme_key}.{logical}` — пресет из `Tenant::themeKey()` (нормализация небезопасных/пустых значений → `default`);
+2. `tenant.themes.default.{logical}` — общий слой темы по умолчанию;
+3. `tenant.{logical}` — «движок» (текущие `tenant.pages.*` и т.д.).
+
+Если шаг 1 совпадает с шагом 2 (когда активная тема уже `default`), дубликаты убираются; первый существующий view по цепочке побеждает.
+
+**Регистрация:** `TenantViewResolver` — singleton в `AppServiceProvider`.
+
+**Filament / админки:** resolver используется только в указанных публичных контроллерах; панели не затрагиваются.
+
+**Тесты:** `tests/Unit/TenantViewResolverTest.php`, `tests/Feature/TenantThemeViewResolverTest.php`.
 
 ---
 
@@ -103,11 +113,12 @@ storage/app/public/tenants/{tenant_id}/favicon/
 - Удалены legacy entrypoints: `resources/views/layouts/app.blade.php`, `resources/views/components/app-layout.blade.php` (и пустой каталог `components/` у корня views).
 - Перенос контроллеров в `App\Http\Controllers\Tenant\Public\` **не делался** (сознательно вне scope Phase 2).
 
-### Phase 3 — theme layer
+### Phase 3 — theme layer (выполнено, первый инкремент)
 
-- Миграция: `tenants.theme_key` (nullable → `default`).
-- Ввести `TenantViewResolver` / View composer на `tenant` layout.
-- Вынести первую тему: скопировать текущие шаблоны в `tenant/themes/default`, подключить resolver с fallback на `pages.*` до полного переноса.
+- Миграция `2026_03_28_150000_add_theme_key_to_tenants.php`: `tenants.theme_key` string(64), default `default`, не nullable.
+- Сервис `App\Services\Tenancy\TenantViewResolver`; на модели `Tenant` — `themeKey()` и `theme_key` в `$fillable`.
+- Каталоги: `tenant/themes/default/pages/home.blade.php` (тонкая обёртка `@include('tenant.pages.home')`), `tenant/themes/moto/pages/home.blade.php` (POC override + маркер для тестов), `tenant/themes/auto/pages/` (заготовка).
+- Подключён resolver только в `HomeController`, `PageController`, `MotorcycleController`; остальные маршруты и URL без изменений.
 
 ### Phase 4 — media в storage
 
@@ -135,3 +146,9 @@ storage/app/public/tenants/{tenant_id}/favicon/
 
 - Открыть `https://rentbase.su/` (и www): тот же контент, навигация по `route('platform.*')`.
 - `php artisan test tests/Feature/HostRoutingSplitTest.php`.
+
+## Проверки после Phase 3 (themes)
+
+- `php artisan migrate` (колонка `theme_key`).
+- `php artisan test tests/Unit/TenantViewResolverTest.php tests/Feature/TenantThemeViewResolverTest.php`.
+- Для ручной проверки: выставить у тенанта `theme_key = moto` в БД — главная должна содержать скрытый маркер `data-tenant-theme="moto"`; остальные страницы без полного дублирования шаблонов.

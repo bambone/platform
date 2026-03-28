@@ -21,11 +21,16 @@ class TenantDomainService
         $suffix = $root !== '' ? $root : ($fallbackHost ?: 'localhost');
         $host = TenantDomain::normalizeHost($slug.'.'.$suffix);
 
+        $tenantAlreadyHasPrimary = TenantDomain::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('is_primary', true)
+            ->exists();
+
         return TenantDomain::query()->firstOrCreate(
             ['tenant_id' => $tenant->id, 'host' => $host],
             [
                 'type' => TenantDomain::TYPE_SUBDOMAIN,
-                'is_primary' => true,
+                'is_primary' => ! $tenantAlreadyHasPrimary,
                 'status' => TenantDomain::STATUS_ACTIVE,
                 'verification_method' => null,
                 'verification_token' => null,

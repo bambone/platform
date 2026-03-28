@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Tenant;
 use App\Models\TenantDomain;
+use App\Services\Tenancy\TenantDomainService;
 use Illuminate\Database\Seeder;
 
 class MotoLevinsTenantSeeder extends Seeder
@@ -43,6 +44,8 @@ class MotoLevinsTenantSeeder extends Seeder
                 'activated_at' => now(),
             ]);
         }
+
+        app(TenantDomainService::class)->createDefaultSubdomain($tenant, $tenant->slug);
 
         $ownerId = $tenant->owner_user_id;
         if ($ownerId && ! $tenant->users()->where('user_id', $ownerId)->exists()) {

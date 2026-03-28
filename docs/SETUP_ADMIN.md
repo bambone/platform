@@ -1,10 +1,21 @@
-﻿# Доступ к админкам (Platform + Tenant)
+# Доступ к админкам (Platform + Tenant)
 
 ## URL на production (Rentbase)
 
 - **Маркетинг (лендинг платформы):** https://rentbase.su и https://www.rentbase.su — хосты из `TENANCY_CENTRAL_DOMAINS`, отдельно от `PLATFORM_HOST`.
 - **Platform Console:** https://platform.rentbase.su/platform (хост из `PLATFORM_HOST` в `.env`).
 - **Tenant admin:** `https://<домен тенанта>/admin` (например https://motolevins.rentbase.su/admin или кастомный домен). Apex `https://rentbase.su/admin` **не** используется как клиентская админка.
+
+Поддомен **`{slug}.{TENANCY_ROOT_DOMAIN}`** (например `motolevins.rentbase.su`) создаётся при создании тенанта в Platform Console и дополнительно досеивается для `motolevins` через `MotoLevinsTenantSeeder` / миграцию `2026_03_28_140000_ensure_motolevins_canonical_subdomain`. Без строки в `tenant_domains` с `status=active` сайт покажет «Домен не подключён».
+
+## Файлы по тенантам (структура репозитория)
+
+Чтобы не смешивать всё в корне `public/`:
+
+- **`resources/tenants/{slug}/`** — опциональные оверрайды (шаблоны, статика под включение в сборку).
+- **`public/tenants/{slug}/`** — публичные файлы только этого тенанта (раздача с того же хоста или отдельный `location` в nginx).
+
+Пример для Moto Levins: каталоги `resources/tenants/motolevins/` и `public/tenants/motolevins/` (пока с `.gitkeep`).
 
 ## Две панели Filament
 

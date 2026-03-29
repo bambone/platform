@@ -21,15 +21,23 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: 100dvh;
             min-height: 100vh;
             text-align: center;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
+            padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+            box-sizing: border-box;
         }
         .container {
             max-width: 500px;
-            padding: 2rem;
+            width: 100%;
+            padding: 1rem 1rem 1.5rem;
             position: relative;
             z-index: 10;
+        }
+        @media (min-width: 480px) {
+            .container { padding: 2rem; }
         }
         .glow {
             position: absolute;
@@ -52,28 +60,38 @@
             margin: 0 auto 2rem;
         }
         h1 {
-            font-size: 2rem;
+            font-size: clamp(1.375rem, 5vw + 0.5rem, 2rem);
             font-weight: 800;
             margin: 0 0 1rem;
             line-height: 1.2;
+            text-wrap: balance;
         }
         p {
             color: var(--silver);
-            font-size: 1.125rem;
+            font-size: clamp(0.9375rem, 2vw + 0.5rem, 1.125rem);
             line-height: 1.6;
-            margin: 0 0 2.5rem;
+            margin: 0 0 1.75rem;
+        }
+        @media (min-width: 480px) {
+            p { margin-bottom: 2.5rem; }
         }
         button {
             background-color: var(--moto-amber);
             color: white;
             border: none;
-            padding: 1rem 2.5rem;
-            font-size: 1.125rem;
+            min-height: 44px;
+            padding: 0.875rem 1.75rem;
+            font-size: clamp(1rem, 2.5vw, 1.125rem);
             font-weight: bold;
             border-radius: 0.75rem;
             cursor: pointer;
             transition: all 0.3s;
             box-shadow: 0 10px 25px rgba(230, 92, 0, 0.2);
+            width: 100%;
+            max-width: 20rem;
+        }
+        @media (min-width: 400px) {
+            button { width: auto; padding: 1rem 2.5rem; }
         }
         button:hover {
             background-color: #ff6600;

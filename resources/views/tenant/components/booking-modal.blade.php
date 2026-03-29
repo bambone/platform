@@ -18,7 +18,7 @@
          class="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"></div>
 
     <div class="fixed inset-0 z-10 overflow-y-auto">
-        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+        <div class="flex min-h-full items-end justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-center sm:items-center sm:p-0 sm:pb-0">
             
             <!-- Modal Panel -->
             <div x-show="isOpen"
@@ -29,14 +29,14 @@
                  x-transition:leave="ease-in duration-200"
                  x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                  x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                 class="relative transform overflow-hidden rounded-2xl glass-card text-left shadow-2xl shadow-orange-500/10 transition-all sm:my-8 sm:w-full sm:max-w-lg border border-white/10">
+                 class="relative w-full max-h-[min(92dvh,calc(100svh-1rem))] transform overflow-y-auto rounded-t-2xl border border-white/10 glass-card text-left shadow-2xl shadow-orange-500/10 transition-all sm:my-8 sm:max-h-[min(90dvh,40rem)] sm:w-full sm:max-w-lg sm:rounded-2xl">
 
                 <!-- Header -->
-                <div class="px-6 py-5 border-b border-white/10 flex justify-between items-center bg-white/5">
-                    <h3 class="text-xl font-bold leading-6 text-white" id="modal-title">
+                <div class="flex items-center justify-between border-b border-white/10 bg-white/5 px-4 py-4 sm:px-6 sm:py-5">
+                    <h3 class="min-w-0 pr-2 text-lg font-bold leading-tight text-white sm:text-xl sm:leading-6" id="modal-title">
                         Бронирование <span class="text-orange-400" x-text="bike.name"></span>
                     </h3>
-                    <button @click="closeModal()" class="text-gray-400 hover:text-white transition-colors">
+                    <button type="button" @click="closeModal()" class="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-white/10 hover:text-white touch-manipulation" aria-label="Закрыть">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -44,7 +44,7 @@
                 </div>
 
                 <!-- Body (Form) -->
-                <div class="px-6 py-6" x-show="!isSuccess">
+                <div class="px-4 py-5 sm:px-6 sm:py-6" x-show="!isSuccess">
                     
                     <!-- Errors Alert -->
                     <div x-show="errorMessage" class="mb-6 bg-red-500/10 border border-red-500/50 rounded-xl p-4 flex items-start gap-3">
@@ -104,7 +104,7 @@
 
                         <!-- Submit CTA -->
                         <button type="submit" :disabled="isLoading"
-                                class="w-full flex items-center justify-center gap-2 bg-accent-gradient hover:opacity-90 text-white px-6 py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-orange-500/25 disabled:opacity-50 disabled:cursor-not-allowed">
+                                class="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-accent-gradient px-6 py-3.5 font-bold text-white shadow-lg shadow-orange-500/25 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation">
                             
                             <span x-show="!isLoading">Оставить заявку</span>
                             
@@ -120,7 +120,7 @@
                 </div>
 
                 <!-- Success State -->
-                <div class="px-6 py-12 text-center" x-show="isSuccess" x-cloak>
+                <div class="px-4 py-10 text-center sm:px-6 sm:py-12" x-show="isSuccess" x-cloak>
                     <div class="mx-auto w-16 h-16 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mb-6 border border-green-500/30 shadow-lg shadow-green-500/20">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                     </div>
@@ -128,7 +128,7 @@
                     <p class="text-gray-400 mb-8 max-w-sm mx-auto">
                         Наш менеджер свяжется с вами в ближайшее время для подтверждения бронирования.
                     </p>
-                    <button @click="closeModal()" class="bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-xl font-semibold transition-colors border border-white/10">
+                    <button type="button" @click="closeModal()" class="min-h-11 rounded-xl border border-white/10 bg-white/10 px-8 py-3 font-semibold text-white transition-colors hover:bg-white/20 touch-manipulation">
                         Отлично, спасибо
                     </button>
                 </div>

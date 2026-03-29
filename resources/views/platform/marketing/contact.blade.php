@@ -28,8 +28,8 @@
 @endpush
 
 @section('content')
-<div class="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
-    <h1 class="text-3xl font-bold text-slate-900 md:text-4xl">Контакты</h1>
+<div class="mx-auto max-w-3xl px-3 py-10 sm:px-4 md:px-6 md:py-16">
+    <h1 class="text-balance text-[clamp(1.5rem,4vw+0.75rem,2.25rem)] font-bold leading-tight text-slate-900 md:text-4xl">Контакты</h1>
     <p class="mt-4 text-lg text-slate-600">Запуск проекта, демо и вопросы по платформе — напишите нам. Мы ответим и предложим следующий шаг.</p>
 
     <div class="mt-10 grid gap-6">

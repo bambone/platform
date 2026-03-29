@@ -1,19 +1,19 @@
 @props(['section' => null])
-<section class="py-20 lg:py-28 relative z-10 bg-obsidian overflow-hidden">
-    <div class="max-w-7xl mx-auto px-4 md:px-8">
-        <div class="text-center mb-16 max-w-2xl mx-auto">
-            <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Как это работает</h2>
-            <p class="text-silver/80 text-lg">Весь процесс занимает не более 15 минут. Четыре шага — и вы в пути.</p>
+<section class="relative z-10 overflow-hidden bg-obsidian py-16 sm:py-20 lg:py-28">
+    <div class="mx-auto max-w-7xl px-3 sm:px-4 md:px-8">
+        <div class="mx-auto mb-10 max-w-2xl text-center sm:mb-14">
+            <h2 class="mb-3 text-balance text-2xl font-bold leading-tight text-white sm:text-3xl md:text-4xl">Как это работает</h2>
+            <p class="text-sm leading-relaxed text-silver/80 sm:text-base md:text-lg">Весь процесс занимает не более 15 минут. Четыре шага — и вы в пути.</p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 relative z-10">
+        <div class="relative z-10 grid grid-cols-1 gap-10 sm:gap-12 md:grid-cols-2 md:gap-10 lg:grid-cols-4 lg:gap-8">
             <!-- Hidden connecting line on desktop -->
             <div class="hidden lg:block absolute top-[28px] left-[10%] right-[10%] h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent z-0"></div>
 
             <!-- Step 1 -->
-            <div class="relative pt-6 group">
+            <div class="group relative overflow-hidden pt-6">
                 <!-- Large Number Watermark -->
-                <span class="absolute -top-10 -left-2 text-[120px] font-black text-moto-amber/5 leading-none z-0 selection:bg-transparent pointer-events-none group-hover:text-moto-amber/10 transition-colors duration-500">01</span>
+                <span class="pointer-events-none absolute -left-1 -top-8 z-0 select-none text-7xl font-black leading-none text-moto-amber/5 transition-colors duration-500 sm:-top-10 sm:text-8xl lg:-left-2 lg:text-[120px] group-hover:text-moto-amber/10">01</span>
                 
                 <div class="relative z-10">
                     <div class="w-14 h-14 bg-carbon border border-white/10 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
@@ -25,8 +25,8 @@
             </div>
 
             <!-- Step 2 -->
-            <div class="relative pt-6 group">
-                <span class="absolute -top-10 -left-2 text-[120px] font-black text-moto-amber/5 leading-none z-0 selection:bg-transparent pointer-events-none group-hover:text-moto-amber/10 transition-colors duration-500">02</span>
+            <div class="group relative overflow-hidden pt-6">
+                <span class="pointer-events-none absolute -left-1 -top-8 z-0 select-none text-7xl font-black leading-none text-moto-amber/5 transition-colors duration-500 sm:-top-10 sm:text-8xl lg:-left-2 lg:text-[120px] group-hover:text-moto-amber/10">02</span>
                 
                 <div class="relative z-10">
                     <div class="w-14 h-14 bg-carbon border border-white/10 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
@@ -38,8 +38,8 @@
             </div>
 
             <!-- Step 3 -->
-            <div class="relative pt-6 group">
-                <span class="absolute -top-10 -left-2 text-[120px] font-black text-moto-amber/5 leading-none z-0 selection:bg-transparent pointer-events-none group-hover:text-moto-amber/10 transition-colors duration-500">03</span>
+            <div class="group relative overflow-hidden pt-6">
+                <span class="pointer-events-none absolute -left-1 -top-8 z-0 select-none text-7xl font-black leading-none text-moto-amber/5 transition-colors duration-500 sm:-top-10 sm:text-8xl lg:-left-2 lg:text-[120px] group-hover:text-moto-amber/10">03</span>
                 
                 <div class="relative z-10">
                     <div class="w-14 h-14 bg-carbon border border-white/10 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
@@ -51,8 +51,8 @@
             </div>
 
             <!-- Step 4 -->
-            <div class="relative pt-6 group">
-                <span class="absolute -top-10 -left-2 text-[120px] font-black text-moto-amber/5 leading-none z-0 selection:bg-transparent pointer-events-none group-hover:text-moto-amber/10 transition-colors duration-500">04</span>
+            <div class="group relative overflow-hidden pt-6">
+                <span class="pointer-events-none absolute -left-1 -top-8 z-0 select-none text-7xl font-black leading-none text-moto-amber/5 transition-colors duration-500 sm:-top-10 sm:text-8xl lg:-left-2 lg:text-[120px] group-hover:text-moto-amber/10">04</span>
                 
                 <div class="relative z-10">
                     <div class="w-14 h-14 bg-moto-amber border border-transparent rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-moto-amber/20">

@@ -18,9 +18,11 @@
 
     .pm-body {
         @apply bg-slate-50 text-slate-900 antialiased;
+        overflow-x: clip;
     }
 
     .pm-section-anchor {
-        scroll-margin-top: 5.5rem;
+        /* Учёт sticky header: меньше отступ на узких экранах */
+        scroll-margin-top: clamp(3.75rem, 11vw, 5.75rem);
     }
 }

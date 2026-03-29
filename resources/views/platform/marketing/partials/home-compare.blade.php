@@ -1,8 +1,9 @@
-<section id="sravnenie" class="pm-section-anchor border-b border-slate-200 bg-white py-16 md:py-20" aria-labelledby="sravnenie-heading">
-    <div class="mx-auto max-w-6xl px-4 md:px-6">
-        <h2 id="sravnenie-heading" class="text-2xl font-bold text-slate-900 md:text-3xl">Сравнение подходов</h2>
-        <p class="mt-3 text-slate-600">Почему платформа, а не таблица или самописный сайт.</p>
-        <div class="mt-8 overflow-x-auto">
+<section id="sravnenie" class="pm-section-anchor border-b border-slate-200 bg-white py-12 sm:py-16 md:py-20" aria-labelledby="sravnenie-heading">
+    <div class="mx-auto max-w-6xl px-3 sm:px-4 md:px-6">
+        <h2 id="sravnenie-heading" class="text-balance text-xl font-bold leading-tight text-slate-900 sm:text-2xl md:text-3xl">Сравнение подходов</h2>
+        <p class="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base">Сводка: RentBase даёт готовый контур записи и клиентов; таблицы и самописные сайты чаще требуют ручной рутины или дорогой разработки.</p>
+        <p class="mt-2 text-xs text-slate-500 md:hidden">Таблицу можно прокручивать по горизонтали.</p>
+        <div class="-mx-4 mt-6 overflow-x-auto overscroll-x-contain px-4 [scrollbar-gutter:stable] md:mx-0 md:mt-8 md:px-0">
             <table class="w-full min-w-[640px] border-collapse text-left text-sm">
                 <caption class="sr-only">Сравнение RentBase с Excel, WordPress и разработкой с нуля</caption>
                 <thead>

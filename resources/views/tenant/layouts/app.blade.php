@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark scroll-smooth">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark scroll-smooth overflow-x-clip">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -35,6 +35,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style>
+        [x-cloak] { display: none !important; }
         body { font-family: 'Inter', sans-serif; }
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: 0.2s !important; transition-duration: 0.2s !important; }
@@ -47,7 +48,7 @@
         .text-accent-gradient { background: linear-gradient(135deg, #FF8C00 0%, #FF3D00 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     </style>
 </head>
-<body class="antialiased premium-bg text-silver selection:bg-moto-amber selection:text-white pb-32 sm:pb-0">
+<body class="antialiased premium-bg text-silver selection:bg-moto-amber selection:text-white overflow-x-clip pb-32 sm:pb-0">
 
     <x-header />
 
@@ -70,7 +71,7 @@
 
     <div class="fixed bottom-0 left-0 w-full z-50 bg-white/5 backdrop-blur-xl border-t border-white/10 p-4 sm:hidden pb-[max(1rem,env(safe-area-inset-bottom))]">
         <button onclick="document.getElementById('catalog')?.scrollIntoView({behavior: 'smooth'})" class="w-full bg-moto-amber text-white font-bold h-12 rounded-xl shadow-lg border border-transparent active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
-            Çàáğîíèğîâàòü áàéê
+            ˜˜˜˜˜˜˜˜˜˜˜˜˜ ˜˜˜˜
         </button>
     </div>
 

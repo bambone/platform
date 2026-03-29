@@ -29,11 +29,11 @@
 @endpush
 
 @section('content')
-<div class="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16">
-    <h1 class="text-3xl font-bold text-slate-900 md:text-4xl">Возможности платформы</h1>
+<div class="mx-auto max-w-6xl px-3 py-10 sm:px-4 md:px-6 md:py-16">
+    <h1 class="text-balance text-[clamp(1.5rem,4vw+0.75rem,2.25rem)] font-bold leading-tight text-slate-900 md:text-4xl">Возможности платформы</h1>
     <p class="mt-4 max-w-3xl text-lg text-slate-600">{{ $pm['entity_core'] }}</p>
 
-    <div class="mt-12 grid gap-6 md:grid-cols-2">
+    <div class="mt-10 grid gap-5 sm:mt-12 sm:grid-cols-2 sm:gap-6">
         <x-platform.marketing.answer-block question="Что такое RentBase в одном предложении?">
             <p>Это платформа для сервисного бизнеса: публичный сайт, запись и бронирования, заявки и клиенты, плюс админка для команды.</p>
         </x-platform.marketing.answer-block>

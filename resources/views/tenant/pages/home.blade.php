@@ -14,32 +14,32 @@
         <x-experience-block :section="$sections['route_cards'] ?? null" />
 
         <!-- Catalog Section -->
-        <section id="catalog" class="py-20 lg:py-28 relative z-10 bg-[#0c0c0e] border-t border-white/[0.02]">
-            <div class="max-w-7xl mx-auto px-4 md:px-8">
+        <section id="catalog" class="relative z-10 border-t border-white/[0.02] bg-[#0c0c0e] py-16 sm:py-20 lg:py-28">
+            <div class="mx-auto max-w-7xl px-3 sm:px-4 md:px-8">
                 
-                <div class="flex flex-col md:flex-row justify-between md:items-end mb-12 border-b border-white/5 pb-6 gap-4">
-                    <div>
-                        <h2 class="text-3xl md:text-4xl font-bold text-white mb-3">Наш автопарк</h2>
-                        <p class="text-silver/80 text-lg max-w-2xl">Премиальная техника для любого стиля. <span class="text-moto-amber/90 font-medium">Ограниченное количество мотоциклов</span> — бронируйте заранее.</p>
+                <div class="mb-10 flex flex-col gap-4 border-b border-white/5 pb-6 sm:mb-12 md:flex-row md:items-end md:justify-between">
+                    <div class="min-w-0">
+                        <h2 class="mb-3 text-balance text-2xl font-bold leading-tight text-white sm:text-3xl md:text-4xl">Наш автопарк</h2>
+                        <p class="max-w-2xl text-sm leading-relaxed text-silver/80 sm:text-base md:text-lg">Премиальная техника для любого стиля. <span class="text-moto-amber/90 font-medium">Ограниченное количество мотоциклов</span> — бронируйте заранее.</p>
                     </div>
                 </div>
 
                 <!-- Empty State -->
                 <template x-if="filteredBikes.length === 0">
-                    <div class="w-full bg-carbon rounded-2xl border border-white/10 p-12 text-center flex flex-col items-center justify-center min-h-[400px]">
+                    <div class="flex min-h-[min(400px,70vh)] w-full flex-col items-center justify-center rounded-2xl border border-white/10 bg-carbon p-8 text-center sm:p-12">
                         <svg class="w-16 h-16 text-silver/30 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         <h3 class="text-xl font-bold text-white mb-2">Нет свободных байков</h3>
                         <p class="text-silver mb-8 max-w-md">На выбранные вами даты вся техника уже забронирована. Попробуйте изменить даты или локацию.</p>
-                        <button @click="resetFilters" class="px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl hover:bg-white/10 transition-colors active:scale-[0.98]">
+                        <button type="button" @click="resetFilters" class="min-h-11 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-white transition-colors hover:bg-white/10 active:scale-[0.98]">
                             Сбросить фильтры
                         </button>
                     </div>
                 </template>
 
                 <!-- Bikes Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8" x-show="filteredBikes.length > 0">
+                <div class="grid grid-cols-1 gap-5 sm:gap-6 md:grid-cols-2 md:gap-6 xl:grid-cols-3 xl:gap-8" x-show="filteredBikes.length > 0">
                     @foreach($bikes as $index => $bike)
                         <div x-show="isBikeVisible({{ $bike->id }})">
                             <x-bike-card :bike="$bike" :badge="$badges[$index] ?? null" />

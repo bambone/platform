@@ -1,17 +1,21 @@
 @props(['section' => null])
 @php $imgBase = config('tenant_landing.motolevins_public_prefix', 'images/motolevins'); @endphp
-<section class="py-20 lg:py-28 relative z-10 bg-obsidian">
-    <div class="max-w-7xl mx-auto px-4 md:px-8">
-        <div class="flex flex-col md:flex-row justify-between md:items-end mb-12 gap-4">
-            <div class="max-w-2xl">
-                <h2 class="text-3xl md:text-4xl font-bold text-white mb-3 drop-shadow-sm">Выберите свой маршрут и стиль поездки</h2>
-                <p class="text-silver/90 text-lg">Не просто мотоцикл — эмоция и результат. Каждая локация дарит свой кайф.</p>
+<section class="relative z-10 bg-obsidian py-16 sm:py-20 lg:py-28">
+    <div class="mx-auto max-w-7xl px-3 sm:px-4 md:px-8">
+        <div class="mb-10 flex flex-col gap-4 sm:mb-12 md:flex-row md:items-end md:justify-between">
+            <div class="max-w-2xl min-w-0">
+                <h2 class="mb-3 text-balance text-2xl font-bold leading-tight text-white drop-shadow-sm sm:text-3xl md:text-4xl">Выберите свой маршрут и стиль поездки</h2>
+                <p class="text-sm leading-relaxed text-silver/90 sm:text-base md:text-lg">Не просто мотоцикл — эмоция и результат. Каждая локация дарит свой кайф.</p>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+        <div class="grid grid-cols-1 gap-5 sm:gap-6 md:grid-cols-3 md:gap-6 lg:gap-8">
             <!-- Card 1 -->
-            <div @click="filters.location = 'Геленджик'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})" class="group relative bg-carbon rounded-2xl overflow-hidden aspect-[4/5] md:aspect-[3/4] flex flex-col justify-end p-6 md:p-8 cursor-pointer border border-white/5 hover:border-white/10 shadow-xl transition-all duration-300">
+            <div role="button" tabindex="0"
+                 @click="filters.location = 'Геленджик'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})"
+                 @keydown.enter.prevent="filters.location = 'Геленджик'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})"
+                 @keydown.space.prevent="filters.location = 'Геленджик'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})"
+                 class="group relative flex aspect-[4/5] cursor-pointer flex-col justify-end overflow-hidden rounded-2xl border border-white/5 bg-carbon p-5 shadow-xl transition-all duration-300 hover:border-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber md:aspect-[3/4] md:p-8 touch-manipulation">
                 <div class="absolute inset-0 z-0">
                     <img src="{{ asset($imgBase.'/marketing/experience-coastal.png') }}" alt="Побережье" class="w-full h-full object-cover transition-transform duration-[15s] ease-out group-hover:scale-105" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
                     <div class="w-full h-full bg-[#111113] hidden img-fallback relative overflow-hidden">
@@ -32,7 +36,11 @@
             </div>
 
             <!-- Card 2 -->
-            <div @click="filters.location = 'Анапа'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})" class="group relative bg-carbon rounded-2xl overflow-hidden aspect-[4/5] md:aspect-[3/4] flex flex-col justify-end p-6 md:p-8 cursor-pointer border border-white/5 hover:border-white/10 shadow-xl transition-all duration-300">
+            <div role="button" tabindex="0"
+                 @click="filters.location = 'Анапа'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})"
+                 @keydown.enter.prevent="filters.location = 'Анапа'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})"
+                 @keydown.space.prevent="filters.location = 'Анапа'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})"
+                 class="group relative flex aspect-[4/5] cursor-pointer flex-col justify-end overflow-hidden rounded-2xl border border-white/5 bg-carbon p-5 shadow-xl transition-all duration-300 hover:border-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber md:aspect-[3/4] md:p-8 touch-manipulation">
                 <div class="absolute inset-0 z-0">
                     <img src="{{ asset($imgBase.'/marketing/experience-city.png') }}" alt="Город" class="w-full h-full object-cover transition-transform duration-[15s] ease-out group-hover:scale-105" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
                     <div class="w-full h-full bg-[#111113] hidden img-fallback relative overflow-hidden">
@@ -53,7 +61,11 @@
             </div>
 
             <!-- Card 3 -->
-            <div @click="filters.location = 'Новороссийск'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})" class="group relative bg-carbon rounded-2xl overflow-hidden aspect-[4/5] md:aspect-[3/4] flex flex-col justify-end p-6 md:p-8 cursor-pointer border border-white/5 hover:border-white/10 shadow-xl transition-all duration-300">
+            <div role="button" tabindex="0"
+                 @click="filters.location = 'Новороссийск'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})"
+                 @keydown.enter.prevent="filters.location = 'Новороссийск'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})"
+                 @keydown.space.prevent="filters.location = 'Новороссийск'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})"
+                 class="group relative flex aspect-[4/5] cursor-pointer flex-col justify-end overflow-hidden rounded-2xl border border-white/5 bg-carbon p-5 shadow-xl transition-all duration-300 hover:border-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber md:aspect-[3/4] md:p-8 touch-manipulation">
                 <div class="absolute inset-0 z-0">
                     <img src="{{ asset($imgBase.'/marketing/experience-touring.png') }}" alt="Трасса" class="w-full h-full object-cover transition-transform duration-[15s] ease-out group-hover:scale-105" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
                     <div class="w-full h-full bg-[#111113] hidden img-fallback relative overflow-hidden">

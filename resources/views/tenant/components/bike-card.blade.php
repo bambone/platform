@@ -18,7 +18,7 @@
     <div class="absolute inset-0 bg-moto-amber/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -z-10 rounded-2xl"></div>
 
     <!-- Image Zone (Fixed h-64 target 60%) -->
-    <div class="relative h-64 bg-[#0a0a0c] overflow-hidden shrink-0 border-b border-white/[0.03]">
+    <div class="relative h-52 shrink-0 overflow-hidden border-b border-white/[0.03] bg-[#0a0a0c] sm:h-60 md:h-64">
         @if($imageUrl)
             <img src="{{ $imageUrl }}" alt="{{ $bike->name }}" class="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
         @endif
@@ -44,8 +44,8 @@
     </div>
 
     <!-- Content Zone (Internal layering depth) -->
-    <div class="px-6 pb-6 pt-2 flex flex-col flex-1 relative z-10 bg-carbon">
-        <h3 class="text-[22px] font-bold text-white mt-1 mb-1.5 leading-tight group-hover:text-moto-amber transition-colors line-clamp-1 drop-shadow-sm" title="{{ $bike->name }}">{{ $bike->name }}</h3>
+    <div class="relative z-10 flex flex-1 flex-col bg-carbon px-4 pb-5 pt-2 sm:px-6 sm:pb-6">
+        <h3 class="mb-1.5 mt-1 line-clamp-1 text-lg font-bold leading-tight text-white drop-shadow-sm transition-colors group-hover:text-moto-amber sm:text-[22px]" title="{{ $bike->name }}">{{ $bike->name }}</h3>
         
         <!-- Advantage -->
         <p class="text-sm text-silver/90 leading-relaxed mb-5 h-10 line-clamp-2" title="{{ $description }}">
@@ -53,7 +53,7 @@
         </p>
 
         <!-- Specs Row (Soft depth separator) -->
-        <div class="flex items-center gap-4 text-[13px] text-silver font-medium mt-auto mb-5 py-3 border-y border-white/[0.03] bg-white/[0.01] -mx-6 px-6">
+        <div class="-mx-4 mb-5 mt-auto flex items-center gap-3 border-y border-white/[0.03] bg-white/[0.01] px-4 py-3 text-[13px] font-medium text-silver sm:-mx-6 sm:gap-4 sm:px-6">
             <div class="flex items-center gap-2 flex-shrink-0">
                 <svg class="w-4 h-4 text-silver/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                 {{ $engine }} cc
@@ -67,21 +67,21 @@
         </div>
 
         <!-- Price Area & Secondary CTA Row -->
-        <div class="flex items-center justify-between mt-auto">
+        <div class="mt-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <!-- Price Display -->
-            <div x-show="!filters.start_date || !filters.end_date" class="flex-1">
+            <div x-show="!filters.start_date || !filters.end_date" class="min-w-0 flex-1">
                 <span class="text-[11px] text-silver/80 uppercase tracking-widest font-semibold block mb-0.5">от</span>
                 <span class="text-2xl font-extrabold text-white tracking-tight">{{ number_format($bike->price_per_day, 0, ',', ' ') }} ₽</span>
                 <span class="text-[11px] text-silver/60 uppercase tracking-wider">/ сутки</span>
             </div>
-            <div class="flex-1" x-show="filters.start_date && filters.end_date" x-cloak>
+            <div class="min-w-0 flex-1" x-show="filters.start_date && filters.end_date" x-cloak>
                 <span class="text-[11px] text-moto-amber uppercase tracking-widest font-bold block mb-0.5" x-text="`${Math.floor((Date.UTC(new Date(filters.end_date).getFullYear(), new Date(filters.end_date).getMonth(), new Date(filters.end_date).getDate()) - Date.UTC(new Date(filters.start_date).getFullYear(), new Date(filters.start_date).getMonth(), new Date(filters.start_date).getDate())) / (1000 * 60 * 60 * 24)) + 1} дней аренды`"></span>
                 <span class="text-2xl font-extrabold text-white tracking-tight leading-none block"><span x-text="formatPrice(calculateCardTotalPrice({{ $bike->price_per_day }}))"></span> ₽</span>
             </div>
 
             <!-- Secondary Conversion Button -->
             <!-- Read as an action without competing with Hero CTA -->
-            <button class="w-auto px-5 bg-white/5 text-silver hover:text-white group-hover:bg-moto-amber font-semibold h-11 rounded-xl transition-all flex justify-center items-center gap-2 border border-white/10 group-hover:border-moto-amber active:scale-[0.96]">
+            <button type="button" class="flex h-11 w-full min-w-0 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 font-semibold text-silver transition-all group-hover:border-moto-amber group-hover:bg-moto-amber group-hover:text-white active:scale-[0.96] sm:h-11 sm:w-auto touch-manipulation">
                 Забронировать
                 <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </button>

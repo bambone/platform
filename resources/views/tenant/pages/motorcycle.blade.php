@@ -4,20 +4,20 @@
 @extends('tenant.layouts.app')
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 md:px-8 py-20">
-        <a href="{{ route('home') }}#catalog" class="text-moto-amber hover:underline mb-6 inline-block">← Назад к каталогу</a>
-        <h1 class="text-3xl md:text-4xl font-bold text-white mb-4">{{ $motorcycle->name }}</h1>
+    <div class="mx-auto max-w-7xl px-3 pb-12 pt-24 sm:px-4 sm:pb-16 sm:pt-28 md:px-8">
+        <a href="{{ route('home') }}#catalog" class="mb-6 inline-flex min-h-10 items-center gap-1 text-sm text-moto-amber transition-colors hover:underline sm:text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber">← Назад к каталогу</a>
+        <h1 class="mb-4 text-balance text-2xl font-bold leading-tight text-white sm:text-3xl md:text-4xl">{{ $motorcycle->name }}</h1>
         @if($motorcycle->short_description)
-            <p class="text-silver/90 text-lg mb-8">{{ $motorcycle->short_description }}</p>
+            <p class="mb-8 text-sm leading-relaxed text-silver/90 sm:text-base md:text-lg">{{ $motorcycle->short_description }}</p>
         @endif
-        <div class="grid md:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
             @if($motorcycle->cover_url)
-                <img src="{{ $motorcycle->cover_url }}" alt="{{ $motorcycle->name }}" class="rounded-2xl w-full object-cover aspect-[4/3]">
+                <img src="{{ $motorcycle->cover_url }}" alt="{{ $motorcycle->name }}" class="aspect-[4/3] w-full max-w-full rounded-2xl object-cover">
             @endif
-            <div>
-                <p class="text-2xl font-bold text-moto-amber mb-4">от {{ number_format($motorcycle->price_per_day) }} ₽/сутки</p>
+            <div class="min-w-0">
+                <p class="mb-4 break-words text-xl font-bold text-moto-amber sm:text-2xl">от {{ number_format($motorcycle->price_per_day) }} ₽/сутки</p>
                 @if($motorcycle->full_description)
-                    <div class="prose prose-invert max-w-none text-silver">
+                    <div class="prose prose-invert max-w-none text-sm text-silver prose-p:leading-relaxed sm:text-base">
                         {!! $motorcycle->full_description !!}
                     </div>
                 @endif
@@ -25,11 +25,11 @@
         </div>
         @php $gallery = $motorcycle->getMedia('gallery'); @endphp
         @if($gallery->isNotEmpty())
-            <div class="mt-12">
-                <h2 class="text-xl font-bold text-white mb-4">Галерея</h2>
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div class="mt-10 sm:mt-12">
+                <h2 class="mb-4 text-xl font-bold text-white sm:text-2xl">Галерея</h2>
+                <div class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
                     @foreach($gallery as $media)
-                        <img src="{{ $media->getUrl() }}" alt="{{ $media->name }}" class="rounded-xl w-full object-cover aspect-square">
+                        <img src="{{ $media->getUrl() }}" alt="{{ $media->name }}" class="aspect-square w-full max-w-full rounded-xl object-cover">
                     @endforeach
                 </div>
             </div>

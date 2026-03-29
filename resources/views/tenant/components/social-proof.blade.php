@@ -6,17 +6,17 @@
     $reviewList = collect($reviews ?? []);
     $useReviews = $reviewList->isNotEmpty();
 @endphp
-<section class="py-20 lg:py-28 relative z-10 bg-carbon border-t border-white/[0.02]">
-    <div class="max-w-7xl mx-auto px-4 md:px-8">
-        <div class="mb-12 md:max-w-2xl">
-            <h2 class="text-3xl md:text-4xl font-bold text-white mb-3">{{ $heading }}</h2>
-            <p class="text-silver/80 text-lg">{{ $subheading }}</p>
+<section class="relative z-10 border-t border-white/[0.02] bg-carbon py-16 sm:py-20 lg:py-28">
+    <div class="mx-auto max-w-7xl px-3 sm:px-4 md:px-8">
+        <div class="mb-10 max-w-2xl sm:mb-12">
+            <h2 class="mb-3 text-balance text-2xl font-bold leading-tight text-white sm:text-3xl md:text-4xl">{{ $heading }}</h2>
+            <p class="text-sm leading-relaxed text-silver/80 sm:text-base md:text-lg">{{ $subheading }}</p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+        <div class="grid grid-cols-1 gap-5 sm:gap-6 md:grid-cols-3 md:gap-6 lg:gap-8">
             @if($useReviews)
                 @foreach($reviewList as $index => $review)
-                    <div class="bg-obsidian/40 rounded-2xl p-6 md:p-8 border border-white/5 flex flex-col justify-between shadow-inner hover:border-white/10 transition-colors {{ $index === 1 ? 'hidden md:flex' : '' }}">
+                    <div class="flex flex-col justify-between rounded-2xl border border-white/5 bg-obsidian/40 p-5 shadow-inner transition-colors hover:border-white/10 sm:p-6 md:p-8 {{ $index === 1 ? 'hidden md:flex' : '' }}">
                         <div>
                             <div class="flex items-center gap-1 mb-6 text-moto-amber opacity-90">
                                 @for($i = 0; $i < min(5, (int)($review->rating ?? 5)); $i++)
@@ -42,7 +42,7 @@
                 @endforeach
             @else
             <!-- Review 1 (fallback) -->
-            <div class="bg-obsidian/40 rounded-2xl p-6 md:p-8 border border-white/5 flex flex-col justify-between shadow-inner hover:border-white/10 transition-colors">
+            <div class="flex flex-col justify-between rounded-2xl border border-white/5 bg-obsidian/40 p-5 shadow-inner transition-colors hover:border-white/10 sm:p-6 md:p-8">
                 <div>
                     <div class="flex items-center gap-1 mb-6 text-moto-amber opacity-90">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/></svg>
@@ -66,7 +66,7 @@
             </div>
 
             <!-- Review 2 -->
-            <div class="bg-obsidian/40 rounded-2xl p-6 md:p-8 border border-white/5 flex flex-col justify-between shadow-inner hover:border-white/10 transition-colors hidden md:flex">
+            <div class="hidden flex-col justify-between rounded-2xl border border-white/5 bg-obsidian/40 p-5 shadow-inner transition-colors hover:border-white/10 sm:p-6 md:flex md:flex-col md:p-8">
                 <div>
                     <div class="flex items-center gap-1 mb-6 text-moto-amber opacity-90">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/></svg>
@@ -90,7 +90,7 @@
             </div>
 
             <!-- Review 3 -->
-            <div class="bg-obsidian/40 rounded-2xl p-6 md:p-8 border border-white/5 flex flex-col justify-between shadow-inner hover:border-white/10 transition-colors">
+            <div class="flex flex-col justify-between rounded-2xl border border-white/5 bg-obsidian/40 p-5 shadow-inner transition-colors hover:border-white/10 sm:p-6 md:p-8">
                 <div>
                     <div class="flex items-center gap-1 mb-6 text-moto-amber opacity-90">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/></svg>

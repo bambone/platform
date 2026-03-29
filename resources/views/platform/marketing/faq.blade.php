@@ -41,8 +41,8 @@
 @endpush
 
 @section('content')
-<div class="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
-    <h1 class="text-3xl font-bold text-slate-900 md:text-4xl">Частые вопросы</h1>
+<div class="mx-auto max-w-3xl px-3 py-10 sm:px-4 md:px-6 md:py-16">
+    <h1 class="text-balance text-[clamp(1.5rem,4vw+0.75rem,2.25rem)] font-bold leading-tight text-slate-900 md:text-4xl">Частые вопросы</h1>
     <p class="mt-4 text-slate-600">Короткие ответы для быстрого понимания продукта. За деталями — <a href="{{ Route::has('platform.contact') ? route('platform.contact') : url('/contact') }}" class="font-medium text-blue-700 hover:text-blue-800">контакты</a>.</p>
 
     <div class="mt-10 space-y-4">

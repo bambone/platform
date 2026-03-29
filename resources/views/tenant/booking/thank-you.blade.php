@@ -3,24 +3,24 @@
 @section('title', 'Бронирование подтверждено')
 
 @section('content')
-<section class="py-24 container mx-auto px-4 max-w-xl text-center">
-    <div class="w-20 h-20 mx-auto mb-8 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center border border-green-500/30">
-        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+<section class="mx-auto max-w-xl px-3 pb-12 pt-24 text-center sm:px-4 sm:pb-16 sm:pt-28 md:px-8">
+    <div class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-green-500/30 bg-green-500/20 text-green-400 sm:mb-8 sm:h-20 sm:w-20">
+        <svg class="h-8 w-8 sm:h-10 sm:w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
     </div>
-    <h1 class="text-3xl font-bold text-white mb-4">Бронирование принято!</h1>
-    <p class="text-silver mb-8">
+    <h1 class="mb-4 text-balance text-2xl font-bold leading-tight text-white sm:text-3xl">Бронирование принято!</h1>
+    <p class="mx-auto mb-8 max-w-md text-sm leading-relaxed text-silver sm:text-base">
         Наш менеджер свяжется с вами в ближайшее время для подтверждения и уточнения деталей.
     </p>
 
     @if($booking)
-        <div class="glass rounded-2xl p-6 text-left mb-8">
-            <p class="text-silver text-sm mb-1">Номер бронирования</p>
-            <p class="text-2xl font-bold text-moto-amber">{{ $booking->booking_number }}</p>
-            <p class="text-silver text-sm mt-4">Сохраните этот номер для связи с нами.</p>
+        <div class="glass mb-8 rounded-2xl p-4 text-left sm:p-6">
+            <p class="mb-1 text-xs text-silver sm:text-sm">Номер бронирования</p>
+            <p class="break-all text-xl font-bold text-moto-amber sm:text-2xl">{{ $booking->booking_number }}</p>
+            <p class="mt-4 text-xs text-silver sm:text-sm">Сохраните этот номер для связи с нами.</p>
         </div>
     @endif
 
-    <a href="{{ route('home') }}" class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-xl font-semibold transition-colors border border-white/10">
+    <a href="{{ route('home') }}" class="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/10 px-6 py-3 font-semibold text-white transition-colors hover:bg-white/20 touch-manipulation sm:w-auto sm:px-8">
         На главную
     </a>
 </section>

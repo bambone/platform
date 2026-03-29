@@ -5,9 +5,9 @@
 @extends('tenant.layouts.app')
 
 @section('content')
-    <div class="max-w-4xl mx-auto px-4 md:px-8 py-20">
-        <h1 class="text-3xl md:text-4xl font-bold text-white mb-8">{{ $page->name }}</h1>
-        <div class="prose prose-invert max-w-none text-silver">
+    <div class="mx-auto max-w-4xl px-3 pb-12 pt-24 sm:px-4 sm:pb-16 sm:pt-28 md:px-8">
+        <h1 class="mb-6 text-balance text-2xl font-bold leading-tight text-white sm:mb-8 sm:text-3xl md:text-4xl">{{ $page->name }}</h1>
+        <div class="prose prose-invert max-w-none text-sm text-silver prose-headings:text-white prose-p:leading-relaxed sm:text-base">
             @foreach($sections as $section)
                 @if(!empty($section->data_json))
                     @php $d = $section->data_json; @endphp

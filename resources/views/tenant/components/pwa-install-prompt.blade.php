@@ -7,7 +7,7 @@
      x-transition:leave="transition ease-in duration-300"
      x-transition:leave-start="opacity-100 translate-y-0"
      x-transition:leave-end="opacity-0 translate-y-full"
-     class="fixed bottom-4 inset-x-4 md:bottom-8 md:right-8 md:left-auto md:w-96 z-[60] bg-carbon/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-5"
+     class="fixed inset-x-3 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[60] rounded-2xl border border-white/10 bg-carbon/90 p-4 shadow-2xl backdrop-blur-xl sm:inset-x-4 sm:p-5 md:bottom-8 md:left-auto md:right-8 md:w-96"
      style="display: none;">
     
     <div class="flex items-start gap-4">
@@ -26,9 +26,9 @@
                 и выберите <b>«На экран Домой»</b>
             </div>
 
-            <div class="flex gap-3">
-                <button x-show="!isIos" @click="installApp()" class="flex-1 bg-moto-amber hover:bg-orange-600 text-white font-bold text-sm py-2 px-4 rounded-lg transition-colors shadow-lg shadow-moto-amber/20">Установить</button>
-                <button @click="dismissPrompt()" class="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-sm font-medium rounded-lg transition-colors border border-white/10">Позже</button>
+            <div class="flex flex-col gap-2 sm:flex-row sm:gap-3">
+                <button type="button" x-show="!isIos" @click="installApp()" class="min-h-11 flex-1 rounded-lg bg-moto-amber px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-moto-amber/20 transition-colors hover:bg-orange-600 touch-manipulation">Установить</button>
+                <button type="button" @click="dismissPrompt()" class="min-h-11 flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10 touch-manipulation">Позже</button>
             </div>
         </div>
     </div>

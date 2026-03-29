@@ -29,8 +29,8 @@ RentBase для проката мотоциклов: сайт, каталог т
 @endpush
 
 @section('content')
-<div class="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16">
-    <h1 class="text-3xl font-bold text-slate-900 md:text-4xl">Платформа для проката мотоциклов</h1>
+<div class="mx-auto max-w-6xl px-3 py-10 sm:px-4 md:px-6 md:py-16">
+    <h1 class="text-balance text-[clamp(1.5rem,4vw+0.75rem,2.25rem)] font-bold leading-tight text-slate-900 md:text-4xl">Платформа для проката мотоциклов</h1>
     <p class="mt-4 max-w-3xl text-lg text-slate-600">Каталог мотоциклов, календарь доступности, онлайн-заявки и единый кабинет для команды проката.</p>
 
     <div class="mt-10 grid gap-6 md:grid-cols-2">

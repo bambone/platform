@@ -63,7 +63,7 @@
 
     <div class="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 flex flex-col items-center text-center">
         <div class="max-w-6xl mx-auto w-full" :class="videoPlaying && 'opacity-0 pointer-events-none'">
-            <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-[4.25rem] xl:text-[5rem] leading-[1.08] font-extrabold tracking-tight text-white mb-6"
+            <h1 class="mb-6 text-[clamp(1.75rem,6vw+0.5rem,2.75rem)] font-extrabold leading-[1.1] tracking-tight text-white sm:text-5xl md:text-6xl md:leading-[1.08] lg:text-[4.25rem] xl:text-[5rem]"
                 style="text-shadow: 0 4px 16px rgba(0,0,0,0.8);">
                 {!! nl2br(e($heading)) !!}
                 <span class="block mt-1 md:mt-2 text-transparent bg-clip-text bg-gradient-to-r from-moto-amber via-orange-400 to-orange-500">{{ $subheading }}</span>

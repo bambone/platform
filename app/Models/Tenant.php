@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Http\Request;
 
 class Tenant extends Model
 {
@@ -56,6 +57,50 @@ class Tenant extends Model
     {
         return $this->domains()->where('is_primary', true)->first()
             ?? $this->domains()->first();
+    }
+
+    /**
+     * Public site title fallback when tenant_settings.general.site_name is empty (not platform app name).
+     */
+    public function defaultPublicSiteName(): string
+    {
+        $brand = $this->brand_name;
+        if (is_string($brand) && trim($brand) !== '') {
+            return trim($brand);
+        }
+
+        return (string) $this->name;
+    }
+
+    /**
+     * Public site base URL fallback when tenant_settings.general.domain is empty (not marketing APP_URL).
+     * Prefers the active tenant domain that matches the current request host, then primary domain (https).
+     */
+    public function defaultPublicSiteUrl(?Request $request = null): string
+    {
+        $request ??= request();
+        $currentHost = $request ? strtolower((string) $request->getHost()) : '';
+
+        if ($currentHost !== '') {
+            $match = $this->domains()
+                ->where('status', TenantDomain::STATUS_ACTIVE)
+                ->get()
+                ->first(fn (TenantDomain $d): bool => strcasecmp((string) $d->host, $currentHost) === 0);
+            if ($match !== null) {
+                return $request->getScheme().'://'.$match->host;
+            }
+        }
+
+        $primary = $this->primaryDomain();
+        if ($primary !== null && filled($primary->host)) {
+            return 'https://'.(string) $primary->host;
+        }
+
+        if ($request !== null && $currentHost !== '') {
+            return $request->getScheme().'://'.$currentHost;
+        }
+
+        return rtrim((string) config('app.url'), '/');
     }
 
     /**

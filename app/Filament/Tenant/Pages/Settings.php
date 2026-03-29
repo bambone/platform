@@ -64,8 +64,8 @@ class Settings extends Page
         $tenant = \currentTenant();
         if ($tenant) {
             return [
-                'general_site_name' => TenantSetting::getForTenant($tenant->id, 'general.site_name', config('app.name')),
-                'general_domain' => TenantSetting::getForTenant($tenant->id, 'general.domain', config('app.url')),
+                'general_site_name' => TenantSetting::getForTenant($tenant->id, 'general.site_name', $tenant->defaultPublicSiteName()),
+                'general_domain' => TenantSetting::getForTenant($tenant->id, 'general.domain', $tenant->defaultPublicSiteUrl()),
                 'branding_logo' => TenantSetting::getForTenant($tenant->id, 'branding.logo', ''),
                 'branding_logo_path' => TenantSetting::getForTenant($tenant->id, 'branding.logo_path', ''),
                 'branding_primary_color' => TenantSetting::getForTenant($tenant->id, 'branding.primary_color', '#f59e0b'),
@@ -107,7 +107,7 @@ class Settings extends Page
             ->statePath('data')
             ->components([
                 Section::make('Общие')
-                    ->description('Базовая информация о сайте для посетителей и для служебных ссылок.')
+                    ->description('Базовая информация о сайте для посетителей. Пока поля пустые в БД, подставляются название/бренд клиента и домен (текущий активный или основной), а не настройки лендинга платформы.')
                     ->schema([
                         TextInput::make('general_site_name')
                             ->label('Название сайта')
@@ -116,7 +116,7 @@ class Settings extends Page
                         TextInput::make('general_domain')
                             ->label('Основной URL сайта')
                             ->url()
-                            ->helperText('Полный адрес с https://. Используется в ссылках и настройках, где нужен «канонический» домен.'),
+                            ->helperText('Канонический адрес сайта клиента (https://…). По умолчанию берётся из домена, с которого открыта админка, или основного домена в карточке клиента.'),
                     ])->columns(2),
 
                 Section::make('Брендинг')

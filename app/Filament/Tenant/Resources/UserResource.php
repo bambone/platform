@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Resources;
 
+use App\Filament\Support\FilamentInlineMarkdown;
 use App\Filament\Support\RoleLabels;
 use App\Filament\Tenant\Resources\UserResource\Pages;
 use App\Models\User;
@@ -63,7 +64,9 @@ class UserResource extends Resource
                     ])->columns(2),
 
                 Section::make('Роль в этом клиенте')
-                    ->description('Определяет, что пользователь может делать в **кабинете клиента**. Роли **консоли платформы** здесь не настраиваются.')
+                    ->description(FilamentInlineMarkdown::toHtml(
+                        'Определяет, что пользователь может делать в **кабинете клиента**. Роли **консоли платформы** здесь не настраиваются.'
+                    ))
                     ->schema([
                         Select::make('tenant_role')
                             ->label('Роль')

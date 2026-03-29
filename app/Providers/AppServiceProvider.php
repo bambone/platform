@@ -80,7 +80,7 @@ class AppServiceProvider extends ServiceProvider
                     'favicon' => tenant_branding_favicon_url(),
                     'hero_image' => tenant_branding_hero_url(),
                 ]);
-                $view->with('site_name', TenantSetting::getForTenant($tenant->id, 'general.site_name', config('app.name')));
+                $view->with('site_name', TenantSetting::getForTenant($tenant->id, 'general.site_name', $tenant->defaultPublicSiteName()));
             } else {
                 $view->with('contacts', [
                     'phone' => Setting::get('contacts.phone', '+7 (913) 060-86-89'),

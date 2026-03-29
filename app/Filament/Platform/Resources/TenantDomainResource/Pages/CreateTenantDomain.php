@@ -19,6 +19,7 @@ class CreateTenantDomain extends CreateRecord
         if (($data['type'] ?? '') === TenantDomain::TYPE_SUBDOMAIN) {
             $data['status'] = TenantDomain::STATUS_ACTIVE;
             $data['ssl_status'] = TenantDomain::SSL_NOT_REQUIRED;
+            $data['dns_target'] = '';
         } else {
             $data['status'] = $data['status'] ?? TenantDomain::STATUS_PENDING;
             $data['ssl_status'] = $data['ssl_status'] ?? TenantDomain::SSL_PENDING;

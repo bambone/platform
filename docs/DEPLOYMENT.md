@@ -14,6 +14,46 @@ php artisan storage:link
 
 ---
 
+<a id="filament-storage-cache-permissions"></a>
+
+## Filament: `Permission denied` в `storage/framework/cache` (все разделы админки)
+
+**Симптом в логе:**  
+`file_put_contents(.../storage/framework/cache/data/...): Failed to open stream: Permission denied`  
+часто при рендере `filament/tables` или после цепочки **Spatie Permission** (`PermissionRegistrar` пишет кеш прав).
+
+**Причина:** процесс PHP (обычно пользователь **`www-data`**, **`nginx`**, **`apache`** или отдельный пользователь пула PHP-FPM) **не имеет права записи** в каталоги `storage/` и/или `bootstrap/cache/`. Так бывает после деплоя от **root**, если `artisan` или `composer` создали файлы с владельцем root.
+
+**Что сделать на сервере** (путь замените на свой, например `/var/www/platform`):
+
+1. Узнать пользователя PHP-FPM (часто `www-data`):
+
+   ```bash
+   grep -E '^user|^group' /etc/php/*/fpm/pool.d/www.conf 2>/dev/null | head -4
+   ```
+
+2. Выдать владельца и права на запись (пример для `www-data`):
+
+   ```bash
+   cd /var/www/platform
+   sudo chown -R www-data:www-data storage bootstrap/cache
+   sudo find storage bootstrap/cache -type d -exec chmod 775 {} \;
+   sudo find storage bootstrap/cache -type f -exec chmod 664 {} \;
+   ```
+
+3. Сбросить кеш приложения **от того же пользователя**, что обслуживает сайт (или после `chown`):
+
+   ```bash
+   sudo -u www-data php artisan cache:clear
+   sudo -u www-data php artisan config:clear
+   ```
+
+4. Не запускайте `php artisan ...` от **root** в каталоге проекта без последующего `chown` — иначе снова появятся root-владельцы и ошибка вернётся.
+
+**Альтернатива (инфраструктура):** вынести кеш приложения с диска, задав в `.env` например `CACHE_STORE=database` или `redis` (при настроенном Redis/таблице cache). Это **не отменяет** необходимости писать в `storage` для логов, сессий (если `file`), скомпилированных views, загрузок — права на `storage/` всё равно нужны.
+
+---
+
 ## Ошибка `Table '…tenant_domains' doesn't exist`
 
 Сообщение `SQLSTATE[42S02]: Base table or view not found: 1146 … tenant_domains` означает, что в **той БД**, к которой подключается Laravel на сервере (см. `DB_*` в `.env`), **ещё не создана схема** из миграций. Локально таблица есть, потому что у вас выполнен `php artisan migrate`.

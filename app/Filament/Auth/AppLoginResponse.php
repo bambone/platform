@@ -3,6 +3,8 @@
 namespace App\Filament\Auth;
 
 use App\Auth\AccessRoles;
+use App\Models\PlatformSetting;
+use App\Models\User;
 use Filament\Auth\Http\Responses\Contracts\LoginResponse as LoginResponseContract;
 use Filament\Facades\Filament;
 use Illuminate\Http\RedirectResponse;
@@ -15,10 +17,13 @@ class AppLoginResponse implements LoginResponseContract
         $panel = Filament::getCurrentPanel();
         $user = Filament::auth()->user();
 
+        $preferTenantPanel = (bool) PlatformSetting::get('tenant_login_prefer_tenant_panel', false);
+
         if (
             $panel?->getId() === 'admin'
-            && $user
+            && $user instanceof User
             && $user->hasAnyRole(AccessRoles::platformRoles())
+            && ! $preferTenantPanel
         ) {
             $platformUrl = Filament::getPanel('platform')->getUrl();
 

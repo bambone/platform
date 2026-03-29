@@ -6,7 +6,7 @@
 
 | Документ | Содержание |
 |----------|------------|
-| [setup-access-deploy.md](operations/setup-access-deploy.md) | URL админок (platform vs tenant), домены, установка, hosts/OSPanel, деплой, права на `storage`, типовые ошибки БД/миграций, кастомные домены |
+| [setup-access-deploy.md](operations/setup-access-deploy.md) | URL админок (platform vs tenant), домены, установка, hosts/OSPanel, деплой, права на `storage`, типовые ошибки БД/миграций, кастомные домены; **команда клиента** и **матрица прав кабинета** (только Platform Console) |
 | [security-and-golive.md](operations/security-and-golive.md) | Роли, зоны доступа, матрица, чеклист перед релизом |
 
 ## Архитектура
@@ -34,6 +34,7 @@
 | Публичный сайт тенанта | `routes/web.php`, `app/Http/Controllers`, `resources/views/tenant/` |
 | Маркетинг платформы | `resources/views/platform/marketing/` |
 | Тенантность | `app/Tenant/`, `config/tenancy.php`, middleware `ResolveTenantFromDomain`, `EnsureTenantContext` |
-| Роли и доступ | `app/Auth/AccessRoles.php`, политики, `tests/Feature/AccessControlTest.php` |
+| Роли и доступ | `app/Auth/AccessRoles.php`, `TenantPivotPermissions`, `TenantAbilityRegistry`, политики, `tests/Feature/AccessControlTest.php`, `tests/Feature/TenantPivotPermissionMatrixTest.php` |
+| Правила для AI (Cursor) | [`.cursor/rules/`](../.cursor/rules/) — ядро проекта (`motolevins-core`), Blade/a11y, JS lifecycle, Filament/Livewire |
 
 Именованные каталоги вида `resources/views/tenants/{slug}/` **не используются** — темы лежат в `resources/views/tenant/themes/{default\|moto\|auto}/`.

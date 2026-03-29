@@ -4,9 +4,12 @@ require_once __DIR__.'/../app/helpers.php';
 
 use App\Http\Middleware\RedirectMiddleware;
 use App\Http\Middleware\ResolveTenantFromDomain;
+use App\Http\Responses\FilamentAccessDeniedRedirect;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -21,5 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (AuthorizationException $e, Request $request) {
+            return FilamentAccessDeniedRedirect::tryRedirect($request);
+        });
     })->create();

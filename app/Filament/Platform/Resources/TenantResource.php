@@ -4,6 +4,7 @@ namespace App\Filament\Platform\Resources;
 
 use App\Filament\Platform\Resources\Concerns\GrantsPlatformPanelAccess;
 use App\Filament\Platform\Resources\TenantResource\Pages;
+use App\Filament\Platform\Resources\TenantResource\RelationManagers\TenantUsersRelationManager;
 use App\Models\TemplatePreset;
 use App\Models\Tenant;
 use Filament\Actions\BulkActionGroup;
@@ -82,7 +83,6 @@ class TenantResource extends Resource
                         Select::make('plan_id')
                             ->label('Тариф')
                             ->relationship('plan', 'name')
-                            ->searchable()
                             ->preload()
                             ->helperText('Определяет лимиты и доступные функции.'),
                         Select::make('template_preset_id')
@@ -100,12 +100,10 @@ class TenantResource extends Resource
                         Select::make('owner_user_id')
                             ->label('Владелец (контакт)')
                             ->relationship('owner', 'name')
-                            ->searchable()
                             ->preload(),
                         Select::make('support_manager_id')
                             ->label('Менеджер поддержки')
                             ->relationship('supportManager', 'name')
-                            ->searchable()
                             ->preload(),
                     ])->columns(2),
 
@@ -185,7 +183,7 @@ class TenantResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            TenantUsersRelationManager::class,
         ];
     }
 

@@ -60,6 +60,26 @@ class Tenant extends Model
     }
 
     /**
+     * Base URL for the tenant Filament cabinet (`/admin`), for copying from Platform Console.
+     * Prefers an active domain (primary first), then any primary/first domain.
+     */
+    public function cabinetAdminUrl(): ?string
+    {
+        $active = $this->domains()
+            ->where('status', TenantDomain::STATUS_ACTIVE)
+            ->orderByDesc('is_primary')
+            ->first();
+
+        $domain = $active ?? $this->primaryDomain();
+
+        if ($domain === null || $domain->host === null || trim((string) $domain->host) === '') {
+            return null;
+        }
+
+        return 'https://'.strtolower(trim((string) $domain->host)).'/admin';
+    }
+
+    /**
      * Public site title fallback when tenant_settings.general.site_name is empty (not platform app name).
      */
     public function defaultPublicSiteName(): string

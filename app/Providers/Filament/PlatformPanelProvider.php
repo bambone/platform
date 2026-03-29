@@ -20,6 +20,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\View;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class PlatformPanelProvider extends PanelProvider
@@ -31,6 +32,7 @@ class PlatformPanelProvider extends PanelProvider
             ->path('platform')
             ->domain(config('app.platform_host', 'platform.motolevins.local'))
             ->login()
+            ->renderHook(PanelsRenderHook::BODY_START, fn (): string => View::make('components.filament-access-denied-banner')->render())
             ->renderHook(PanelsRenderHook::TOPBAR_AFTER, function (): string {
                 return Blade::render(<<<'HTML'
                     <div class="fi-platform-context hidden sm:flex items-center me-4 text-sm font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">

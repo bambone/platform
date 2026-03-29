@@ -2,8 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\TenantDomain;
+use App\Models\TenantSetting;
 use App\Services\Tenancy\TenantDomainService;
 use Illuminate\Database\Seeder;
 
@@ -11,11 +13,34 @@ class MotoLevinsTenantSeeder extends Seeder
 {
     public function run(): void
     {
-        $tenant = Tenant::where('slug', 'motolevins')->first();
+        $planId = Plan::query()->value('id');
 
-        if (! $tenant) {
-            return;
-        }
+        $tenant = Tenant::firstOrCreate(
+            ['slug' => 'motolevins'],
+            [
+                'name' => 'Moto Levins',
+                'brand_name' => 'Moto Levins',
+                'theme_key' => 'moto',
+                'status' => 'active',
+                'timezone' => 'Europe/Moscow',
+                'locale' => 'ru',
+                'currency' => 'RUB',
+                'plan_id' => $planId,
+            ]
+        );
+
+        $publicUrl = rtrim((string) (env('TENANT_MOTOLEVINS_PUBLIC_URL') ?: config('app.url')), '/');
+
+        TenantSetting::setForTenant($tenant->id, 'general.site_name', 'Moto Levins');
+        TenantSetting::setForTenant($tenant->id, 'general.domain', $publicUrl);
+        TenantSetting::setForTenant($tenant->id, 'contacts.phone', '+7 (913) 060-86-89');
+        TenantSetting::setForTenant($tenant->id, 'contacts.phone_alt', '');
+        TenantSetting::setForTenant($tenant->id, 'contacts.whatsapp', '79130608689');
+        TenantSetting::setForTenant($tenant->id, 'contacts.telegram', 'motolevins');
+        TenantSetting::setForTenant($tenant->id, 'contacts.email', '');
+        TenantSetting::setForTenant($tenant->id, 'contacts.address', '');
+        TenantSetting::setForTenant($tenant->id, 'contacts.hours', '');
+        TenantSetting::setForTenant($tenant->id, 'branding.primary_color', '#E85D04');
 
         $hosts = array_filter([
             config('app.tenant_default_host'),
@@ -46,13 +71,5 @@ class MotoLevinsTenantSeeder extends Seeder
         }
 
         app(TenantDomainService::class)->createDefaultSubdomain($tenant, $tenant->slug);
-
-        $ownerId = $tenant->owner_user_id;
-        if ($ownerId && ! $tenant->users()->where('user_id', $ownerId)->exists()) {
-            $tenant->users()->attach($ownerId, [
-                'role' => 'tenant_owner',
-                'status' => 'active',
-            ]);
-        }
     }
 }

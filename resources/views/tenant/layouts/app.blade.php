@@ -14,7 +14,7 @@
     <meta name="theme-color" content="#0c0c0e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="{{ asset('images/icons/icon-192.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset(config('tenant_landing.motolevins_public_prefix').'/icons/icon-192.png') }}">
 
     <x-seo-meta :meta="$seoMeta ?? null" />
 

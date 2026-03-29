@@ -1,8 +1,10 @@
 @props(['section' => null])
 @php
-    $videoPoster = $section['video_poster'] ?? 'images/hero-bg.png';
+    $imgBase = config('tenant_landing.motolevins_public_prefix', 'images/motolevins');
+    $videoPoster = $section['video_poster'] ?? $imgBase.'/marketing/hero-bg.png';
     $videoPoster = str_starts_with($videoPoster, 'http') ? $videoPoster : asset($videoPoster);
-    $videoSrc = $section['video_src'] ?? 'videos/Moto_levins_1.mp4';
+    $videoFile = config('tenant_landing.motolevins_hero_video', 'Moto_levins_1.mp4');
+    $videoSrc = $section['video_src'] ?? ($imgBase.'/videos/'.$videoFile);
     $videoSrc = str_starts_with($videoSrc, 'http') ? $videoSrc : asset($videoSrc);
     $heading = $section['heading'] ?? 'Аренда мотоциклов на Чёрном море';
     $subheading = $section['subheading'] ?? 'от 4 000 ₽/сутки';
@@ -53,7 +55,7 @@
     </div>
 
     <div x-show="!videoPlaying" class="absolute inset-0 z-0">
-        <img src="{{ asset('images/hero-bg.png') }}" alt="Motorcycle background" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+        <img src="{{ asset($imgBase.'/marketing/hero-bg.png') }}" alt="Motorcycle background" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
         <div class="w-full h-full bg-gradient-to-br from-carbon to-obsidian hidden"></div>
         <div class="absolute inset-0 bg-black/15 pointer-events-none"></div>
         <div class="absolute inset-0 pointer-events-none" style="background: radial-gradient(ellipse 70% 55% at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 70%);"></div>

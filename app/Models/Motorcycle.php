@@ -54,8 +54,16 @@ class Motorcycle extends Model implements HasMedia
                 $base = Str::slug($motorcycle->name);
                 $slug = $base;
                 $i = 1;
-                while (static::where('slug', $slug)->exists()) {
+                $q = static::withoutGlobalScopes()->where('slug', $slug);
+                if (! empty($motorcycle->tenant_id)) {
+                    $q->where('tenant_id', $motorcycle->tenant_id);
+                }
+                while ($q->exists()) {
                     $slug = $base.'-'.$i++;
+                    $q = static::withoutGlobalScopes()->where('slug', $slug);
+                    if (! empty($motorcycle->tenant_id)) {
+                        $q->where('tenant_id', $motorcycle->tenant_id);
+                    }
                 }
                 $motorcycle->slug = $slug;
             }
@@ -105,7 +113,18 @@ class Motorcycle extends Model implements HasMedia
             return $media->getUrl();
         }
         if ($this->cover_image) {
-            return asset('storage/'.$this->cover_image);
+            $path = ltrim((string) $this->cover_image, '/');
+            if (str_starts_with($path, 'motolevins/')) {
+                return asset('images/'.$path);
+            }
+            if (str_starts_with($path, 'bikes/')) {
+                return asset('images/motolevins/'.$path);
+            }
+            if (str_starts_with($path, 'images/')) {
+                return asset($path);
+            }
+
+            return asset('storage/'.$path);
         }
 
         return null;

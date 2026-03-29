@@ -3,12 +3,21 @@
 namespace Database\Seeders;
 
 use App\Models\Faq;
+use App\Models\Tenant;
 use Illuminate\Database\Seeder;
 
 class FaqSeeder extends Seeder
 {
     public function run(): void
     {
+        $tenant = Tenant::where('slug', 'motolevins')->first();
+
+        if (! $tenant) {
+            $this->command?->warn('Tenant motolevins not found. FaqSeeder skipped.');
+
+            return;
+        }
+
         $items = [
             [
                 'question' => 'Можно ли уехать в другой город?',
@@ -53,9 +62,12 @@ class FaqSeeder extends Seeder
         ];
 
         foreach ($items as $item) {
-            Faq::firstOrCreate(
-                ['question' => $item['question']],
-                $item
+            Faq::withoutGlobalScopes()->updateOrCreate(
+                [
+                    'tenant_id' => $tenant->id,
+                    'question' => $item['question'],
+                ],
+                array_merge($item, ['tenant_id' => $tenant->id])
             );
         }
     }

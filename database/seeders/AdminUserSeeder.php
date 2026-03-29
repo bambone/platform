@@ -40,6 +40,9 @@ class AdminUserSeeder extends Seeder
                     'status' => 'active',
                 ],
             ]);
+            if (empty($tenant->owner_user_id)) {
+                $tenant->update(['owner_user_id' => $user->id]);
+            }
         }
 
         $this->command->info("Admin: {$email} / {$password} (platform_owner + tenant motolevins если есть)");

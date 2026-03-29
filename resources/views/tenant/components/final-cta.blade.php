@@ -7,7 +7,7 @@
 <section class="py-32 lg:py-40 relative z-10 border-t border-white/[0.02] overflow-hidden">
     <!-- Atmospheric Background Image with heavy darkening -->
     <div class="absolute inset-0 z-0">
-        <img src="{{ asset('images/experience-touring.png') }}" alt="Road" class="w-full h-full object-cover opacity-30" onerror="this.style.display='none'">
+        <img src="{{ asset(config('tenant_landing.motolevins_public_prefix').'/marketing/experience-touring.png') }}" alt="Road" class="w-full h-full object-cover opacity-30" onerror="this.style.display='none'">
         <div class="absolute inset-0 bg-gradient-to-b from-obsidian via-obsidian/90 to-[#08080a]"></div>
     </div>
     
@@ -17,7 +17,7 @@
     </div>
 
     <div class="max-w-4xl mx-auto px-4 md:px-8 text-center relative z-10">
-        <img src="{{ asset('images/logo-round-dark.png') }}" alt="Moto Levins" class="w-16 h-16 md:w-20 md:h-20 mx-auto mb-6 opacity-90 object-contain" />
+        <img src="{{ asset(config('tenant_landing.motolevins_public_prefix').'/marketing/logo-round-dark.png') }}" alt="Moto Levins" class="w-16 h-16 md:w-20 md:h-20 mx-auto mb-6 opacity-90 object-contain" />
         <h2 class="text-4xl md:text-6xl lg:text-7xl font-black text-white mb-6 tracking-tight drop-shadow-2xl">
             {{ $heading }}
         </h2>

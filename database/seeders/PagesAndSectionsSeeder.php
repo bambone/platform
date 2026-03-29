@@ -4,18 +4,31 @@ namespace Database\Seeders;
 
 use App\Models\Page;
 use App\Models\PageSection;
+use App\Models\Tenant;
 use Illuminate\Database\Seeder;
 
 class PagesAndSectionsSeeder extends Seeder
 {
     public function run(): void
     {
-        $home = Page::firstOrCreate(
-            ['slug' => 'home'],
+        $tenant = Tenant::where('slug', 'motolevins')->first();
+
+        if (! $tenant) {
+            $this->command?->warn('Tenant motolevins not found. PagesAndSectionsSeeder skipped.');
+
+            return;
+        }
+
+        $home = Page::withoutGlobalScopes()->updateOrCreate(
+            [
+                'tenant_id' => $tenant->id,
+                'slug' => 'home',
+            ],
             [
                 'name' => 'Главная',
                 'template' => 'default',
                 'status' => 'published',
+                'published_at' => now(),
             ]
         );
 
@@ -27,8 +40,8 @@ class PagesAndSectionsSeeder extends Seeder
                     'heading' => 'Аренда мотоциклов на Чёрном море',
                     'subheading' => 'от 4 000 ₽/сутки',
                     'description' => 'Геленджик · Анапа · Новороссийск — без скрытых платежей, экипировка и страховка включены',
-                    'video_poster' => 'images/hero-bg.png',
-                    'video_src' => 'videos/Moto_levins_1.mp4',
+                    'video_poster' => 'images/motolevins/marketing/hero-bg.png',
+                    'video_src' => 'images/motolevins/videos/Moto_levins_1.mp4',
                 ],
                 'sort_order' => 0,
             ],
@@ -37,9 +50,9 @@ class PagesAndSectionsSeeder extends Seeder
                 'title' => 'Карточки маршрутов',
                 'data_json' => [
                     'items' => [
-                        ['title' => 'Геленджик — Анапа', 'description' => 'Живописная трасса вдоль моря', 'icon' => 'route'],
-                        ['title' => 'Горные серпантины', 'description' => 'Маршруты в предгорья Кавказа', 'icon' => 'mountain'],
-                        ['title' => 'Новороссийск', 'description' => 'Порт и окрестности', 'icon' => 'port'],
+                        ['title' => 'Побережье', 'description' => 'Серпантины и морской бриз', 'icon' => 'coast'],
+                        ['title' => 'Город', 'description' => 'Динамика и стиль', 'icon' => 'city'],
+                        ['title' => 'Трасса', 'description' => 'Дальний маршрут', 'icon' => 'touring'],
                     ],
                 ],
                 'sort_order' => 10,
@@ -48,10 +61,13 @@ class PagesAndSectionsSeeder extends Seeder
                 'section_key' => 'why_us',
                 'title' => 'Почему мы',
                 'data_json' => [
+                    'heading' => 'Почему выбирают нас',
+                    'lead' => 'Работаем с 2024 года. Никаких компромиссов в качестве и безопасности.',
                     'items' => [
-                        ['title' => 'Без скрытых платежей', 'description' => 'Всё включено в цену'],
-                        ['title' => 'Экипировка', 'description' => 'Шлемы и защита в подарок'],
-                        ['title' => 'Страховка', 'description' => 'КАСКО на весь период аренды'],
+                        ['title' => 'Полностью обслуженный мотоцикл', 'description' => 'Детейлинг и ТО перед каждой выдачей — без риска поломки в дороге. Вы едете спокойно.'],
+                        ['title' => 'Прозрачные условия', 'description' => 'Цена в договоре = цена по факту. Полная страховка без скрытых доплат. КАСКО без франшизы — опция при бронировании.'],
+                        ['title' => 'Поддержка 24/7', 'description' => 'Попали в ситуацию? Мы на связи. Замена мотоцикла, консультация по маршруту — ответ в течение 15 минут.'],
+                        ['title' => 'Экипировка включена', 'description' => 'Шлемы и базовая экипировка — чистая, продезинфицированная. Не везите с собой — получите при выдаче.'],
                     ],
                 ],
                 'sort_order' => 30,
@@ -60,10 +76,12 @@ class PagesAndSectionsSeeder extends Seeder
                 'section_key' => 'how_it_works',
                 'title' => 'Как это работает',
                 'data_json' => [
+                    'lead' => 'Весь процесс занимает не более 15 минут. Четыре шага — и вы в пути.',
                     'items' => [
-                        ['step' => 1, 'title' => 'Выберите мотоцикл', 'description' => 'Оформите заявку на сайте'],
-                        ['step' => 2, 'title' => 'Подтверждение', 'description' => 'Менеджер свяжется с вами'],
-                        ['step' => 3, 'title' => 'Получите технику', 'description' => 'В удобной точке выдачи'],
+                        ['step' => 1, 'title' => 'Выберите байк', 'description' => 'Модель + даты. Всё.'],
+                        ['step' => 2, 'title' => 'Оставьте заявку', 'description' => 'Имя, телефон, даты — 2 минуты.'],
+                        ['step' => 3, 'title' => 'Бронь подтверждена', 'description' => 'Менеджер свяжется в течение 10 минут.'],
+                        ['step' => 4, 'title' => 'Ключ на старт', 'description' => 'Чистый байк, полный бак — в путь.'],
                     ],
                 ],
                 'sort_order' => 40,
@@ -73,9 +91,11 @@ class PagesAndSectionsSeeder extends Seeder
                 'title' => 'Условия аренды',
                 'data_json' => [
                     'items' => [
-                        ['title' => 'Права категории А', 'description' => 'Обязательно для управления'],
-                        ['title' => 'Залог', 'description' => 'Возвращается при сдаче'],
-                        ['title' => 'Пробег', 'description' => 'Безлимитный или по тарифу'],
+                        ['title' => 'Возраст', 'description' => 'От 21 года', 'badge' => '21+'],
+                        ['title' => 'Стаж', 'description' => 'От 2 лет по категории А'],
+                        ['title' => 'Документы', 'description' => 'Паспорт + права категории А'],
+                        ['title' => 'Залог', 'description' => '30 000–80 000 ₽, возврат при сдаче'],
+                        ['title' => 'Страховка', 'description' => 'ОСАГО + КАСКО без франшизы (опция)'],
                     ],
                 ],
                 'sort_order' => 50,
@@ -105,8 +125,8 @@ class PagesAndSectionsSeeder extends Seeder
                 'section_key' => 'final_cta',
                 'title' => 'Финальный CTA',
                 'data_json' => [
-                    'heading' => 'Готовы к поездке?',
-                    'description' => 'Оставьте заявку — подберём идеальный мотоцикл',
+                    'heading' => 'Забронируйте мотоцикл и отправляйтесь в поездку уже сегодня',
+                    'description' => 'Экипировка включена. Цена фиксирована. Ограниченное количество техники — не откладывайте.',
                     'button_text' => 'Забронировать',
                 ],
                 'sort_order' => 80,
@@ -114,12 +134,17 @@ class PagesAndSectionsSeeder extends Seeder
         ];
 
         foreach ($sections as $data) {
-            PageSection::updateOrCreate(
+            PageSection::withoutGlobalScopes()->updateOrCreate(
                 [
+                    'tenant_id' => $tenant->id,
                     'page_id' => $home->id,
                     'section_key' => $data['section_key'],
                 ],
-                array_merge($data, ['status' => 'published', 'is_visible' => true])
+                array_merge($data, [
+                    'tenant_id' => $tenant->id,
+                    'status' => 'published',
+                    'is_visible' => true,
+                ])
             );
         }
     }

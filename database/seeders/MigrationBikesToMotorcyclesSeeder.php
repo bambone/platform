@@ -11,13 +11,24 @@ class MigrationBikesToMotorcyclesSeeder extends Seeder
 {
     public function run(): void
     {
-        Bike::withTrashed()->each(function (Bike $bike) {
+        Bike::withoutGlobalScopes()->withTrashed()->each(function (Bike $bike): void {
+            if (empty($bike->tenant_id)) {
+                return;
+            }
+
             $slug = Str::slug($bike->name).'-'.$bike->id;
-            $motorcycle = Motorcycle::firstOrCreate(
-                ['slug' => $slug],
+            $image = $bike->image;
+            if (is_string($image) && str_starts_with($image, 'bikes/')) {
+                $image = 'motolevins/'.$image;
+            }
+
+            $motorcycle = Motorcycle::withoutGlobalScopes()->updateOrCreate(
+                [
+                    'tenant_id' => $bike->tenant_id,
+                    'slug' => $slug,
+                ],
                 [
                     'name' => $bike->name,
-                    'slug' => $slug,
                     'brand' => null,
                     'model' => $bike->type,
                     'category_id' => null,
@@ -27,7 +38,7 @@ class MigrationBikesToMotorcyclesSeeder extends Seeder
                     'price_2_3_days' => null,
                     'price_week' => null,
                     'status' => $bike->is_active ? 'available' : 'hidden',
-                    'cover_image' => $bike->image,
+                    'cover_image' => $image,
                     'engine_cc' => $bike->engine,
                     'power' => null,
                     'transmission' => null,

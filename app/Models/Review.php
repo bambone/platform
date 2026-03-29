@@ -52,7 +52,15 @@ class Review extends Model implements HasMedia
             return $media->getUrl();
         }
         if ($this->avatar) {
-            return asset('storage/'.$this->avatar);
+            $path = ltrim((string) $this->avatar, '/');
+            if (str_starts_with($path, 'images/')) {
+                return asset($path);
+            }
+            if (str_starts_with($path, 'motolevins/')) {
+                return asset('images/'.$path);
+            }
+
+            return asset('storage/'.$path);
         }
 
         return null;

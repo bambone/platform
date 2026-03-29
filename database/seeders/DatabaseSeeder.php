@@ -15,12 +15,13 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            AdminUserSeeder::class, // includes RolePermissionSeeder
             PlanSeeder::class,
             TemplatePresetSeeder::class,
             MotoLevinsTenantSeeder::class,
+            AdminUserSeeder::class, // includes RolePermissionSeeder; tenant must exist
             BikeSeeder::class,
             MigrationBikesToMotorcyclesSeeder::class,
+            BackfillMotorcyclesDataSeeder::class,
             PagesAndSectionsSeeder::class,
             SettingsSeeder::class,
             FaqSeeder::class,

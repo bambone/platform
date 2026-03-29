@@ -1,4 +1,5 @@
 @props(['section' => null])
+@php $imgBase = config('tenant_landing.motolevins_public_prefix', 'images/motolevins'); @endphp
 <section class="py-20 lg:py-28 relative z-10 bg-obsidian">
     <div class="max-w-7xl mx-auto px-4 md:px-8">
         <div class="flex flex-col md:flex-row justify-between md:items-end mb-12 gap-4">
@@ -12,7 +13,7 @@
             <!-- Card 1 -->
             <div @click="filters.location = 'Геленджик'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})" class="group relative bg-carbon rounded-2xl overflow-hidden aspect-[4/5] md:aspect-[3/4] flex flex-col justify-end p-6 md:p-8 cursor-pointer border border-white/5 hover:border-white/10 shadow-xl transition-all duration-300">
                 <div class="absolute inset-0 z-0">
-                    <img src="{{ asset('images/experience-coastal.png') }}" alt="Побережье" class="w-full h-full object-cover transition-transform duration-[15s] ease-out group-hover:scale-105" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+                    <img src="{{ asset($imgBase.'/marketing/experience-coastal.png') }}" alt="Побережье" class="w-full h-full object-cover transition-transform duration-[15s] ease-out group-hover:scale-105" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
                     <div class="w-full h-full bg-[#111113] hidden img-fallback relative overflow-hidden">
                         <div class="absolute inset-x-0 bottom-0 h-1/2 bg-moto-amber/5 blur-[80px]"></div>
                     </div>
@@ -33,7 +34,7 @@
             <!-- Card 2 -->
             <div @click="filters.location = 'Анапа'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})" class="group relative bg-carbon rounded-2xl overflow-hidden aspect-[4/5] md:aspect-[3/4] flex flex-col justify-end p-6 md:p-8 cursor-pointer border border-white/5 hover:border-white/10 shadow-xl transition-all duration-300">
                 <div class="absolute inset-0 z-0">
-                    <img src="{{ asset('images/experience-city.png') }}" alt="Город" class="w-full h-full object-cover transition-transform duration-[15s] ease-out group-hover:scale-105" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+                    <img src="{{ asset($imgBase.'/marketing/experience-city.png') }}" alt="Город" class="w-full h-full object-cover transition-transform duration-[15s] ease-out group-hover:scale-105" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
                     <div class="w-full h-full bg-[#111113] hidden img-fallback relative overflow-hidden">
                         <div class="absolute inset-x-0 bottom-0 h-1/2 bg-moto-amber/5 blur-[80px]"></div>
                     </div>
@@ -54,7 +55,7 @@
             <!-- Card 3 -->
             <div @click="filters.location = 'Новороссийск'; document.getElementById('catalog').scrollIntoView({behavior: 'smooth'})" class="group relative bg-carbon rounded-2xl overflow-hidden aspect-[4/5] md:aspect-[3/4] flex flex-col justify-end p-6 md:p-8 cursor-pointer border border-white/5 hover:border-white/10 shadow-xl transition-all duration-300">
                 <div class="absolute inset-0 z-0">
-                    <img src="{{ asset('images/experience-touring.png') }}" alt="Трасса" class="w-full h-full object-cover transition-transform duration-[15s] ease-out group-hover:scale-105" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+                    <img src="{{ asset($imgBase.'/marketing/experience-touring.png') }}" alt="Трасса" class="w-full h-full object-cover transition-transform duration-[15s] ease-out group-hover:scale-105" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
                     <div class="w-full h-full bg-[#111113] hidden img-fallback relative overflow-hidden">
                         <div class="absolute inset-x-0 bottom-0 h-1/2 bg-moto-amber/5 blur-[80px]"></div>
                     </div>

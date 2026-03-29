@@ -13,7 +13,7 @@
                      loading="eager"
                      class="relative w-16 h-16 lg:w-24 lg:h-24 object-contain rounded-full shrink-0 drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" />
             @else
-                <img src="{{ asset('images/logo-round-dark.png') }}" alt="{{ $site_name ?? config('app.name') }}"
+                <img src="{{ asset(config('tenant_landing.motolevins_public_prefix').'/marketing/logo-round-dark.png') }}" alt="{{ $site_name ?? config('app.name') }}"
                      width="96" height="96"
                      loading="eager"
                      class="relative w-16 h-16 lg:w-24 lg:h-24 object-contain rounded-full shrink-0 drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" />

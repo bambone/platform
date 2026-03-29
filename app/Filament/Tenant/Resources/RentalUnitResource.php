@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Resources;
 
+use App\Filament\Support\FilamentInlineMarkdown;
 use App\Filament\Tenant\Resources\RentalUnitResource\Pages;
 use App\Models\RentalUnit;
 use Filament\Actions\EditAction;
@@ -28,7 +29,9 @@ class RentalUnitResource extends Resource
         return $schema
             ->components([
                 Section::make('Связь с каталогом и внешними системами')
-                    ->description('**Единица парка** — конкретный экземпляр техники (например с номером или VIN), привязанный к **карточке в каталоге**. На сайте посетитель обычно видит карточку; единица парка нужна для учёта доступности и бронирований.')
+                    ->description(FilamentInlineMarkdown::toHtml(
+                        '**Единица парка** — конкретный экземпляр техники (например с номером или VIN), привязанный к **карточке в каталоге**. На сайте посетитель обычно видит карточку; единица парка нужна для учёта доступности и бронирований.'
+                    ))
                     ->schema([
                         Select::make('motorcycle_id')
                             ->label('Карточка в каталоге')

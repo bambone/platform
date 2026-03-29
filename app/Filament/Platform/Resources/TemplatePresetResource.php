@@ -3,6 +3,7 @@
 namespace App\Filament\Platform\Resources;
 
 use App\Filament\Platform\Resources\Concerns\GrantsPlatformPanelAccess;
+use App\Filament\Support\FilamentInlineMarkdown;
 use App\Filament\Platform\Resources\TemplatePresetResource\Pages;
 use App\Models\TemplatePreset;
 use Filament\Actions\BulkActionGroup;
@@ -38,7 +39,9 @@ class TemplatePresetResource extends Resource
         return $schema
             ->components([
                 Section::make('О шаблоне')
-                    ->description('Шаблон — это **стартовая копия** сайта для нового клиента. После создания клиента его сайт живёт отдельно: изменения шаблона не переписывают уже созданные сайты.')
+                    ->description(FilamentInlineMarkdown::toHtml(
+                        'Шаблон — это **стартовая копия** сайта для нового клиента. После создания клиента его сайт живёт отдельно: изменения шаблона не переписывают уже созданные сайты.'
+                    ))
                     ->schema([
                         TextInput::make('name')
                             ->label('Название')

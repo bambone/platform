@@ -5,6 +5,7 @@ namespace App\Filament\Platform\Pages;
 use App\Auth\AccessRoles;
 use App\Auth\TenantAbilityRegistry;
 use App\Auth\TenantPivotPermissions;
+use App\Filament\Support\FilamentInlineMarkdown;
 use App\Filament\Support\RoleLabels;
 use App\Models\PlatformSetting;
 use App\Models\User;
@@ -89,11 +90,11 @@ class TenantCabinetRoleMatrixPage extends Page
         }
 
         $sections[] = Section::make('Поведение входа')
-            ->description(
+            ->description(FilamentInlineMarkdown::toHtml(
                 'Если включено, сотрудник с ролью в консоли платформы при входе на **/admin** клиента '.
                 'остаётся в кабинете клиента, а не перенаправляется на консоль платформы. '.
                 'Удобно для «двойного» доступа; следите, чтобы не работать длительно в чужом кабинете по ошибке.'
-            )
+            ))
             ->schema([
                 Toggle::make('tenant_login_prefer_tenant_panel')
                     ->label('Не перенаправлять на платформу при входе в /admin клиента')

@@ -5,6 +5,7 @@ namespace App\Filament\Platform\Resources;
 use App\Auth\AccessRoles;
 use App\Filament\Platform\Resources\Concerns\GrantsPlatformPanelAccess;
 use App\Filament\Platform\Resources\PlatformUserResource\Pages;
+use App\Filament\Support\FilamentInlineMarkdown;
 use App\Filament\Support\RoleLabels;
 use App\Models\User;
 use Filament\Actions\EditAction;
@@ -46,11 +47,11 @@ class PlatformUserResource extends Resource
         return $schema
             ->components([
                 Section::make('Профиль')
-                    ->description(
+                    ->description(FilamentInlineMarkdown::toHtml(
                         'Сотрудник входит только в **консоль платформы** (`/platform`). '.
                         '**Участников кабинета клиента** (вход на `/admin` у домена клиента) заводите не здесь, а в **Клиенты** → открыть клиента → вкладка **«Команда клиента»**. '.
                         'Набор прав pivot-ролей в кабинете — страница **Платформа → Безопасность и роли кабинета**.'
-                    )
+                    ))
                     ->schema([
                         TextInput::make('name')
                             ->label('Имя')
@@ -107,10 +108,10 @@ class PlatformUserResource extends Resource
             ])
             ->actions([EditAction::make()])
             ->emptyStateHeading('Сотрудников пока нет')
-            ->emptyStateDescription(
+            ->emptyStateDescription(FilamentInlineMarkdown::toHtml(
                 'Здесь только пользователи с ролями консоли платформы. '.
                 'Для доступа к сайту клиента: **Клиенты** → карточка клиента → **Команда клиента**.'
-            )
+            ))
             ->emptyStateIcon('heroicon-o-users');
     }
 

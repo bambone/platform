@@ -3,6 +3,7 @@
 namespace App\Filament\Platform\Pages;
 
 use App\Filament\Platform\Pages\Concerns\GrantsPlatformPageAccess;
+use App\Filament\Support\FilamentInlineMarkdown;
 use App\Filament\Platform\Resources\TenantResource;
 use App\Models\Plan;
 use App\Models\TemplatePreset;
@@ -55,10 +56,10 @@ class OnboardingWizard extends Page
                         Tab::make('1. Клиент')
                             ->schema([
                                 Section::make('Компания и адрес в системе')
-                                    ->description(
+                                    ->description(FilamentInlineMarkdown::toHtml(
                                         'Создаётся запись **клиента платформы** (отдельный сайт и данные). '.
                                         '**Можно изменить позже:** название, URL-идентификатор, часовой пояс, язык и валюта — в карточке клиента в разделе «Клиенты».'
-                                    )
+                                    ))
                                     ->schema([
                                         TextInput::make('name')
                                             ->label('Название компании или проекта')
@@ -88,10 +89,10 @@ class OnboardingWizard extends Page
                         Tab::make('2. Шаблон')
                             ->schema([
                                 Section::make('Стартовый сайт')
-                                    ->description(
+                                    ->description(FilamentInlineMarkdown::toHtml(
                                         'Из шаблона копируются страницы и настройки **как черновик**. Уже созданные сайты клиентов от шаблона не зависят — правки шаблона задним числом их не меняют. '.
                                         '**Можно изменить позже:** контент и структуру можно править в кабинете клиента; другой шаблон «переключить» задним числом нельзя — только вручную переносить контент.'
-                                    )
+                                    ))
                                     ->schema([
                                         Select::make('template_preset_id')
                                             ->label('Шаблон сайта')
@@ -104,10 +105,10 @@ class OnboardingWizard extends Page
                         Tab::make('3. Брендинг')
                             ->schema([
                                 Section::make('Внешний вид на сайте')
-                                    ->description(
+                                    ->description(FilamentInlineMarkdown::toHtml(
                                         'Эти данные попадут в настройки сайта клиента и обычно видны посетителям. '.
                                         '**Можно изменить позже:** всё в кабинете клиента → «Настройки сайта» (брендинг).'
-                                    )
+                                    ))
                                     ->schema([
                                         TextInput::make('brand_name')
                                             ->label('Название на сайте')
@@ -126,10 +127,10 @@ class OnboardingWizard extends Page
                         Tab::make('4. Контакты')
                             ->schema([
                                 Section::make('Связь с клиентом')
-                                    ->description(
+                                    ->description(FilamentInlineMarkdown::toHtml(
                                         'Телефон и мессенджеры обычно выводятся в шапке и на странице контактов. '.
                                         '**Можно изменить позже:** раздел «Настройки сайта» → контакты.'
-                                    )
+                                    ))
                                     ->schema([
                                         TextInput::make('contact_phone')
                                             ->label('Телефон')
@@ -146,20 +147,20 @@ class OnboardingWizard extends Page
                         Tab::make('5. Транспорт')
                             ->schema([
                                 Section::make('Каталог техники')
-                                    ->description(
+                                    ->description(FilamentInlineMarkdown::toHtml(
                                         'На этом шаге в будущем можно будет добавить первые **карточки в каталоге** или импорт. '.
                                         'Сейчас данные вносятся в **кабинете клиента** после создания. '.
                                         '**Можно изменить позже:** полностью в кабинете клиента → каталог.'
-                                    ),
+                                    )),
                             ]),
                         Tab::make('6. Публикация')
                             ->schema([
                                 Section::make('Запуск сайта')
-                                    ->description(
+                                    ->description(FilamentInlineMarkdown::toHtml(
                                         'Здесь позже появится чеклист: домен, SSL, опубликованные страницы. '.
                                         'Сейчас после создания клиента откроется карточка клиента — назначьте тариф, проверьте домен и передайте доступ в кабинет. '.
                                         '**Можно изменить позже:** статус публикации и домены — в консоли платформы (клиент, домены).'
-                                    ),
+                                    )),
                             ]),
                     ])
                     ->columnSpanFull(),

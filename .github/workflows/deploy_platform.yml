@@ -171,14 +171,20 @@ jobs:
 
           if [ -f "$DEST/artisan" ]; then
             cd "$DEST"
+
+            # 🔥 сначала права
+            sudo chown -R www-data:www-data "$DEST/storage" "$DEST/bootstrap/cache"
+            sudo chmod -R 775 "$DEST/storage" "$DEST/bootstrap/cache"
+
+            # потом artisan
             php artisan storage:link || true
             php artisan migrate --force
             php artisan config:clear
             php artisan cache:clear
             php artisan route:clear
             php artisan view:clear
-            sudo chown -R www-data:www-data "$DEST/storage" "$DEST/bootstrap/cache"
-            sudo chmod -R 775 "$DEST/storage" "$DEST/bootstrap/cache"
+
+            # сервисы
             sudo systemctl restart php8.3-fpm
             sudo systemctl reload nginx
             sudo systemctl restart laravel-queue

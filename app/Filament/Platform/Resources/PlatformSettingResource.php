@@ -67,11 +67,11 @@ class PlatformSettingResource extends Resource
                                     $set('type', $def['type']);
                                 }
                             })
-                            ->dehydrated(false)
                             ->helperText('Ключи из списка снабжены пояснениями ниже.'),
                         TextInput::make('key')
                             ->label('Системный ключ')
                             ->maxLength(255)
+                            ->regex('/^[a-zA-Z0-9._-]+$/')
                             ->unique(ignoreRecord: true)
                             ->disabled(fn (string $operation): bool => $operation === 'edit')
                             ->required(fn ($get, string $operation): bool => $operation === 'create' && (bool) $get('use_custom_key'))
@@ -116,8 +116,7 @@ class PlatformSettingResource extends Resource
                             }),
                         Toggle::make('value_boolean')
                             ->label('Включено')
-                            ->visible(fn ($get): bool => $get('type') === 'boolean')
-                            ->dehydrated(false),
+                            ->visible(fn ($get): bool => $get('type') === 'boolean'),
                     ])->columns(1),
             ]);
     }

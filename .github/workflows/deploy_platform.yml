@@ -208,3 +208,38 @@ jobs:
 
           rm -rf "$REL" "$PRES" 2>/dev/null || true
           EOF
+
+      # HTTP liveness only (final 2xx after redirects); no HTML inspection. Requires public HTTPS URLs:
+      # set Actions variables SMOKE_MARKETING_URL and SMOKE_PLATFORM_URL (full https://… URLs).
+      - name: Post-deploy smoke
+        shell: bash
+        env:
+          SMOKE_MARKETING_URL: "${{ vars.SMOKE_MARKETING_URL }}"
+          SMOKE_PLATFORM_URL: "${{ vars.SMOKE_PLATFORM_URL }}"
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SMOKE_MARKETING_URL:-}" ]; then
+            echo "Post-deploy smoke: SMOKE_MARKETING_URL is not set. Add it in Repo Settings → Secrets and variables → Actions → Variables."
+            exit 1
+          fi
+          if [ -z "${SMOKE_PLATFORM_URL:-}" ]; then
+            echo "Post-deploy smoke: SMOKE_PLATFORM_URL is not set. Add it in Repo Settings → Secrets and variables → Actions → Variables."
+            exit 1
+          fi
+
+          echo "Post-deploy smoke: waiting 5s after deploy restarts..."
+          sleep 5
+
+          curl_common=( -fsSL --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 2 --retry-connrefused -o /dev/null )
+
+          check_url() {
+            local label="$1" url="$2"
+            echo "Post-deploy smoke: checking ${label} → ${url}"
+            curl "${curl_common[@]}" "${url}"
+          }
+
+          check_url "Marketing" "${SMOKE_MARKETING_URL%/}/"
+          check_url "Platform" "${SMOKE_PLATFORM_URL%/}/"
+
+          echo "Post-deploy smoke passed"

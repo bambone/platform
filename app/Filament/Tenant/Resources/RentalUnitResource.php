@@ -3,8 +3,10 @@
 namespace App\Filament\Tenant\Resources;
 
 use App\Filament\Support\FilamentInlineMarkdown;
+use App\Filament\Tenant\Concerns\ResolvesDomainTermLabels;
 use App\Filament\Tenant\Resources\RentalUnitResource\Pages;
 use App\Models\RentalUnit;
+use App\Terminology\DomainTermKeys;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -16,13 +18,24 @@ use Filament\Tables\Table;
 
 class RentalUnitResource extends Resource
 {
+    use ResolvesDomainTermLabels;
+
     protected static ?string $model = RentalUnit::class;
 
-    protected static ?string $navigationLabel = 'Единицы парка';
+    public static function getNavigationLabel(): string
+    {
+        return static::domainTermLabel(DomainTermKeys::FLEET_UNIT_PLURAL, 'Единицы парка');
+    }
 
-    protected static ?string $modelLabel = 'Единица парка';
+    public static function getModelLabel(): string
+    {
+        return static::domainTermLabel(DomainTermKeys::FLEET_UNIT, 'Единица парка');
+    }
 
-    protected static ?string $pluralModelLabel = 'Единицы парка';
+    public static function getPluralModelLabel(): string
+    {
+        return static::domainTermLabel(DomainTermKeys::FLEET_UNIT_PLURAL, 'Единицы парка');
+    }
 
     public static function form(Schema $schema): Schema
     {

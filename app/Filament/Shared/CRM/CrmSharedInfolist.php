@@ -21,7 +21,7 @@ final class CrmSharedInfolist
                     TextEntry::make('name')->label('Имя'),
                     TextEntry::make('phone')->label('Телефон')->placeholder('—'),
                     TextEntry::make('email')->label('Email')->placeholder('—'),
-                    TextEntry::make('message')->label('Сообщение')->columnSpanFull()->placeholder('—'),
+                    TextEntry::make('message')->label('Сообщение клиента')->columnSpanFull()->placeholder('—'),
                 ])
                 ->columns(2),
             Section::make('Атрибуция')
@@ -41,7 +41,7 @@ final class CrmSharedInfolist
                     TextEntry::make('ip')->label('IP')->placeholder('—'),
                 ])
                 ->columns(2),
-            Section::make('Payload')
+            Section::make('Технические данные')
                 ->schema([
                     TextEntry::make('payload_json')
                         ->label('JSON')
@@ -55,7 +55,7 @@ final class CrmSharedInfolist
                         }),
                 ])
                 ->collapsed(),
-            Section::make('События')
+            Section::make('История работы')
                 ->schema([
                     RepeatableEntry::make('activities')
                         ->label('')

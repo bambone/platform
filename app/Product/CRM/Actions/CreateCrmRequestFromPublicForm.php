@@ -36,6 +36,7 @@ final class CreateCrmRequestFromPublicForm
                 'channel' => $submission->channel,
                 'pipeline' => 'inbound',
                 'status' => CrmRequest::STATUS_NEW,
+                'priority' => CrmRequest::PRIORITY_NORMAL,
                 'utm_source' => $submission->utmSource,
                 'utm_medium' => $submission->utmMedium,
                 'utm_campaign' => $submission->utmCampaign,

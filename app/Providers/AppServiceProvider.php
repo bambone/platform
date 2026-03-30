@@ -16,6 +16,7 @@ use App\Product\Settings\ProductMailSettingsResolver;
 use App\Services\CurrentTenantManager;
 use App\Services\Mail\TenantMailer;
 use App\Services\Tenancy\TenantViewResolver;
+use App\Terminology\TenantTerminologyService;
 use Filament\Facades\Filament;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Blade;
@@ -37,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(MarketingContentResolver::class);
         $this->app->singleton(ProductMailSettingsResolver::class);
         $this->app->singleton(ProductMailOrchestrator::class);
+        $this->app->singleton(TenantTerminologyService::class);
     }
 
     /**

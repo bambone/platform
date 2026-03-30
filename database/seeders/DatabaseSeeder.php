@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PlanSeeder::class,
             TemplatePresetSeeder::class,
+            DomainTerminologySeeder::class,
             MotoLevinsTenantSeeder::class,
             AdminUserSeeder::class, // includes RolePermissionSeeder; tenant must exist
             BikeSeeder::class,

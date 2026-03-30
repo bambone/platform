@@ -28,6 +28,7 @@ final class TenantAbilityRegistry
             'manage_users' => 'Пользователи кабинета',
             'manage_roles' => 'Роли и права (Spatie)',
             'manage_settings' => 'Настройки сайта',
+            'manage_terminology' => 'Терминология и названия',
             'manage_seo_files' => 'SEO-файлы (robots, sitemap)',
             'manage_seo' => 'SEO',
             'manage_pages' => 'Страницы',

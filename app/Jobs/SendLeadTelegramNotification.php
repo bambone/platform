@@ -5,6 +5,8 @@ namespace App\Jobs;
 use App\Models\Lead;
 use App\Models\Tenant;
 use App\Services\CurrentTenantManager;
+use App\Terminology\DomainTermKeys;
+use App\Terminology\TenantTerminologyService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
@@ -17,8 +19,8 @@ class SendLeadTelegramNotification implements ShouldQueue
 
     public function handle(CurrentTenantManager $tenantManager): void
     {
-        if ($this->lead->tenant_id) {
-            $tenant = Tenant::find($this->lead->tenant_id);
+        $tenant = $this->lead->tenant_id ? Tenant::find($this->lead->tenant_id) : null;
+        if ($tenant !== null) {
             $tenantManager->setTenant($tenant);
         }
 
@@ -28,12 +30,15 @@ class SendLeadTelegramNotification implements ShouldQueue
         if (! $botToken || ! $chatId) {
             return;
         }
+        $terminology = $tenant !== null ? app(TenantTerminologyService::class) : null;
+        $leadLabel = $terminology?->label($tenant, DomainTermKeys::LEAD) ?? 'Заявка';
+        $resourceLabel = $terminology?->label($tenant, DomainTermKeys::RESOURCE) ?? 'Объект';
 
         $motorcycleName = $this->lead->motorcycle?->name ?? 'Не указан';
         $source = Lead::sources()[$this->lead->source] ?? $this->lead->source ?? 'booking_form';
 
-        $message = "🏍 *Новая заявка*\n\n"
-            ."Мотоцикл: {$motorcycleName}\n"
+        $message = "📋 *Новая {$leadLabel}*\n\n"
+            ."{$resourceLabel}: {$motorcycleName}\n"
             ."Источник: {$source}\n\n"
             ."Клиент: {$this->lead->name}\n"
             ."Телефон: {$this->lead->phone}\n";

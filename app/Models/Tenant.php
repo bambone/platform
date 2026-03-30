@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Terminology\TenantTerminologyService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -22,6 +23,7 @@ class Tenant extends Model
         'country',
         'currency',
         'plan_id',
+        'domain_localization_preset_id',
         'owner_user_id',
         'support_manager_id',
         'mail_rate_limit_per_minute',
@@ -30,6 +32,11 @@ class Tenant extends Model
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);
+    }
+
+    public function domainLocalizationPreset(): BelongsTo
+    {
+        return $this->belongsTo(DomainLocalizationPreset::class, 'domain_localization_preset_id');
     }
 
     public function owner(): BelongsTo
@@ -160,5 +167,14 @@ class Tenant extends Model
             'suspended' => 'Приостановлен',
             'archived' => 'В архиве',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(function (Tenant $tenant): void {
+            if ($tenant->wasChanged(['domain_localization_preset_id', 'locale'])) {
+                app(TenantTerminologyService::class)->forgetTenant($tenant->id);
+            }
+        });
     }
 }

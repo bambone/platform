@@ -4,6 +4,8 @@ namespace App\Filament\Tenant\Widgets;
 
 use App\Filament\Tenant\Resources\LeadResource;
 use App\Models\Lead;
+use App\Terminology\DomainTermKeys;
+use App\Terminology\TenantTerminologyService;
 use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -33,9 +35,20 @@ class AttentionRequiredWidget extends BaseWidget
                     ->limit(7)
             )
             ->heading('Требует внимания')
-            ->description(fn () => Lead::where('status', 'new')->count() > 0
-                ? 'У вас '.Lead::where('status', 'new')->count().' новых заявок, ожидающих ответа.'
-                : 'Новых заявок пока нет. Отличная работа!')
+            ->description(function (): string {
+                $tenant = currentTenant();
+                $n = Lead::where('status', 'new')->count();
+                if ($tenant === null) {
+                    return $n > 0
+                        ? 'У вас '.$n.' новых заявок, ожидающих ответа.'
+                        : 'Новых заявок пока нет. Отличная работа!';
+                }
+                $leadPlural = mb_strtolower(app(TenantTerminologyService::class)->label($tenant, DomainTermKeys::LEAD_PLURAL));
+
+                return $n > 0
+                    ? 'У вас '.$n.' новых '.$leadPlural.', ожидающих ответа.'
+                    : 'Новых '.$leadPlural.' пока нет. Отличная работа!';
+            })
             ->columns([
                 TextColumn::make('created_at')
                     ->label('Время')

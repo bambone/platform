@@ -5,24 +5,37 @@ namespace App\Filament\Tenant\Resources;
 use App\Filament\Shared\CRM\CrmSharedFilters;
 use App\Filament\Shared\CRM\CrmSharedInfolist;
 use App\Filament\Shared\CRM\CrmSharedTable;
+use App\Filament\Tenant\Concerns\ResolvesDomainTermLabels;
 use App\Filament\Tenant\Resources\CrmRequestResource\Pages;
 use App\Models\CrmRequest;
-use Filament\Actions\ViewAction;
+use App\Terminology\DomainTermKeys;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
 
 class CrmRequestResource extends Resource
 {
+    use ResolvesDomainTermLabels;
+
     protected static ?string $model = CrmRequest::class;
 
-    protected static ?string $navigationLabel = 'CRM-заявки';
+    public static function getNavigationLabel(): string
+    {
+        return static::domainTermLabel(DomainTermKeys::REQUEST_PLURAL, 'CRM-заявки');
+    }
 
-    protected static ?string $modelLabel = 'CRM-заявка';
+    public static function getModelLabel(): string
+    {
+        return static::domainTermLabel(DomainTermKeys::REQUEST, 'CRM-заявка');
+    }
 
-    protected static ?string $pluralModelLabel = 'CRM-заявки';
+    public static function getPluralModelLabel(): string
+    {
+        return static::domainTermLabel(DomainTermKeys::REQUEST_PLURAL, 'CRM-заявки');
+    }
 
     protected static ?string $recordTitleAttribute = 'name';
 
@@ -36,7 +49,10 @@ class CrmRequestResource extends Resource
             return $query->whereRaw('1 = 0');
         }
 
-        return $query->where('tenant_id', $tenant->id);
+        return $query
+            ->where('tenant_id', $tenant->id)
+            ->withCount('notes')
+            ->with('assignedUser');
     }
 
     public static function form(Schema $schema): Schema
@@ -55,9 +71,8 @@ class CrmRequestResource extends Resource
             ->columns(CrmSharedTable::columns())
             ->filters(CrmSharedFilters::tableFilters(static::getEloquentQuery()))
             ->defaultSort('id', 'desc')
-            ->actions([
-                ViewAction::make(),
-            ])
+            ->recordUrl(fn (CrmRequest $record): string => static::getUrl('view', ['record' => $record]))
+            ->recordClasses(CrmSharedTable::recordClasses())
             ->paginated([25, 50, 100]);
     }
 
@@ -68,7 +83,9 @@ class CrmRequestResource extends Resource
 
     public static function canEdit(Model $record): bool
     {
-        return false;
+        $user = auth()->user();
+
+        return $user !== null && Gate::forUser($user)->allows('update', $record);
     }
 
     public static function canDelete(Model $record): bool

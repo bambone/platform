@@ -10,7 +10,7 @@
                 <x-heroicon-o-phone class="w-5 h-5 text-gray-500" />
                 <span>Call</span>
             </a>
-            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $record->phone) }}?text={{ urlencode('Здравствуйте! Пишу по поводу вашей заявки на аренду...') }}" 
+            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $record->phone) }}?text={{ urlencode('Здравствуйте! Пишу по поводу '.tenant_term(\App\Terminology\DomainTermKeys::LEAD).'…') }}" 
                target="_blank"
                class="flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium rounded-lg shadow-sm border border-green-200 dark:border-green-800 active:bg-green-100 dark:active:bg-green-900/50 transition">
                 <x-heroicon-o-chat-bubble-left-ellipsis class="w-5 h-5" />

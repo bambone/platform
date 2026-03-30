@@ -41,6 +41,8 @@ class CreateCrmRequestFromPublicFormTest extends TestCase
 
         $this->assertNull($result->crmRequest->tenant_id);
         $this->assertNull($result->lead);
+        $this->assertSame(CrmRequest::PRIORITY_NORMAL, $result->crmRequest->priority);
+        $this->assertNotNull($result->crmRequest->last_activity_at);
 
         $this->assertDatabaseHas('crm_request_activities', [
             'crm_request_id' => $result->crmRequest->id,

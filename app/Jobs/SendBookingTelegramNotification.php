@@ -4,6 +4,8 @@ namespace App\Jobs;
 
 use App\Models\Booking;
 use App\Services\CurrentTenantManager;
+use App\Terminology\DomainTermKeys;
+use App\Terminology\TenantTerminologyService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -37,13 +39,18 @@ class SendBookingTelegramNotification implements ShouldQueue
             return;
         }
 
+        $tenant = $this->booking->tenant;
+        $terminology = $tenant !== null ? app(TenantTerminologyService::class) : null;
+        $bookingLabel = $terminology?->label($tenant, DomainTermKeys::BOOKING) ?? 'Бронирование';
+        $resourceLabel = $terminology?->label($tenant, DomainTermKeys::RESOURCE) ?? 'Объект';
+
         $vehicleName = $this->booking->bike?->name ?? $this->booking->motorcycle?->name ?? 'Неизвестный транспорт';
         $days = Carbon::parse($this->booking->start_date)->diffInDays(Carbon::parse($this->booking->end_date)) + 1;
         $formattedPrice = number_format($this->booking->total_price, 0, ',', ' ');
         $formattedSnapshot = number_format($this->booking->price_per_day_snapshot, 0, ',', ' ');
 
-        $message = "🏍 *Новая бронь*\n\n"
-            ."Транспорт: {$vehicleName}\n"
+        $message = "📅 *Новое {$bookingLabel}*\n\n"
+            ."{$resourceLabel}: {$vehicleName}\n"
             ."Даты: {$this->booking->start_date->format('d.m.Y')} — {$this->booking->end_date->format('d.m.Y')}\n"
             ."Дней: {$days} (по {$formattedSnapshot} ₽/д)\n"
             ."Цена: {$formattedPrice} ₽\n\n"

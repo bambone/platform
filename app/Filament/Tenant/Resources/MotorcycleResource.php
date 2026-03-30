@@ -3,9 +3,11 @@
 namespace App\Filament\Tenant\Resources;
 
 use App\Filament\Forms\Components\SeoMetaFields;
+use App\Filament\Tenant\Concerns\ResolvesDomainTermLabels;
 use App\Filament\Tenant\Resources\MotorcycleResource\Pages;
 use App\Models\Motorcycle;
 use App\Support\CatalogHighlightNormalizer;
+use App\Terminology\DomainTermKeys;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -40,6 +42,8 @@ use UnitEnum;
 
 class MotorcycleResource extends Resource
 {
+    use ResolvesDomainTermLabels;
+
     private static function motorcycleListPlaceholderImageDataUrl(): string
     {
         $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect width="96" height="96" rx="10" fill="#374151"/><path fill="#6b7280" d="M28 64h40v6H28zm6-32a10 10 0 0 1 10-10h8a10 10 0 0 1 10 10v18H34V32z"/><text x="48" y="86" text-anchor="middle" fill="#d1d5db" font-size="10" font-family="ui-sans-serif,system-ui,sans-serif">Нет фото</text></svg>';
@@ -51,11 +55,20 @@ class MotorcycleResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Catalog';
 
-    protected static ?string $navigationLabel = 'Мотоциклы';
+    public static function getNavigationLabel(): string
+    {
+        return static::domainTermLabel(DomainTermKeys::RESOURCE_PLURAL, 'Мотоциклы');
+    }
 
-    protected static ?string $modelLabel = 'Мотоцикл';
+    public static function getModelLabel(): string
+    {
+        return static::domainTermLabel(DomainTermKeys::RESOURCE, 'Мотоцикл');
+    }
 
-    protected static ?string $pluralModelLabel = 'Мотоциклы';
+    public static function getPluralModelLabel(): string
+    {
+        return static::domainTermLabel(DomainTermKeys::RESOURCE_PLURAL, 'Мотоциклы');
+    }
 
     public static function form(Schema $schema): Schema
     {

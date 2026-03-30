@@ -6,6 +6,7 @@ use App\Filament\Platform\Resources\Concerns\GrantsPlatformPanelAccess;
 use App\Filament\Platform\Resources\TenantResource\Pages;
 use App\Filament\Platform\Resources\TenantResource\RelationManagers\TenantMailLogsRelationManager;
 use App\Filament\Platform\Resources\TenantResource\RelationManagers\TenantUsersRelationManager;
+use App\Models\DomainLocalizationPreset;
 use App\Models\TemplatePreset;
 use App\Models\Tenant;
 use Filament\Actions\BulkActionGroup;
@@ -71,6 +72,16 @@ class TenantResource extends Resource
                             ->default('default')
                             ->required()
                             ->helperText('Пресет внешнего вида (Blade в tenant/themes/{ключ}). Недостающие страницы берутся из слоя default и движка.'),
+                        Select::make('domain_localization_preset_id')
+                            ->label('Тематика терминологии')
+                            ->relationship(
+                                name: 'domainLocalizationPreset',
+                                titleAttribute: 'name',
+                                modifyQueryUsing: fn ($q) => $q->where('is_active', true)->orderBy('sort_order')
+                            )
+                            ->preload()
+                            ->default(fn (): ?int => DomainLocalizationPreset::query()->where('slug', 'generic_services')->value('id'))
+                            ->helperText('Подписи сущностей в кабинете клиента (заявки, брони, каталог). Не смешивать с темой оформления сайта выше.'),
                         TextInput::make('brand_name')
                             ->label('Бренд на сайте')
                             ->maxLength(255)
@@ -175,6 +186,10 @@ class TenantResource extends Resource
                 TextColumn::make('plan.name')
                     ->label('Тариф')
                     ->placeholder('—'),
+                TextColumn::make('domainLocalizationPreset.name')
+                    ->label('Терминология')
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('cabinet_admin_url')
                     ->label('Кабинет клиента')
                     ->getStateUsing(fn (Tenant $record): ?string => $record->cabinetAdminUrl())

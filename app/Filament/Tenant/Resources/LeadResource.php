@@ -2,9 +2,11 @@
 
 namespace App\Filament\Tenant\Resources;
 
+use App\Filament\Tenant\Concerns\ResolvesDomainTermLabels;
 use App\Filament\Tenant\Resources\LeadResource\Pages;
 use App\Models\Lead;
 use App\Models\LeadActivityLog;
+use App\Terminology\DomainTermKeys;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
@@ -24,17 +26,28 @@ use UnitEnum;
 
 class LeadResource extends Resource
 {
+    use ResolvesDomainTermLabels;
+
     protected static ?string $model = Lead::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'Operations';
 
-    protected static ?string $navigationLabel = 'Заявки';
-
-    protected static ?string $modelLabel = 'Заявка';
-
-    protected static ?string $pluralModelLabel = 'Заявки';
-
     protected static ?string $recordTitleAttribute = 'name';
+
+    public static function getNavigationLabel(): string
+    {
+        return static::domainTermLabel(DomainTermKeys::LEAD_PLURAL, 'Заявки');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return static::domainTermLabel(DomainTermKeys::LEAD, 'Заявка');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return static::domainTermLabel(DomainTermKeys::LEAD_PLURAL, 'Заявки');
+    }
 
     public static function form(Schema $schema): Schema
     {

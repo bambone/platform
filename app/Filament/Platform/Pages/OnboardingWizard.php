@@ -3,8 +3,9 @@
 namespace App\Filament\Platform\Pages;
 
 use App\Filament\Platform\Pages\Concerns\GrantsPlatformPageAccess;
-use App\Filament\Support\FilamentInlineMarkdown;
 use App\Filament\Platform\Resources\TenantResource;
+use App\Filament\Support\FilamentInlineMarkdown;
+use App\Models\DomainLocalizationPreset;
 use App\Models\Plan;
 use App\Models\TemplatePreset;
 use App\Models\Tenant;
@@ -43,6 +44,7 @@ class OnboardingWizard extends Page
             'locale' => 'ru',
             'currency' => 'RUB',
             'primary_color' => '#E85D04',
+            'domain_localization_preset_id' => DomainLocalizationPreset::query()->where('slug', 'generic_services')->value('id'),
         ]);
     }
 
@@ -84,6 +86,16 @@ class OnboardingWizard extends Page
                                             ->label('Валюта')
                                             ->default('RUB')
                                             ->helperText('Трёхбуквенный код, например RUB.'),
+                                        Select::make('domain_localization_preset_id')
+                                            ->label('Тематика терминологии')
+                                            ->options(
+                                                DomainLocalizationPreset::query()
+                                                    ->where('is_active', true)
+                                                    ->orderBy('sort_order')
+                                                    ->pluck('name', 'id')
+                                            )
+                                            ->preload()
+                                            ->helperText('Подписи в кабинете клиента. Отдельно от темы публичного сайта.'),
                                     ])->columns(2),
                             ]),
                         Tab::make('2. Шаблон')
@@ -180,6 +192,8 @@ class OnboardingWizard extends Page
             'timezone' => $data['timezone'] ?? 'Europe/Moscow',
             'locale' => $data['locale'] ?? 'ru',
             'currency' => $data['currency'] ?? 'RUB',
+            'domain_localization_preset_id' => $data['domain_localization_preset_id']
+                ?? DomainLocalizationPreset::query()->where('slug', 'generic_services')->value('id'),
         ]);
 
         $preset = TemplatePreset::find($data['template_preset_id'] ?? null);

@@ -7,6 +7,8 @@ use App\Jobs\SendLeadTelegramNotification;
 use App\Product\CRM\Actions\CreateCrmRequestFromPublicForm;
 use App\Product\CRM\DTO\PublicInboundContext;
 use App\Product\CRM\DTO\PublicInboundSubmission;
+use App\Terminology\DomainTermKeys;
+use App\Terminology\TenantTerminologyService;
 use Illuminate\Http\JsonResponse;
 
 class LeadController extends Controller
@@ -45,9 +47,11 @@ class LeadController extends Controller
         // Кандидат на консолидацию: уведомление привязано к downstream Lead; почта/CRM-activity уже в product layer.
         SendLeadTelegramNotification::dispatch($lead);
 
+        $leadWord = app(TenantTerminologyService::class)->label($tenant, DomainTermKeys::LEAD);
+
         return response()->json([
             'success' => true,
-            'message' => 'Заявка успешно отправлена! Наш менеджер скоро свяжется с вами.',
+            'message' => 'Спасибо! Данные по «'.$leadWord.'» сохранены. Мы скоро свяжемся с вами.',
             'lead_id' => $lead->id,
             'crm_request_id' => $result->crmRequest->id,
         ]);

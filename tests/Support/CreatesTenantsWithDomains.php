@@ -76,6 +76,7 @@ trait CreatesTenantsWithDomains
             'channel' => 'web',
             'pipeline' => 'inbound',
             'status' => CrmRequest::STATUS_NEW,
+            'priority' => CrmRequest::PRIORITY_NORMAL,
             'last_activity_at' => now(),
         ], $overrides));
     }

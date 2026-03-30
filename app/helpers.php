@@ -5,6 +5,7 @@ use App\Models\TenantDomain;
 use App\Models\TenantSetting;
 use App\Services\Tenancy\TenantViewResolver;
 use App\Tenant\CurrentTenant;
+use App\Terminology\TenantTerminologyService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Route;
@@ -57,6 +58,21 @@ if (! function_exists('currentTenant')) {
     function currentTenant(): ?Tenant
     {
         return tenant();
+    }
+}
+
+if (! function_exists('tenant_term')) {
+    /**
+     * Resolved display label for a domain term in the current tenant context.
+     */
+    function tenant_term(string $termKey, ?string $locale = null): string
+    {
+        $t = currentTenant();
+        if ($t === null) {
+            return $termKey;
+        }
+
+        return app(TenantTerminologyService::class)->label($t, $termKey, $locale);
     }
 }
 

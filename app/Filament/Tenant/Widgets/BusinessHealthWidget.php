@@ -4,6 +4,8 @@ namespace App\Filament\Tenant\Widgets;
 
 use App\Models\Motorcycle;
 use App\Models\Page;
+use App\Terminology\DomainTermKeys;
+use App\Terminology\TenantTerminologyService;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -15,6 +17,11 @@ class BusinessHealthWidget extends BaseWidget
 
     protected function getStats(): array
     {
+        $tenant = currentTenant();
+        $bookingLabel = $tenant !== null
+            ? mb_strtolower(app(TenantTerminologyService::class)->label($tenant, DomainTermKeys::BOOKING))
+            : 'бронирования';
+
         // 1. Critical: No Photos (Available/Active motorcycles)
         $noPhotos = Motorcycle::query()
             ->whereIn('status', ['available', 'maintenance'])
@@ -55,7 +62,7 @@ class BusinessHealthWidget extends BaseWidget
                 ]),
 
             Stat::make('Без цены', $noPrice)
-                ->description($noPrice > 0 ? 'Исправьте цены для аренды' : 'Всё отлично')
+                ->description($noPrice > 0 ? 'Исправьте цены для '.$bookingLabel : 'Всё отлично')
                 ->descriptionIcon($noPrice > 0 ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-check-circle')
                 ->color($noPrice > 0 ? 'danger' : 'success'),
 

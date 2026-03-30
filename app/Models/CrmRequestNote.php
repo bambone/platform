@@ -11,7 +11,15 @@ class CrmRequestNote extends Model
         'crm_request_id',
         'user_id',
         'body',
+        'is_pinned',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_pinned' => 'boolean',
+        ];
+    }
 
     public function crmRequest(): BelongsTo
     {

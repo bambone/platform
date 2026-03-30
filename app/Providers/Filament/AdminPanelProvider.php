@@ -11,6 +11,8 @@ use App\Http\Middleware\EnsureTenantMembership;
 use App\Http\Middleware\FilamentTenantPanelAuthenticate;
 use App\Http\Middleware\ResolveTenantFromDomain;
 use App\Models\TenantSetting;
+use App\Terminology\DomainTermKeys;
+use App\Terminology\TenantTerminologyService;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
@@ -82,16 +84,44 @@ class AdminPanelProvider extends PanelProvider
             ->navigationGroups([
                 NavigationGroup::make('Dashboard'),
                 NavigationGroup::make('Operations')
-                    ->label('Операции')
+                    ->label(function (): string {
+                        $t = currentTenant();
+                        if ($t === null) {
+                            return 'Операции';
+                        }
+
+                        return app(TenantTerminologyService::class)->label($t, DomainTermKeys::NAV_OPERATIONS);
+                    })
                     ->icon('heroicon-o-presentation-chart-line'),
                 NavigationGroup::make('Catalog')
-                    ->label('Каталог')
+                    ->label(function (): string {
+                        $t = currentTenant();
+                        if ($t === null) {
+                            return 'Каталог';
+                        }
+
+                        return app(TenantTerminologyService::class)->label($t, DomainTermKeys::NAV_CATALOG);
+                    })
                     ->icon('heroicon-o-shopping-bag'),
                 NavigationGroup::make('Content')
-                    ->label('Контент')
+                    ->label(function (): string {
+                        $t = currentTenant();
+                        if ($t === null) {
+                            return 'Контент';
+                        }
+
+                        return app(TenantTerminologyService::class)->label($t, DomainTermKeys::NAV_CONTENT);
+                    })
                     ->icon('heroicon-o-document-text'),
                 NavigationGroup::make('Settings')
-                    ->label('Настройки')
+                    ->label(function (): string {
+                        $t = currentTenant();
+                        if ($t === null) {
+                            return 'Настройки';
+                        }
+
+                        return app(TenantTerminologyService::class)->label($t, DomainTermKeys::NAV_SETTINGS);
+                    })
                     ->icon('heroicon-o-cog-8-tooth'),
             ])
             ->discoverResources(in: app_path('Filament/Tenant/Resources'), for: 'App\\Filament\\Tenant\\Resources')

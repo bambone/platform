@@ -8,7 +8,6 @@ use App\Filament\Shared\CRM\CrmSharedFilters;
 use App\Filament\Shared\CRM\CrmSharedInfolist;
 use App\Filament\Shared\CRM\CrmSharedTable;
 use App\Models\CrmRequest;
-use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -39,7 +38,10 @@ class CrmRequestResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->whereNull('tenant_id');
+        return parent::getEloquentQuery()
+            ->whereNull('tenant_id')
+            ->withCount('notes')
+            ->with('assignedUser');
     }
 
     public static function form(Schema $schema): Schema
@@ -58,19 +60,18 @@ class CrmRequestResource extends Resource
             ->columns(CrmSharedTable::columns())
             ->filters(CrmSharedFilters::tableFilters(static::getEloquentQuery()))
             ->defaultSort('id', 'desc')
-            ->recordAction(ViewAction::class)
+            ->recordAction('open')
             ->recordUrl(null)
+            ->recordClasses(CrmSharedTable::recordClasses())
             ->actions([
-                ViewAction::make()->slideOver(),
-                EditAction::make()
+                ViewAction::make('open')
+                    ->label('Открыть')
                     ->slideOver()
-                    ->form([
-                        \Filament\Forms\Components\Select::make('status')
-                            ->label('Статус')
-                            ->options(CrmRequest::statusLabels())
-                            ->required(),
-                    ])
-                    ->modalWidth('md'),
+                    ->modalWidth('5xl')
+                    ->modalHeading(fn (CrmRequest $record): string => $record->name ?: 'CRM-заявка #'.$record->id)
+                    ->modalContent(fn (CrmRequest $record) => view('filament.shared.crm.crm-workspace-modal', [
+                        'crmRequestId' => $record->id,
+                    ])),
             ])
             ->paginated([25, 50, 100]);
     }

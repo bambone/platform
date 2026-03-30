@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\DomainLocalizationPreset;
 use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\TenantDomain;
@@ -14,6 +15,7 @@ class MotoLevinsTenantSeeder extends Seeder
     public function run(): void
     {
         $planId = Plan::query()->value('id');
+        $motoPresetId = DomainLocalizationPreset::query()->where('slug', 'moto_rental')->value('id');
 
         $tenant = Tenant::firstOrCreate(
             ['slug' => 'motolevins'],
@@ -26,8 +28,13 @@ class MotoLevinsTenantSeeder extends Seeder
                 'locale' => 'ru',
                 'currency' => 'RUB',
                 'plan_id' => $planId,
+                'domain_localization_preset_id' => $motoPresetId,
             ]
         );
+
+        if ($tenant->domain_localization_preset_id === null && $motoPresetId !== null) {
+            $tenant->update(['domain_localization_preset_id' => $motoPresetId]);
+        }
 
         $publicUrl = rtrim((string) (env('TENANT_MOTOLEVINS_PUBLIC_URL') ?: config('app.url')), '/');
 

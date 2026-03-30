@@ -38,6 +38,7 @@ class PlatformPanelProvider extends PanelProvider
             ->brandName('Platform Console')
             ->globalSearch(false)
             ->font('Inter')
+            ->maxContentWidth('full')
             ->sidebarCollapsibleOnDesktop()
             ->renderHook(
                 'panels::head.done',

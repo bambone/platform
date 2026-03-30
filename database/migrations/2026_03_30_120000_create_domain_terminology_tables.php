@@ -9,60 +9,74 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('domain_terms', function (Blueprint $table) {
-            $table->id();
-            $table->string('term_key')->unique();
-            $table->string('group', 64)->index();
-            $table->string('default_label');
-            $table->text('description')->nullable();
-            $table->string('value_type', 32)->default('text');
-            $table->boolean('is_required')->default(true);
-            $table->boolean('is_active')->default(true);
-            $table->boolean('is_editable_by_tenant')->default(true);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('domain_terms')) {
+            Schema::create('domain_terms', function (Blueprint $table) {
+                $table->id();
+                $table->string('term_key')->unique();
+                $table->string('group', 64)->index();
+                $table->string('default_label');
+                $table->text('description')->nullable();
+                $table->string('value_type', 32)->default('text');
+                $table->boolean('is_required')->default(true);
+                $table->boolean('is_active')->default(true);
+                $table->boolean('is_editable_by_tenant')->default(true);
+                $table->timestamps();
+            });
+        }
 
-        Schema::create('domain_localization_presets', function (Blueprint $table) {
-            $table->id();
-            $table->string('slug')->unique();
-            $table->string('name');
-            $table->text('description')->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->unsignedSmallInteger('sort_order')->default(0);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('domain_localization_presets')) {
+            Schema::create('domain_localization_presets', function (Blueprint $table) {
+                $table->id();
+                $table->string('slug')->unique();
+                $table->string('name');
+                $table->text('description')->nullable();
+                $table->boolean('is_active')->default(true);
+                $table->unsignedSmallInteger('sort_order')->default(0);
+                $table->timestamps();
+            });
+        }
 
-        Schema::create('domain_localization_preset_terms', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('preset_id')->constrained('domain_localization_presets')->cascadeOnDelete();
-            $table->foreignId('term_id')->constrained('domain_terms')->cascadeOnDelete();
-            $table->string('label');
-            $table->string('short_label')->nullable();
-            $table->text('notes')->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('domain_localization_preset_terms')) {
+            Schema::create('domain_localization_preset_terms', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('preset_id')->constrained('domain_localization_presets')->cascadeOnDelete();
+                $table->foreignId('term_id')->constrained('domain_terms')->cascadeOnDelete();
+                $table->string('label');
+                $table->string('short_label')->nullable();
+                $table->text('notes')->nullable();
+                $table->timestamps();
 
-            $table->unique(['preset_id', 'term_id']);
-        });
+                $table->unique(['preset_id', 'term_id']);
+            });
+        }
 
-        Schema::create('tenant_term_overrides', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignId('term_id')->constrained('domain_terms')->cascadeOnDelete();
-            $table->string('label');
-            $table->string('short_label')->nullable();
-            $table->string('source', 64)->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('tenant_term_overrides')) {
+            Schema::create('tenant_term_overrides', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
+                $table->foreignId('term_id')->constrained('domain_terms')->cascadeOnDelete();
+                $table->string('label');
+                $table->string('short_label')->nullable();
+                $table->string('source', 64)->nullable();
+                $table->timestamps();
 
-            $table->unique(['tenant_id', 'term_id']);
-        });
+                $table->unique(['tenant_id', 'term_id']);
+            });
+        }
 
-        Schema::table('tenants', function (Blueprint $table) {
-            $table->foreignId('domain_localization_preset_id')
-                ->nullable()
-                ->after('plan_id')
-                ->constrained('domain_localization_presets')
-                ->nullOnDelete();
-        });
+        if (Schema::hasTable('tenants') && ! Schema::hasColumn('tenants', 'domain_localization_preset_id')) {
+            Schema::table('tenants', function (Blueprint $table) {
+                $table->foreignId('domain_localization_preset_id')
+                    ->nullable()
+                    ->after('plan_id')
+                    ->constrained('domain_localization_presets')
+                    ->nullOnDelete();
+            });
+        }
+
+        if (! Schema::hasTable('domain_localization_presets')) {
+            return;
+        }
 
         $now = now();
         $presets = [
@@ -76,23 +90,32 @@ return new class extends Migration
         ];
 
         foreach ($presets as $row) {
-            DB::table('domain_localization_presets')->insert([
-                'slug' => $row['slug'],
+            $exists = DB::table('domain_localization_presets')->where('slug', $row['slug'])->exists();
+            $payload = [
                 'name' => $row['name'],
                 'description' => $row['description'],
                 'is_active' => true,
                 'sort_order' => $row['sort_order'],
-                'created_at' => $now,
                 'updated_at' => $now,
-            ]);
+            ];
+            if ($exists) {
+                DB::table('domain_localization_presets')->where('slug', $row['slug'])->update($payload);
+            } else {
+                DB::table('domain_localization_presets')->insert(array_merge($payload, [
+                    'slug' => $row['slug'],
+                    'created_at' => $now,
+                ]));
+            }
         }
     }
 
     public function down(): void
     {
-        Schema::table('tenants', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('domain_localization_preset_id');
-        });
+        if (Schema::hasTable('tenants') && Schema::hasColumn('tenants', 'domain_localization_preset_id')) {
+            Schema::table('tenants', function (Blueprint $table) {
+                $table->dropConstrainedForeignId('domain_localization_preset_id');
+            });
+        }
 
         Schema::dropIfExists('tenant_term_overrides');
         Schema::dropIfExists('domain_localization_preset_terms');

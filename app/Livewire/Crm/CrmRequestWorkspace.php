@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
@@ -50,7 +51,7 @@ class CrmRequestWorkspace extends Component
             return;
         }
 
-        Auth::authorize('view', $crm);
+        Gate::authorize('view', $crm);
         app(CrmRequestOperatorService::class)->markFirstViewed($user, $crm);
     }
 
@@ -60,7 +61,7 @@ class CrmRequestWorkspace extends Component
     private function loadCrmBaseRecord(): CrmRequest
     {
         $crm = CrmRequest::query()->findOrFail($this->crmRequestId);
-        Auth::authorize('view', $crm);
+        Gate::authorize('view', $crm);
 
         return $crm;
     }
@@ -80,7 +81,7 @@ class CrmRequestWorkspace extends Component
             ])
             ->findOrFail($this->crmRequestId);
 
-        Auth::authorize('view', $crm);
+        Gate::authorize('view', $crm);
 
         return $crm;
     }

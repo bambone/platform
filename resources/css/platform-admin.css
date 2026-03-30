@@ -1,7 +1,11 @@
 @import "tailwindcss";
+@import "./crm-workspace-icons.css";
 
 @source "../../app/Filament/Platform/**/*.php";
+@source "../../app/Livewire/Crm/**/*.php";
 @source "../../resources/views/filament/platform/**/*.blade.php";
+@source "../../resources/views/filament/shared/**/*.blade.php";
+@source "../../resources/views/livewire/crm/**/*.blade.php";
 @source "../../vendor/filament/**/*.blade.php";
 
 /* Layered Surface Architecture for Dark Mode 
@@ -78,4 +82,26 @@
 .dark .fi-modal-window.slide-over {
     border-left: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: -10px 0 40px rgba(0,0,0,0.6) !important;
+}
+
+/* CRM workspace (Livewire in slide-over): Tailwind must scan these views; cap media if utilities are missing */
+.crm-workspace-modal {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.crm-workspace-modal img,
+.crm-workspace-modal video {
+    max-width: 100%;
+    height: auto;
+}
+
+.crm-workspace-modal svg {
+    max-width: 2rem;
+    max-height: 2rem;
+}
+
+.crm-workspace-modal .crm-workspace-summary-strip svg {
+    max-width: 0.875rem;
+    max-height: 0.875rem;
 }

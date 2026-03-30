@@ -1,7 +1,11 @@
 @import "tailwindcss";
+@import "./crm-workspace-icons.css";
 
 @source "../../app/Filament/Tenant/**/*.php";
+@source "../../app/Livewire/Crm/**/*.php";
 @source "../../resources/views/filament/tenant/**/*.blade.php";
+@source "../../resources/views/filament/shared/**/*.blade.php";
+@source "../../resources/views/livewire/crm/**/*.blade.php";
 @source "../../vendor/filament/**/*.blade.php";
 
 /* Layered Surface Architecture for Dark Mode - Product DNA */
@@ -117,4 +121,26 @@
         z-index: 50;
         box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
     }
+}
+
+/* CRM workspace (shared Livewire slide-over) */
+.crm-workspace-modal {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.crm-workspace-modal img,
+.crm-workspace-modal video {
+    max-width: 100%;
+    height: auto;
+}
+
+.crm-workspace-modal svg {
+    max-width: 2rem;
+    max-height: 2rem;
+}
+
+.crm-workspace-modal .crm-workspace-summary-strip svg {
+    max-width: 0.875rem;
+    max-height: 0.875rem;
 }

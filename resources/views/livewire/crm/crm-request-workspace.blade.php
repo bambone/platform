@@ -15,7 +15,7 @@
     $followUpUnset = $crm->next_follow_up_at === null;
 @endphp
 
-<div class="space-y-5 text-sm text-zinc-900 dark:text-zinc-100">
+<div class="crm-workspace-root min-w-0 max-w-full space-y-5 text-sm text-zinc-900 dark:text-zinc-100">
     {{-- Header --}}
     <div class="space-y-3 border-b border-zinc-200/80 pb-4 dark:border-white/10">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -47,15 +47,15 @@
         </div>
 
         {{-- Operator summary strip --}}
-        <div class="flex flex-wrap gap-x-4 gap-y-2 rounded-xl bg-zinc-950/[0.03] px-3 py-2.5 text-xs dark:bg-white/[0.04]">
+        <div class="crm-workspace-summary-strip flex min-w-0 flex-wrap gap-x-4 gap-y-2 rounded-xl bg-zinc-950/[0.03] px-3 py-2.5 text-xs dark:bg-white/[0.04]">
             <div class="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                <x-heroicon-o-flag class="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
+                <x-crm.svg-icon name="heroicon-o-flag" size="sm" class="text-zinc-400 dark:text-zinc-500" />
                 <span class="text-zinc-500 dark:text-zinc-500">Статус</span>
                 <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ CrmRequest::statusLabels()[$crm->status] ?? $crm->status }}</span>
             </div>
             <span class="hidden text-zinc-300 sm:inline dark:text-zinc-600" aria-hidden="true">|</span>
             <div class="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                <x-heroicon-o-signal class="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
+                <x-crm.svg-icon name="heroicon-o-signal" size="sm" class="text-zinc-400 dark:text-zinc-500" />
                 <span class="text-zinc-500 dark:text-zinc-500">Приоритет</span>
                 <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ CrmRequest::priorityLabels()[$crm->priority ?? CrmRequest::PRIORITY_NORMAL] ?? '—' }}</span>
             </div>
@@ -64,8 +64,7 @@
                 'flex flex-wrap items-center gap-x-1.5 gap-y-1 text-zinc-600 dark:text-zinc-400',
                 'rounded-md px-1.5 py-0.5 -mx-1.5 -my-0.5 bg-amber-500/10 ring-1 ring-amber-500/25 dark:bg-amber-500/10' => $followUpOverdue,
             ])>
-                <x-heroicon-o-clock @class([
-                    'h-3.5 w-3.5 shrink-0',
+                <x-crm.svg-icon name="heroicon-o-clock" size="sm" @class([
                     'text-amber-600 dark:text-amber-400' => $followUpOverdue,
                     'text-zinc-400 dark:text-zinc-500' => ! $followUpOverdue,
                 ]) />
@@ -83,13 +82,13 @@
             </div>
             <span class="hidden text-zinc-300 sm:inline dark:text-zinc-600" aria-hidden="true">|</span>
             <div class="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                <x-heroicon-o-bolt class="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
+                <x-crm.svg-icon name="heroicon-o-bolt" size="sm" class="text-zinc-400 dark:text-zinc-500" />
                 <span class="text-zinc-500 dark:text-zinc-500">Активность</span>
                 <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ $crm->last_activity_at?->format('d.m.Y H:i') ?? '—' }}</span>
             </div>
             <span class="hidden text-zinc-300 sm:inline dark:text-zinc-600" aria-hidden="true">|</span>
             <div class="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                <x-heroicon-o-chat-bubble-left-ellipsis class="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
+                <x-crm.svg-icon name="heroicon-o-chat-bubble-left-ellipsis" size="sm" class="text-zinc-400 dark:text-zinc-500" />
                 <span class="text-zinc-500 dark:text-zinc-500">Заметки</span>
                 <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ $notesCount }}</span>
             </div>
@@ -254,7 +253,9 @@
 
                 @if($crm->notes->isEmpty())
                     <div class="mb-4 rounded-xl border border-dashed border-zinc-200/90 px-4 py-6 text-center dark:border-white/10">
-                        <x-heroicon-o-chat-bubble-left-right class="mx-auto h-8 w-8 text-zinc-300 dark:text-zinc-600" />
+                        <div class="mx-auto flex w-fit justify-center">
+                            <x-crm.svg-icon name="heroicon-o-chat-bubble-left-right" size="lg" class="text-zinc-300 dark:text-zinc-600" />
+                        </div>
                         <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Пока нет внутренних комментариев.</p>
                         <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-500">Добавьте заметку ниже — она увидит только команда.</p>
                     </div>
@@ -269,7 +270,7 @@
                                 <div class="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-500 dark:text-zinc-400">
                                     @if($note->is_pinned)
                                         <span class="inline-flex items-center gap-0.5 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
-                                            <x-heroicon-m-bookmark class="h-3 w-3" />
+                                            <x-crm.svg-icon name="heroicon-m-bookmark" size="xs" class="text-current" />
                                             Важно
                                         </span>
                                     @endif
@@ -401,7 +402,7 @@
                     <summary class="cursor-pointer list-none text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 [&::-webkit-details-marker]:hidden">
                         <span class="inline-flex items-center gap-2">
                             Технические данные
-                            <x-heroicon-o-chevron-down class="h-3.5 w-3.5 transition group-open:rotate-180" />
+                            <x-crm.svg-icon name="heroicon-o-chevron-down" size="sm" class="text-current transition group-open:rotate-180" />
                         </span>
                     </summary>
                     <div class="mt-4 space-y-4 border-t border-zinc-200/80 pt-4 dark:border-white/10">
@@ -426,7 +427,9 @@
                 <h3 class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Лента активности</h3>
                 @if($crm->activities->isEmpty())
                     <div class="rounded-xl border border-dashed border-zinc-200/90 px-4 py-8 text-center dark:border-white/10">
-                        <x-heroicon-o-queue-list class="mx-auto h-8 w-8 text-zinc-300 dark:text-zinc-600" />
+                        <div class="mx-auto flex w-fit justify-center">
+                            <x-crm.svg-icon name="heroicon-o-queue-list" size="lg" class="text-zinc-300 dark:text-zinc-600" />
+                        </div>
                         <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Событий пока нет</p>
                         <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-500">История появится после действий по заявке.</p>
                     </div>
@@ -438,8 +441,8 @@
                             @endphp
                             <li class="flex gap-3 rounded-xl bg-zinc-950/[0.02] py-2.5 pe-3 ps-2 dark:bg-white/[0.02]">
                                 <div class="flex shrink-0 flex-col items-center pt-0.5">
-                                    <span @class([$visuals['iconWrap'], 'flex h-8 w-8 items-center justify-center rounded-lg'])>
-                                        <x-dynamic-component :component="$visuals['icon']" class="h-4 w-4 shrink-0" />
+                                    <span @class([$visuals['iconWrap'], 'crm-timeline-icon-rail flex items-center justify-center rounded-lg'])>
+                                        <x-crm.svg-icon :name="$visuals['icon']" size="md" class="text-current" />
                                     </span>
                                 </div>
                                 <div @class(['min-w-0 flex-1 border-s ps-3', $visuals['rail']])>

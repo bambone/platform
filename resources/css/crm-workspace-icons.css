@@ -1,0 +1,48 @@
+/**
+ * CRM workspace in Filament slide-over: timeline rail + media (SVG sizing uses width/height on root via svg() helper).
+ */
+.crm-timeline-icon-rail {
+    display: flex;
+    flex-shrink: 0 !important;
+    align-items: center;
+    justify-content: center;
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+}
+
+.crm-svg-icon-host {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+    overflow: hidden;
+}
+
+.crm-svg-icon-host--xs {
+    width: 12px;
+    height: 12px;
+}
+
+.crm-svg-icon-host--sm {
+    width: 14px;
+    height: 14px;
+}
+
+.crm-svg-icon-host--md {
+    width: 16px;
+    height: 16px;
+}
+
+.crm-svg-icon-host--lg {
+    width: 32px;
+    height: 32px;
+}
+
+.crm-svg-icon-host > svg {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+}

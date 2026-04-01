@@ -26,7 +26,6 @@ class Motorcycle extends Model implements HasMedia
         'brand',
         'model',
         'category_id',
-        'cover_image',
         'short_description',
         'catalog_scenario',
         'catalog_highlight_1',
@@ -114,32 +113,21 @@ class Motorcycle extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
-        $this->mediaCollections[] = MediaCollection::create('cover')->singleFile();
-        $this->mediaCollections[] = MediaCollection::create('gallery');
+        $disk = (string) config('media-library.disk_name', 'public');
+        $this->mediaCollections[] = MediaCollection::create('cover')
+            ->useDisk($disk)
+            ->storeConversionsOnDisk($disk)
+            ->singleFile();
+        $this->mediaCollections[] = MediaCollection::create('gallery')
+            ->useDisk($disk)
+            ->storeConversionsOnDisk($disk);
     }
 
     public function getCoverUrlAttribute(): ?string
     {
         $media = $this->getFirstMedia('cover');
-        if ($media) {
-            return $media->getUrl();
-        }
-        if ($this->cover_image) {
-            $path = ltrim((string) $this->cover_image, '/');
-            if (str_starts_with($path, 'motolevins/')) {
-                return asset('images/'.$path);
-            }
-            if (str_starts_with($path, 'bikes/')) {
-                return asset('images/motolevins/'.$path);
-            }
-            if (str_starts_with($path, 'images/')) {
-                return asset($path);
-            }
 
-            return asset('storage/'.$path);
-        }
-
-        return null;
+        return $media ? $media->getUrl() : null;
     }
 
     public static function statuses(): array

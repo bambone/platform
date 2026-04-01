@@ -16,12 +16,19 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class IntegrationResource extends Resource
 {
     protected static ?string $model = Integration::class;
 
     protected static ?string $navigationLabel = 'Интеграции';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Infrastructure';
+
+    protected static ?int $navigationSort = 20;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-puzzle-piece';
 
     protected static ?string $modelLabel = 'Интеграция';
 

@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Auth\AccessRoles;
+use App\Auth\TenantMembershipRoleHierarchy;
 use App\Models\User;
 use Filament\Facades\Filament;
 
@@ -25,17 +26,65 @@ class UserPolicy
 
     public function create(User $user): bool
     {
-        return $this->canManageUsersInCurrentContext($user);
+        if (Filament::getCurrentPanel()?->getId() === 'platform' && $user->hasAnyRole(AccessRoles::platformRoles())) {
+            return true;
+        }
+
+        if (! $user->can('manage_users')) {
+            return false;
+        }
+
+        if (Filament::getCurrentPanel()?->getId() === 'admin') {
+            $role = $this->tenantPivotRoleForCurrentTenant($user);
+
+            return $role !== null && TenantMembershipRoleHierarchy::canCreateTeamMembers($role);
+        }
+
+        return true;
     }
 
     public function update(User $user, User $model): bool
     {
-        return $this->canManageUsersInCurrentContext($user);
+        if (Filament::getCurrentPanel()?->getId() === 'platform' && $user->hasAnyRole(AccessRoles::platformRoles())) {
+            return true;
+        }
+
+        if (! $user->can('manage_users')) {
+            return false;
+        }
+
+        if (Filament::getCurrentPanel()?->getId() === 'admin') {
+            $tenant = currentTenant();
+            if ($tenant === null) {
+                return false;
+            }
+
+            return TenantMembershipRoleHierarchy::canEditTeamMember($user, $model, (int) $tenant->id);
+        }
+
+        return true;
     }
 
     public function delete(User $user, User $model): bool
     {
-        return $this->canManageUsersInCurrentContext($user);
+        if (Filament::getCurrentPanel()?->getId() === 'platform' && $user->hasAnyRole(AccessRoles::platformRoles())) {
+            return true;
+        }
+
+        if (! $user->can('manage_users')) {
+            return false;
+        }
+
+        if (Filament::getCurrentPanel()?->getId() === 'admin') {
+            $tenant = currentTenant();
+            if ($tenant === null) {
+                return false;
+            }
+
+            return TenantMembershipRoleHierarchy::canEditTeamMember($user, $model, (int) $tenant->id);
+        }
+
+        return true;
     }
 
     public function restore(User $user, User $model): bool
@@ -55,5 +104,17 @@ class UserPolicy
         }
 
         return $user->can('manage_users');
+    }
+
+    private function tenantPivotRoleForCurrentTenant(User $user): ?string
+    {
+        $tenant = currentTenant();
+        if ($tenant === null) {
+            return null;
+        }
+
+        $role = $user->tenants()->where('tenant_id', $tenant->id)->first()?->pivot->role;
+
+        return is_string($role) ? $role : null;
     }
 }

@@ -16,12 +16,19 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class FaqResource extends Resource
 {
     protected static ?string $model = Faq::class;
 
     protected static ?string $navigationLabel = 'FAQ';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Settings';
+
+    protected static ?int $navigationSort = 40;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-question-mark-circle';
 
     protected static ?string $modelLabel = 'Вопрос';
 

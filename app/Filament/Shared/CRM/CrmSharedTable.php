@@ -3,10 +3,13 @@
 namespace App\Filament\Shared\CRM;
 
 use App\Models\CrmRequest;
+use App\Models\Motorcycle;
 use App\Models\User;
 use App\Product\CRM\CrmRequestOperatorService;
+use App\Support\FilamentMotorcycleThumbnail;
 use Closure;
 use Filament\Notifications\Notification;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
@@ -16,7 +19,7 @@ use Illuminate\Support\Facades\Gate;
 final class CrmSharedTable
 {
     /**
-     * @return array<int, SelectColumn|TextColumn>
+     * @return array<int, ImageColumn|SelectColumn|TextColumn>
      */
     public static function columns(): array
     {
@@ -25,14 +28,31 @@ final class CrmSharedTable
                 ->label('ID')
                 ->sortable()
                 ->toggleable(isToggledHiddenByDefault: true),
+            ImageColumn::make('product_thumb')
+                ->label('')
+                ->getStateUsing(fn (CrmRequest $record): string => FilamentMotorcycleThumbnail::coverUrlOrPlaceholder(self::inferredMotorcycle($record)))
+                ->defaultImageUrl(FilamentMotorcycleThumbnail::placeholderDataUrl())
+                ->checkFileExistence(false)
+                ->imageSize(48)
+                ->square()
+                ->extraImgAttributes(['class' => 'rounded-lg object-cover'])
+                ->extraCellAttributes(['class' => 'w-px pe-0'])
+                ->toggleable(),
             TextColumn::make('created_at')
                 ->label('Создана')
                 ->dateTime('d.m.Y H:i')
                 ->sortable(),
+            TextColumn::make('motorcycle_context')
+                ->label('Техника')
+                ->getStateUsing(fn (CrmRequest $record): string => self::inferredMotorcycle($record)?->name ?? '—')
+                ->description(fn (CrmRequest $record): string => $record->name)
+                ->wrap()
+                ->toggleable(),
             TextColumn::make('name')
                 ->label('Имя')
                 ->searchable()
-                ->sortable(),
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('contacts')
                 ->label('Контакты')
                 ->getStateUsing(function (CrmRequest $record): string {
@@ -132,5 +152,26 @@ final class CrmSharedTable
 
             return implode(' ', array_filter($classes));
         };
+    }
+
+    private static function inferredMotorcycle(CrmRequest $record): ?Motorcycle
+    {
+        $payload = $record->payload_json ?? [];
+        if (isset($payload['motorcycle_id']) && is_numeric($payload['motorcycle_id'])) {
+            $id = (int) $payload['motorcycle_id'];
+            if ($id > 0) {
+                $q = Motorcycle::query()->with('media')->whereKey($id);
+                if ($record->tenant_id !== null) {
+                    $q->where('tenant_id', $record->tenant_id);
+                }
+
+                $found = $q->first();
+                if ($found instanceof Motorcycle) {
+                    return $found;
+                }
+            }
+        }
+
+        return $record->leads->first()?->motorcycle;
     }
 }

@@ -15,12 +15,19 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class RentalUnitResource extends Resource
 {
     use ResolvesDomainTermLabels;
 
     protected static ?string $model = RentalUnit::class;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Catalog';
+
+    protected static ?int $navigationSort = 20;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cube';
 
     public static function getNavigationLabel(): string
     {

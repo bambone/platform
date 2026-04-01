@@ -14,7 +14,7 @@ class HomeController extends Controller
     {
         $bikes = Motorcycle::where('show_in_catalog', true)
             ->where('status', 'available')
-            ->with('category')
+            ->with(['category', 'media'])
             ->orderBy('sort_order')
             ->get();
         $badges = [

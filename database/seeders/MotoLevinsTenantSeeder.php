@@ -36,7 +36,9 @@ class MotoLevinsTenantSeeder extends Seeder
             $tenant->update(['domain_localization_preset_id' => $motoPresetId]);
         }
 
-        $publicUrl = rtrim((string) (env('TENANT_MOTOLEVINS_PUBLIC_URL') ?: config('app.url')), '/');
+        app(TenantDomainService::class)->createDefaultSubdomain($tenant, $tenant->slug);
+
+        $publicUrl = $this->canonicalPublicSiteUrlForSeededTenant($tenant);
 
         TenantSetting::setForTenant($tenant->id, 'general.site_name', 'Moto Levins');
         TenantSetting::setForTenant($tenant->id, 'general.domain', $publicUrl);
@@ -80,7 +82,26 @@ class MotoLevinsTenantSeeder extends Seeder
                 'activated_at' => now(),
             ]);
         }
+    }
 
-        app(TenantDomainService::class)->createDefaultSubdomain($tenant, $tenant->slug);
+    /**
+     * Один источник правды с {@see TenantDomainService::createDefaultSubdomain}: slug + TENANCY_ROOT_DOMAIN, без env на каждого тенанта.
+     */
+    private function canonicalPublicSiteUrlForSeededTenant(Tenant $tenant): string
+    {
+        $root = trim((string) config('tenancy.root_domain', ''), " \t\n\r\0\x0B.");
+        $appUrl = (string) config('app.url', '');
+        $scheme = str_starts_with($appUrl, 'https://') ? 'https' : 'http';
+
+        if ($root !== '') {
+            return $scheme.'://'.TenantDomain::normalizeHost($tenant->slug.'.'.$root);
+        }
+
+        $host = parse_url($appUrl, PHP_URL_HOST);
+        if (is_string($host) && $host !== '') {
+            return $scheme.'://'.TenantDomain::normalizeHost($tenant->slug.'.'.$host);
+        }
+
+        return rtrim($appUrl, '/') ?: 'http://localhost';
     }
 }

@@ -5,6 +5,10 @@
 
     RewriteEngine On
 
+    # Tenant public disk: always Laravel (nested /storage/tenants/... often 403 under symlink + Windows/Apache ACL).
+    RewriteCond %{REQUEST_URI} ^/storage/tenants/
+    RewriteRule ^ index.php [L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

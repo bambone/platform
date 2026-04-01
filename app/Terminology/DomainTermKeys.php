@@ -58,6 +58,10 @@ final class DomainTermKeys
 
     public const NAV_CONTENT = 'nav.content';
 
+    public const NAV_MARKETING = 'nav.marketing';
+
+    public const NAV_INFRASTRUCTURE = 'nav.infrastructure';
+
     public const NAV_SETTINGS = 'nav.settings';
 
     /**
@@ -100,6 +104,8 @@ final class DomainTermKeys
             self::NAV_OPERATIONS,
             self::NAV_CATALOG,
             self::NAV_CONTENT,
+            self::NAV_MARKETING,
+            self::NAV_INFRASTRUCTURE,
             self::NAV_SETTINGS,
         ];
     }

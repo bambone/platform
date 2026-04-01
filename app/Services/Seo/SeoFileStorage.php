@@ -4,6 +4,9 @@ namespace App\Services\Seo;
 
 use App\Models\Tenant;
 use App\Models\TenantSeoFile;
+use App\Support\Storage\TenantStorage;
+use App\Support\Storage\TenantStorageArea;
+use App\Support\Storage\TenantStorageDisks;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
@@ -13,7 +16,7 @@ final class SeoFileStorage
 {
     public function diskName(): string
     {
-        return (string) config('seo.disk', 'local');
+        return TenantStorageDisks::privateDiskName();
     }
 
     public function disk(): Filesystem
@@ -21,28 +24,38 @@ final class SeoFileStorage
         return Storage::disk($this->diskName());
     }
 
+    private function snapshotFileName(string $type): string
+    {
+        return $type === TenantSeoFile::TYPE_ROBOTS_TXT
+            ? 'robots.txt'
+            : 'sitemap.xml';
+    }
+
+    /** Полный логический путь на приватном диске (как в {@see TenantStorage::privatePath}). */
+    private function snapshotLogicalPath(string $type): string
+    {
+        return TenantStorageArea::PrivateSeo->relativeBase().'/'.$this->snapshotFileName($type);
+    }
+
     public function snapshotRelativePath(int $tenantId, string $type): string
     {
-        $file = $type === TenantSeoFile::TYPE_ROBOTS_TXT ? 'robots.txt' : 'sitemap.xml';
-
-        return 'tenants/'.$tenantId.'/seo/'.$file;
+        return TenantStorage::for($tenantId)->privatePathInArea(
+            TenantStorageArea::PrivateSeo,
+            $this->snapshotFileName($type)
+        );
     }
 
     public function snapshotExistsOnDisk(int $tenantId, string $type): bool
     {
-        return $this->disk()->exists($this->snapshotRelativePath($tenantId, $type));
+        return TenantStorage::for($tenantId)->existsInArea(
+            TenantStorageArea::PrivateSeo,
+            $this->snapshotFileName($type)
+        );
     }
 
     public function readSnapshot(int $tenantId, string $type): ?string
     {
-        $path = $this->snapshotRelativePath($tenantId, $type);
-        if (! $this->disk()->exists($path)) {
-            return null;
-        }
-
-        $raw = $this->disk()->get($path);
-
-        return is_string($raw) ? $raw : null;
+        return TenantStorage::for($tenantId)->getPrivate($this->snapshotLogicalPath($type));
     }
 
     /**
@@ -50,28 +63,24 @@ final class SeoFileStorage
      */
     public function createBackup(int $tenantId, string $type, string $currentContent): array
     {
-        $stamp = CarbonImmutable::now()->format('Ymd-His');
+        $stamp = CarbonImmutable::now()->format('Y-m-d_H-i');
         $name = $type === TenantSeoFile::TYPE_ROBOTS_TXT
-            ? "robots-{$stamp}.txt.bak"
-            : "sitemap-{$stamp}.xml.bak";
-        $relative = 'tenants/'.$tenantId.'/seo-backups/'.$name;
-        $ok = $this->disk()->put($relative, $currentContent);
-        if (! $ok) {
+            ? "robots_{$stamp}.txt"
+            : "sitemap_{$stamp}.xml";
+        $ts = TenantStorage::for($tenantId);
+        if (! $ts->putPrivateAtomicInArea(TenantStorageArea::PrivateSeoBackups, $name, $currentContent)) {
             throw new RuntimeException('Failed to write SEO backup file.');
         }
 
-        return ['path' => $relative, 'filename' => $name];
+        $fullPath = $ts->privatePathInArea(TenantStorageArea::PrivateSeoBackups, $name);
+
+        return ['path' => $fullPath, 'filename' => $name];
     }
 
     public function writeSnapshot(int $tenantId, string $type, string $content): void
     {
-        $path = $this->snapshotRelativePath($tenantId, $type);
-        $dir = dirname($path);
-        if (! $this->disk()->exists($dir)) {
-            $this->disk()->makeDirectory($dir);
-        }
-        $ok = $this->disk()->put($path, $content);
-        if (! $ok) {
+        $ts = TenantStorage::for($tenantId);
+        if (! $ts->putPrivateAtomicInArea(TenantStorageArea::PrivateSeo, $this->snapshotFileName($type), $content)) {
             throw new RuntimeException('Failed to write SEO snapshot file.');
         }
     }

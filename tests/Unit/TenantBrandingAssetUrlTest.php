@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Support\Storage\TenantStorage;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -15,12 +16,13 @@ class TenantBrandingAssetUrlTest extends TestCase
 
     public function test_storage_path_uses_public_disk_url(): void
     {
-        Storage::disk('public')->put('tenants/1/logo/a.png', 'binary');
+        $path = TenantStorage::for(1)->publicPath('site/logo/a.png');
+        Storage::disk('public')->put($path, 'binary');
 
-        $url = tenant_branding_asset_url('tenants/1/logo/a.png', '');
+        $url = tenant_branding_asset_url($path, '');
 
         $this->assertNotSame('', $url);
-        $this->assertStringContainsString('tenants/1/logo/a.png', $url);
+        $this->assertStringContainsString($path, $url);
     }
 
     public function test_legacy_url_used_when_path_empty(): void
@@ -33,11 +35,12 @@ class TenantBrandingAssetUrlTest extends TestCase
 
     public function test_path_takes_precedence_over_legacy(): void
     {
-        Storage::disk('public')->put('tenants/2/logo/b.png', 'x');
+        $path = TenantStorage::for(2)->publicPath('site/logo/b.png');
+        Storage::disk('public')->put($path, 'x');
 
-        $url = tenant_branding_asset_url('tenants/2/logo/b.png', 'https://legacy.example/ignored.png');
+        $url = tenant_branding_asset_url($path, 'https://legacy.example/ignored.png');
 
-        $this->assertStringContainsString('tenants/2/logo/b.png', $url);
+        $this->assertStringContainsString($path, $url);
         $this->assertStringNotContainsString('legacy.example', $url);
     }
 

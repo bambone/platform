@@ -5,6 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    @php($__stripTenantServiceWorker = ! app()->isProduction() || str_ends_with(request()->getHost(), '.local') || in_array(request()->getHost(), ['localhost', '127.0.0.1'], true))
+    @if ($__stripTenantServiceWorker)
+        {{-- Старый SW из прошлых деплоев продолжает перехватывать навигацию и отдаёт offline при медленном ответе; на *.local / dev снимаем регистрацию и чистим Cache Storage. --}}
+        <script>
+            (function () {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function (regs) {
+                        regs.forEach(function (r) { r.unregister(); });
+                    });
+                }
+                if ('caches' in window) {
+                    caches.keys().then(function (keys) {
+                        keys.forEach(function (key) { caches.delete(key); });
+                    });
+                }
+            })();
+        </script>
+    @endif
+
     @php($tenantFavicon = trim($branding['favicon'] ?? ''))
     @if($tenantFavicon !== '')
         <link rel="icon" href="{{ $tenantFavicon }}" type="image/png">
@@ -14,11 +33,13 @@
     <meta name="theme-color" content="#0c0c0e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="{{ asset(config('tenant_landing.motolevins_public_prefix').'/icons/icon-192.png') }}">
+    <link rel="apple-touch-icon" href="{{ theme_platform_asset_url('icons/icon-192.png') }}">
 
     <x-seo-meta :meta="$seoMeta ?? null" />
 
     @stack('tenant-preload')
+
+    @include('tenant.partials.analytics-head')
 
     @php($bunnyInterCss = 'https://fonts.bunny.net/css?family=inter:400,500,600,700,800&display=swap')
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -72,6 +93,48 @@
                             this.filters.location = o.location;
                         }
                     } catch (e) {}
+                    this.sanitizeRentalPeriodFilters();
+                },
+
+                /**
+                 * Убираем «висящую» дату «по» без «с», перевёрнутый диапазон и просроченные даты — иначе Flatpickr показывает только конец периода.
+                 */
+                sanitizeRentalPeriodFilters() {
+                    const iso = /^\d{4}-\d{2}-\d{2}$/;
+                    let s = (this.filters.start_date || '').trim();
+                    let e = (this.filters.end_date || '').trim();
+                    let changed = false;
+                    if (s !== '' && ! iso.test(s)) {
+                        s = '';
+                        changed = true;
+                    }
+                    if (e !== '' && ! iso.test(e)) {
+                        e = '';
+                        changed = true;
+                    }
+                    const today = new Date().toISOString().slice(0, 10);
+                    if (s !== '' && s < today) {
+                        s = '';
+                        e = '';
+                        changed = true;
+                    }
+                    if (e !== '' && e < today) {
+                        e = '';
+                        changed = true;
+                    }
+                    if (e !== '' && s === '') {
+                        e = '';
+                        changed = true;
+                    }
+                    if (s !== '' && e !== '' && e < s) {
+                        e = '';
+                        changed = true;
+                    }
+                    this.filters.start_date = s;
+                    this.filters.end_date = e;
+                    if (changed) {
+                        this.persist();
+                    }
                 },
 
                 persist() {
@@ -93,7 +156,9 @@
                     this.schedulePersist();
                 },
 
-                async applyCatalogSearch() {
+                async applyCatalogSearch(options) {
+                    const opts = options && typeof options === 'object' ? options : {};
+                    const scrollToCatalog = opts.scrollToCatalog !== false;
                     if (! this.filters.start_date || ! this.filters.end_date) {
                         this.catalogAvailability = null;
                         if (typeof window.TenantDatePickers?.openBarStart === 'function') {
@@ -107,7 +172,18 @@
                     this.persist();
                     this.isSearching = true;
                     this.catalogAvailability = null;
+                    let allowScroll = scrollToCatalog;
                     try {
+                        const today = new Date().toISOString().slice(0, 10);
+                        if (
+                            this.filters.start_date < today ||
+                            this.filters.end_date < this.filters.start_date
+                        ) {
+                            this.catalogAvailability = null;
+                            allowScroll = false;
+
+                            return;
+                        }
                         const bikeIdsEl = document.querySelector('[data-bike-ids]');
                         let motorcycleIds = [];
                         if (bikeIdsEl) {
@@ -141,9 +217,11 @@
                         this.catalogAvailability = null;
                     } finally {
                         this.isSearching = false;
-                        setTimeout(() => {
-                            document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
-                        }, 50);
+                        if (allowScroll) {
+                            setTimeout(() => {
+                                document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
+                            }, 50);
+                        }
                     }
                 },
 
@@ -380,7 +458,33 @@
                         : {};
                 },
 
+                /**
+                 * Flatpickr keeps the real value on a hidden input; altInput is what the user sees.
+                 * Move id + autocomplete to the visible field so label[for] and DevTools form audits match the focused control.
+                 */
+                _bindFlatpickrAltSurface(inst) {
+                    const real = inst.input;
+                    const alt = inst.altInput;
+                    if (! real || ! alt) {
+                        return;
+                    }
+                    const fid = real.getAttribute('id');
+                    if (fid) {
+                        alt.id = fid;
+                        real.removeAttribute('id');
+                    }
+                    const ac = real.getAttribute('autocomplete');
+                    alt.setAttribute('autocomplete', ac !== null ? ac : 'off');
+                    if (real.hasAttribute('required')) {
+                        alt.setAttribute('aria-required', 'true');
+                    }
+                    real.setAttribute('tabindex', '-1');
+                    real.setAttribute('aria-hidden', 'true');
+                },
+
                 _baseOpts(altInputClass) {
+                    const self = this;
+
                     return {
                         locale: this._locale(),
                         dateFormat: 'Y-m-d',
@@ -391,6 +495,7 @@
                         disableMobile: true,
                         onReady(_d, _s, inst) {
                             inst.calendarContainer.classList.add('tenant-fp');
+                            self._bindFlatpickrAltSurface(inst);
                         },
                     };
                 },
@@ -410,8 +515,8 @@
                     if (typeof flatpickr === 'undefined' || typeof Alpine === 'undefined') {
                         return;
                     }
-                    const startEl = document.getElementById('start_date');
-                    const endEl = document.getElementById('end_date');
+                    const startEl = document.querySelector('input[data-fp-anchor="tenant-bar-start"]');
+                    const endEl = document.querySelector('input[data-fp-anchor="tenant-bar-end"]');
                     if (! startEl || ! endEl) {
                         return;
                     }
@@ -428,7 +533,7 @@
                     this._barEnd = flatpickr(endEl, {
                         ...baseBar,
                         minDate: store.filters.start_date || minStr,
-                        defaultDate: store.filters.end_date || undefined,
+                        defaultDate: (store.filters.start_date && store.filters.end_date) ? store.filters.end_date : undefined,
                         onChange: (selectedDates) => {
                             if (selectedDates[0]) {
                                 store.filters.end_date = this._barEnd.formatDate(selectedDates[0], 'Y-m-d');
@@ -518,8 +623,8 @@
                     this.destroyModal();
                     this._modalVm = vm;
 
-                    const startEl = document.getElementById('booking-modal-start-date');
-                    const endEl = document.getElementById('booking-modal-end-date');
+                    const startEl = document.querySelector('input[data-fp-anchor="tenant-modal-start"]');
+                    const endEl = document.querySelector('input[data-fp-anchor="tenant-modal-end"]');
                     if (! startEl || ! endEl) {
                         return;
                     }
@@ -530,7 +635,7 @@
                     this._modalEnd = flatpickr(endEl, {
                         ...baseModal,
                         minDate: vm.form.start_date || minStr,
-                        defaultDate: vm.form.end_date || undefined,
+                        defaultDate: (vm.form.start_date && vm.form.end_date) ? vm.form.end_date : undefined,
                         onChange: (selectedDates) => {
                             if (selectedDates[0] && this._modalVm) {
                                 this._modalVm.form.end_date = this._modalEnd.formatDate(selectedDates[0], 'Y-m-d');
@@ -569,7 +674,7 @@
         })();
     </script>
 
-    @if (! request()->routeIs('offline'))
+    @if (! request()->routeIs('offline') && app()->isProduction() && ! $__stripTenantServiceWorker)
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

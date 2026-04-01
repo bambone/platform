@@ -2,14 +2,18 @@
 
 namespace App\Filament\Tenant\Resources;
 
+use App\Auth\TenantMembershipRoleHierarchy;
 use App\Filament\Support\FilamentInlineMarkdown;
 use App\Filament\Support\RoleLabels;
 use App\Filament\Support\UserPasswordFormFields;
 use App\Filament\Tenant\Resources\UserResource\Pages;
+use App\Models\Tenant;
 use App\Models\User;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Resources\Pages\CreateRecord;
+use Filament\Resources\Pages\EditRecord;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -17,12 +21,21 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Livewire;
+use UnitEnum;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
     protected static ?string $navigationLabel = 'Команда';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Settings';
+
+    protected static ?int $navigationSort = 20;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
 
     protected static ?string $modelLabel = 'Пользователь';
 
@@ -66,10 +79,10 @@ class UserResource extends Resource
                     ->schema([
                         Select::make('tenant_role')
                             ->label('Роль')
-                            ->options(RoleLabels::tenantMembershipRoleOptions())
-                            ->default('operator')
+                            ->options(fn (): array => self::tenantRoleOptionsForForm())
+                            ->default(fn (): string => self::defaultTenantRoleForForm())
                             ->required()
-                            ->helperText('Выберите уровень доступа согласно обязанностям сотрудника.'),
+                            ->helperText('Выберите уровень доступа согласно обязанностям сотрудника. Доступные роли зависят от вашей роли в клиенте.'),
                     ]),
                 UserPasswordFormFields::editPasswordSection(),
             ]);
@@ -100,8 +113,64 @@ class UserResource extends Resource
                 SelectFilter::make('status')->options(User::statuses()),
             ])
             ->actions([
-                EditAction::make(),
+                EditAction::make()
+                    ->visible(function (User $record): bool {
+                        $user = Auth::user();
+
+                        return $user instanceof User && $user->can('update', $record);
+                    }),
             ]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function tenantRoleOptionsForForm(): array
+    {
+        $tenant = currentTenant();
+        $actor = Auth::user();
+        if (! $tenant instanceof Tenant || ! $actor instanceof User) {
+            return [];
+        }
+
+        $all = RoleLabels::tenantMembershipRoleOptions();
+        $livewire = Livewire::current();
+
+        if ($livewire instanceof CreateRecord && $livewire::getResource() === self::class) {
+            $role = $actor->tenants()->where('tenant_id', $tenant->id)->first()?->pivot->role;
+            $keys = is_string($role) ? TenantMembershipRoleHierarchy::creatableRoleKeys($role) : [];
+
+            return array_intersect_key($all, array_flip($keys));
+        }
+
+        if ($livewire instanceof EditRecord && $livewire::getResource() === self::class) {
+            $record = $livewire->getRecord();
+            if (! $record instanceof User) {
+                return [];
+            }
+            $keys = TenantMembershipRoleHierarchy::allowedRoleKeysForAssignment(
+                $actor,
+                $record,
+                (int) $tenant->id,
+                false
+            );
+
+            return array_intersect_key($all, array_flip($keys));
+        }
+
+        return [];
+    }
+
+    public static function defaultTenantRoleForForm(): string
+    {
+        $opts = self::tenantRoleOptionsForForm();
+        if (array_key_exists('operator', $opts)) {
+            return 'operator';
+        }
+
+        $first = array_key_first($opts);
+
+        return is_string($first) ? $first : 'operator';
     }
 
     public static function getPages(): array

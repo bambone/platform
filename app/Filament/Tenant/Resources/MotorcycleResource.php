@@ -7,6 +7,7 @@ use App\Filament\Tenant\Concerns\ResolvesDomainTermLabels;
 use App\Filament\Tenant\Resources\MotorcycleResource\Pages;
 use App\Models\Motorcycle;
 use App\Support\CatalogHighlightNormalizer;
+use App\Support\FilamentMotorcycleThumbnail;
 use App\Terminology\DomainTermKeys;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -17,7 +18,7 @@ use Filament\Actions\RestoreBulkAction;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
+use App\Filament\Forms\Components\TenantSpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -35,25 +36,25 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Throwable;
 use UnitEnum;
 
 class MotorcycleResource extends Resource
 {
     use ResolvesDomainTermLabels;
 
-    private static function motorcycleListPlaceholderImageDataUrl(): string
-    {
-        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect width="96" height="96" rx="10" fill="#374151"/><path fill="#6b7280" d="M28 64h40v6H28zm6-32a10 10 0 0 1 10-10h8a10 10 0 0 1 10 10v18H34V32z"/><text x="48" y="86" text-anchor="middle" fill="#d1d5db" font-size="10" font-family="ui-sans-serif,system-ui,sans-serif">Нет фото</text></svg>';
-
-        return 'data:image/svg+xml;charset=UTF-8,'.rawurlencode($svg);
-    }
-
     protected static ?string $model = Motorcycle::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'Catalog';
+
+    protected static ?int $navigationSort = 10;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
     public static function getNavigationLabel(): string
     {
@@ -331,23 +332,37 @@ class MotorcycleResource extends Resource
                             ->id('motorcycle-price-week')
                             ->numeric()
                             ->suffix('₽'),
-                        SpatieMediaLibraryFileUpload::make('cover')
+                        TenantSpatieMediaLibraryFileUpload::make('cover')
                             ->collection('cover')
+                            ->disk(config('media-library.disk_name'))
+                            ->visibility('public')
+                            ->conversionsDisk(config('media-library.disk_name'))
                             ->image()
                             ->label('Обложка')
-                            ->helperText('Основное изображение карточки. Рекомендуется 16:9.')
+                            ->helperText('Основное изображение карточки. Рекомендуется 16:9. При редактировании файл сохраняется в медиатеку сразу после успешной загрузки. При создании новой карточки — после первого сохранения формы.')
                             ->id('motorcycle-cover')
-                            ->columnSpanFull(),
-                        SpatieMediaLibraryFileUpload::make('gallery')
+                            ->columnSpanFull()
+                            ->fetchFileInformation(false)
+                            ->orientImagesFromExif(false)
+                            ->maxSize(15360)
+                            ->afterStateUpdated(self::persistMotorcycleMediaAfterUpload(...)),
+                        TenantSpatieMediaLibraryFileUpload::make('gallery')
                             ->collection('gallery')
+                            ->disk(config('media-library.disk_name'))
+                            ->visibility('public')
+                            ->conversionsDisk(config('media-library.disk_name'))
                             ->image()
                             ->multiple()
                             ->maxFiles(10)
                             ->reorderable()
                             ->label('Галерея')
-                            ->helperText('Дополнительные изображения для слайдера.')
+                            ->helperText('Дополнительные изображения для слайдера. На экране редактирования новые файлы сохраняются сразу после загрузки.')
                             ->id('motorcycle-gallery')
-                            ->columnSpanFull(),
+                            ->columnSpanFull()
+                            ->fetchFileInformation(false)
+                            ->orientImagesFromExif(false)
+                            ->maxSize(15360)
+                            ->afterStateUpdated(self::persistMotorcycleMediaAfterUpload(...)),
                     ])
                     ->columns(1)
                     ->columnSpan(['default' => 12, 'lg' => 4]),
@@ -370,10 +385,11 @@ class MotorcycleResource extends Resource
                 ImageColumn::make('cover_thumb')
                     ->label('Фото')
                     ->getStateUsing(fn (Motorcycle $record): ?string => $record->cover_url)
-                    ->defaultImageUrl(fn (): string => static::motorcycleListPlaceholderImageDataUrl())
+                    ->defaultImageUrl(fn (): string => FilamentMotorcycleThumbnail::placeholderDataUrl())
                     ->checkFileExistence(false)
                     ->imageSize(48)
                     ->square()
+                    ->extraImgAttributes(['class' => 'rounded-lg object-cover'])
                     ->extraCellAttributes(['class' => 'fi-motorcycle-cover-cell'])
                     ->tooltip('Обложка карточки; наведите для увеличения'),
                 TextColumn::make('name')
@@ -466,6 +482,46 @@ class MotorcycleResource extends Resource
             ->emptyStateHeading('В каталоге пока пусто')
             ->emptyStateDescription('Добавьте карточку техники — её увидят посетители, если включён показ в каталоге.')
             ->emptyStateIcon('heroicon-o-truck');
+    }
+
+    /**
+     * После изменения состояния FileUpload: сразу синхронизировать медиатеку (как при «Сохранить»),
+     * если карточка уже существует в БД. На создании записи record ещё нет — файлы сохранятся при первом submit.
+     */
+    protected static function persistMotorcycleMediaAfterUpload(TenantSpatieMediaLibraryFileUpload $component): void
+    {
+        $record = $component->getRecord();
+        if (! $record instanceof Model || ! $record->exists) {
+            return;
+        }
+
+        $rawState = $component->getRawState() ?? [];
+        $hadTemporaryUpload = collect($rawState)->contains(
+            fn (mixed $file): bool => $file instanceof TemporaryUploadedFile
+        );
+
+        try {
+            $component->deleteAbandonedFiles();
+            $component->saveUploadedFiles();
+        } catch (Throwable $e) {
+            report($e);
+            Notification::make()
+                ->title('Не удалось сохранить файл в хранилище')
+                ->body(config('app.debug') ? $e->getMessage() : 'Проверьте MEDIA_DISK, очередь конверсий и логи сервера.')
+                ->danger()
+                ->persistent()
+                ->send();
+
+            return;
+        }
+
+        if ($hadTemporaryUpload) {
+            Notification::make()
+                ->title('Изображение сохранено')
+                ->success()
+                ->duration(3500)
+                ->send();
+        }
     }
 
     public static function getRelations(): array

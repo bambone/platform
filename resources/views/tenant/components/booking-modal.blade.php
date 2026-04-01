@@ -57,6 +57,7 @@
                                 <div>
                                     <label for="booking-modal-start-date" class="mb-1 block text-xs font-medium text-zinc-400">Дата начала</label>
                                     <input id="booking-modal-start-date"
+                                           data-fp-anchor="tenant-modal-start"
                                            name="booking_start_date"
                                            type="text"
                                            readonly
@@ -69,6 +70,7 @@
                                 <div>
                                     <label for="booking-modal-end-date" class="mb-1 block text-xs font-medium text-zinc-400">Дата возврата</label>
                                     <input id="booking-modal-end-date"
+                                           data-fp-anchor="tenant-modal-end"
                                            name="booking_end_date"
                                            type="text"
                                            readonly
@@ -327,8 +329,14 @@ document.addEventListener('alpine:init', () => {
             };
             this.resetForm();
             const store = Alpine.store('tenantBooking');
-            const start = bikeData.start || store.filters.start_date || '';
-            const end = bikeData.end || store.filters.end_date || '';
+            let start = bikeData.start || store.filters.start_date || '';
+            let end = bikeData.end || store.filters.end_date || '';
+            if (end && ! start) {
+                end = '';
+            }
+            if (start && end && end < start) {
+                end = '';
+            }
             if (start) {
                 this.form.start_date = start;
             }

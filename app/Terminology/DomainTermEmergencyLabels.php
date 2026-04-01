@@ -18,14 +18,14 @@ final class DomainTermEmergencyLabels
     public static function ruMap(): array
     {
         return [
-            DomainTermKeys::LEAD => 'Заявка',
-            DomainTermKeys::LEAD_PLURAL => 'Заявки',
+            DomainTermKeys::LEAD => 'Обращение',
+            DomainTermKeys::LEAD_PLURAL => 'Обращения',
             DomainTermKeys::BOOKING => 'Бронирование',
             DomainTermKeys::BOOKING_PLURAL => 'Бронирования',
             DomainTermKeys::APPOINTMENT => 'Запись',
             DomainTermKeys::APPOINTMENT_PLURAL => 'Записи',
-            DomainTermKeys::REQUEST => 'Обращение',
-            DomainTermKeys::REQUEST_PLURAL => 'Обращения',
+            DomainTermKeys::REQUEST => 'Заявка',
+            DomainTermKeys::REQUEST_PLURAL => 'Заявки',
             DomainTermKeys::CUSTOMER => 'Клиент',
             DomainTermKeys::CUSTOMER_PLURAL => 'Клиенты',
             DomainTermKeys::SERVICE => 'Услуга',
@@ -43,6 +43,8 @@ final class DomainTermEmergencyLabels
             DomainTermKeys::NAV_OPERATIONS => 'Операции',
             DomainTermKeys::NAV_CATALOG => 'Каталог',
             DomainTermKeys::NAV_CONTENT => 'Контент',
+            DomainTermKeys::NAV_MARKETING => 'Маркетинг',
+            DomainTermKeys::NAV_INFRASTRUCTURE => 'Инфраструктура',
             DomainTermKeys::NAV_SETTINGS => 'Настройки',
         ];
     }

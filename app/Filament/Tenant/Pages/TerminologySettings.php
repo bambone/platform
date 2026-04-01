@@ -29,11 +29,13 @@ class TerminologySettings extends Page implements HasTable
 
     protected static ?string $navigationLabel = 'Терминология';
 
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-language';
+
     protected static ?string $title = 'Терминология и названия';
 
     protected static ?string $slug = 'terminology';
 
-    protected static ?int $navigationSort = 22;
+    protected static ?int $navigationSort = 30;
 
     protected static string|UnitEnum|null $navigationGroup = 'Settings';
 

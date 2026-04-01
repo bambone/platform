@@ -22,6 +22,7 @@
                 <label for="start_date" class="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-white/60">С</label>
                 <input type="text"
                        id="start_date"
+                       data-fp-anchor="tenant-bar-start"
                        name="rental_start_date"
                        readonly
                        required
@@ -35,6 +36,7 @@
                 <label for="end_date" class="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-white/60">По</label>
                 <input type="text"
                        id="end_date"
+                       data-fp-anchor="tenant-bar-end"
                        name="rental_end_date"
                        readonly
                        required

@@ -1,4 +1,5 @@
-const CACHE_VERSION = 'moto-levins-v9';
+const CACHE_VERSION = 'moto-levins-v11';
+const NAVIGATION_NETWORK_TIMEOUT_MS = 15000;
 const OFFLINE_URL = 'offline';
 
 const CACHES = {
@@ -99,7 +100,7 @@ self.addEventListener('fetch', (event) => {
           caches.match(request).then((cached) => {
             resolve(cached || caches.match(OFFLINE_URL));
           });
-        }, 3000); // 3 seconds grace period
+        }, NAVIGATION_NETWORK_TIMEOUT_MS);
 
         fetch(request).then((response) => {
           clearTimeout(timeoutId);

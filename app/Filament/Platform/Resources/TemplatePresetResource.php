@@ -3,8 +3,8 @@
 namespace App\Filament\Platform\Resources;
 
 use App\Filament\Platform\Resources\Concerns\GrantsPlatformPanelAccess;
-use App\Filament\Support\FilamentInlineMarkdown;
 use App\Filament\Platform\Resources\TemplatePresetResource\Pages;
+use App\Filament\Support\FilamentInlineMarkdown;
 use App\Models\TemplatePreset;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;

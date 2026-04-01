@@ -1,6 +1,10 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
 @import "./crm-workspace-icons.css";
 @import "./crm-slideover-workspace.css";
+@import "./crm-operator-workspace.css";
 
 @source "../../app/Filament/Platform";
 @source "../../app/Filament/Shared";

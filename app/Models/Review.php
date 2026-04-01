@@ -3,8 +3,11 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use App\Support\Storage\TenantStorageDisks;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Support\Facades\Storage;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\MediaCollection;
@@ -42,7 +45,11 @@ class Review extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
-        $this->mediaCollections[] = MediaCollection::create('avatar')->singleFile();
+        $disk = (string) config('media-library.disk_name', 'public');
+        $this->mediaCollections[] = MediaCollection::create('avatar')
+            ->useDisk($disk)
+            ->storeConversionsOnDisk($disk)
+            ->singleFile();
     }
 
     public function getAvatarUrlAttribute(): ?string
@@ -60,7 +67,16 @@ class Review extends Model implements HasMedia
                 return asset('images/'.$path);
             }
 
-            return asset('storage/'.$path);
+            $disk = Storage::disk(TenantStorageDisks::publicDiskName());
+            if ($disk instanceof FilesystemAdapter) {
+                if (TenantStorageDisks::usesLocalFlyAdapter($disk)) {
+                    return $disk->exists($path) ? $disk->url($path) : null;
+                }
+
+                return $disk->url($path);
+            }
+
+            return null;
         }
 
         return null;

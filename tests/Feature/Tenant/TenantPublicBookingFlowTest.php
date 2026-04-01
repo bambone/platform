@@ -46,7 +46,7 @@ class TenantPublicBookingFlowTest extends TestCase
         $html = $this->getWithHost($this->tenancyHostForSlug('flowroot'), '/')->assertOk()->getContent();
 
         $this->assertStringContainsString('x-data="{}"', $html);
-        $this->assertStringContainsString("/api/tenant/booking/catalog-availability", $html);
+        $this->assertStringContainsString('/api/tenant/booking/catalog-availability', $html);
         $this->assertStringContainsString("Alpine.store('tenantBooking'", $html);
         $this->assertStringContainsString('tenant_rental_period_v1', $html);
     }
@@ -58,6 +58,7 @@ class TenantPublicBookingFlowTest extends TestCase
         $html = $this->getWithHost($this->tenancyHostForSlug('flowhome'), '/')->assertOk()->getContent();
 
         $this->assertStringContainsString('$store.tenantBooking.applyCatalogSearch()', $html);
+        $this->assertStringContainsString('applyCatalogSearch({ scrollToCatalog: false })', $html);
         $this->assertStringContainsString('TenantDatePickers?.initBar', $html);
         $this->assertStringContainsString('flatpickr@4.6.13', $html);
         $this->assertStringContainsString('id="start_date"', $html);

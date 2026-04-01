@@ -1,5 +1,11 @@
 @import "tailwindcss";
+
+/* Как у Filament: тёмные утилиты только при class="dark" на <html>, а не по prefers-color-scheme.
+   Иначе при явной светлой теме и тёмной ОС блоки с dark:* (напр. «Требует внимания») остаются чёрными. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @import "./crm-workspace-icons.css";
+@import "./crm-operator-workspace.css";
 
 @source "../../app/Filament/Tenant";
 @source "../../app/Product/CRM";
@@ -35,6 +41,13 @@
     border-right: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* Filament генерирует SVG в сайдбаре; без явного размера в тяжёлом layout иконки могут «пропадать» или быть огромными (светлая и тёмная тема) */
+.fi-sidebar .fi-sidebar-item-icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+}
+
 /* Topbar Styling */
 .dark .fi-topbar {
     background-color: rgba(18, 20, 28, 0.8) !important;
@@ -43,14 +56,171 @@
 }
 
 /* Cards & Elevated Containers */
-.dark .fi-ta-content, 
-.dark .fi-wi-stats-overview-stat, 
+.dark .fi-ta-content,
 .dark .fi-section,
 .dark .fi-modal-window {
     background-color: #161822 !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 20px 25px -5px rgba(0, 0, 0, 0.4) !important;
-    border-radius: 0.75rem; 
+    border-radius: 0.75rem;
+}
+
+/* Базовая плитка stat (без тяжёлой тени — премиум-дашборд ниже) */
+.dark .fi-wi-stats-overview-stat {
+    background-color: #161822 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22) !important;
+    border-radius: 0.75rem;
+}
+
+/* ==========================================================
+   Tenant dashboard: премиум-метрики (Операции / Здоровье каталога)
+   ========================================================== */
+
+.dark .fi-wi-stats-overview.fi-wi-widget {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+.dark .fi-wi-stats-overview .fi-section.fi-section-not-contained {
+    margin: 0 !important;
+    padding: 1.125rem 1.25rem 1.25rem !important;
+    background-color: #161822 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 0.75rem !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28) !important;
+}
+
+.dark .fi-wi-stats-overview .fi-section-header {
+    margin-bottom: 0.875rem !important;
+    padding-bottom: 0.75rem !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.dark .fi-wi-stats-overview .fi-section-header-heading {
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.02em !important;
+    color: #f4f4f5 !important;
+}
+
+.dark .fi-wi-stats-overview .fi-section-content {
+    gap: 0.75rem !important;
+}
+
+/* Внутренние плитки: глубже фона секции, спокойная глубина */
+.dark .fi-wi-stats-overview .fi-wi-stats-overview-stat {
+    background-color: #12141c !important;
+    border: 1px solid rgba(255, 255, 255, 0.09) !important;
+    border-radius: 0.65rem !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.32) !important;
+    transition:
+        border-color 0.15s ease,
+        background-color 0.15s ease,
+        box-shadow 0.15s ease !important;
+}
+
+.dark .fi-wi-stats-overview a.fi-wi-stats-overview-stat:hover {
+    background-color: #171a24 !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Иконка как якорь: тёплый «пьедестал», без крика */
+.dark .fi-wi-stats-overview .fi-wi-stats-overview-stat-label-ctn {
+    align-items: flex-start !important;
+    gap: 0.65rem !important;
+}
+
+.dark .fi-wi-stats-overview .fi-wi-stats-overview-stat-label-ctn > :first-child:not(.fi-wi-stats-overview-stat-label) {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0;
+    width: 2.375rem !important;
+    height: 2.375rem !important;
+    margin-top: 0.05rem;
+    border-radius: 0.5rem !important;
+    background: rgba(251, 191, 36, 0.07) !important;
+    border: 1px solid rgba(251, 191, 36, 0.14) !important;
+}
+
+.dark .fi-wi-stats-overview .fi-wi-stats-overview-stat-label-ctn > :first-child:not(.fi-wi-stats-overview-stat-label) svg {
+    width: 1.125rem !important;
+    height: 1.125rem !important;
+    color: #fbbf24 !important;
+    opacity: 0.92;
+}
+
+.dark .fi-wi-stats-overview .fi-wi-stats-overview-stat-label {
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    line-height: 1.35 !important;
+    color: #a1a1aa !important;
+}
+
+.dark .fi-wi-stats-overview .fi-wi-stats-overview-stat-value {
+    margin-top: 0.4rem !important;
+    font-size: 1.75rem !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.03em !important;
+    font-variant-numeric: tabular-nums;
+    color: #fafafa !important;
+}
+
+.dark .fi-wi-stats-overview .fi-wi-stats-overview-stat-description {
+    margin-top: 0.35rem !important;
+    font-size: 0.8125rem !important;
+    line-height: 1.4 !important;
+}
+
+/* Сдержанные акценты по состоянию (inset bar + лёгкий оттенок) */
+.dark .fi-wi-stats-overview .fi-tenant-dash-stat--ok.fi-wi-stats-overview-stat {
+    box-shadow:
+        inset 3px 0 0 0 rgba(34, 197, 94, 0.38),
+        0 1px 2px rgba(0, 0, 0, 0.28) !important;
+}
+
+.dark .fi-wi-stats-overview .fi-tenant-dash-stat--risk.fi-wi-stats-overview-stat {
+    box-shadow:
+        inset 3px 0 0 0 rgba(248, 113, 113, 0.45),
+        0 1px 2px rgba(0, 0, 0, 0.28) !important;
+}
+
+.dark .fi-wi-stats-overview .fi-tenant-dash-stat--warn.fi-wi-stats-overview-stat {
+    box-shadow:
+        inset 3px 0 0 0 rgba(251, 191, 36, 0.42),
+        0 1px 2px rgba(0, 0, 0, 0.28) !important;
+}
+
+.dark .fi-wi-stats-overview .fi-tenant-dash-stat--info.fi-wi-stats-overview-stat {
+    box-shadow:
+        inset 3px 0 0 0 rgba(96, 165, 250, 0.42),
+        0 1px 2px rgba(0, 0, 0, 0.28) !important;
+}
+
+.dark .fi-wi-stats-overview a.fi-tenant-dash-stat--ok:hover {
+    box-shadow:
+        inset 3px 0 0 0 rgba(34, 197, 94, 0.48),
+        0 2px 10px rgba(0, 0, 0, 0.38) !important;
+}
+
+.dark .fi-wi-stats-overview a.fi-tenant-dash-stat--risk:hover {
+    box-shadow:
+        inset 3px 0 0 0 rgba(248, 113, 113, 0.55),
+        0 2px 10px rgba(0, 0, 0, 0.38) !important;
+}
+
+.dark .fi-wi-stats-overview a.fi-tenant-dash-stat--warn:hover {
+    box-shadow:
+        inset 3px 0 0 0 rgba(251, 191, 36, 0.5),
+        0 2px 10px rgba(0, 0, 0, 0.38) !important;
+}
+
+.dark .fi-wi-stats-overview a.fi-tenant-dash-stat--info:hover {
+    box-shadow:
+        inset 3px 0 0 0 rgba(96, 165, 250, 0.52),
+        0 2px 10px rgba(0, 0, 0, 0.38) !important;
 }
 
 /* Drawer / Slide-Over Enhancements */
@@ -63,40 +233,47 @@
    High-Velocity CRM - Lead Styling
    ========================================================== */
 
-/* New Leads: Subtle background tint & left border */
+/* New / stale leads: полоса слева + лёгкая заливка (светлая и тёмная тема) */
+.fi-lead-new {
+    position: relative;
+    background-color: rgba(6, 182, 212, 0.08);
+}
+
+.fi-lead-new::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: #06b6d4;
+    border-top-right-radius: 2px;
+    border-bottom-right-radius: 2px;
+}
+
 .dark .fi-lead-new {
-    background-color: rgba(6, 182, 212, 0.04) !important; /* Extremely subtle cyan/blue tint */
-    position: relative;
+    background-color: rgba(6, 182, 212, 0.04) !important;
 }
 
-.dark .fi-lead-new::before {
+.fi-lead-stale {
+    position: relative;
+    background-color: rgba(245, 158, 11, 0.08);
+}
+
+.fi-lead-stale::before {
     content: '';
     position: absolute;
     left: 0;
     top: 0;
     bottom: 0;
     width: 3px;
-    background-color: #06b6d4; /* Cyan accent */
+    background-color: #f59e0b;
     border-top-right-radius: 2px;
     border-bottom-right-radius: 2px;
 }
 
-/* Stale Leads: Warning tint & left border */
 .dark .fi-lead-stale {
-    background-color: rgba(245, 158, 11, 0.04) !important; /* Subtle amber/warning tint */
-    position: relative;
-}
-
-.dark .fi-lead-stale::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background-color: #f59e0b; /* Amber accent */
-    border-top-right-radius: 2px;
-    border-bottom-right-radius: 2px;
+    background-color: rgba(245, 158, 11, 0.04) !important;
 }
 
 /* Mobile-First Sticky Actions in Drawer */
@@ -115,13 +292,43 @@
         left: 0;
         right: 0;
         padding: 1rem;
-        background-color: #161822;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
         display: flex;
         gap: 0.5rem;
         z-index: 50;
+        background-color: #ffffff;
+        border-top: 1px solid rgb(228 228 231);
+        box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.06);
+    }
+
+    .dark .fi-drawer-sticky-bottom {
+        background-color: #161822;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
         box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
     }
+}
+
+/* Dashboard: «Требует внимания» — стык с сеткой виджетов Filament (часто даёт светлый фон) */
+.dark .fi-attention-required-widget.fi-wi-widget,
+.dark .fi-wi-widget.fi-attention-required-widget {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Поверхность блока и карточек — дублируем палитру fi-section, если порядок Tailwind перебил утилиты */
+.dark .fi-attention-required-shell {
+    background-color: #161822 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .fi-attention-lead-card {
+    background-color: #12141c !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.32);
+}
+
+.dark .fi-attention-lead-card:hover {
+    background-color: #161922 !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
 }
 
 /* CRM workspace (shared Livewire slide-over) */

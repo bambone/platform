@@ -1,9 +1,12 @@
 <?php
 
 /**
- * Статические файлы лендинга Moto Levins (лежат в public/, без БД).
- * На проде копируйте каталог целиком: public/images/motolevins/
- * (картинки, иконки, аватары, байки, hero-видео — не общие для платформы).
+ * Лендинг тенанта: дефолты контента и имена файлов.
+ *
+ * Публичные картинки/видео темы отдавайте через {@see theme_platform_asset_url()} и
+ * {@see tenant_theme_public_url()}; префикс legacy — {@see config('themes.legacy_asset_url_prefix')}.
+ *
+ * @deprecated motolevins_public_prefix — оставлен для обратной совместимости, предпочтительно themes + helper.
  */
 return [
     'motolevins_public_prefix' => 'images/motolevins',

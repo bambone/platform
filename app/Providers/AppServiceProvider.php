@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Auth\AccessRoles;
 use App\Auth\TenantPivotPermissions;
+use App\Filesystem\WindowsSafeFilesystem;
 use App\Jobs\Mail\SendTenantMailableJob;
 use App\Models\Lead;
 use App\Models\Setting;
@@ -17,6 +18,7 @@ use App\Services\CurrentTenantManager;
 use App\Services\Mail\TenantMailer;
 use App\Services\Tenancy\TenantViewResolver;
 use App\Terminology\TenantTerminologyService;
+use App\Themes\ThemeRegistry;
 use Filament\Facades\Filament;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Blade;
@@ -39,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ProductMailSettingsResolver::class);
         $this->app->singleton(ProductMailOrchestrator::class);
         $this->app->singleton(TenantTerminologyService::class);
+        $this->app->singleton(ThemeRegistry::class);
     }
 
     /**
@@ -46,6 +49,20 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (DIRECTORY_SEPARATOR === '\\') {
+            $this->app->singleton('files', function () {
+                return new WindowsSafeFilesystem;
+            });
+        }
+
+        // Filament FileUpload: дольше ждём завершения временной загрузки Livewire (по умолчанию 5 мин).
+        config([
+            'livewire.temporary_file_upload.max_upload_time' => max(
+                (int) config('livewire.temporary_file_upload.max_upload_time', 5),
+                15
+            ),
+        ]);
+
         Lead::observe(LeadObserver::class);
 
         RateLimiter::for('tenant-mails', function (mixed $job) {

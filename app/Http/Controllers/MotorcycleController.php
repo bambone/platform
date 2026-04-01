@@ -12,7 +12,7 @@ class MotorcycleController extends Controller
     {
         $motorcycle = Motorcycle::where('slug', $slug)
             ->where('show_in_catalog', true)
-            ->with('category')
+            ->with(['category', 'media'])
             ->firstOrFail();
 
         $galleryUrls = [];
@@ -29,7 +29,7 @@ class MotorcycleController extends Controller
             ->where('show_in_catalog', true)
             ->where('status', 'available')
             ->where('id', '!=', $motorcycle->id)
-            ->with('category')
+            ->with(['category', 'media'])
             ->orderBy('sort_order');
 
         $related = (clone $relatedQuery)

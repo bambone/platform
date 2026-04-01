@@ -1,0 +1,335 @@
+/**
+ * CRM operator workspace: порядок «товар → сообщение → календарь → управление»;
+ * xl+: основная колонка слева, сайдбар ~34%; r2 (резюме+контакты) у верхних двух рядов.
+ */
+.crm-op-page {
+    min-width: 0;
+}
+
+.crm-op-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+}
+
+@media (min-width: 1280px) {
+    .crm-op-grid {
+        gap: 1.25rem 1.75rem;
+    }
+}
+
+/* Mobile: порядок смысловой цепочки */
+@media (max-width: 1023px) {
+    .crm-op-booking {
+        order: 2;
+    }
+
+    .crm-op-msg {
+        order: 3;
+    }
+
+    .crm-op-timeline {
+        order: 4;
+    }
+
+    .crm-op-mgmt {
+        order: 5;
+    }
+
+    .crm-op-sum {
+        order: 6;
+    }
+
+    .crm-op-contacts {
+        order: 7;
+    }
+
+    .crm-op-notes {
+        order: 8;
+    }
+
+    .crm-op-bw-insights {
+        order: 9;
+    }
+
+    .crm-op-activity {
+        order: 10;
+    }
+
+    .crm-op-attr {
+        order: 11;
+    }
+
+    .crm-op-tech {
+        order: 12;
+    }
+}
+
+/* lg */
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .crm-op-r2-right,
+    .crm-op-r3-right {
+        display: contents;
+    }
+
+    .crm-op-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(18rem, 26rem);
+        column-gap: 1.75rem;
+        row-gap: 1.25rem;
+        align-items: start;
+    }
+
+    .crm-op-booking {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .crm-op-sum {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .crm-op-msg {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    .crm-op-contacts {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .crm-op-timeline {
+        grid-column: 1;
+        grid-row: 3;
+    }
+
+    .crm-op-mgmt {
+        grid-column: 2;
+        grid-row: 3;
+    }
+
+    .crm-op-notes {
+        grid-column: 1;
+        grid-row: 4;
+    }
+
+    .crm-op-bw-insights {
+        grid-column: 2;
+        grid-row: 4;
+    }
+
+    .crm-op-activity {
+        grid-column: 1;
+        grid-row: 5;
+    }
+
+    .crm-op-attr {
+        grid-column: 2;
+        grid-row: 5;
+    }
+
+    .crm-op-tech {
+        grid-column: 2;
+        grid-row: 6;
+    }
+}
+
+/* xl+ */
+@media (min-width: 1280px) {
+    .crm-op-grid {
+        grid-template-columns: minmax(0, 1.75fr) minmax(20rem, 0.92fr);
+        column-gap: 1.75rem;
+        row-gap: 1.25rem;
+        align-items: start;
+    }
+
+    .crm-op-booking {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .crm-op-msg {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    .crm-op-r2-right {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        align-self: stretch;
+    }
+
+    .crm-op-timeline {
+        grid-column: 1;
+        grid-row: 3;
+    }
+
+    .crm-op-mgmt {
+        grid-column: 2;
+        grid-row: 3;
+    }
+
+    .crm-op-notes {
+        grid-column: 1;
+        grid-row: 4;
+    }
+
+    .crm-op-bw-insights {
+        grid-column: 2;
+        grid-row: 4;
+    }
+
+    .crm-op-activity {
+        grid-column: 1;
+        grid-row: 5;
+    }
+
+    .crm-op-r3-right {
+        grid-column: 2;
+        grid-row: 5;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        align-self: start;
+    }
+
+    .crm-op-r2-right .crm-op-sum,
+    .crm-op-r2-right .crm-op-contacts,
+    .crm-op-r3-right .crm-op-attr,
+    .crm-op-r3-right .crm-op-tech {
+        min-width: 0;
+    }
+}
+
+@media (min-width: 1280px) {
+    .crm-op-notes-card .crm-op-notes-composer-target {
+        padding: 1.25rem;
+    }
+
+    .crm-op-activity-card ul.crm-op-activity-timeline {
+        max-height: min(32rem, 70vh);
+    }
+
+    .crm-op-bw-booking-card--hero {
+        box-shadow:
+            0 1px 0 0 rgb(255 255 255 / 0.06) inset,
+            0 12px 40px -24px rgb(0 0 0 / 0.35);
+    }
+
+    .dark .crm-op-bw-booking-card--hero {
+        box-shadow:
+            0 1px 0 0 rgb(255 255 255 / 0.05) inset,
+            0 16px 48px -28px rgb(0 0 0 / 0.65);
+    }
+}
+
+/* Календарь: сетка дней + полоса сегментов */
+.crm-op-bw-cal-shell {
+    margin-top: 0.25rem;
+}
+
+.crm-op-bw-timeline-track {
+    position: relative;
+    overflow: hidden;
+}
+
+.crm-op-bw-timeline-track--gridded {
+    min-height: 4.5rem;
+}
+
+.crm-op-bw-day-grid {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    width: 1px;
+    margin-left: -0.5px;
+    background: rgb(63 63 70 / 0.35);
+    pointer-events: none;
+}
+
+.dark .crm-op-bw-day-grid {
+    background: rgb(161 161 170 / 0.2);
+}
+
+.crm-op-bw-seg {
+    position: absolute;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    z-index: 2;
+    min-width: 2px;
+    border-radius: 0.35rem;
+    opacity: 0.95;
+    box-sizing: border-box;
+}
+
+.crm-op-bw-seg--requested {
+    background: linear-gradient(180deg, rgb(59 130 246 / 0.55), rgb(37 99 235 / 0.8));
+    border: 1px solid rgb(37 99 235 / 0.5);
+}
+
+.crm-op-bw-seg--confirmed {
+    background: linear-gradient(180deg, rgb(34 197 94 / 0.5), rgb(22 163 74 / 0.72));
+    border: 1px solid rgb(22 163 74 / 0.45);
+}
+
+.crm-op-bw-seg--pending {
+    background: linear-gradient(180deg, rgb(245 158 11 / 0.55), rgb(217 119 6 / 0.78));
+    border: 1px solid rgb(217 119 6 / 0.5);
+}
+
+.crm-op-bw-seg--blocked {
+    background: linear-gradient(180deg, rgb(113 113 122 / 0.55), rgb(63 63 70 / 0.85));
+    border: 1px solid rgb(63 63 70 / 0.55);
+}
+
+.crm-op-bw-marker {
+    position: absolute;
+    top: 0.2rem;
+    bottom: 0.2rem;
+    z-index: 4;
+    width: 2px;
+    margin-left: -1px;
+    border-radius: 1px;
+    background: rgb(244 63 94 / 0.95);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.2);
+}
+
+.crm-op-bw-legend-swatch {
+    display: inline-block;
+    height: 0.65rem;
+    width: 0.65rem;
+    border-radius: 0.15rem;
+    flex-shrink: 0;
+}
+
+.crm-op-bw-legend-swatch--requested {
+    background: rgb(59 130 246 / 0.75);
+}
+
+.crm-op-bw-legend-swatch--confirmed {
+    background: rgb(34 197 94 / 0.7);
+}
+
+.crm-op-bw-legend-swatch--pending {
+    background: rgb(245 158 11 / 0.75);
+}
+
+.crm-op-bw-legend-swatch--blocked {
+    background: rgb(82 82 91 / 0.85);
+}
+
+.crm-op-bw-legend-swatch--today {
+    width: 2px;
+    border-radius: 1px;
+    background: rgb(244 63 94 / 0.95);
+}
+
+/* Только класс .dark (как в Filament), без prefers-color-scheme — иначе при светлой теме админки и тёмной ОС фон остаётся «ночным» */
+.dark .crm-op-bw-timeline-track--gridded {
+    background: rgb(24 24 27 / 0.65);
+}

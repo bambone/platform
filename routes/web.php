@@ -14,6 +14,8 @@ use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\TenantPublicBookingAvailabilityController;
 use App\Http\Controllers\TenantPublicPageController;
+use App\Http\Controllers\TenantPublicStorageFileController;
+use App\Http\Controllers\ThemePlatformAssetController;
 use App\Http\Middleware\EnsureTenantContext;
 use App\Models\TenantDomain;
 use Illuminate\Support\Facades\Route;
@@ -68,6 +70,13 @@ if ($marketingHosts !== []) {
 }
 
 Route::middleware([EnsureTenantContext::class])->group(function () {
+    Route::get('/theme/build/{theme}/{path}', [ThemePlatformAssetController::class, 'show'])
+        ->where('path', '.*')
+        ->name('theme.platform.asset');
+    Route::get('/storage/tenants/{tenantId}/public/{path}', [TenantPublicStorageFileController::class, 'show'])
+        ->where('tenantId', '[0-9]+')
+        ->where('path', '.*')
+        ->name('tenant.public.storage');
     Route::get('/robots.txt', RobotsController::class)->name('robots');
     Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
     Route::get('/', [HomeController::class, 'index'])->name('home');

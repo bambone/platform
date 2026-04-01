@@ -3,6 +3,7 @@
 namespace App\Services\Seo;
 
 use App\Models\TenantSeoFile;
+use App\Support\Storage\TenantStorageDisks;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -21,7 +22,8 @@ final class TenantSeoSnapshotReader
             return null;
         }
 
-        $diskName = $row->storage_disk !== '' ? $row->storage_disk : config('seo.disk', 'local');
+        $recordDisk = (string) ($row->storage_disk ?? '');
+        $diskName = $recordDisk !== '' ? $recordDisk : TenantStorageDisks::privateDiskName();
         $disk = Storage::disk($diskName);
 
         if (! $disk->exists($row->storage_path)) {

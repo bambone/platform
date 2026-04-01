@@ -2,17 +2,22 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Tenant\Pages\Settings as TenantSettingsPage;
 use App\Filament\Tenant\Pages\TenantDashboard;
 use App\Filament\Tenant\Pages\TenantLogin;
 use App\Filament\Tenant\Widgets\StatsOverviewWidget;
-use App\Filament\Tenant\Widgets\TenantDashboardIntroWidget;
+use App\Http\Controllers\Filament\TenantSpatieMediaStreamController;
 use App\Http\Middleware\EnsureTenantContext;
 use App\Http\Middleware\EnsureTenantMembership;
 use App\Http\Middleware\FilamentTenantPanelAuthenticate;
 use App\Http\Middleware\ResolveTenantFromDomain;
+use App\Http\Middleware\SetTenantFilamentLocale;
 use App\Models\TenantSetting;
 use App\Terminology\DomainTermKeys;
 use App\Terminology\TenantTerminologyService;
+use Closure;
+use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
@@ -20,13 +25,13 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\View\PanelsRenderHook;
-use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
@@ -37,7 +42,7 @@ class AdminPanelProvider extends PanelProvider
         $panel
             ->renderHook(PanelsRenderHook::BODY_START, fn (): string => View::make('components.filament-access-denied-banner')->render())
             ->renderHook(
-                'panels::head.done',
+                PanelsRenderHook::HEAD_END,
                 fn (): string => Blade::render("@vite('resources/css/tenant-admin.css')"),
             );
 
@@ -45,6 +50,20 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+            ->profile()
+            ->userMenuItems([
+                Action::make('profile')
+                    ->label('Профиль')
+                    ->icon('heroicon-o-user-circle')
+                    ->url(fn (): string => Filament::getProfileUrl() ?? TenantDashboard::getUrl())
+                    ->sort(-1),
+                Action::make('tenant_site_settings')
+                    ->label('Настройки сайта')
+                    ->icon('heroicon-o-cog-6-tooth')
+                    ->url(fn (): string => TenantSettingsPage::getUrl())
+                    ->visible(fn (): bool => TenantSettingsPage::canAccess())
+                    ->sort(50),
+            ])
             ->brandName(function (): string {
                 $tenant = currentTenant();
                 if ($tenant === null) {
@@ -82,46 +101,23 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Amber,
             ])
             ->navigationGroups([
-                NavigationGroup::make('Dashboard'),
-                NavigationGroup::make('Operations')
-                    ->label(function (): string {
-                        $t = currentTenant();
-                        if ($t === null) {
-                            return 'Операции';
-                        }
-
-                        return app(TenantTerminologyService::class)->label($t, DomainTermKeys::NAV_OPERATIONS);
-                    })
+                'Operations' => NavigationGroup::make()
+                    ->label(self::tenantNavigationGroupLabel(DomainTermKeys::NAV_OPERATIONS, 'Операции'))
                     ->icon('heroicon-o-presentation-chart-line'),
-                NavigationGroup::make('Catalog')
-                    ->label(function (): string {
-                        $t = currentTenant();
-                        if ($t === null) {
-                            return 'Каталог';
-                        }
-
-                        return app(TenantTerminologyService::class)->label($t, DomainTermKeys::NAV_CATALOG);
-                    })
+                'Catalog' => NavigationGroup::make()
+                    ->label(self::tenantNavigationGroupLabel(DomainTermKeys::NAV_CATALOG, 'Каталог'))
                     ->icon('heroicon-o-shopping-bag'),
-                NavigationGroup::make('Content')
-                    ->label(function (): string {
-                        $t = currentTenant();
-                        if ($t === null) {
-                            return 'Контент';
-                        }
-
-                        return app(TenantTerminologyService::class)->label($t, DomainTermKeys::NAV_CONTENT);
-                    })
+                'Content' => NavigationGroup::make()
+                    ->label(self::tenantNavigationGroupLabel(DomainTermKeys::NAV_CONTENT, 'Контент'))
                     ->icon('heroicon-o-document-text'),
-                NavigationGroup::make('Settings')
-                    ->label(function (): string {
-                        $t = currentTenant();
-                        if ($t === null) {
-                            return 'Настройки';
-                        }
-
-                        return app(TenantTerminologyService::class)->label($t, DomainTermKeys::NAV_SETTINGS);
-                    })
+                'Marketing' => NavigationGroup::make()
+                    ->label(self::tenantNavigationGroupLabel(DomainTermKeys::NAV_MARKETING, 'Маркетинг'))
+                    ->icon('heroicon-o-megaphone'),
+                'Infrastructure' => NavigationGroup::make()
+                    ->label(self::tenantNavigationGroupLabel(DomainTermKeys::NAV_INFRASTRUCTURE, 'Инфраструктура'))
+                    ->icon('heroicon-o-server-stack'),
+                'Settings' => NavigationGroup::make()
+                    ->label(self::tenantNavigationGroupLabel(DomainTermKeys::NAV_SETTINGS, 'Настройки'))
                     ->icon('heroicon-o-cog-8-tooth'),
             ])
             ->discoverResources(in: app_path('Filament/Tenant/Resources'), for: 'App\\Filament\\Tenant\\Resources')
@@ -131,15 +127,14 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Tenant/Widgets'), for: 'App\\Filament\\Tenant\\Widgets')
             ->widgets([
-                TenantDashboardIntroWidget::class,
                 StatsOverviewWidget::class,
-                AccountWidget::class,
             ])
             ->middleware([
                 ResolveTenantFromDomain::class,
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
+                SetTenantFilamentLocale::class,
                 ShareErrorsFromSession::class,
                 AuthenticateSession::class,
                 SubstituteBindings::class,
@@ -150,6 +145,25 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 FilamentTenantPanelAuthenticate::class,
-            ]);
+            ])
+            ->authenticatedRoutes(function (): void {
+                Route::get('/spatie-media/{media}', [TenantSpatieMediaStreamController::class, 'show'])
+                    ->name('spatie-media.show');
+            });
+    }
+
+    /**
+     * @return Closure(): string
+     */
+    private static function tenantNavigationGroupLabel(string $termKey, string $fallback): Closure
+    {
+        return function () use ($termKey, $fallback): string {
+            $tenant = currentTenant();
+            if ($tenant === null) {
+                return $fallback;
+            }
+
+            return app(TenantTerminologyService::class)->label($tenant, $termKey);
+        };
     }
 }

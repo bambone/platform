@@ -6,6 +6,7 @@ use App\Filament\Tenant\Concerns\ResolvesDomainTermLabels;
 use App\Filament\Tenant\Resources\LeadResource\Pages;
 use App\Models\Lead;
 use App\Models\LeadActivityLog;
+use App\Support\FilamentMotorcycleThumbnail;
 use App\Terminology\DomainTermKeys;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -13,14 +14,16 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\View;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
@@ -32,23 +35,30 @@ class LeadResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Operations';
 
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 20;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-list';
 
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function getNavigationLabel(): string
     {
-        return static::domainTermLabel(DomainTermKeys::LEAD_PLURAL, 'Заявки');
+        return static::domainTermLabel(DomainTermKeys::LEAD_PLURAL, 'Обращения');
     }
 
     public static function getModelLabel(): string
     {
-        return static::domainTermLabel(DomainTermKeys::LEAD, 'Заявка');
+        return static::domainTermLabel(DomainTermKeys::LEAD, 'Обращение');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return static::domainTermLabel(DomainTermKeys::LEAD_PLURAL, 'Заявки');
+        return static::domainTermLabel(DomainTermKeys::LEAD_PLURAL, 'Обращения');
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['motorcycle.media']);
     }
 
     public static function form(Schema $schema): Schema
@@ -56,7 +66,7 @@ class LeadResource extends Resource
         return $schema
             ->components([
                 Section::make('CRM (входящая заявка)')
-                    ->description('Полный операторский timeline, активность и учёт уведомлений — в разделе «CRM-заявки» (колонка CRM в списке ведёт в карточку). Здесь Lead — downstream по аренде. LeadStatusHistory в БД — проекция для совместимости; источник истины по inbound — CRM-активность (ADR-007).')
+                    ->description('Полный операторский timeline, активность и учёт уведомлений — в разделе «Заявки» (колонка CRM в списке ведёт в карточку). Здесь Lead — downstream по аренде. LeadStatusHistory в БД — проекция для совместимости; источник истины по inbound — CRM-активность (ADR-007).')
                     ->schema([
                         TextInput::make('crm_request_id')
                             ->label('ID CRM-заявки')
@@ -154,21 +164,28 @@ class LeadResource extends Resource
                 default => $record->created_at->diffInHours(now()) > 24 && in_array($record->status, ['new', 'in_progress'], true) ? 'fi-lead-stale' : null,
             })
             ->columns([
+                ImageColumn::make('motorcycle_thumb')
+                    ->label('')
+                    ->getStateUsing(fn (Lead $record): string => FilamentMotorcycleThumbnail::coverUrlOrPlaceholder($record->motorcycle))
+                    ->defaultImageUrl(FilamentMotorcycleThumbnail::placeholderDataUrl())
+                    ->checkFileExistence(false)
+                    ->imageSize(48)
+                    ->square()
+                    ->extraImgAttributes(['class' => 'rounded-lg object-cover'])
+                    ->extraCellAttributes(['class' => 'w-px pe-0']),
                 TextColumn::make('created_at')
                     ->label('Получена')
                     ->dateTime('d.m.Y H:i')
                     ->sortable(),
-                TextColumn::make('name')
-                    ->label('Имя')
-                    ->searchable()
-                    ->sortable(),
+                TextColumn::make('motorcycle.name')
+                    ->label('Модель')
+                    ->sortable()
+                    ->placeholder('—')
+                    ->description(fn (Lead $record): string => $record->name)
+                    ->wrap(),
                 TextColumn::make('phone')
                     ->label('Телефон')
                     ->searchable(),
-                TextColumn::make('motorcycle.name')
-                    ->label('Каталог')
-                    ->sortable()
-                    ->placeholder('—'),
                 TextColumn::make('rental_date_from')
                     ->label('С')
                     ->date('d.m.Y')
@@ -227,7 +244,7 @@ class LeadResource extends Resource
                             ->success()
                             ->duration(8000)
                             ->actions([
-                                \Filament\Notifications\Actions\Action::make('undo')
+                                Action::make('undo')
                                     ->label('Отменить')
                                     ->button()
                                     ->color('danger')

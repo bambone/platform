@@ -1,47 +1,55 @@
 @props(['section' => null])
 @php
     $section = is_array($section) ? $section : [];
-    $imgBase = config('tenant_landing.motolevins_public_prefix', 'images/motolevins');
+    $legacyPrefix = config('themes.legacy_asset_url_prefix', 'images/motolevins');
     $videoFile = config('tenant_landing.motolevins_hero_video', 'Moto_levins_1.mp4');
-    $defaultPoster = $imgBase.'/marketing/hero-bg.png';
-    $defaultVideo = $imgBase.'/videos/'.$videoFile;
+    $themePosterUrl = tenant_theme_public_url('site/marketing/hero-bg.png');
+    $themeVideoUrl = tenant_theme_public_url('site/videos/'.$videoFile);
+    $platformPosterUrl = theme_platform_asset_url('marketing/hero-bg.png');
+    $platformVideoUrl = theme_platform_asset_url('videos/'.$videoFile);
+    $defaultPosterAbs = $themePosterUrl !== '' ? $themePosterUrl : $platformPosterUrl;
+    $defaultVideoAbs = $themeVideoUrl !== '' ? $themeVideoUrl : $platformVideoUrl;
 
     /**
      * Старые записи в page_sections указывали poster/video от корня public (images/hero-bg.png, videos/…),
-     * из‑за чего запросы шли на /images/hero-bg.png и /videos/… — 404. Перенаправляем в motolevins.
+     * из‑за чего запросы шли на /images/hero-bg.png и /videos/… — 404. Перенаправляем в каталог legacy-темы.
      */
-    $normalizeTenantMediaPath = function (?string $path, string $fallbackRelative) use ($imgBase): string {
+    $normalizeTenantMediaPath = function (?string $path, string $fallbackAbs) use ($legacyPrefix): string {
         $path = $path === null ? '' : trim($path);
         if ($path === '') {
-            return $fallbackRelative;
+            return $fallbackAbs;
         }
         if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
             return $path;
         }
         $path = ltrim(str_replace('\\', '/', $path), '/');
-        if (str_contains($path, 'motolevins')) {
+        if (str_contains($path, 'motolevins') || str_contains($path, 'themes/')) {
             return $path;
         }
         if (preg_match('#^videos/[^/]+\.(mp4|webm)$#i', $path)) {
-            return $imgBase.'/videos/'.basename($path);
+            return $legacyPrefix.'/videos/'.basename($path);
         }
         if (preg_match('#^[^/]+\.(mp4|webm)$#i', $path)) {
-            return $imgBase.'/videos/'.$path;
+            return $legacyPrefix.'/videos/'.$path;
         }
         if (preg_match('#^images/hero-bg\.(png|jpe?g)$#i', $path) || preg_match('#^hero-bg\.(png|jpe?g)$#i', $path)) {
-            return $imgBase.'/marketing/hero-bg.png';
+            return $legacyPrefix.'/marketing/hero-bg.png';
         }
 
         return $path;
     };
 
-    $posterRaw = $section['video_poster'] ?? $defaultPoster;
-    $videoRaw = $section['video_src'] ?? $defaultVideo;
-    $posterRel = $normalizeTenantMediaPath($posterRaw, $defaultPoster);
-    $videoRel = $normalizeTenantMediaPath($videoRaw, $defaultVideo);
+    $posterRaw = $section['video_poster'] ?? $defaultPosterAbs;
+    $videoRaw = $section['video_src'] ?? $defaultVideoAbs;
+    $posterRel = $normalizeTenantMediaPath($posterRaw, $defaultPosterAbs);
+    $videoRel = $normalizeTenantMediaPath($videoRaw, $defaultVideoAbs);
 
-    $videoPoster = str_starts_with($posterRel, 'http') ? $posterRel : asset($posterRel);
-    $videoSrc = str_starts_with($videoRel, 'http') ? $videoRel : asset($videoRel);
+    $videoPoster = (str_starts_with($posterRel, 'http://') || str_starts_with($posterRel, 'https://') || str_starts_with($posterRel, '/'))
+        ? $posterRel
+        : asset($posterRel);
+    $videoSrc = (str_starts_with($videoRel, 'http://') || str_starts_with($videoRel, 'https://') || str_starts_with($videoRel, '/'))
+        ? $videoRel
+        : asset($videoRel);
 
     $heading = $section['heading'] ?? 'Аренда мотоциклов на Чёрном море';
     $subheading = $section['subheading'] ?? 'от 4 000 ₽/сутки';
@@ -93,7 +101,8 @@
     </div>
 
     <div x-show="!videoPlaying" class="absolute inset-0 z-0">
-        <img src="{{ asset($imgBase.'/marketing/hero-bg.png') }}"
+        {{-- Тот же URL, что poster у <video> и preload на главной: иначе фон расходится с секцией БД и ломается asset()/облако. --}}
+        <img src="{{ $videoPoster }}"
              alt=""
              role="presentation"
              width="1920"

@@ -3,7 +3,6 @@
 namespace App\Filament\Tenant\Resources;
 
 use App\Filament\Shared\CRM\CrmSharedFilters;
-use App\Filament\Shared\CRM\CrmSharedInfolist;
 use App\Filament\Shared\CRM\CrmSharedTable;
 use App\Filament\Tenant\Concerns\ResolvesDomainTermLabels;
 use App\Filament\Tenant\Resources\CrmRequestResource\Pages;
@@ -29,21 +28,23 @@ class CrmRequestResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Operations';
 
-    protected static ?int $navigationSort = 11;
+    protected static ?int $navigationSort = 10;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-inbox-arrow-down';
 
     public static function getNavigationLabel(): string
     {
-        return static::domainTermLabel(DomainTermKeys::REQUEST_PLURAL, 'CRM-заявки');
+        return static::domainTermLabel(DomainTermKeys::REQUEST_PLURAL, 'Заявки');
     }
 
     public static function getModelLabel(): string
     {
-        return static::domainTermLabel(DomainTermKeys::REQUEST, 'CRM-заявка');
+        return static::domainTermLabel(DomainTermKeys::REQUEST, 'Заявка');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return static::domainTermLabel(DomainTermKeys::REQUEST_PLURAL, 'CRM-заявки');
+        return static::domainTermLabel(DomainTermKeys::REQUEST_PLURAL, 'Заявки');
     }
 
     protected static ?string $recordTitleAttribute = 'name';
@@ -59,7 +60,7 @@ class CrmRequestResource extends Resource
         return $query
             ->where('tenant_id', $tenant->id)
             ->withCount('notes')
-            ->with('assignedUser');
+            ->with(['assignedUser', 'leads.motorcycle.media']);
     }
 
     public static function form(Schema $schema): Schema
@@ -69,7 +70,9 @@ class CrmRequestResource extends Resource
 
     public static function infolist(Schema $schema): Schema
     {
-        return CrmSharedInfolist::schema($schema);
+        // Карточка в кабинете — только Livewire workspace (ViewCrmRequest::content).
+        // Пустой infolist: иначе ViewRecord::hasInfolist() true и Filament ждёт infolist-контур параллельно кастомному content.
+        return $schema->components([]);
     }
 
     public static function table(Table $table): Table

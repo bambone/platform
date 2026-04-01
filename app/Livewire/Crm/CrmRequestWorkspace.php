@@ -4,6 +4,7 @@ namespace App\Livewire\Crm;
 
 use App\Models\CrmRequest;
 use App\Models\User;
+use App\Product\CRM\BookingWorkspace\CrmRequestBookingWorkspaceAssembler;
 use App\Product\CRM\CrmRequestOperatorService;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
@@ -73,6 +74,9 @@ class CrmRequestWorkspace extends Component
     {
         $crm = CrmRequest::query()
             ->with([
+                'tenant',
+                'leads' => fn ($q) => $q->orderByDesc('id'),
+                'leads.motorcycle.category',
                 'notes' => fn ($q) => $q->orderByDesc('is_pinned')->orderBy('created_at'),
                 'notes.user',
                 'activities' => fn ($q) => $q->orderByDesc('created_at'),
@@ -268,8 +272,11 @@ class CrmRequestWorkspace extends Component
 
     public function render(): View
     {
+        $crm = $this->loadCrmWorkspaceRecord();
+
         return view('livewire.crm.crm-request-workspace', [
-            'crm' => $this->loadCrmWorkspaceRecord(),
+            'crm' => $crm,
+            'bookingWorkspace' => app(CrmRequestBookingWorkspaceAssembler::class)->assemble($crm),
         ]);
     }
 }

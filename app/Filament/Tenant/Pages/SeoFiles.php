@@ -13,6 +13,7 @@ use App\Services\Seo\TenantCanonicalPublicBaseUrl;
 use App\Services\Seo\TenantSeoFilePublisher;
 use App\Services\Seo\TenantSeoPublicContentService;
 use App\Services\Seo\TenantSeoSnapshotReader;
+use App\Support\Storage\TenantStorage;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Textarea;
@@ -33,13 +34,15 @@ class SeoFiles extends Page
 {
     protected static ?string $navigationLabel = 'SEO-файлы';
 
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-magnifying-glass';
+
     protected static ?string $title = 'robots.txt и sitemap.xml';
 
     protected static ?string $slug = 'seo-files';
 
-    protected static ?int $navigationSort = 24;
+    protected static ?int $navigationSort = 10;
 
-    protected static string|UnitEnum|null $navigationGroup = null;
+    protected static string|UnitEnum|null $navigationGroup = 'Marketing';
 
     protected string $view = 'filament.pages.seo-files';
 
@@ -349,7 +352,7 @@ class SeoFiles extends Page
 
             return null;
         }
-        $prefix = 'tenants/'.$tenant->id.'/';
+        $prefix = TenantStorage::for($tenant)->root().'/';
         if (! str_starts_with($relativePath, $prefix)) {
             Notification::make()->title('Некорректный путь')->danger()->send();
 

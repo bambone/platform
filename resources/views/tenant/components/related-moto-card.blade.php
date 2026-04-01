@@ -1,12 +1,6 @@
 @props(['bike'])
 @php
-    $imgBase = config('tenant_landing.motolevins_public_prefix', 'images/motolevins');
     $imageUrl = $bike->cover_url ?? null;
-    if (!$imageUrl && ($img = $bike->cover_image ?? $bike->image ?? null)) {
-        $imageUrl = str_starts_with($img, 'motorcycles/')
-            ? asset('storage/' . $img)
-            : (str_starts_with($img, 'motolevins/') ? asset('images/' . $img) : asset($imgBase . '/' . ltrim($img, '/')));
-    }
     $detailUrl = route('motorcycle.show', $bike->slug);
     $card = $bike->catalogCardForView();
     $oneLine = trim((string) ($bike->short_description ?? ''));

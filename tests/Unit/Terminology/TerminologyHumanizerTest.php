@@ -10,7 +10,7 @@ class TerminologyHumanizerTest extends TestCase
 {
     public function test_known_keys_use_russian_emergency_map(): void
     {
-        $this->assertSame('Заявки', TerminologyHumanizer::humanize(DomainTermKeys::LEAD_PLURAL));
+        $this->assertSame('Обращения', TerminologyHumanizer::humanize(DomainTermKeys::LEAD_PLURAL));
         $this->assertSame('Единицы парка', TerminologyHumanizer::humanize(DomainTermKeys::FLEET_UNIT_PLURAL));
         $this->assertSame('Настройки', TerminologyHumanizer::humanize(DomainTermKeys::NAV_SETTINGS));
     }

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Bike;
 use App\Models\Motorcycle;
+use App\Support\MotorcycleLegacyCoverImporter;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -38,7 +39,6 @@ class MigrationBikesToMotorcyclesSeeder extends Seeder
                     'price_2_3_days' => null,
                     'price_week' => null,
                     'status' => $bike->is_active ? 'available' : 'hidden',
-                    'cover_image' => $image,
                     'engine_cc' => $bike->engine,
                     'power' => null,
                     'transmission' => null,
@@ -52,6 +52,11 @@ class MigrationBikesToMotorcyclesSeeder extends Seeder
                     'is_recommended' => false,
                 ]
             );
+
+            $motorcycle->refresh();
+            if (is_string($image) && $image !== '') {
+                MotorcycleLegacyCoverImporter::importToCoverCollectionIfMissing($motorcycle, $image);
+            }
 
             if ($bike->trashed()) {
                 $motorcycle->delete();

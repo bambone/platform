@@ -6,17 +6,17 @@
 
         @forelse($logs as $log)
             <div class="relative">
-                <div class="absolute -left-[1.35rem] mt-1 bg-white dark:bg-gray-800 p-0.5 rounded-full">
+                <div class="absolute -left-[1.35rem] mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white dark:bg-gray-800">
                     @if($log->type === 'status_change')
-                        <x-heroicon-o-arrow-path class="w-4 h-4 text-primary-500" />
+                        <x-crm.svg-icon name="heroicon-o-arrow-path" size="md" class="text-primary-500" />
                     @elseif($log->type === 'call_made')
-                        <x-heroicon-o-phone class="w-4 h-4 text-gray-500" />
+                        <x-crm.svg-icon name="heroicon-o-phone" size="md" class="text-gray-500 dark:text-gray-400" />
                     @elseif($log->type === 'whatsapp_sent')
-                        <x-heroicon-o-chat-bubble-left class="w-4 h-4 text-green-500" />
+                        <x-crm.svg-icon name="heroicon-o-chat-bubble-left" size="md" class="text-green-600 dark:text-green-400" />
                     @elseif($log->type === 'reverted')
-                        <x-heroicon-o-arrow-uturn-left class="w-4 h-4 text-danger-500" />
+                        <x-crm.svg-icon name="heroicon-o-arrow-uturn-left" size="md" class="text-danger-500" />
                     @else
-                        <x-heroicon-o-chat-bubble-bottom-center-text class="w-4 h-4 text-gray-500" />
+                        <x-crm.svg-icon name="heroicon-o-chat-bubble-bottom-center-text" size="md" class="text-gray-500 dark:text-gray-400" />
                     @endif
                 </div>
                 <div>

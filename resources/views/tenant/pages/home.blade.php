@@ -1,7 +1,8 @@
 @php
     $bikeIdsJson = $bikes->pluck('id')->toJson();
     $sections = $sections ?? [];
-    $heroLcpImage = asset(config('tenant_landing.motolevins_public_prefix', 'images/motolevins').'/marketing/hero-bg.png');
+    $themeHeroLcp = tenant_theme_public_url('site/marketing/hero-bg.png');
+    $heroLcpImage = $themeHeroLcp !== '' ? $themeHeroLcp : theme_platform_asset_url('marketing/hero-bg.png');
 @endphp
 @extends('tenant.layouts.app')
 
@@ -11,7 +12,7 @@
 
 @section('content')
     <!-- Alpine App State -->
-    <div x-data="globalBookingState()" data-bike-ids="{{ $bikeIdsJson }}" class="w-full min-w-0" x-init="$nextTick(() => { const s = Alpine.store('tenantBooking'); if (s.filters.start_date && s.filters.end_date) { s.applyCatalogSearch(); } })">
+    <div x-data="globalBookingState()" data-bike-ids="{{ $bikeIdsJson }}" class="w-full min-w-0" x-init="$nextTick(() => { const s = Alpine.store('tenantBooking'); if (s.filters.start_date && s.filters.end_date) { s.applyCatalogSearch({ scrollToCatalog: false }); } })">
         
         <!-- Extracted Hero Component -->
         <x-hero :section="$sections['hero'] ?? null" />

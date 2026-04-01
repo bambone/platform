@@ -7,18 +7,13 @@ use App\Filament\Platform\Resources\CrmRequestResource\Pages;
 use App\Filament\Shared\CRM\CrmSharedFilters;
 use App\Filament\Shared\CRM\CrmSharedInfolist;
 use App\Filament\Shared\CRM\CrmSharedTable;
-use App\Filament\Shared\CRM\CrmSharedWorkspaceSchema;
 use App\Models\CrmRequest;
-use App\Models\User;
-use App\Product\CRM\CrmRequestOperatorService;
-use Filament\Actions\EditAction;
+use Filament\Actions\Action;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Enums\Alignment;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class CrmRequestResource extends Resource
@@ -46,7 +41,7 @@ class CrmRequestResource extends Resource
         return parent::getEloquentQuery()
             ->whereNull('tenant_id')
             ->withCount('notes')
-            ->with('assignedUser');
+            ->with(['assignedUser', 'leads.motorcycle.media']);
     }
 
     public static function form(Schema $schema): Schema
@@ -69,36 +64,19 @@ class CrmRequestResource extends Resource
             ->recordUrl(null)
             ->recordClasses(CrmSharedTable::recordClasses())
             ->actions([
-                EditAction::make('open')
+                Action::make('open')
                     ->label('Открыть')
                     ->slideOver()
                     ->modalWidth('7xl')
-                    ->modalHeading('')
+                    ->modalHeading(fn (CrmRequest $record): string => trim((string) $record->name) !== ''
+                        ? (string) $record->name
+                        : 'Обращение №'.$record->getKey())
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel(__('filament-actions::view.single.modal.actions.close.label'))
                     ->extraModalWindowAttributes(['class' => 'crm-ws-modal'])
-                    ->stickyModalFooter()
-                    ->modalFooterActionsAlignment(Alignment::End)
-                    ->form(CrmSharedWorkspaceSchema::schema())
-                    ->mutateRecordDataUsing(function (array $data, CrmRequest $record): array {
-                        $user = Auth::user();
-                        if ($user instanceof User) {
-                            app(CrmRequestOperatorService::class)->markFirstViewed($user, $record);
-                        }
-
-                        return $data;
-                    })
-                    ->using(function (array $data, CrmRequest $record): void {
-                        $user = Auth::user();
-                        if (! $user instanceof User) {
-                            return;
-                        }
-
-                        $service = app(CrmRequestOperatorService::class);
-
-                        $service->changeStatus($user, $record, $data['status'] ?? CrmRequest::STATUS_NEW);
-                        $service->updatePriority($user, $record, $data['priority'] ?? CrmRequest::PRIORITY_NORMAL);
-                        $service->updateFollowUp($user, $record, ! empty($data['next_follow_up_at']) ? new \DateTime($data['next_follow_up_at']) : null);
-                        $service->updateSummary($user, $record, $data['internal_summary'] ?? null);
-                    }),
+                    ->modalContent(fn (CrmRequest $record) => view('filament.shared.crm.crm-workspace-modal', [
+                        'crmRequestId' => (int) $record->getKey(),
+                    ])),
             ])
             ->paginated([25, 50, 100]);
     }

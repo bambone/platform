@@ -7,7 +7,7 @@ use App\Models\Review;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
+use App\Filament\Forms\Components\TenantSpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -18,12 +18,19 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class ReviewResource extends Resource
 {
     protected static ?string $model = Review::class;
 
     protected static ?string $navigationLabel = 'Отзывы';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Content';
+
+    protected static ?int $navigationSort = 20;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-star';
 
     protected static ?string $modelLabel = 'Отзыв';
 
@@ -51,8 +58,11 @@ class ReviewResource extends Resource
 
                 Section::make('Медиа и статус')
                     ->schema([
-                        SpatieMediaLibraryFileUpload::make('avatar')
+                        TenantSpatieMediaLibraryFileUpload::make('avatar')
                             ->collection('avatar')
+                            ->disk(config('media-library.disk_name'))
+                            ->visibility('public')
+                            ->conversionsDisk(config('media-library.disk_name'))
                             ->image()
                             ->label('Аватар'),
                         TextInput::make('sort_order')->numeric()->default(0),

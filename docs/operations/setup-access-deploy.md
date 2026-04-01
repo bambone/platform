@@ -106,7 +106,7 @@ php artisan make:filament-user
 | `http://platform.rentbase.local/login` | Filament Platform Console (`PLATFORM_HOST`) |
 | `http://motolevins.rentbase.local/admin` | Кабинет клиента (Filament tenant) |
 
-Пример `.env`: `APP_URL=http://rentbase.local`, `PLATFORM_HOST=platform.rentbase.local`, `TENANCY_CENTRAL_DOMAINS=rentbase.local,www.rentbase.local`, `TENANCY_ROOT_DOMAIN=rentbase.local`, `TENANT_MOTOLEVINS_PUBLIC_URL=http://motolevins.rentbase.local`. Поле `TENANT_DEFAULT_HOST` не задавать равным apex маркетинга (или не задавать вовсе).
+Пример `.env`: `APP_URL=http://rentbase.local`, `PLATFORM_HOST=platform.rentbase.local`, `TENANCY_CENTRAL_DOMAINS=rentbase.local,www.rentbase.local`, `TENANCY_ROOT_DOMAIN=rentbase.local`. Канонический URL демо-тенанта в настройках и доменах выводится из `slug` + `TENANCY_ROOT_DOMAIN` (см. `MotoLevinsTenantSeeder`). Поле `TENANT_DEFAULT_HOST` не задавать равным apex маркетинга (или не задавать вовсе).
 
 Если **`ERR_NAME_NOT_RESOLVED`** — добавьте в `C:\Windows\System32\drivers\etc\hosts` (от администратора):
 

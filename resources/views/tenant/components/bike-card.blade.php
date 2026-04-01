@@ -5,13 +5,7 @@
     $scenario = $card['scenario'];
     $highlights = $card['highlights'];
     $priceNote = $card['price_note'];
-    $imgBase = config('tenant_landing.motolevins_public_prefix', 'images/motolevins');
     $imageUrl = $bike->cover_url ?? null;
-    if (!$imageUrl && ($img = $bike->cover_image ?? $bike->image ?? null)) {
-        $imageUrl = str_starts_with($img, 'motorcycles/')
-            ? asset('storage/' . $img)
-            : (str_starts_with($img, 'motolevins/') ? asset('images/' . $img) : asset($imgBase . '/' . ltrim($img, '/')));
-    }
     $type = $bike->model ?? $bike->type ?? '';
     $engine = $bike->engine_cc ?? $bike->engine ?? 0;
     $detailUrl = route('motorcycle.show', $bike->slug);

@@ -39,5 +39,10 @@
         <env name="TENANCY_CENTRAL_DOMAINS" value="apex.test,www.apex.test"/>
         <env name="PLATFORM_HOST" value="platform.apex.test"/>
         <env name="TENANCY_ROOT_DOMAIN" value="apex.test"/>
+        <!-- Изолировать тесты от .env разработчика (R2/local); иначе fake('public') и normalize не совпадают с tenant_storage.public_disk -->
+        <env name="TENANT_STORAGE_PUBLIC_DISK" value="public"/>
+        <env name="TENANT_STORAGE_PRIVATE_DISK" value="local"/>
+        <env name="SEO_FILES_DISK" value="local"/>
+        <env name="MEDIA_DISK" value="public"/>
     </php>
 </phpunit>

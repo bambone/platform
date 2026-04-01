@@ -4,13 +4,16 @@ use App\Models\Tenant;
 use App\Models\TenantDomain;
 use App\Models\TenantSetting;
 use App\Services\Tenancy\TenantViewResolver;
+use App\Support\Storage\TenantStorage;
+use App\Support\Storage\TenantStorageDisks;
 use App\Tenant\CurrentTenant;
 use App\Terminology\TenantTerminologyService;
 use App\Terminology\TerminologyHumanizer;
+use App\Themes\ThemeRegistry;
 use Illuminate\Contracts\View\View;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 if (! function_exists('tenant')) {
     function tenant(): ?Tenant
@@ -93,20 +96,25 @@ if (! function_exists('tenant_view')) {
 
 if (! function_exists('tenant_branding_asset_url')) {
     /**
-     * Public URL for a tenant branding file stored on the public disk, or a legacy absolute URL.
+     * Public URL for a tenant branding file on {@see TenantStorageDisks::publicDiskName()}, or a legacy absolute URL.
      *
-     * @param  non-empty-string|null  $relativePath  Path relative to storage/app/public (e.g. tenants/1/logo/x.png)
+     * @param  non-empty-string|null  $relativePath  Object key on the public disk (e.g. tenants/1/public/site/logo/x.png)
      */
     function tenant_branding_asset_url(?string $relativePath, ?string $legacyUrl): string
     {
         $relativePath = $relativePath !== null ? trim($relativePath) : '';
         if ($relativePath !== '') {
-            $disk = Storage::disk('public');
+            $key = ltrim($relativePath, '/');
+            $disk = TenantStorageDisks::publicDisk();
             if (! $disk instanceof FilesystemAdapter) {
                 return '';
             }
+            // R2/S3: exists() is a round-trip per call — avoid on hot paths (view composer ×3).
+            if (TenantStorageDisks::usesLocalFlyAdapter($disk) && ! $disk->exists($key)) {
+                return '';
+            }
 
-            return $disk->url(ltrim($relativePath, '/'));
+            return $disk->url($key);
         }
 
         $legacyUrl = $legacyUrl !== null ? trim($legacyUrl) : '';
@@ -115,6 +123,45 @@ if (! function_exists('tenant_branding_asset_url')) {
         }
 
         return '';
+    }
+}
+
+if (! function_exists('theme_platform_asset_url')) {
+    /**
+     * URL ассета платформенной темы (public/themes/{key}/…), с fallback на legacy-префикс из config/themes.php.
+     *
+     * @param  non-empty-string  $relativeWithinTheme  Например {@code marketing/hero-bg.png}
+     */
+    function theme_platform_asset_url(string $relativeWithinTheme, ?Tenant $tenant = null): string
+    {
+        $tenant ??= tenant();
+        $key = $tenant === null
+            ? (string) config('themes.default_key', 'moto')
+            : $tenant->themeKey();
+
+        return app(ThemeRegistry::class)->assetUrl($key, $relativeWithinTheme);
+    }
+}
+
+if (! function_exists('tenant_theme_public_url')) {
+    /**
+     * Публичный URL файла темы в {@code tenants/{id}/public/…}, если файл есть; иначе пустая строка.
+     *
+     * @param  non-empty-string  $pathUnderTenantPublic  Например {@code site/videos/foo.mp4} (без префикса tenants/…/public/).
+     */
+    function tenant_theme_public_url(string $pathUnderTenantPublic): string
+    {
+        $t = tenant();
+        if ($t === null) {
+            return '';
+        }
+        $ts = TenantStorage::for($t);
+        $disk = TenantStorageDisks::publicDisk();
+        if (TenantStorageDisks::usesLocalFlyAdapter($disk) && ! $ts->existsPublic($pathUnderTenantPublic)) {
+            return '';
+        }
+
+        return $ts->publicUrl($pathUnderTenantPublic);
     }
 }
 
@@ -254,5 +301,34 @@ if (! function_exists('platform_marketing_demo_url')) {
         $demoIntent = (string) (config('platform_marketing.intent.demo') ?? 'demo');
 
         return platform_marketing_contact_url($demoIntent);
+    }
+}
+
+if (! function_exists('filament_tenant_spatie_media_preview_url')) {
+    /**
+     * Same-origin URL для превью в кабинете тенанта (Filament FileUpload делает fetch — без CORS на внешний CDN).
+     *
+     * @param  non-empty-string  $conversion
+     */
+    function filament_tenant_spatie_media_preview_url(?Media $media, string $conversion = ''): ?string
+    {
+        if ($media === null) {
+            return null;
+        }
+
+        $params = ['media' => $media->getKey()];
+        if ($conversion !== '') {
+            $params['conversion'] = $conversion;
+        }
+
+        try {
+            if (! Route::has('filament.admin.spatie-media.show')) {
+                return null;
+            }
+
+            return route('filament.admin.spatie-media.show', $params, false);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

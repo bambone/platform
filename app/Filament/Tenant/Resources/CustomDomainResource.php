@@ -15,6 +15,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use UnitEnum;
 
 class CustomDomainResource extends Resource
 {
@@ -26,7 +27,11 @@ class CustomDomainResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Свои домены';
 
-    protected static ?int $navigationSort = 50;
+    protected static string|UnitEnum|null $navigationGroup = 'Infrastructure';
+
+    protected static ?int $navigationSort = 10;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-globe-alt';
 
     public static function getEloquentQuery(): Builder
     {

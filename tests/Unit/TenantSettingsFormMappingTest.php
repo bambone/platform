@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Filament\Tenant\Pages\Settings;
 use App\Models\Tenant;
 use App\Models\TenantSetting;
+use App\Support\Storage\TenantStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -46,11 +47,12 @@ class TenantSettingsFormMappingTest extends TestCase
             'status' => 'active',
         ]);
 
-        TenantSetting::setForTenant($tenant->id, 'branding.logo_path', 'tenants/'.$tenant->id.'/logo/file.png');
+        $expectedPath = TenantStorage::for($tenant)->publicPath('site/logo/file.png');
+        TenantSetting::setForTenant($tenant->id, 'branding.logo_path', $expectedPath);
         Cache::flush();
 
         $this->assertSame(
-            'tenants/'.$tenant->id.'/logo/file.png',
+            $expectedPath,
             TenantSetting::getForTenant($tenant->id, 'branding.logo_path', '')
         );
 

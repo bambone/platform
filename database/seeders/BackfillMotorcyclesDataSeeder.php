@@ -72,11 +72,6 @@ class BackfillMotorcyclesDataSeeder extends Seeder
                     $updates['model'] = $modelFromName;
                 }
 
-                $cover = $m->cover_image;
-                if (is_string($cover) && str_starts_with($cover, 'bikes/')) {
-                    $updates['cover_image'] = 'motolevins/'.$cover;
-                }
-
                 if ($updates !== []) {
                     $m->update($updates);
                 }

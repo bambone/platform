@@ -31,7 +31,7 @@ class SendLeadTelegramNotification implements ShouldQueue
             return;
         }
         $terminology = $tenant !== null ? app(TenantTerminologyService::class) : null;
-        $leadLabel = $terminology?->label($tenant, DomainTermKeys::LEAD) ?? 'Заявка';
+        $leadLabel = $terminology?->label($tenant, DomainTermKeys::LEAD) ?? 'Обращение';
         $resourceLabel = $terminology?->label($tenant, DomainTermKeys::RESOURCE) ?? 'Объект';
 
         $motorcycleName = $this->lead->motorcycle?->name ?? 'Не указан';

@@ -6,6 +6,7 @@ use App\Filament\Platform\Resources\Concerns\GrantsPlatformPanelAccess;
 use App\Filament\Platform\Resources\TenantResource\Pages;
 use App\Filament\Platform\Resources\TenantResource\RelationManagers\TenantMailLogsRelationManager;
 use App\Filament\Platform\Resources\TenantResource\RelationManagers\TenantUsersRelationManager;
+use App\Filament\Shared\TenantAnalyticsFormSchema;
 use App\Models\DomainLocalizationPreset;
 use App\Models\TemplatePreset;
 use App\Models\Tenant;
@@ -157,6 +158,10 @@ class TenantResource extends Resource
                             ->placeholder('RUB')
                             ->helperText('Трёхбуквенный код для цен и отчётов.'),
                     ])->columns(2),
+
+                TenantAnalyticsFormSchema::section(
+                    fn (): bool => auth()->user()?->hasAnyRole(['platform_owner', 'platform_admin']) ?? false
+                ),
             ]);
     }
 

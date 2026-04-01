@@ -18,8 +18,8 @@
 
 ## Переменные окружения
 
-- `APP_URL` — URL приложения (для генерации ссылок в консоли и части фолбэков).
-- `TENANT_MOTOLEVINS_PUBLIC_URL` — публичный URL клиентского сайта (например `https://motolevins.rentbase.su`), подставляется сидером `MotoLevinsTenantSeeder` в `tenant_settings.general.domain`, если вы заполняете БД через Laravel, а не только SQL.
+- `APP_URL` — URL приложения (для генерации ссылок в консоли и части фолбэков; **схема** `http`/`https` для сидера ниже берётся отсюда).
+- `TENANCY_ROOT_DOMAIN` — корень зоны поддоменов; сидер `MotoLevinsTenantSeeder` пишет в `tenant_settings.general.domain` канонический URL вида `{scheme}://motolevins.{TENANCY_ROOT_DOMAIN}` (тот же хост, что создаёт `TenantDomainService::createDefaultSubdomain`). Отдельной переменной на каждого тенанта не требуется.
 - `TENANT_DEFAULT_HOST` — опционально: дополнительный хост в `tenant_domains` для dev (например `localhost`). **Не** задавайте им маркетинговый apex (`rentbase.local` / `rentbase.su` из `TENANCY_CENTRAL_DOMAINS`). Канонический URL тенанта: `https://{slug}.{TENANCY_ROOT_DOMAIN}` (локально `http://motolevins.rentbase.local`).
 
 После правок `tenant_settings` сбросьте кэш приложения (`php artisan optimize:clear`), т.к. значения кешируются.
@@ -77,6 +77,6 @@ php artisan db:seed --class=Database\\Seeders\\ReviewSeeder
 - Главная открывается, hero и карточки маршрутов подтягивают картинки из `/images/motolevins/...`.
 - Кнопка «Смотреть видео» на hero открывает ролик с URL вида `/images/motolevins/videos/Moto_levins_1.mp4` (файл лежит рядом с остальными материалами тенанта).
 - В админке тенанта контакты и название совпадают с лендингом.
-- Каталог мотоциклов показывает обложки; в БД поля `cover_image` / `image` начинаются с `motolevins/bikes/` (или полный путь `images/...` для особых случаев).
+- Каталог мотоциклов показывает обложки из **Spatie Media** (коллекция `cover` у модели `Motorcycle`). Старое поле `cover_image` удалено; при деплое миграция `2026_03_30_120000_migrate_motorcycle_cover_image_to_media_and_drop_column` переносит пути из `cover_image` в медиатеку, если колонка ещё есть.
 
 Если в `page_sections` для `hero` уже сохранён старый путь `videos/Moto_levins_1.mp4`, обновите поле в админке CMS или перезапустите `PagesAndSectionsSeeder` — иначе браузер будет запрашивать несуществующий `/videos/...`.

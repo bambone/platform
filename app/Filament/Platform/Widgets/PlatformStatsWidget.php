@@ -16,37 +16,91 @@ class PlatformStatsWidget extends BaseStatsOverviewWidget
 
     protected function getStats(): array
     {
-        $activeClients = Tenant::where('status', 'active')->count();
-        $trialClients = Tenant::where('status', 'trial')->count();
+        $activeClients = Tenant::query()->where('status', 'active')->count();
+        $trialClients = Tenant::query()->where('status', 'trial')->count();
+        $newTenantsLast7Days = Tenant::query()
+            ->where('created_at', '>=', Carbon::today()->subDays(6)->startOfDay())
+            ->count();
 
-        $today = Carbon::today();
+        $sentMails = TenantMailLog::query()->where('status', TenantMailLog::STATUS_SENT)->count();
+        $errorMails = TenantMailLog::query()->where('status', TenantMailLog::STATUS_FAILED)->count();
+        $throttledRows = TenantMailLog::query()->where('throttled_count', '>', 0)->count();
 
-        // Mock data for sparklines to demonstrate the premium look immediately
-        $sentMails = TenantMailLog::where('status', 'sent')->count();
-        $errorMails = TenantMailLog::where('status', 'failed')->count();
-        $throttled = TenantMailLog::where('throttled_count', '>', 0)->count();
+        $clientsChart = $this->dailyCountsForLast7Days(
+            fn (Carbon $day): int => Tenant::query()->whereDate('created_at', $day)->count()
+        );
+
+        $sentChart = $this->dailyCountsForLast7Days(
+            fn (Carbon $day): int => TenantMailLog::query()
+                ->where('status', TenantMailLog::STATUS_SENT)
+                ->where(function ($q) use ($day): void {
+                    $q->whereDate('sent_at', $day)
+                        ->orWhere(function ($q2) use ($day): void {
+                            $q2->whereNull('sent_at')->whereDate('created_at', $day);
+                        });
+                })
+                ->count()
+        );
+
+        $failedChart = $this->dailyCountsForLast7Days(
+            fn (Carbon $day): int => TenantMailLog::query()
+                ->where('status', TenantMailLog::STATUS_FAILED)
+                ->where(function ($q) use ($day): void {
+                    $q->whereDate('failed_at', $day)
+                        ->orWhere(function ($q2) use ($day): void {
+                            $q2->whereNull('failed_at')->whereDate('created_at', $day);
+                        });
+                })
+                ->count()
+        );
+
+        $throttledChart = $this->dailyCountsForLast7Days(
+            fn (Carbon $day): int => TenantMailLog::query()
+                ->where('throttled_count', '>', 0)
+                ->whereDate('created_at', $day)
+                ->count()
+        );
+
+        $trialPart = $trialClients > 0 ? "На пробном: {$trialClients}" : 'Без пробных';
+        $newPart = $newTenantsLast7Days > 0 ? "Новых за 7 дн.: {$newTenantsLast7Days}" : 'Новых за 7 дн.: 0';
 
         return [
             Stat::make('Активных клиентов', (string) $activeClients)
-                ->description('+'.rand(1, 5).'% за месяц')
-                ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->chart([3, 5, 4, 7, 7, 10, 12, $activeClients])
+                ->description("{$trialPart} · {$newPart}")
+                ->descriptionIcon('heroicon-m-building-office-2')
+                ->chart($clientsChart)
                 ->color('success'),
 
-            Stat::make('Отправлено писем', (string) ($sentMails > 0 ? $sentMails : '1,240'))
-                ->description('Все клиенты')
-                ->chart([100, 200, 300, 250, 400, 350, 500])
+            Stat::make('Отправлено писем', (string) $sentMails)
+                ->description('tenant_mail_logs, статус «отправлено»')
+                ->chart($sentChart)
                 ->color('primary'),
 
-            Stat::make('Ошибки доставки', (string) ($errorMails > 0 ? $errorMails : '12'))
-                ->description('Требуют внимания')
+            Stat::make('Ошибки доставки', (string) $errorMails)
+                ->description('tenant_mail_logs, статус «ошибка»')
                 ->descriptionIcon('heroicon-m-exclamation-circle')
-                ->chart([0, 2, 1, 0, 5, 2, 2])
+                ->chart($failedChart)
                 ->color('danger'),
 
-            Stat::make('Throttled (Лимит)', (string) ($throttled > 0 ? $throttled : '4'))
-                ->description('Ожидают отправки')
+            Stat::make('Throttled (лимит)', (string) $throttledRows)
+                ->description('Записей с throttled_count > 0')
+                ->chart($throttledChart)
                 ->color('warning'),
         ];
+    }
+
+    /**
+     * @param  callable(Carbon $day): int  $counter
+     * @return list<int>
+     */
+    private function dailyCountsForLast7Days(callable $counter): array
+    {
+        $out = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $day = Carbon::today()->subDays($i);
+            $out[] = max(0, (int) $counter($day));
+        }
+
+        return $out;
     }
 }

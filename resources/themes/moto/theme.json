@@ -1,0 +1,18 @@
+{
+    "key": "moto",
+    "name": "Moto Levins",
+    "version": "1.0.0",
+    "asset_web_prefix": "themes/moto",
+    "sections": [
+        "hero",
+        "benefits",
+        "fleet",
+        "faq",
+        "reviews",
+        "cta",
+        "catalog_preview",
+        "experience",
+        "social_proof",
+        "final_cta"
+    ]
+}

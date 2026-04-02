@@ -350,6 +350,12 @@
         .flatpickr-calendar.tenant-fp .flatpickr-day.today {
             border-color: rgba(232, 93, 4, 0.55);
         }
+        /* Заявки Lead (новая / в работе) — день выбирается, но видно «уже кто-то запросил» */
+        .flatpickr-calendar.tenant-fp .flatpickr-day.tenant-fp-day-pending-request:not(.flatpickr-disabled) {
+            box-shadow: inset 0 0 0 2px rgba(232, 93, 4, 0.65);
+            background: rgba(232, 93, 4, 0.12);
+            font-weight: 600;
+        }
         .flatpickr-calendar.tenant-fp .flatpickr-day.flatpickr-disabled,
         .flatpickr-calendar.tenant-fp .flatpickr-day.prevMonthDay,
         .flatpickr-calendar.tenant-fp .flatpickr-day.nextMonthDay {
@@ -389,6 +395,36 @@
         .tenant-thin-scrollbar {
             scrollbar-width: thin;
             scrollbar-color: rgba(232, 93, 4, 0.35) rgba(255, 255, 255, 0.06);
+        }
+        /* Модалка бронирования: фиксированная высота (vh), затем svh где есть поддержка — иначе min(...svh...) целиком может быть невалиден и height станет auto */
+        .tenant-booking-modal-panel {
+            height: min(92vh, calc(100vh - 1rem));
+            max-height: min(92vh, calc(100vh - 1rem));
+        }
+        @media (min-width: 640px) {
+            .tenant-booking-modal-panel {
+                height: min(90vh, calc(100vh - 2rem));
+                max-height: min(90vh, calc(100vh - 2rem));
+            }
+        }
+        @supports (height: 1svh) {
+            .tenant-booking-modal-panel {
+                height: min(92svh, calc(100vh - 1rem));
+                max-height: min(92svh, calc(100vh - 1rem));
+            }
+        }
+        @media (min-width: 640px) {
+            @supports (height: 1svh) {
+                .tenant-booking-modal-panel {
+                    height: min(90svh, calc(100vh - 2rem));
+                    max-height: min(90svh, calc(100vh - 2rem));
+                }
+            }
+        }
+        /* Полоса прокрутки у области формы; контент не обрезается без прокрутки */
+        .tenant-booking-modal-scroll {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
         .tenant-thin-scrollbar::-webkit-scrollbar {
             width: 6px;
@@ -451,6 +487,9 @@
                 _modalStart: null,
                 _modalEnd: null,
                 _modalVm: null,
+                _modalPendingRequestDates: new Set(),
+                /** Кэш ISO-дат занятости с API — пере-применяем к обоим календарям после minDate / open */
+                _modalDisabledDatesIsoSet: new Set(),
 
                 _locale() {
                     return (typeof flatpickr !== 'undefined' && flatpickr.l10ns && flatpickr.l10ns.ru)
@@ -575,27 +614,56 @@
                 },
 
 
-                setModalDisableDates(isoDates) {
-                    const set = new Set(isoDates || []);
+                _modalFpSetDisable(picker, disableVal) {
+                    if (picker && typeof picker.set === 'function') {
+                        picker.set('disable', disableVal);
+                    }
+                },
+
+                _modalFpRedraw(picker) {
+                    if (picker && typeof picker.redraw === 'function') {
+                        picker.redraw();
+                    }
+                },
+
+                /** Повторно выставить disable + перерисовать оба модальных календаря (серые дни и оранж. заявки). */
+                _modalRefreshDecorations() {
+                    const set = this._modalDisabledDatesIsoSet instanceof Set ? this._modalDisabledDatesIsoSet : new Set();
                     const fn = (d) => set.has(this._calendarYmd(d));
-                    if (this._modalStart) {
-                        this._modalStart.set('disable', [fn]);
-                    }
-                    if (this._modalEnd) {
-                        this._modalEnd.set('disable', [fn]);
-                    }
+                    this._modalFpSetDisable(this._modalStart, [fn]);
+                    this._modalFpSetDisable(this._modalEnd, [fn]);
+                    this._modalFpRedraw(this._modalStart);
+                    this._modalFpRedraw(this._modalEnd);
+                },
+
+                setModalDisableDates(isoDates) {
+                    this._modalDisabledDatesIsoSet = new Set(isoDates || []);
+                    this._modalRefreshDecorations();
+                },
+
+                setModalPendingRequestHighlights(isoDates) {
+                    this._modalPendingRequestDates = new Set(isoDates || []);
+                    this._modalRefreshDecorations();
                 },
 
                 clearModalDisableDates() {
-                    if (this._modalStart) {
-                        this._modalStart.set('disable', []);
-                    }
-                    if (this._modalEnd) {
-                        this._modalEnd.set('disable', []);
-                    }
+                    this._modalDisabledDatesIsoSet = new Set();
+                    this._modalFpSetDisable(this._modalStart, []);
+                    this._modalFpSetDisable(this._modalEnd, []);
+                    this.clearModalPendingRequestHighlights();
                 },
 
+                clearModalPendingRequestHighlights() {
+                    this._modalPendingRequestDates.clear();
+                    this._modalFpRedraw(this._modalStart);
+                    this._modalFpRedraw(this._modalEnd);
+                },
+
+                /** @param {Date} d */
                 _calendarYmd(d) {
+                    if (! d || typeof d.getFullYear !== 'function') {
+                        return '';
+                    }
                     const y = d.getFullYear();
                     const m = String(d.getMonth() + 1).padStart(2, '0');
                     const day = String(d.getDate()).padStart(2, '0');
@@ -604,15 +672,18 @@
                 },
 
                 destroyModal() {
-                    this.clearModalDisableDates();
-                    if (this._modalStart) {
+                    this._modalPendingRequestDates.clear();
+                    this._modalDisabledDatesIsoSet = new Set();
+                    this._modalFpSetDisable(this._modalStart, []);
+                    this._modalFpSetDisable(this._modalEnd, []);
+                    if (this._modalStart && typeof this._modalStart.destroy === 'function') {
                         this._modalStart.destroy();
-                        this._modalStart = null;
                     }
-                    if (this._modalEnd) {
+                    this._modalStart = null;
+                    if (this._modalEnd && typeof this._modalEnd.destroy === 'function') {
                         this._modalEnd.destroy();
-                        this._modalEnd = null;
                     }
+                    this._modalEnd = null;
                     this._modalVm = null;
                 },
 
@@ -630,10 +701,29 @@
                     }
 
                     const minStr = startEl.getAttribute('data-fp-min') || 'today';
-                    const baseModal = this._baseOpts('tenant-fp-alt tenant-fp-alt--sm');
+                    const baseEnd = this._baseOpts('tenant-fp-alt tenant-fp-alt--sm');
+                    const baseStart = this._baseOpts('tenant-fp-alt tenant-fp-alt--sm');
+                    const self = this;
+                    /* Flatpickr 4.6: onDayCreate(selectedDates, dateStr, instance, dayElem) — дата в dayElem.dateObj */
+                    const onDayCreatePending = (_selectedDates, _dateStr, _fp, dayElem) => {
+                        const dateObj = dayElem && dayElem.dateObj;
+                        if (! dateObj || self._modalPendingRequestDates.size === 0) {
+                            return;
+                        }
+                        const ymd = self._calendarYmd(dateObj);
+                        if (ymd && self._modalPendingRequestDates.has(ymd)) {
+                            dayElem.classList.add('tenant-fp-day-pending-request');
+                            dayElem.setAttribute('title', 'Уже есть заявка на эту дату (ожидает обработки оператором)');
+                        }
+                    };
+                    const onModalOpen = () => {
+                        self._modalRefreshDecorations();
+                    };
 
                     this._modalEnd = flatpickr(endEl, {
-                        ...baseModal,
+                        ...baseEnd,
+                        onDayCreate: onDayCreatePending,
+                        onOpen: onModalOpen,
                         minDate: vm.form.start_date || minStr,
                         defaultDate: (vm.form.start_date && vm.form.end_date) ? vm.form.end_date : undefined,
                         onChange: (selectedDates) => {
@@ -648,7 +738,9 @@
                     });
 
                     this._modalStart = flatpickr(startEl, {
-                        ...baseModal,
+                        ...baseStart,
+                        onDayCreate: onDayCreatePending,
+                        onOpen: onModalOpen,
                         minDate: minStr,
                         defaultDate: vm.form.start_date || undefined,
                         onChange: (selectedDates) => {
@@ -658,7 +750,10 @@
                                 if (typeof this._modalVm.scheduleHintsFetch === 'function') {
                                     this._modalVm.scheduleHintsFetch();
                                 }
-                                this._modalEnd.set('minDate', selectedDates[0]);
+                                if (this._modalEnd && typeof this._modalEnd.set === 'function') {
+                                    this._modalEnd.set('minDate', selectedDates[0]);
+                                    self._modalRefreshDecorations();
+                                }
                                 const endSel = this._modalEnd.selectedDates[0];
                                 if (endSel && endSel < selectedDates[0]) {
                                     this._modalEnd.setDate(selectedDates[0]);

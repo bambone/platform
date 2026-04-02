@@ -132,4 +132,42 @@ class TenantPublicBookingFlowTest extends TestCase
         $this->assertSame('2026-04-10', $lead->rental_date_from->format('Y-m-d'));
         $this->assertSame('2026-04-12', $lead->rental_date_to->format('Y-m-d'));
     }
+
+    public function test_tenant_post_json_booking_lead_accepts_masked_russian_phone(): void
+    {
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        $tenant = $this->createTenantWithActiveDomain('flowmask');
+
+        $bike = Motorcycle::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Mask Bike',
+            'slug' => 'mask-bike',
+            'status' => 'available',
+            'show_in_catalog' => true,
+            'price_per_day' => 5000,
+        ]);
+
+        $host = $this->tenancyHostForSlug('flowmask');
+
+        $response = $this->call('POST', 'http://'.$host.'/api/leads', [], [], [], [
+            'HTTP_ACCEPT' => 'application/json',
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'name' => 'Иван Тестовый',
+            'phone' => '+7 (951) 784-58-89',
+            'email' => null,
+            'comment' => null,
+            'motorcycle_id' => $bike->id,
+            'rental_date_from' => '2026-04-10',
+            'rental_date_to' => '2026-04-12',
+            'source' => 'booking_form',
+        ], JSON_THROW_ON_ERROR));
+
+        $response->assertOk();
+        $response->assertJson(['success' => true]);
+
+        $lead = Lead::query()->findOrFail((int) $response->json('lead_id'));
+        $this->assertSame('+79517845889', $lead->phone);
+    }
 }

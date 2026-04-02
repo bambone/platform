@@ -35,7 +35,11 @@ final class CrmSharedTable
                 ->checkFileExistence(false)
                 ->imageSize(48)
                 ->square()
-                ->extraImgAttributes(['class' => 'rounded-lg object-cover'])
+                ->extraImgAttributes([
+                    'class' => 'rounded-lg object-cover',
+                    'loading' => 'lazy',
+                    'decoding' => 'async',
+                ])
                 ->extraCellAttributes(['class' => 'w-px pe-0'])
                 ->toggleable(),
             TextColumn::make('created_at')

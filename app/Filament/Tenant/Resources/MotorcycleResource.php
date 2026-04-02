@@ -3,6 +3,7 @@
 namespace App\Filament\Tenant\Resources;
 
 use App\Filament\Forms\Components\SeoMetaFields;
+use App\Filament\Forms\Components\TenantSpatieMediaLibraryFileUpload;
 use App\Filament\Tenant\Concerns\ResolvesDomainTermLabels;
 use App\Filament\Tenant\Resources\MotorcycleResource\Pages;
 use App\Models\Motorcycle;
@@ -18,7 +19,6 @@ use Filament\Actions\RestoreBulkAction;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
-use App\Filament\Forms\Components\TenantSpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -389,7 +389,11 @@ class MotorcycleResource extends Resource
                     ->checkFileExistence(false)
                     ->imageSize(48)
                     ->square()
-                    ->extraImgAttributes(['class' => 'rounded-lg object-cover'])
+                    ->extraImgAttributes([
+                        'class' => 'rounded-lg object-cover',
+                        'loading' => 'lazy',
+                        'decoding' => 'async',
+                    ])
                     ->extraCellAttributes(['class' => 'fi-motorcycle-cover-cell'])
                     ->tooltip('Обложка карточки; наведите для увеличения'),
                 TextColumn::make('name')

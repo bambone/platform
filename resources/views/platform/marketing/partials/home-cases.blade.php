@@ -14,11 +14,38 @@
 
         <div class="mt-12 grid gap-6 sm:grid-cols-2 md:mt-16 lg:grid-cols-3">
             @foreach($pm['cases'] ?? [] as $index => $case)
-                <article class="group fade-reveal pm-reveal-cases-{{ min($index, 4) }} flex cursor-default flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-transform duration-300 hover:-translate-y-1.5 hover:shadow-md sm:p-6">
+                @php
+                    $caseIsLink = !empty($case['url']) && !empty($case['real']);
+                @endphp
+                <article @class([
+                    'group fade-reveal pm-reveal-cases-' . min($index, 4) => true,
+                    'relative flex flex-col rounded-2xl border bg-white p-5 shadow-sm transition-[transform,box-shadow,border-color] duration-300 sm:p-6',
+                    'cursor-pointer hover:-translate-y-1.5 hover:border-pm-accent/35 hover:shadow-lg focus-within:-translate-y-1.5 focus-within:border-pm-accent/35 focus-within:shadow-lg' => $caseIsLink,
+                    'cursor-default hover:-translate-y-1.5 hover:shadow-md' => ! $caseIsLink,
+                    'border-slate-200' => true,
+                ])>
+                    @if($caseIsLink)
+                        <a
+                            href="{{ $case['url'] }}"
+                            class="absolute inset-0 z-10 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-pm-accent focus-visible:ring-offset-2"
+                            rel="noopener noreferrer"
+                            target="_blank"
+                            aria-label="Открыть сайт «{{ $case['title'] }}» в новой вкладке"
+                            data-pm-event="case_open"
+                            data-pm-case="{{ e($case['title'] ?? '') }}"
+                        ></a>
+                    @endif
 
                     @if($index === 0)
                         <!-- MotoLevins Mockup View (Realistic Hero Mini) -->
                         <div class="relative flex aspect-video w-full flex-col items-center justify-center overflow-hidden rounded-xl border border-slate-200 p-4 shadow-inner transition-colors group-hover:border-slate-300">
+                            @if($caseIsLink)
+                                <div class="pointer-events-none absolute right-3 top-3 z-[5] flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-pm-accent shadow-md ring-1 ring-slate-200/80 transition-opacity duration-300 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" aria-hidden="true">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                    </svg>
+                                </div>
+                            @endif
                             <!-- Background: Simulated Sunset Road -->
                             <div class="absolute inset-0 z-0 bg-gradient-to-br from-slate-900 via-slate-800 to-amber-900/60"></div>
                             <div class="absolute inset-0 z-0 bg-[linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.7))]"></div>
@@ -84,11 +111,8 @@
                         <p class="mt-2 text-xs font-medium text-slate-500">Публичный сайт и&nbsp;приём заявок в&nbsp;бою.</p>
                     @endif
 
-                    @if(!empty($case['url']) && !empty($case['real']))
-                        <a href="{{ $case['url'] }}" class="mt-auto mt-5 inline-flex items-center gap-1 text-sm font-bold text-pm-accent transition-colors hover:text-pm-accent-hover" rel="noopener noreferrer" target="_blank" data-pm-event="case_open" data-pm-case="{{ e($case['title'] ?? '') }}">
-                            Открыть сайт
-                            <svg class="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                        </a>
+                    @if($caseIsLink)
+                        <div class="mt-auto shrink-0 pt-4" aria-hidden="true"></div>
                     @else
                         <span class="mt-auto mt-5 inline-block self-start rounded-lg bg-slate-100 px-3 py-1 text-sm font-medium text-slate-500">Ожидается</span>
                     @endif

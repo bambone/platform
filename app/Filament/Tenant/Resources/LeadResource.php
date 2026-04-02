@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Resources;
 
+use App\Auth\AccessRoles;
 use App\Filament\Tenant\Concerns\ResolvesDomainTermLabels;
 use App\Filament\Tenant\Resources\LeadResource\Pages;
 use App\Models\Lead;
@@ -133,7 +134,32 @@ class LeadResource extends Resource
                             ->helperText('Новая — ещё не обработана. В работе — менеджер связался. Завершена/отменена фиксируют исход.'),
                         Select::make('assigned_user_id')
                             ->label('Ответственный')
-                            ->relationship('assignedUser', 'name')
+                            ->relationship(
+                                'assignedUser',
+                                'name',
+                                modifyQueryUsing: function (Builder $query, ?string $search, Select $component): void {
+                                    $tenant = currentTenant();
+                                    if ($tenant === null) {
+                                        $query->whereRaw('1 = 0');
+
+                                        return;
+                                    }
+
+                                    $record = $component->getRecord();
+                                    $currentAssigneeId = $record instanceof Lead ? $record->assigned_user_id : null;
+
+                                    $query->where(function (Builder $inner) use ($tenant, $currentAssigneeId): void {
+                                        $inner->whereHas('tenants', function (Builder $tq) use ($tenant): void {
+                                            $tq->where('tenants.id', $tenant->id)
+                                                ->where('tenant_user.status', 'active')
+                                                ->whereIn('tenant_user.role', AccessRoles::tenantMembershipRolesForPanel());
+                                        });
+                                        if ($currentAssigneeId !== null) {
+                                            $inner->orWhereKey($currentAssigneeId);
+                                        }
+                                    });
+                                },
+                            )
                             ->searchable()
                             ->preload()
                             ->helperText('Кто ведёт заявку внутри команды.'),
@@ -171,7 +197,11 @@ class LeadResource extends Resource
                     ->checkFileExistence(false)
                     ->imageSize(48)
                     ->square()
-                    ->extraImgAttributes(['class' => 'rounded-lg object-cover'])
+                    ->extraImgAttributes([
+                        'class' => 'rounded-lg object-cover',
+                        'loading' => 'lazy',
+                        'decoding' => 'async',
+                    ])
                     ->extraCellAttributes(['class' => 'w-px pe-0']),
                 TextColumn::make('created_at')
                     ->label('Получена')

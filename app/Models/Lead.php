@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Auth\AccessRoles;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
 
 class Lead extends Model
 {
@@ -39,6 +41,35 @@ class Lead extends Model
         'rental_date_from' => 'date',
         'rental_date_to' => 'date',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Lead $lead): void {
+            if ($lead->assigned_user_id === null) {
+                return;
+            }
+
+            $tenantId = (int) $lead->tenant_id;
+            if ($tenantId === 0) {
+                return;
+            }
+
+            $allowed = User::query()
+                ->whereKey($lead->assigned_user_id)
+                ->whereHas('tenants', function ($query) use ($tenantId): void {
+                    $query->where('tenants.id', $tenantId)
+                        ->where('tenant_user.status', 'active')
+                        ->whereIn('tenant_user.role', AccessRoles::tenantMembershipRolesForPanel());
+                })
+                ->exists();
+
+            if (! $allowed) {
+                throw ValidationException::withMessages([
+                    'assigned_user_id' => 'Ответственный должен быть активным участником команды этого клиента.',
+                ]);
+            }
+        });
+    }
 
     public function motorcycle(): BelongsTo
     {

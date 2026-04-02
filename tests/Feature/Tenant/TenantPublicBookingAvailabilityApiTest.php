@@ -4,6 +4,7 @@ namespace Tests\Feature\Tenant;
 
 use App\Enums\BookingStatus;
 use App\Models\Booking;
+use App\Models\Lead;
 use App\Models\Motorcycle;
 use App\Support\PhoneNormalizer;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -159,6 +160,34 @@ class TenantPublicBookingAvailabilityApiTest extends TestCase
         $response->assertJsonPath('already_booked_by_phone', true);
     }
 
+    public function test_motorcycle_hints_rejects_only_selected_start_without_end(): void
+    {
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        $tenant = $this->createTenantWithActiveDomain('availone');
+        $bike = Motorcycle::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'One Date Bike',
+            'slug' => 'one-date-bike',
+            'status' => 'available',
+            'show_in_catalog' => true,
+            'price_per_day' => 4000,
+        ]);
+
+        $host = $this->tenancyHostForSlug('availone');
+        $response = $this->postTenantJson($host, '/api/tenant/booking/motorcycle-calendar-hints', [
+            'motorcycle_id' => $bike->id,
+            'range_from' => '2026-09-01',
+            'range_to' => '2026-09-30',
+            'selected_start' => '2026-09-10',
+            'selected_end' => null,
+            'phone' => null,
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['selected_end']);
+    }
+
     public function test_motorcycle_hints_empty_phone_skips_self_check(): void
     {
         $this->withoutMiddleware(VerifyCsrfToken::class);
@@ -185,5 +214,89 @@ class TenantPublicBookingAvailabilityApiTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('already_booked_by_phone', false);
+    }
+
+    public function test_motorcycle_hints_highlights_pending_lead_dates_and_selected_overlap(): void
+    {
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        $tenant = $this->createTenantWithActiveDomain('availlead');
+        $bike = Motorcycle::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Lead Hint Bike',
+            'slug' => 'lead-hint-bike',
+            'status' => 'available',
+            'show_in_catalog' => true,
+            'price_per_day' => 4000,
+        ]);
+
+        Lead::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Первый клиент',
+            'phone' => '+79991110011',
+            'motorcycle_id' => $bike->id,
+            'rental_date_from' => '2026-10-01',
+            'rental_date_to' => '2026-10-03',
+            'status' => 'new',
+            'source' => 'booking_form',
+        ]);
+
+        $host = $this->tenancyHostForSlug('availlead');
+        $response = $this->postTenantJson($host, '/api/tenant/booking/motorcycle-calendar-hints', [
+            'motorcycle_id' => $bike->id,
+            'range_from' => '2026-09-28',
+            'range_to' => '2026-10-10',
+            'selected_start' => '2026-10-02',
+            'selected_end' => '2026-10-04',
+            'phone' => null,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('pending_requests_on_selected_range', true);
+        $dates = $response->json('pending_request_dates');
+        $this->assertIsArray($dates);
+        $this->assertContains('2026-10-01', $dates);
+        $this->assertContains('2026-10-02', $dates);
+        $this->assertContains('2026-10-03', $dates);
+    }
+
+    public function test_motorcycle_hints_ignores_cancelled_lead_for_pending_highlights(): void
+    {
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        $tenant = $this->createTenantWithActiveDomain('availleadcx');
+        $bike = Motorcycle::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Lead Cx Bike',
+            'slug' => 'lead-cx-bike',
+            'status' => 'available',
+            'show_in_catalog' => true,
+            'price_per_day' => 4000,
+        ]);
+
+        Lead::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'X',
+            'phone' => '+79992220022',
+            'motorcycle_id' => $bike->id,
+            'rental_date_from' => '2026-11-05',
+            'rental_date_to' => '2026-11-06',
+            'status' => 'cancelled',
+            'source' => 'booking_form',
+        ]);
+
+        $host = $this->tenancyHostForSlug('availleadcx');
+        $response = $this->postTenantJson($host, '/api/tenant/booking/motorcycle-calendar-hints', [
+            'motorcycle_id' => $bike->id,
+            'range_from' => '2026-11-01',
+            'range_to' => '2026-11-30',
+            'selected_start' => '2026-11-05',
+            'selected_end' => '2026-11-06',
+            'phone' => null,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('pending_requests_on_selected_range', false);
+        $this->assertSame([], $response->json('pending_request_dates'));
     }
 }

@@ -230,7 +230,15 @@
         }
     }
 
-    function validatePhone(normalized) {
+    /**
+     * Принимает и нормализованный +79…, и «как в поле» (+7 (951) …) — иначе автозаполнение/вставка
+     * оставляют красивое значение в input, а Alpine state не обновляется до input-события.
+     */
+    function validatePhone(value) {
+        if (value == null) {
+            return false;
+        }
+        const normalized = normalizePhone(sanitizePhoneInput(String(value)));
         if (!normalized || normalized === '+' || !/^\+[1-9]\d{6,14}$/.test(normalized)) {
             return false;
         }

@@ -32,6 +32,7 @@ class IntlPhoneNormalizerTest extends TestCase
         yield 'plus spaced' => ['+7 915 178 45 89', '+79151784589'];
         yield 'tel uri' => ['tel:+7(915)1784589', '+79151784589'];
         yield 'junk around plus' => ['мой номер +7 915 178 45 89', '+79151784589'];
+        yield 'masked parentheses hyphen booking modal' => ['+7 (951) 784-58-89', '+79517845889'];
     }
 
     #[DataProvider('normalizeInternationalProvider')]
@@ -102,5 +103,14 @@ class IntlPhoneNormalizerTest extends TestCase
         $row = IntlPhoneNormalizer::detectCountryByDigits('37491234567');
         $this->assertNotNull($row);
         $this->assertSame('374', $row['code']);
+    }
+
+    /** Регрессия: маска как в UI модалки бронирования должна проходить после normalize (как в StoreLeadRequest). */
+    public function test_formatted_russian_phone_from_booking_ui_normalizes_and_validates(): void
+    {
+        $formatted = '+7 (951) 784-58-89';
+        $normalized = IntlPhoneNormalizer::normalizePhone($formatted);
+        $this->assertSame('+79517845889', $normalized);
+        $this->assertTrue(IntlPhoneNormalizer::validatePhone($normalized));
     }
 }

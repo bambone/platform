@@ -57,7 +57,7 @@ storage/app/public/tenants/{tenant_id}/logo|favicon|hero|…
 
 **Контракт логического имени:** сегменты `[a-z0-9_-]+`, через `.`, без `..` и заглавных (детали и валидация в `TenantViewResolver`).
 
-**Отладка:** `TENANCY_LOG_VIEW_RESOLUTION=true` или `APP_DEBUG` — лог `tenant_view_resolved`.
+**Отладка:** только явный флаг `TENANCY_LOG_VIEW_RESOLUTION=true` — лог `tenant_view_resolved` (не завязываем на `APP_DEBUG`, чтобы не забивать `laravel.log`).
 
 ## Тесты
 

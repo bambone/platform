@@ -58,7 +58,7 @@ final class TenantViewResolver
             );
         }
 
-        if (config('tenancy.log_view_resolution') === true || config('app.debug') === true) {
+        if (config('tenancy.log_view_resolution') === true) {
             Log::debug('tenant_view_resolved', [
                 'tenant_id' => $tenant?->id,
                 'theme_key_raw' => $themeKeyRaw,

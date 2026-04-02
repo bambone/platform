@@ -15,14 +15,15 @@ class ThemePruneLegacyPublicAssetsCommand extends Command
 {
     protected $signature = 'theme:prune-legacy-public
                             {--dry-run : Только показать, что будет удалено}
-                            {--force : Выполнить без интерактивного подтверждения}';
+                            {--force : Выполнить без интерактивного подтверждения}
+                            {--force. : То же, что --force (опечатка с точкой в конце)}';
 
     protected $description = 'Удалить дубликаты темы из public/images/motolevins и public/themes/* (основной контент — R2 + /theme/build/…)';
 
     public function handle(): int
     {
         $dry = (bool) $this->option('dry-run');
-        $force = (bool) $this->option('force');
+        $force = (bool) ($this->option('force') || $this->option('force.'));
 
         $targets = [];
 
@@ -77,7 +78,7 @@ class ThemePruneLegacyPublicAssetsCommand extends Command
         }
 
         $this->newLine();
-        $this->comment('Локально: повторите при необходимости. На сервере: cd /var/www/platform && php artisan theme:prune-legacy-public --force');
+        $this->comment('Локально: повторите при необходимости. На сервере: php artisan theme:prune-legacy-public --force (без точки после --force)');
 
         return self::SUCCESS;
     }

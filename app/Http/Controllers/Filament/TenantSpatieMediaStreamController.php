@@ -36,9 +36,30 @@ final class TenantSpatieMediaStreamController extends Controller
         $filename = $media->file_name;
         $mime = $media->mime_type ?: null;
 
-        return $disk->response($relative, $filename, array_filter([
+        // Избегаем лишнего HEAD к S3/R2: Laravel иначе вызывает size() для Content-Length.
+        $responseHeaders = array_filter([
             'Content-Type' => $mime,
-        ]));
+            'Content-Length' => ($conversion === '' && (int) $media->getAttribute('size') > 0)
+                ? (string) $media->getAttribute('size')
+                : null,
+        ]);
+
+        $response = $disk->response($relative, $filename, $responseHeaders);
+
+        // Повторное открытие формы / Livewire: браузер берёт из кеша; 304 без тела при совпадении ETag.
+        $response->headers->set('Cache-Control', 'private, max-age=604800, immutable');
+
+        $updatedAt = $media->updated_at;
+        if ($updatedAt !== null) {
+            $response->setLastModified(\DateTimeImmutable::createFromInterface($updatedAt));
+        }
+
+        $etagSource = $media->getKey()."\0".$conversion."\0".($updatedAt?->getTimestamp() ?? 0);
+        $response->setEtag(hash('sha256', $etagSource));
+
+        $response->isNotModified($request);
+
+        return $response;
     }
 
     private function assertMediaAccessibleForCurrentTenant(Media $media): void
@@ -60,5 +81,4 @@ final class TenantSpatieMediaStreamController extends Controller
             }
         }
     }
-
 }

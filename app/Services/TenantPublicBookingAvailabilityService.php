@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AvailabilityCalendar;
 use App\Models\Booking;
+use App\Models\Lead;
 use App\Models\Motorcycle;
 use App\Models\RentalUnit;
 use App\Support\PhoneNormalizer;
@@ -134,6 +135,8 @@ final class TenantPublicBookingAvailabilityService
                 'is_range_available' => null,
                 'available_ranges' => [],
                 'already_booked_by_phone' => false,
+                'pending_request_dates' => [],
+                'pending_requests_on_selected_range' => false,
             ];
         }
 
@@ -217,12 +220,86 @@ final class TenantPublicBookingAvailabilityService
             $selectedEnd,
         );
 
+        $pendingRequestDates = $this->pendingLeadDateStringsInRange($tenantId, $motorcycleId, $fromDay, $toDay);
+        sort($pendingRequestDates);
+
+        $pendingOnSelected = $this->pendingLeadsOverlapSelectedRange(
+            $tenantId,
+            $motorcycleId,
+            $selectedStart,
+            $selectedEnd,
+        );
+
         return [
             'disabled_dates' => $disabledDates,
             'is_range_available' => $isRangeAvailable,
             'available_ranges' => $availableRanges,
             'already_booked_by_phone' => $alreadyBooked,
+            'pending_request_dates' => $pendingRequestDates,
+            'pending_requests_on_selected_range' => $pendingOnSelected,
         ];
+    }
+
+    /**
+     * Дни в окне, где по этой карточке парка уже есть заявки (Lead) в статусе «ожидают обработки».
+     * Не блокируем выбор в календаре — только подсветка и текст в UI.
+     *
+     * @return list<string> Y-m-d
+     */
+    private function pendingLeadDateStringsInRange(int $tenantId, int $motorcycleId, Carbon $fromDay, Carbon $toDay): array
+    {
+        $leads = Lead::query()
+            ->where('tenant_id', $tenantId)
+            ->where('motorcycle_id', $motorcycleId)
+            ->whereIn('status', ['new', 'in_progress'])
+            ->whereNotNull('rental_date_from')
+            ->whereNotNull('rental_date_to')
+            ->where('rental_date_from', '<=', $toDay->toDateString())
+            ->where('rental_date_to', '>=', $fromDay->toDateString())
+            ->get(['rental_date_from', 'rental_date_to']);
+
+        $out = [];
+        foreach ($leads as $lead) {
+            $lf = Carbon::parse($lead->rental_date_from)->startOfDay();
+            $lt = Carbon::parse($lead->rental_date_to)->startOfDay();
+            $clipStart = $lf->greaterThan($fromDay) ? $lf : $fromDay->copy();
+            $clipEnd = $lt->lessThan($toDay) ? $lt : $toDay->copy();
+            if ($clipEnd->lt($clipStart)) {
+                continue;
+            }
+            foreach (CarbonPeriod::create($clipStart->toDateString(), $clipEnd->toDateString()) as $d) {
+                $out[] = $d->toDateString();
+            }
+        }
+
+        return array_values(array_unique($out));
+    }
+
+    private function pendingLeadsOverlapSelectedRange(
+        int $tenantId,
+        int $motorcycleId,
+        ?string $selectedStart,
+        ?string $selectedEnd,
+    ): bool {
+        if ($selectedStart === null || $selectedStart === '' || $selectedEnd === null || $selectedEnd === '') {
+            return false;
+        }
+
+        $selStart = Carbon::parse($selectedStart)->toDateString();
+        $selEnd = Carbon::parse($selectedEnd)->toDateString();
+        if (Carbon::parse($selectedEnd)->lt(Carbon::parse($selectedStart))) {
+            return false;
+        }
+
+        return Lead::query()
+            ->where('tenant_id', $tenantId)
+            ->where('motorcycle_id', $motorcycleId)
+            ->whereIn('status', ['new', 'in_progress'])
+            ->whereNotNull('rental_date_from')
+            ->whereNotNull('rental_date_to')
+            ->where('rental_date_from', '<=', $selEnd)
+            ->where('rental_date_to', '>=', $selStart)
+            ->exists();
     }
 
     private function unitHasCalendarConflict(int $rentalUnitId, Carbon $start, Carbon $end, Collection $blocksByUnit): bool

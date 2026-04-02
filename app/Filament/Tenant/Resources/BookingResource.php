@@ -103,7 +103,11 @@ class BookingResource extends Resource
                     ->checkFileExistence(false)
                     ->imageSize(48)
                     ->square()
-                    ->extraImgAttributes(['class' => 'rounded-lg object-cover'])
+                    ->extraImgAttributes([
+                        'class' => 'rounded-lg object-cover',
+                        'loading' => 'lazy',
+                        'decoding' => 'async',
+                    ])
                     ->extraCellAttributes(['class' => 'w-px pe-0']),
                 TextColumn::make('booking_number')
                     ->label('Номер')

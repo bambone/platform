@@ -59,18 +59,18 @@
             </div>
 
             {{-- Один макет + одна карточка --}}
-            <div class="pm-hero-mockup fade-reveal relative ml-auto hidden w-full max-w-[540px] pb-14 lg:block xl:max-w-none" style="transition-delay: 200ms;">
-                <div class="flex h-[400px] w-full max-w-[540px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-                    <div class="flex h-12 flex-none items-center justify-between border-b border-slate-100 bg-slate-50 px-4">
+            <div class="pm-hero-mockup fade-reveal relative mx-auto mt-8 w-full max-w-[540px] lg:mt-0 lg:ml-auto xl:max-w-none" style="transition-delay: 200ms;">
+                <div class="relative z-10 flex h-[320px] sm:h-[400px] w-full max-w-[540px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                    <div class="flex h-10 sm:h-12 flex-none items-center justify-between border-b border-slate-100 bg-slate-50 px-4">
                         <div class="flex gap-1.5" aria-hidden="true">
                             <div class="h-3 w-3 rounded-full bg-slate-300"></div>
                             <div class="h-3 w-3 rounded-full bg-slate-300"></div>
                             <div class="h-3 w-3 rounded-full bg-slate-300"></div>
                         </div>
-                        <div class="h-5 w-32 rounded-full bg-slate-200/80" aria-hidden="true"></div>
+                        <div class="h-4 sm:h-5 w-24 sm:w-32 rounded-full bg-slate-200/80" aria-hidden="true"></div>
                     </div>
                     <div class="flex min-h-0 flex-1 overflow-hidden">
-                        <div class="flex w-16 flex-col items-center gap-4 border-r border-slate-100 bg-slate-50 py-4" aria-hidden="true">
+                        <div class="hidden sm:flex w-16 flex-col items-center gap-4 border-r border-slate-100 bg-slate-50 py-4" aria-hidden="true">
                             <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-pm-accent/10">
                                 <div class="h-4 w-4 animate-pulse rounded-sm bg-pm-accent"></div>
                             </div>
@@ -78,22 +78,39 @@
                             <div class="h-6 w-6 rounded bg-slate-200"></div>
                             <div class="h-6 w-6 rounded bg-slate-200"></div>
                         </div>
-                        <div class="flex flex-1 flex-col gap-6 bg-white p-6" aria-hidden="true">
+                        <div class="flex flex-1 flex-col gap-4 sm:gap-6 bg-white p-4 sm:p-6" aria-hidden="true">
                             <div class="flex items-center justify-between">
-                                <div class="h-6 w-32 rounded bg-slate-800"></div>
-                                <div class="h-8 w-24 animate-pulse-slow rounded-lg bg-pm-accent"></div>
+                                <div class="h-5 sm:h-6 w-24 sm:w-32 rounded bg-slate-800"></div>
+                                <div class="h-7 sm:h-8 w-20 sm:w-24 animate-pulse-slow rounded-lg bg-pm-accent"></div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="flex h-24 flex-col justify-between rounded-xl border border-slate-100 bg-slate-50 p-4">
-                                    <div class="h-3 w-1/2 rounded bg-slate-300"></div>
-                                    <div class="h-6 w-3/4 animate-pulse-slow rounded bg-slate-800"></div>
+                            <div class="grid grid-cols-2 gap-3 sm:gap-4">
+                                <div class="flex h-20 sm:h-24 flex-col justify-between rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
+                                    <div class="h-2 sm:h-3 w-1/2 rounded bg-slate-300"></div>
+                                    <div class="h-4 sm:h-6 w-3/4 animate-pulse-slow rounded bg-slate-800"></div>
                                 </div>
-                                <div class="flex h-24 flex-col justify-between rounded-xl border border-slate-100 bg-pm-accent/5 p-4">
-                                    <div class="h-3 w-[80%] origin-left animate-data-fill-x rounded bg-pm-accent/60 will-change-transform motion-reduce:animate-none"></div>
-                                    <div class="h-6 w-full rounded bg-pm-accent/80"></div>
+                                <div class="flex h-20 sm:h-24 flex-col justify-between rounded-xl border border-slate-100 bg-pm-accent/5 p-3 sm:p-4">
+                                    <div class="h-2 sm:h-3 w-[80%] origin-left animate-data-fill-x rounded bg-pm-accent/60 will-change-transform motion-reduce:animate-none"></div>
+                                    <div class="h-4 sm:h-6 w-full rounded bg-pm-accent/80"></div>
                                 </div>
                             </div>
-                            <div class="flex flex-1 flex-col gap-3">
+                            <div class="flex flex-1 flex-col gap-2.5 sm:gap-3 lg:hidden">
+                                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                    <div class="h-2 w-6 rounded bg-slate-200"></div>
+                                    <div class="h-2 w-12 rounded bg-slate-200"></div>
+                                    <div class="h-3 w-10 rounded-full bg-green-100"></div>
+                                </div>
+                                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                    <div class="h-2 w-6 rounded bg-slate-200"></div>
+                                    <div class="h-2 w-16 rounded bg-slate-200"></div>
+                                    <div class="h-3 w-10 rounded-full bg-amber-100"></div>
+                                </div>
+                                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                    <div class="h-2 w-6 rounded bg-slate-200"></div>
+                                    <div class="h-2 w-12 rounded bg-slate-200"></div>
+                                    <div class="h-3 w-10 rounded-full bg-green-100"></div>
+                                </div>
+                            </div>
+                            <div class="hidden flex-1 flex-col gap-3 lg:flex">
                                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                                     <div class="h-3 w-8 rounded bg-slate-200"></div>
                                     <div class="h-3 w-16 rounded bg-slate-200"></div>
@@ -109,17 +126,55 @@
                     </div>
                 </div>
 
-                <div class="animate-float absolute -bottom-6 -left-8 z-20 flex w-64 max-w-[calc(100%-1rem)] items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-premium motion-reduce:animate-none">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-pm-accent/10" aria-hidden="true">
-                        <svg class="h-5 w-5 text-pm-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <style>
+                    @keyframes notificationPop {
+                        0% { transform: translateY(40px) scale(0.95); opacity: 0; }
+                        100% { transform: translateY(0) scale(1); opacity: 1; }
+                    }
+                    @keyframes notificationFloat {
+                        0%, 100% { transform: translateY(0); }
+                        50% { transform: translateY(-8px); }
+                    }
+                    .pm-hero-notification {
+                        animation: notificationPop 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards, notificationFloat 6s ease-in-out infinite forwards;
+                        animation-delay: 0.6s, 1.4s;
+                        opacity: 0;
+                        margin: -50px;
+                        box-shadow: 0 24px 60px -10px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.05); /* Premium depth */
+                        background: rgba(255, 255, 255, 0.85);
+                        backdrop-filter: blur(24px); /* Glassmorphism */
+                        -webkit-backdrop-filter: blur(24px);
+                        border: 1px solid rgba(255, 255, 255, 0.7); /* Clean edge, no black border */
+                    }
+                </style>
+
+                <!-- Gemini-Style Animated Notification Block -->
+                <div class="pm-hero-notification absolute bottom-3 left-3 z-50 flex w-[calc(100%-1.5rem)] max-w-[280px] items-center gap-3.5 rounded-2xl p-3.5 will-change-transform motion-reduce:animate-none sm:bottom-[30px] sm:-left-[80px] sm:w-auto sm:max-w-[360px] sm:gap-4 sm:p-4">
+                    
+                    <!-- App Image/Avatar Style -->
+                    <div class="relative flex h-12 w-12 shrink-0 rounded-xl bg-slate-100 shadow-md ring-1 ring-black/5 sm:h-14 sm:w-14" aria-hidden="true">
+                        <img src="https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=120&h=120" alt="Motorcycle mockup" class="h-full w-full rounded-xl object-cover" />
+                        
+                        <!-- Pulse Indicator -->
+                        <span class="absolute -right-1.5 -top-1.5 flex h-4 w-4">
+                            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75 motion-reduce:animate-none"></span>
+                            <span class="relative inline-flex h-4 w-4 rounded-full border-2 border-white bg-green-500 shadow-sm"></span>
+                        </span>
                     </div>
+
+                    <!-- Content -->
                     <div class="min-w-0 flex-1">
-                        <div class="truncate text-[11px] font-semibold uppercase tracking-wider text-slate-500">Новая бронь</div>
-                        <div class="mt-0.5 truncate text-sm font-bold text-slate-900">Toyota Camry</div>
+                        <div class="truncate text-[10.5px] font-bold uppercase tracking-widest text-slate-500 sm:text-[11px]">Новая бронь</div>
+                        <div class="mt-0.5 truncate text-sm font-extrabold tracking-tight text-slate-900 sm:text-base">BMW S 1000 RR</div>
                     </div>
-                    <div class="flex shrink-0 items-center gap-1 text-green-600">
-                        <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500 motion-reduce:animate-none" aria-hidden="true"></span>
-                        <span class="text-xs font-bold">Оплачено</span>
+
+                    <!-- Status -->
+                    <div class="flex shrink-0 items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-indigo-700 shadow-sm">
+                        <span class="relative flex h-2 w-2">
+                            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75 motion-reduce:animate-none"></span>
+                            <span class="relative inline-flex h-2 w-2 rounded-full bg-indigo-500"></span>
+                        </span>
+                        <span class="text-[10px] font-bold uppercase tracking-wide sm:text-[11px]">Забронировано</span>
                     </div>
                 </div>
             </div>

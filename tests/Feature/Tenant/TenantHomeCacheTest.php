@@ -13,10 +13,8 @@ class TenantHomeCacheTest extends TestCase
     use CreatesTenantsWithDomains;
     use RefreshDatabase;
 
-    public function test_public_home_survives_second_request_with_payload_cache(): void
+    public function test_public_home_renders_on_successive_requests(): void
     {
-        config(['tenancy.public_home_cache_ttl' => 600]);
-
         $tenant = $this->createTenantWithActiveDomain('homecache');
         $host = $this->tenancyHostForSlug('homecache');
 

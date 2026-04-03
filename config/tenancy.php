@@ -12,10 +12,10 @@ return [
     'cache_ttl' => (int) env('TENANCY_RESOLVER_CACHE_TTL', 300),
 
     /*
-    | Публичная главная тенанта: кэш сырья для Blade (секции CMS, байки, FAQ, отзывы).
-    | Снижает TTFB при медленном канале до БД. 0 = отключить. События сброса — см. HomeController.
+    | Резерв: раньше кэшировали payload главной (TTL > 0). Отключено в коде — Eloquent в Cache ломает unserialize.
+    | Ключ оставлен для совместимости .env; сброс старых ключей — HomeController::forgetCachedPayloadForTenant.
     */
-    'public_home_cache_ttl' => (int) env('TENANCY_PUBLIC_HOME_CACHE_TTL', 120),
+    'public_home_cache_ttl' => (int) env('TENANCY_PUBLIC_HOME_CACHE_TTL', 0),
 
     'custom_domains' => [
         'verification_prefix' => env('TENANCY_VERIFICATION_PREFIX', '_rentbase-verification'),

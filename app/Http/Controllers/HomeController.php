@@ -21,20 +21,14 @@ class HomeController extends Controller
 
     public function index()
     {
-        $tenant = tenant();
-        if ($tenant === null) {
+        if (tenant() === null) {
             abort(404);
         }
 
-        $ttl = (int) config('tenancy.public_home_cache_ttl', 0);
-        $cacheKey = sprintf('tenant:%d:home:index:v2', $tenant->id);
-
-        if ($ttl > 0) {
-            $data = Cache::remember($cacheKey, $ttl, fn () => $this->buildHomeIndexData());
-
-            return tenant_view('pages.home', $data);
-        }
-
+        /*
+         * Не кэшируем массив для Blade через Cache::remember: внутри Eloquent Collection / Model.
+         * После serialize/unserialize из Redis на проде возможен «incomplete object» и 500 на home.blade.php.
+         */
         return tenant_view('pages.home', $this->buildHomeIndexData());
     }
 

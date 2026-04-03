@@ -24,6 +24,8 @@ final class PlatformSettingRegistry
 
     public const GROUP_MARKETING = 'Маркетинг и лендинг';
 
+    public const GROUP_STORAGE = 'Хранилище и квоты';
+
     /**
      * @return array<string, array{group: string, label: string, description: string, type: 'string'|'integer'|'boolean'|'json'}>
      */
@@ -83,6 +85,42 @@ final class PlatformSettingRegistry
                 'label' => 'Оверлей контента лендинга (JSON)',
                 'description' => 'Сливается поверх config/platform_marketing.php. Редактирование удобнее на странице «Маркетинг и контент».',
                 'type' => 'json',
+            ],
+            'tenant_storage.default_base_quota_bytes' => [
+                'group' => self::GROUP_STORAGE,
+                'label' => 'Базовая квота хранилища для новых клиентов (байты)',
+                'description' => 'Например 104857600 = 100 МБ. Применяется при создании записи квоты.',
+                'type' => 'integer',
+            ],
+            'tenant_storage.default_warning_threshold_percent' => [
+                'group' => self::GROUP_STORAGE,
+                'label' => 'Порог предупреждения по остатку (%)',
+                'description' => 'Доля свободного места, ниже которой статус warning_20.',
+                'type' => 'integer',
+            ],
+            'tenant_storage.default_critical_threshold_percent' => [
+                'group' => self::GROUP_STORAGE,
+                'label' => 'Критический порог по остатку (%)',
+                'description' => 'Доля свободного места, ниже которой статус critical_10.',
+                'type' => 'integer',
+            ],
+            'tenant_storage.default_hard_stop_enabled' => [
+                'group' => self::GROUP_STORAGE,
+                'label' => 'Жёсткая блокировка загрузок по умолчанию',
+                'description' => 'Для новых записей квоты: блокировать загрузки при переполнении.',
+                'type' => 'boolean',
+            ],
+            'tenant_storage.tenant_expansion_hint' => [
+                'group' => self::GROUP_STORAGE,
+                'label' => 'Текст для клиента: как расширить хранилище',
+                'description' => 'Показывается в кабинете клиента на странице «Мониторинг и лимиты».',
+                'type' => 'string',
+            ],
+            'platform_storage.account_capacity_bytes' => [
+                'group' => self::GROUP_STORAGE,
+                'label' => 'Ёмкость объектного хранилища (байты, опционально)',
+                'description' => 'Ручное значение для дашборда платформы (R2/аккаунт). Не влияет на квоты клиентов.',
+                'type' => 'integer',
             ],
         ];
     }

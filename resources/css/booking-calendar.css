@@ -7,6 +7,20 @@
 /* Вместе с rounded-xl на хосте в Blade — обрезка сетки по скруглению карточки */
 #booking-calendar-host {
     isolation: isolate;
+    /*
+     * Задаём на хосте (а не только на .fc): так td/th всегда наследуют приглушённый цвет,
+     * даже если порядок инжекта FullCalendar в <head> и каскад ведут себя непредсказуемо.
+     */
+    --fc-border-color: rgba(15, 23, 42, 0.1);
+}
+
+/*
+ * Filament в тёмной теме вешает class="dark" на documentElement (см. layout base.blade.php).
+ * Дублируем .dark для совместимости, если класс окажется на предке не-html.
+ */
+html.dark #booking-calendar-host,
+.dark #booking-calendar-host {
+    --fc-border-color: rgba(100, 116, 139, 0.2);
 }
 
 /* Внешняя оболочка + переменные FC (специфичность #id перебивает инжект FullCalendar) */
@@ -16,7 +30,6 @@
 
     --fc-page-bg-color: transparent;
     --fc-neutral-bg-color: rgba(148, 163, 184, 0.08);
-    --fc-border-color: rgba(15, 23, 42, 0.1);
     --fc-today-bg-color: rgba(59, 130, 246, 0.05);
 
     --fc-button-text-color: #0f172a;
@@ -31,7 +44,6 @@
 }
 
 .dark #booking-calendar-host .fc {
-    --fc-border-color: rgba(255, 255, 255, 0.12);
     --fc-today-bg-color: rgba(59, 130, 246, 0.1);
     --fc-neutral-bg-color: rgba(148, 163, 184, 0.06);
 
@@ -42,11 +54,6 @@
     --fc-button-hover-border-color: rgba(255, 255, 255, 0.15);
     --fc-button-active-bg-color: rgba(255, 255, 255, 0.12);
     --fc-button-active-border-color: rgba(255, 255, 255, 0.2);
-}
-
-.dark #booking-calendar-host .fc-theme-standard td,
-.dark #booking-calendar-host .fc-theme-standard th {
-    border-color: var(--fc-border-color);
 }
 
 #booking-calendar-host .fc-col-header-cell,
@@ -66,6 +73,19 @@
 .dark #booking-calendar-host .fc-daygrid-day-frame,
 .dark #booking-calendar-host .fc-daygrid-day-bg {
     background: transparent !important;
+}
+
+/* Дни вне текущего месяца — тише, чем основная сетка */
+.dark #booking-calendar-host .fc-day-other .fc-daygrid-day-number {
+    color: rgba(148, 163, 184, 0.45) !important;
+}
+
+.dark #booking-calendar-host .fc-day-other .fc-daygrid-day-top {
+    opacity: 0.92;
+}
+
+#booking-calendar-host .fc-day-other .fc-daygrid-day-number {
+    color: rgba(100, 116, 139, 0.75) !important;
 }
 
 #booking-calendar-host .fc-toolbar.fc-header-toolbar {
@@ -91,6 +111,13 @@
 
 .dark #booking-calendar-host .fc .fc-button {
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.dark #booking-calendar-host .fc-event {
+    /* Чуть сильнее отделение от фона при тонкой сетке */
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.28),
+        0 0 0 1px rgba(15, 23, 42, 0.35);
 }
 
 #booking-calendar-host .fc .fc-button-primary:not(:disabled):active,
@@ -119,9 +146,20 @@
     border: 1px solid var(--fc-border-color) !important;
 }
 
+/*
+ * Полный border + !important: перебивает инжект FC (.fc-theme-standard td { border: 1px solid var(...) })
+ * без гонки «только border-color» против shorthand.
+ */
 #booking-calendar-host .fc-theme-standard td,
 #booking-calendar-host .fc-theme-standard th {
-    border-color: var(--fc-border-color) !important;
+    border: 1px solid var(--fc-border-color) !important;
+}
+
+html.dark #booking-calendar-host .fc-scrollgrid td,
+html.dark #booking-calendar-host .fc-scrollgrid th,
+.dark #booking-calendar-host .fc-scrollgrid td,
+.dark #booking-calendar-host .fc-scrollgrid th {
+    border: 1px solid var(--fc-border-color) !important;
 }
 
 #booking-calendar-host .fc-day-today {
@@ -152,6 +190,13 @@
         0 3px 6px -1px rgba(0, 0, 0, 0.1),
         0 2px 4px -1px rgba(0, 0, 0, 0.06);
     z-index: 5;
+}
+
+.dark #booking-calendar-host .fc-event:hover {
+    box-shadow:
+        0 4px 12px -2px rgba(0, 0, 0, 0.55),
+        0 2px 6px -1px rgba(0, 0, 0, 0.35),
+        0 0 0 1px rgba(15, 23, 42, 0.45);
 }
 
 #booking-calendar-host .fc-daygrid-event-dot {
@@ -208,7 +253,7 @@
 }
 
 .dark #booking-calendar-host .fc-timegrid-slot {
-    border-bottom-color: rgba(255, 255, 255, 0.045) !important;
+    border-bottom-color: rgba(100, 116, 139, 0.16) !important;
 }
 
 /* Дубли линий между слотами и колонками */
@@ -231,7 +276,7 @@
 }
 
 .dark #booking-calendar-host .fc-timegrid-cols .fc-timegrid-col:not(:last-child) {
-    border-right-color: rgba(255, 255, 255, 0.06) !important;
+    border-right-color: rgba(100, 116, 139, 0.22) !important;
 }
 
 #booking-calendar-host .fc-timegrid-col-frame {
@@ -245,7 +290,7 @@
 
 .dark #booking-calendar-host .fc-timegrid-slot-label,
 .dark #booking-calendar-host .fc-timegrid-axis-frame {
-    border-color: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(100, 116, 139, 0.22) !important;
 }
 
 #booking-calendar-host .fc-timegrid-col.fc-timegrid-axis {
@@ -272,13 +317,13 @@
 }
 
 .dark #booking-calendar-host .fc-timegrid-divider {
-    border-color: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(100, 116, 139, 0.24) !important;
 }
 
 /* Секция timegrid в scrollgrid: ослабить общий border-color только для недели */
 .dark #booking-calendar-host:has(.fc-timeGridWeek-view) .fc-scrollgrid td,
 .dark #booking-calendar-host:has(.fc-timeGridWeek-view) .fc-scrollgrid th {
-    border-color: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(100, 116, 139, 0.2) !important;
 }
 
 #booking-calendar-host:has(.fc-timeGridWeek-view) .fc-scrollgrid td,

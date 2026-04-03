@@ -1,4 +1,6 @@
 @php
+    use App\Support\Storage\TenantPublicAssetResolver;
+
     $h = $data['heading'] ?? '';
     $desc = $data['description'] ?? '';
     $cards = is_array($data['cards'] ?? null) ? $data['cards'] : [];
@@ -12,9 +14,13 @@
     @endif
     <div class="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
         @foreach($cards as $card)
+            @php
+                $imgRaw = $card['image'] ?? '';
+                $imgUrl = TenantPublicAssetResolver::resolveForCurrentTenant(is_string($imgRaw) ? $imgRaw : '');
+            @endphp
             <article class="flex flex-col overflow-hidden rounded-xl border border-white/10 bg-white/5">
-                @if(filled($card['image'] ?? ''))
-                    <img src="{{ e($card['image']) }}" alt="" class="h-40 w-full object-cover" loading="lazy" />
+                @if(filled($imgUrl))
+                    <img src="{{ e($imgUrl) }}" alt="" class="h-40 w-full object-cover" loading="lazy" />
                 @endif
                 <div class="flex flex-1 flex-col p-4">
                     <h3 class="font-semibold text-white">{{ $card['title'] ?? '' }}</h3>

@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Faq;
 use App\Models\Motorcycle;
 use App\Models\Page;
+use App\Models\PageSection;
 use App\Models\Review;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as BaseCollection;
 use Illuminate\Support\Facades\Cache;
 
 class HomeController extends Controller
@@ -35,20 +37,64 @@ class HomeController extends Controller
             'Лучший выбор',
         ];
 
-        $sections = $this->getHomeSections();
+        $homeLayoutSections = $this->getHomeLayoutSections();
+        $sections = $this->sectionsKeyedForLegacyComponents($homeLayoutSections);
         $page = Page::where('slug', 'home')->where('status', 'published')->first();
         $seoMeta = $page?->seoMeta;
         $faqs = Faq::where('show_on_home', true)
             ->where('status', 'published')
             ->orderBy('sort_order')
             ->get();
-        $reviews = $this->getHomeReviews($sections['reviews_block'] ?? []);
+        $reviews = $this->getHomeReviews($homeLayoutSections);
 
-        return tenant_view('pages.home', compact('bikes', 'badges', 'sections', 'faqs', 'reviews', 'seoMeta'));
+        return tenant_view('pages.home', compact(
+            'bikes',
+            'badges',
+            'sections',
+            'homeLayoutSections',
+            'faqs',
+            'reviews',
+            'seoMeta',
+        ));
     }
 
-    private function getHomeReviews(array $section): Collection
+    /**
+     * @return BaseCollection<int, PageSection>
+     */
+    private function getHomeLayoutSections(): BaseCollection
     {
+        $page = Page::where('slug', 'home')->where('status', 'published')->first();
+        if (! $page) {
+            return collect();
+        }
+
+        return $page->sections()
+            ->where('status', 'published')
+            ->where('is_visible', true)
+            ->where('section_key', '!=', 'main')
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * Ключи как у старых фиксированных слотов (последняя секция с таким key перезаписывает при дублях).
+     *
+     * @param  BaseCollection<int, PageSection>  $layout
+     * @return array<string, mixed>
+     */
+    private function sectionsKeyedForLegacyComponents(BaseCollection $layout): array
+    {
+        return $layout->keyBy('section_key')->map(fn ($s) => $s->data_json ?? [])->all();
+    }
+
+    /**
+     * @param  BaseCollection<int, PageSection>  $layout
+     */
+    private function getHomeReviews(BaseCollection $layout): Collection
+    {
+        $block = $layout->firstWhere('section_key', 'reviews_block');
+        $section = is_array($block?->data_json) ? $block->data_json : [];
         $ids = $section['selected_review_ids'] ?? [];
         if (! empty($ids)) {
             $ids = array_map('intval', $ids);
@@ -64,22 +110,5 @@ class HomeController extends Controller
             ->orderBy('sort_order')
             ->limit(3)
             ->get();
-    }
-
-    private function getHomeSections(): array
-    {
-        $page = Page::where('slug', 'home')->where('status', 'published')->first();
-        if (! $page) {
-            return [];
-        }
-
-        return $page->sections()
-            ->where('status', 'published')
-            ->where('is_visible', true)
-            ->orderBy('sort_order')
-            ->get()
-            ->keyBy('section_key')
-            ->map(fn ($s) => $s->data_json ?? [])
-            ->all();
     }
 }

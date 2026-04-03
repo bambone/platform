@@ -1,4 +1,6 @@
 @php
+    use App\Support\Storage\TenantPublicAssetResolver;
+
     $h = $data['heading'] ?? '';
     $images = is_array($data['images'] ?? null) ? $data['images'] : [];
 @endphp
@@ -8,7 +10,10 @@
     @endif
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         @foreach($images as $img)
-            @php $src = $img['url'] ?? ''; @endphp
+            @php
+                $srcRaw = $img['url'] ?? '';
+                $src = TenantPublicAssetResolver::resolveForCurrentTenant(is_string($srcRaw) ? $srcRaw : '');
+            @endphp
             @if(filled($src))
                 <figure class="overflow-hidden rounded-xl border border-white/10">
                     <img src="{{ e($src) }}" alt="{{ e($img['caption'] ?? '') }}" class="h-auto w-full max-w-full object-cover" loading="lazy" />

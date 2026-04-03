@@ -6,6 +6,7 @@ use App\Filament\Platform\Resources\TenantResource;
 use App\Models\TemplatePreset;
 use App\Services\TemplateCloningService;
 use App\Services\Tenancy\TenantDomainService;
+use App\Tenant\StorageQuota\TenantStorageQuotaService;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Str;
 
@@ -36,5 +37,7 @@ class CreateTenant extends CreateRecord
         }
 
         app(TenantDomainService::class)->createDefaultSubdomain($this->record, $this->record->slug);
+
+        app(TenantStorageQuotaService::class)->ensureQuotaRecord($this->record);
     }
 }

@@ -12,6 +12,7 @@ use App\Models\Tenant;
 use App\Models\TenantSetting;
 use App\Services\TemplateCloningService;
 use App\Services\Tenancy\TenantDomainService;
+use App\Tenant\StorageQuota\TenantStorageQuotaService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Pages\Page;
@@ -195,6 +196,8 @@ class OnboardingWizard extends Page
             'domain_localization_preset_id' => $data['domain_localization_preset_id']
                 ?? DomainLocalizationPreset::query()->where('slug', 'generic_services')->value('id'),
         ]);
+
+        app(TenantStorageQuotaService::class)->ensureQuotaRecord($tenant);
 
         $preset = TemplatePreset::find($data['template_preset_id'] ?? null);
         if ($preset) {

@@ -2,6 +2,7 @@
 
 namespace App\PageBuilder\Blueprints;
 
+use App\Filament\Forms\Components\PageBuilderIconPicker;
 use App\PageBuilder\PageSectionCategory;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
@@ -52,7 +53,10 @@ final class FeaturesBlueprint extends AbstractPageSectionBlueprint
             Repeater::make('data_json.items')
                 ->label('Карточки')
                 ->schema([
-                    TextInput::make('icon')->label('Иконка / ключ')->maxLength(64)->helperText('Напр. coast, shield-check'),
+                    PageBuilderIconPicker::make('icon')
+                        ->label('Иконка')
+                        ->catalogGroup('features')
+                        ->helperText('Необязательно: показывается на сайте слева от заголовка.'),
                     TextInput::make('title')->label('Заголовок')->required()->maxLength(255),
                     Textarea::make('description')->label('Описание')->rows(3)->columnSpanFull(),
                 ])

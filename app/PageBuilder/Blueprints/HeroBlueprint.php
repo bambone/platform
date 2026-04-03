@@ -2,9 +2,11 @@
 
 namespace App\PageBuilder\Blueprints;
 
+use App\Filament\Forms\Components\TenantPublicImagePicker;
 use App\PageBuilder\PageSectionCategory;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 
@@ -22,7 +24,7 @@ final class HeroBlueprint extends AbstractPageSectionBlueprint
 
     public function description(): string
     {
-        return 'Баннер: заголовок, подзаголовок, кнопка, фон, вариант оформления.';
+        return 'Главный баннер: видео (постер + источник), тексты, опционально фон-картинка для других шаблонов.';
     }
 
     public function icon(): string
@@ -41,6 +43,9 @@ final class HeroBlueprint extends AbstractPageSectionBlueprint
             'variant' => 'full_background',
             'heading' => '',
             'subheading' => '',
+            'description' => '',
+            'video_poster' => '',
+            'video_src' => '',
             'button_text' => '',
             'button_url' => '',
             'background_image' => '',
@@ -69,6 +74,21 @@ final class HeroBlueprint extends AbstractPageSectionBlueprint
                 ->label('Подзаголовок')
                 ->maxLength(500)
                 ->columnSpanFull(),
+            Textarea::make('data_json.description')
+                ->label('Описание (под баннером)')
+                ->rows(2)
+                ->columnSpanFull(),
+            TenantPublicImagePicker::make('data_json.video_poster')
+                ->label('Постер видео')
+                ->helperText(__('Обложка для фона hero. Пусто — постер из общей темы (bundled).'))
+                ->uploadPublicSiteSubdirectory('site/videos')
+                ->columnSpanFull(),
+            TextInput::make('data_json.video_src')
+                ->label('Видео hero (MP4)')
+                ->placeholder('site/videos/…')
+                ->maxLength(2048)
+                ->helperText(__('Заглушка: пусто — на сайте нет кнопки «Смотреть видео». Укажите путь к файлу в вашем хранилище (например site/videos/имя.mp4 после загрузки) или полный https-URL. Общий ролик из шаблона темы не подставляется.'))
+                ->columnSpanFull(),
             TextInput::make('data_json.button_text')
                 ->label('Текст кнопки')
                 ->maxLength(120),
@@ -76,9 +96,10 @@ final class HeroBlueprint extends AbstractPageSectionBlueprint
                 ->label('Ссылка кнопки')
                 ->url()
                 ->maxLength(2048),
-            TextInput::make('data_json.background_image')
-                ->label('Фоновое изображение (URL)')
-                ->maxLength(2048)
+            TenantPublicImagePicker::make('data_json.background_image')
+                ->label('Фоновое изображение')
+                ->themeFallbackPreviewPath('marketing/hero-bg.png')
+                ->helperText(__('Пустое поле — на сайте используется фон из темы. Свой файл сохраняется в вашем каталоге (S3); файлы темы удалить нельзя.'))
                 ->columnSpanFull(),
             Toggle::make('data_json.overlay_dark')
                 ->label('Затемнение фона')

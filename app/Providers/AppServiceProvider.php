@@ -30,6 +30,7 @@ use App\Services\PageBuilder\SectionViewResolver;
 use App\Services\Tenancy\TenantMainMenuPages;
 use App\Services\Tenancy\TenantPagePrimaryHtmlSync;
 use App\Services\Tenancy\TenantViewResolver;
+use App\Tenant\StorageQuota\TenantMediaStorageQuotaObserver;
 use App\Terminology\TenantTerminologyService;
 use App\Themes\ThemeRegistry;
 use Filament\Facades\Filament;
@@ -39,6 +40,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -84,6 +86,7 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         Lead::observe(LeadObserver::class);
+        Media::observe(TenantMediaStorageQuotaObserver::class);
 
         $forgetTenantHome = static function (int $tenantId): void {
             if ($tenantId > 0) {

@@ -2,17 +2,20 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Forms\Components\TenantPublicImagePicker;
 use App\Filament\Shared\TenantAnalyticsFormSchema;
+use App\Livewire\Concerns\InteractsWithTenantPublicFilePicker;
 use App\Models\Setting;
+use App\Models\Tenant;
 use App\Models\TenantSetting;
 use App\Rules\OptionalRussianPhone;
 use App\Services\Analytics\AnalyticsSettingsPersistence;
 use App\Support\Analytics\AnalyticsSettingsData;
 use App\Support\Analytics\AnalyticsSettingsFormMapper;
 use App\Support\RussianPhone;
-use App\Support\Storage\TenantStorage;
 use App\Support\Storage\TenantStorageDisks;
-use Filament\Forms\Components\FileUpload;
+use App\Tenant\StorageQuota\StorageQuotaExceededException;
+use App\Tenant\StorageQuota\TenantStorageQuotaService;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -21,11 +24,16 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Livewire\WithFileUploads;
 use UnitEnum;
 
 class Settings extends Page
 {
+    use InteractsWithTenantPublicFilePicker;
+    use WithFileUploads;
+
     /**
      * Form state keys (underscore) → dotted keys passed to TenantSetting / Setting (must match getSettingsData()).
      *
@@ -144,19 +152,11 @@ class Settings extends Page
                 Section::make('Брендинг')
                     ->description('Файлы сохраняются в storage (путь привязан к ID клиента). URL-поля — для внешних ссылок; если загружен файл, он имеет приоритет.')
                     ->schema([
-                        FileUpload::make('branding_logo_path')
+                        TenantPublicImagePicker::make('branding_logo_path')
                             ->label('Логотип (файл)')
-                            ->disk(TenantStorageDisks::publicDiskName())
-                            ->directory(function (): string {
-                                $t = \currentTenant();
-                                abort_if($t === null, 403);
-
-                                return TenantStorage::for($t)->publicPath('site/logo');
-                            })
-                            ->image()
-                            ->maxSize(2048)
-                            ->nullable()
-                            ->helperText('PNG, JPG, WebP. До 2 МБ.'),
+                            ->uploadSlotSelector('[data-settings-tenant-upload-input]')
+                            ->uploadPublicSiteSubdirectory('site/logo')
+                            ->helperText('PNG, JPG, WebP. До 4 МБ при загрузке через кнопку; также можно выбрать файл из каталога.'),
                         TextInput::make('branding_logo')
                             ->label('URL логотипа (legacy)')
                             ->url()
@@ -166,35 +166,20 @@ class Settings extends Page
                             ->label('Основной цвет')
                             ->type('color')
                             ->helperText('Акцентные кнопки и ссылки на сайте. Рядом — текущий выбранный цвет (стандартный виджет браузера).'),
-                        FileUpload::make('branding_favicon_path')
+                        TenantPublicImagePicker::make('branding_favicon_path')
                             ->label('Favicon (файл)')
-                            ->disk(TenantStorageDisks::publicDiskName())
-                            ->directory(function (): string {
-                                $t = \currentTenant();
-                                abort_if($t === null, 403);
-
-                                return TenantStorage::for($t)->publicPath('site/favicon');
-                            })
-                            ->maxSize(512)
-                            ->nullable()
-                            ->helperText('PNG, ICO, JPG до 512 КБ.'),
+                            ->uploadSlotSelector('[data-settings-tenant-upload-input]')
+                            ->uploadPublicSiteSubdirectory('site/favicon')
+                            ->helperText('PNG, ICO, SVG. Размер загрузки до 4 МБ; для очень маленьких иконок предпочтительно оптимизировать файл заранее.'),
                         TextInput::make('branding_favicon')
                             ->label('URL favicon (legacy)')
                             ->url()
                             ->placeholder('https://...')
                             ->helperText('Используется, если файл не загружен.'),
-                        FileUpload::make('branding_hero_path')
+                        TenantPublicImagePicker::make('branding_hero_path')
                             ->label('Hero / OG-изображение (файл)')
-                            ->disk(TenantStorageDisks::publicDiskName())
-                            ->directory(function (): string {
-                                $t = \currentTenant();
-                                abort_if($t === null, 403);
-
-                                return TenantStorage::for($t)->publicPath('site/hero');
-                            })
-                            ->image()
-                            ->maxSize(4096)
-                            ->nullable()
+                            ->uploadSlotSelector('[data-settings-tenant-upload-input]')
+                            ->uploadPublicSiteSubdirectory('site/hero')
                             ->helperText('Крупное изображение для шапки или соцсетей; вывод задаётся темой.'),
                         TextInput::make('branding_hero')
                             ->label('URL hero (legacy)')
@@ -244,6 +229,19 @@ class Settings extends Page
     {
         $data = $this->getSchema('form')->getState();
         $tenant = \currentTenant();
+
+        if ($tenant) {
+            try {
+                $this->assertBrandingUploadsWithinQuota($tenant, $data);
+            } catch (StorageQuotaExceededException $e) {
+                Notification::make()
+                    ->title($e->getMessage())
+                    ->danger()
+                    ->send();
+
+                return;
+            }
+        }
 
         if ($tenant) {
             try {
@@ -299,5 +297,34 @@ class Settings extends Page
     public static function formFieldToSettingKeyMap(): array
     {
         return self::FORM_FIELD_TO_SETTING_KEY;
+    }
+
+    /**
+     * @param  array<string, mixed>  $formData
+     */
+    private function assertBrandingUploadsWithinQuota(Tenant $tenant, array $formData): void
+    {
+        if (! TenantStorageQuotaService::isQuotaEnforcementActive()) {
+            return;
+        }
+
+        $disk = Storage::disk(TenantStorageDisks::publicDiskName());
+        $before = $this->getSettingsData();
+        $fields = ['branding_logo_path', 'branding_favicon_path', 'branding_hero_path'];
+        $sum = 0;
+        foreach ($fields as $field) {
+            $new = isset($formData[$field]) ? (string) $formData[$field] : '';
+            $old = isset($before[$field]) ? (string) $before[$field] : '';
+            if ($new === '' || $new === $old) {
+                continue;
+            }
+            if (! $disk->exists($new)) {
+                continue;
+            }
+            $sum += (int) $disk->size($new);
+        }
+        if ($sum > 0) {
+            app(TenantStorageQuotaService::class)->assertCanStoreBytes($tenant, $sum, 'branding_upload');
+        }
     }
 }

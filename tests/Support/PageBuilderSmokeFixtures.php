@@ -486,6 +486,18 @@ final class PageBuilderSmokeFixtures
                 'is_visible' => true,
             ],
             [
+                'section_key' => 'motorcycle_catalog',
+                'section_type' => 'motorcycle_catalog',
+                'title' => 'Каталог',
+                'data_json' => [
+                    'heading' => 'Каталог (smoke)',
+                    'subheading' => 'Подзаголовок каталога для теста.',
+                ],
+                'sort_order' => 25,
+                'status' => 'published',
+                'is_visible' => true,
+            ],
+            [
                 'section_key' => 'why_us',
                 'section_type' => 'features',
                 'title' => 'Why',

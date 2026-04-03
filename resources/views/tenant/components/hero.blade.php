@@ -1,18 +1,16 @@
 @props(['section' => null])
 @php
+    use App\Support\Storage\TenantPublicAssetResolver;
+
     $section = is_array($section) ? $section : [];
-    $videoFile = config('tenant_landing.motolevins_hero_video', 'Moto_levins_1.mp4');
-    $themeVideoUrl = tenant_theme_public_url('site/videos/'.$videoFile);
+    $tenant = tenant();
     $platformPosterUrl = theme_platform_asset_url('marketing/hero-bg.png');
-    $platformVideoUrl = theme_platform_asset_url('videos/'.$videoFile);
-    // Постер по умолчанию — из bundled-темы (_system/…), как логотипы: дубликат под tenants/{id}/public/site/…
-    // на R2 даёт net::ERR_BLOCKED_BY_ORB в Chrome; кастомный постер — только из секции (video_poster).
+    // Постер по умолчанию — из bundled-темы (_system/…). Видео — только из хранилища тенанта / внешний URL (см. resolveHeroVideo).
     $defaultPosterAbs = $platformPosterUrl;
-    $defaultVideoAbs = $themeVideoUrl !== '' ? $themeVideoUrl : $platformVideoUrl;
 
     /**
-     * Старые записи в page_sections указывали poster/video от корня public (images/hero-bg.png, videos/…),
-     * из‑за чего запросы шли на /images/hero-bg.png и /videos/… — 404. Перенаправляем в каталог legacy-темы.
+     * Старые записи в page_sections указывали poster от корня public (images/hero-bg.png),
+     * из‑за чего запросы шли на /images/… — 404. Перенаправляем в каталог legacy-темы.
      */
     $normalizeTenantMediaPath = function (?string $path, string $fallbackAbs): string {
         $path = $path === null ? '' : trim($path);
@@ -30,12 +28,6 @@
         if (str_contains($path, 'themes/')) {
             return $path;
         }
-        if (preg_match('#^videos/[^/]+\.(mp4|webm)$#i', $path)) {
-            return theme_platform_asset_url('videos/'.basename($path));
-        }
-        if (preg_match('#^[^/]+\.(mp4|webm)$#i', $path)) {
-            return theme_platform_asset_url('videos/'.$path);
-        }
         if (preg_match('#^images/hero-bg\.(png|jpe?g)$#i', $path) || preg_match('#^hero-bg\.(png|jpe?g)$#i', $path)) {
             return theme_platform_asset_url('marketing/hero-bg.png');
         }
@@ -44,22 +36,23 @@
     };
 
     $posterRaw = $section['video_poster'] ?? $defaultPosterAbs;
-    $videoRaw = $section['video_src'] ?? $defaultVideoAbs;
     $posterRel = $normalizeTenantMediaPath($posterRaw, $defaultPosterAbs);
-    $videoRel = $normalizeTenantMediaPath($videoRaw, $defaultVideoAbs);
 
     $videoPoster = (str_starts_with($posterRel, 'http://') || str_starts_with($posterRel, 'https://') || str_starts_with($posterRel, '/'))
         ? $posterRel
         : asset($posterRel);
-    $videoSrc = (str_starts_with($videoRel, 'http://') || str_starts_with($videoRel, 'https://') || str_starts_with($videoRel, '/'))
-        ? $videoRel
-        : asset($videoRel);
+
+    $heroVideoUrl = $tenant instanceof \App\Models\Tenant
+        ? TenantPublicAssetResolver::resolveHeroVideo($section['video_src'] ?? '', $tenant)
+        : null;
+    $hasHeroVideo = $heroVideoUrl !== null && $heroVideoUrl !== '';
+    $videoSrc = $hasHeroVideo ? $heroVideoUrl : '';
 
     $heading = $section['heading'] ?? 'Аренда мотоциклов на Чёрном море';
     $subheading = $section['subheading'] ?? 'от 4 000 ₽/сутки';
     $description = $section['description'] ?? 'Геленджик · Анапа · Новороссийск — без скрытых платежей, экипировка и страховка включены';
 @endphp
-<section x-data="heroVideo()"
+<section x-data="heroVideo({ heroHasVideo: @js($hasHeroVideo) })"
          x-init="init()"
          @scroll.window="onScroll()"
          @wheel.window="onWheel()"
@@ -77,6 +70,7 @@
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
          class="absolute inset-0 z-20">
+        @if ($hasHeroVideo)
         <div class="absolute inset-0 bg-black/10 pointer-events-none z-[22]"></div>
         <video x-ref="heroVideo"
                class="absolute inset-0 w-full h-full object-cover"
@@ -86,7 +80,9 @@
                aria-label="POV-поездка на мотоцикле по южным дорогам">
             <source src="{{ $videoSrc }}" type="video/mp4">
         </video>
+        @endif
         <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/50 pointer-events-none z-[25]"></div>
+        @if ($hasHeroVideo)
         <div class="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 px-5 py-3 rounded-2xl bg-black/70 backdrop-blur-xl border border-white/15 z-[100] pb-[max(1rem,env(safe-area-inset-bottom))]">
             <button @click="togglePlay" :aria-label="isPaused ? 'Воспроизвести' : 'Пауза'" class="p-2.5 text-white/80 hover:text-white rounded-xl hover:bg-white/10 transition-all duration-200">
                 <svg x-show="isPaused" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -102,6 +98,7 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
+        @endif
     </div>
 
     <div x-show="!videoPlaying" class="absolute inset-0 z-0">
@@ -145,6 +142,7 @@
             <x-trust-chips />
         </div>
 
+        @if ($hasHeroVideo)
         <div class="mt-6 z-20 relative" :class="videoPlaying && 'opacity-0 pointer-events-none'">
             <button @click="playVideo" type="button"
                     class="inline-flex items-center gap-3 px-5 py-2.5 border border-white/15 text-white/65 hover:text-white/80 hover:border-white/30 rounded-xl transition-colors"
@@ -153,6 +151,7 @@
                 <span x-text="videoEnded ? 'Посмотреть ещё раз' : 'Смотреть, как это ощущается'" class="text-sm"></span>
             </button>
         </div>
+        @endif
     </div>
 
     <script>
@@ -160,7 +159,8 @@
         if (window.heroVideoRegistered) return;
         window.heroVideoRegistered = true;
 
-        Alpine.data('heroVideo', () => ({
+        Alpine.data('heroVideo', (opts = {}) => ({
+            heroHasVideo: opts.heroHasVideo === true,
             videoPlaying: false,
             videoMuted: false,
             volume: 0.12,
@@ -193,6 +193,7 @@
             },
 
             playVideo() {
+                if (!this.heroHasVideo) return;
                 const v = this.$refs.heroVideo;
                 if (!v) return;
                 this.videoEnded = false;

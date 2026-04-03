@@ -41,6 +41,7 @@ class AdminPanelProvider extends PanelProvider
     {
         $panel
             ->renderHook(PanelsRenderHook::BODY_START, fn (): string => View::make('components.filament-access-denied-banner')->render())
+            ->renderHook(PanelsRenderHook::BODY_START, fn (): string => View::make('components.filament-tenant-storage-quota-banner')->render())
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn (): string => Blade::render("@vite('resources/css/tenant-admin.css')"),

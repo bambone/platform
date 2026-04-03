@@ -42,7 +42,7 @@ class PagesAndSectionsSeeder extends Seeder
                     'subheading' => 'от 4 000 ₽/сутки',
                     'description' => 'Геленджик · Анапа · Новороссийск — без скрытых платежей, экипировка и страховка включены',
                     'video_poster' => 'images/motolevins/marketing/hero-bg.png',
-                    'video_src' => 'images/motolevins/videos/Moto_levins_1.mp4',
+                    'video_src' => 'site/videos/Moto_levins_1.mp4',
                 ],
                 'sort_order' => 0,
             ],
@@ -58,6 +58,16 @@ class PagesAndSectionsSeeder extends Seeder
                     ],
                 ],
                 'sort_order' => 10,
+            ],
+            [
+                'section_key' => 'motorcycle_catalog',
+                'section_type' => 'motorcycle_catalog',
+                'title' => 'Каталог мотоциклов',
+                'data_json' => [
+                    'heading' => 'Наш автопарк',
+                    'subheading' => 'Премиальная техника для любого стиля. Ограниченное количество мотоциклов — бронируйте заранее.',
+                ],
+                'sort_order' => 25,
             ],
             [
                 'section_key' => 'why_us',

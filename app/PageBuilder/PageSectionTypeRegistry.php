@@ -15,6 +15,7 @@ use App\PageBuilder\Blueprints\GalleryBlueprint;
 use App\PageBuilder\Blueprints\HeroBlueprint;
 use App\PageBuilder\Blueprints\InfoCardsSectionBlueprint;
 use App\PageBuilder\Blueprints\ListBlockSectionBlueprint;
+use App\PageBuilder\Blueprints\MotorcycleCatalogBlueprint;
 use App\PageBuilder\Blueprints\NoticeBoxSectionBlueprint;
 use App\PageBuilder\Blueprints\RichTextBlueprint;
 use App\PageBuilder\Blueprints\StructuredTextSectionBlueprint;
@@ -50,6 +51,7 @@ final class PageSectionTypeRegistry
             new ContactsBlueprint,
             new GalleryBlueprint,
             new CardsTeaserBlueprint,
+            new MotorcycleCatalogBlueprint,
         ];
     }
 

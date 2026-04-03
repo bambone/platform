@@ -25,6 +25,7 @@ final class LegacySectionTypeResolver
         'reviews_block' => 'cards_teaser',
         'faq_block' => 'faq',
         'final_cta' => 'cta',
+        'motorcycle_catalog' => 'motorcycle_catalog',
     ];
 
     public function __construct(

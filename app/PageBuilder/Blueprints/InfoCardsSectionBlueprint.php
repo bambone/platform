@@ -2,6 +2,7 @@
 
 namespace App\PageBuilder\Blueprints;
 
+use App\Filament\Forms\Components\PageBuilderIconPicker;
 use App\PageBuilder\PageSectionCategory;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -61,18 +62,9 @@ final class InfoCardsSectionBlueprint extends AbstractPageSectionBlueprint
             Repeater::make('data_json.items')
                 ->label('Карточки')
                 ->schema([
-                    Select::make('icon')
+                    PageBuilderIconPicker::make('icon')
                         ->label('Иконка')
-                        ->options([
-                            'check' => 'Галочка',
-                            'shield' => 'Щит',
-                            'clock' => 'Часы',
-                            'phone' => 'Телефон',
-                            'map' => 'Карта',
-                            'star' => 'Звезда',
-                            'info' => 'Инфо',
-                        ])
-                        ->native(true)
+                        ->catalogGroup('info_cards')
                         ->required(),
                     TextInput::make('title')
                         ->label('Заголовок')

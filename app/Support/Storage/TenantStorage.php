@@ -4,9 +4,12 @@ namespace App\Support\Storage;
 
 use App\Models\Tenant;
 use App\Tenant\CurrentTenant;
+use App\Tenant\StorageQuota\TenantStorageQuotaService;
 use DateTimeInterface;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Database\QueryException;
 use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use LogicException;
@@ -155,6 +158,14 @@ final class TenantStorage
             $disk->makeDirectory($dir);
         }
 
+        $oldSize = $disk->exists($full) ? (int) $disk->size($full) : 0;
+        $newSize = strlen($contents);
+        $delta = $newSize - $oldSize;
+        $tenant = $this->quotaTenant();
+        if ($tenant !== null && TenantStorageQuotaService::isQuotaEnforcementActive() && $delta > 0) {
+            app(TenantStorageQuotaService::class)->assertCanStoreBytes($tenant, $delta, 'tenant_storage_private_atomic_put');
+        }
+
         $tmp = $full.'.tmp.'.bin2hex(random_bytes(4));
         if (! $disk->put($tmp, $contents)) {
             return false;
@@ -168,6 +179,10 @@ final class TenantStorage
             $disk->delete($tmp);
 
             return false;
+        }
+
+        if ($delta !== 0 && $tenant !== null) {
+            app(TenantStorageQuotaService::class)->applyUsageDelta($tenant, $delta);
         }
 
         return true;
@@ -186,12 +201,42 @@ final class TenantStorage
 
     public function putPublic(string $path, mixed $contents, array $options = []): bool
     {
-        return $this->publicDisk()->put($this->publicPath($path), $contents, $options);
+        $fullKey = $this->publicPath($path);
+        $disk = $this->publicDisk();
+        $oldSize = $disk->exists($fullKey) ? (int) $disk->size($fullKey) : 0;
+        $newSize = self::measureContentsByteLength($contents);
+        $delta = $newSize - $oldSize;
+        $tenant = $this->quotaTenant();
+        if ($tenant !== null && TenantStorageQuotaService::isQuotaEnforcementActive() && $delta > 0) {
+            app(TenantStorageQuotaService::class)->assertCanStoreBytes($tenant, $delta, 'tenant_storage_public_put');
+        }
+
+        $ok = $disk->put($fullKey, $contents, $options);
+        if ($ok && $delta !== 0 && $tenant !== null) {
+            app(TenantStorageQuotaService::class)->applyUsageDelta($tenant, $delta);
+        }
+
+        return $ok;
     }
 
     public function putPrivate(string $path, mixed $contents, array $options = []): bool
     {
-        return $this->privateDisk()->put($this->privatePath($path), $contents, $options);
+        $fullKey = $this->privatePath($path);
+        $disk = $this->privateDisk();
+        $oldSize = $disk->exists($fullKey) ? (int) $disk->size($fullKey) : 0;
+        $newSize = self::measureContentsByteLength($contents);
+        $delta = $newSize - $oldSize;
+        $tenant = $this->quotaTenant();
+        if ($tenant !== null && TenantStorageQuotaService::isQuotaEnforcementActive() && $delta > 0) {
+            app(TenantStorageQuotaService::class)->assertCanStoreBytes($tenant, $delta, 'tenant_storage_private_put');
+        }
+
+        $ok = $disk->put($fullKey, $contents, $options);
+        if ($ok && $delta !== 0 && $tenant !== null) {
+            app(TenantStorageQuotaService::class)->applyUsageDelta($tenant, $delta);
+        }
+
+        return $ok;
     }
 
     public function getPublic(string $path): ?string
@@ -328,5 +373,37 @@ final class TenantStorage
                 'TenantStorage::for('.$tenantId.') is not allowed in tenant context for tenant #'.$current->tenant->id.'.'
             );
         }
+    }
+
+    private function quotaTenant(): ?Tenant
+    {
+        try {
+            return Tenant::query()->find($this->tenantId);
+        } catch (QueryException) {
+            return null;
+        }
+    }
+
+    private static function measureContentsByteLength(mixed $contents): int
+    {
+        if ($contents === null || $contents === '') {
+            return 0;
+        }
+        if (is_string($contents)) {
+            return strlen($contents);
+        }
+        if ($contents instanceof UploadedFile) {
+            return (int) $contents->getSize();
+        }
+        if ($contents instanceof \SplFileInfo) {
+            return (int) @filesize($contents->getPathname()) ?: 0;
+        }
+        if (is_resource($contents)) {
+            $stat = @fstat($contents);
+
+            return (int) ($stat['size'] ?? 0);
+        }
+
+        return 0;
     }
 }

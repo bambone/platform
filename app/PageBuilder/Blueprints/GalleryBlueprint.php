@@ -2,6 +2,7 @@
 
 namespace App\PageBuilder\Blueprints;
 
+use App\Filament\Forms\Components\TenantPublicImagePicker;
 use App\PageBuilder\PageSectionCategory;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
@@ -51,7 +52,10 @@ final class GalleryBlueprint extends AbstractPageSectionBlueprint
             Repeater::make('data_json.images')
                 ->label('Изображения')
                 ->schema([
-                    TextInput::make('url')->label('URL изображения')->url()->required()->maxLength(2048)->columnSpanFull(),
+                    TenantPublicImagePicker::make('url')
+                        ->label('Изображение')
+                        ->allowEmpty(false)
+                        ->columnSpanFull(),
                     TextInput::make('caption')->label('Подпись')->maxLength(255),
                 ])
                 ->defaultItems(1)

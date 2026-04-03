@@ -65,6 +65,7 @@ class PageSectionContentCatalogTest extends TestCase
         $ids = array_map(fn ($b) => $b->id(), $reg->forPage($home, 'default'));
         $this->assertContains('hero', $ids);
         $this->assertContains('cta', $ids);
+        $this->assertContains('motorcycle_catalog', $ids);
         $this->assertNotContains('structured_text', $ids);
     }
 
@@ -79,6 +80,7 @@ class PageSectionContentCatalogTest extends TestCase
         $this->assertNotContains('cta', $ids);
         $this->assertNotContains('gallery', $ids);
         $this->assertNotContains('cards_teaser', $ids);
+        $this->assertNotContains('motorcycle_catalog', $ids);
         foreach (self::CONTENT_TYPE_IDS as $id) {
             $this->assertContains($id, $ids);
         }

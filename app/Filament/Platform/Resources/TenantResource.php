@@ -5,6 +5,7 @@ namespace App\Filament\Platform\Resources;
 use App\Filament\Platform\Resources\Concerns\GrantsPlatformPanelAccess;
 use App\Filament\Platform\Resources\TenantResource\Pages;
 use App\Filament\Platform\Resources\TenantResource\RelationManagers\TenantMailLogsRelationManager;
+use App\Filament\Platform\Resources\TenantResource\RelationManagers\TenantStorageQuotaEventsRelationManager;
 use App\Filament\Platform\Resources\TenantResource\RelationManagers\TenantUsersRelationManager;
 use App\Filament\Shared\TenantAnalyticsFormSchema;
 use App\Models\DomainLocalizationPreset;
@@ -13,14 +14,17 @@ use App\Models\Tenant;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Number;
 
 class TenantResource extends Resource
 {
@@ -162,6 +166,74 @@ class TenantResource extends Resource
                 TenantAnalyticsFormSchema::section(
                     fn (): bool => auth()->user()?->hasAnyRole(['platform_owner', 'platform_admin']) ?? false
                 ),
+
+                Section::make('Хранилище и квоты')
+                    ->description('Метрики обновляются при сохранении и по ночному расписанию. Управление — кнопками над формой.')
+                    ->visibleOn('edit')
+                    ->schema([
+                        Placeholder::make('sq_used')
+                            ->label('Использовано')
+                            ->content(function (Tenant $record): string {
+                                $record->loadMissing('storageQuota');
+                                $q = $record->storageQuota;
+
+                                return $q ? Number::fileSize((int) $q->used_bytes, precision: 2) : '—';
+                            }),
+                        Placeholder::make('sq_quota')
+                            ->label('Эффективный лимит')
+                            ->content(function (Tenant $record): string {
+                                $record->loadMissing('storageQuota');
+                                $q = $record->storageQuota;
+
+                                return $q ? Number::fileSize($q->effective_quota_bytes, precision: 2) : '—';
+                            }),
+                        Placeholder::make('sq_free')
+                            ->label('Свободно')
+                            ->content(function (Tenant $record): string {
+                                $record->loadMissing('storageQuota');
+                                $q = $record->storageQuota;
+                                if ($q === null) {
+                                    return '—';
+                                }
+                                $free = max(0, $q->effective_quota_bytes - (int) $q->used_bytes);
+
+                                return Number::fileSize($free, precision: 2);
+                            }),
+                        Placeholder::make('sq_status')
+                            ->label('Статус')
+                            ->content(function (Tenant $record): string {
+                                $record->loadMissing('storageQuota');
+                                $q = $record->storageQuota;
+                                if ($q === null) {
+                                    return '—';
+                                }
+
+                                return match ($q->status) {
+                                    'warning_20' => 'Предупреждение (остаток ≤20%)',
+                                    'critical_10' => 'Критично (остаток ≤10%)',
+                                    'exceeded' => 'Переполнение',
+                                    default => 'Норма',
+                                };
+                            }),
+                        Placeholder::make('sq_package')
+                            ->label('Пакет хранилища')
+                            ->content(function (Tenant $record): string {
+                                $record->loadMissing('storageQuota');
+                                $q = $record->storageQuota;
+                                $l = $q?->storage_package_label;
+
+                                return (is_string($l) && $l !== '') ? $l : '—';
+                            }),
+                        Placeholder::make('sq_sync')
+                            ->label('Последняя синхронизация')
+                            ->content(function (Tenant $record): string {
+                                $record->loadMissing('storageQuota');
+                                $q = $record->storageQuota;
+
+                                return $q?->last_synced_from_storage_at?->timezone(config('app.timezone'))->format('d.m.Y H:i') ?? '—';
+                            }),
+                    ])
+                    ->columns(2),
             ]);
     }
 
@@ -212,10 +284,70 @@ class TenantResource extends Resource
                     ->openUrlInNewTab()
                     ->tooltip(fn (Tenant $record): ?string => $record->cabinetAdminUrl())
                     ->placeholder('Нет активного домена'),
+                TextColumn::make('storageQuota.used_bytes')
+                    ->label('Хранилище')
+                    ->formatStateUsing(fn (?int $state): string => $state !== null ? Number::fileSize($state, precision: 1) : '—')
+                    ->sortable()
+                    ->toggleable(),
+                TextColumn::make('storageQuota.effective')
+                    ->label('Квота')
+                    ->getStateUsing(fn (Tenant $record): ?int => $record->storageQuota?->effective_quota_bytes)
+                    ->formatStateUsing(fn (?int $state): string => $state !== null ? Number::fileSize($state, precision: 1) : '—')
+                    ->toggleable(),
+                TextColumn::make('storageQuota.used_pct')
+                    ->label('%')
+                    ->getStateUsing(function (Tenant $record): ?float {
+                        $q = $record->storageQuota;
+                        if ($q === null) {
+                            return null;
+                        }
+                        $eff = $q->effective_quota_bytes;
+                        if ($eff <= 0) {
+                            return null;
+                        }
+
+                        return round(((int) $q->used_bytes / $eff) * 100, 1);
+                    })
+                    ->toggleable(),
+                TextColumn::make('storageQuota.status')
+                    ->label('Ст. хран.')
+                    ->badge()
+                    ->color(fn (?string $state): string => match ($state) {
+                        'warning_20' => 'warning',
+                        'critical_10' => 'danger',
+                        'exceeded' => 'danger',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'warning_20' => '20%',
+                        'critical_10' => '10%',
+                        'exceeded' => 'Переполн.',
+                        default => 'OK',
+                    })
+                    ->toggleable(),
             ])
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('domains'))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['domains', 'storageQuota']))
             ->filters([
-                //
+                SelectFilter::make('storage_status')
+                    ->label('Хранилище')
+                    ->options([
+                        'approaching' => 'У границы (≤20% свободно)',
+                        'critical' => 'Критично (≤10% свободно)',
+                        'exceeded' => 'Переполнение',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $v = $data['value'] ?? null;
+                        if ($v === null || $v === '') {
+                            return $query;
+                        }
+
+                        return match ($v) {
+                            'approaching' => $query->whereHas('storageQuota', fn (Builder $q): Builder => $q->whereIn('status', ['warning_20', 'critical_10', 'exceeded'])),
+                            'critical' => $query->whereHas('storageQuota', fn (Builder $q): Builder => $q->whereIn('status', ['critical_10', 'exceeded'])),
+                            'exceeded' => $query->whereHas('storageQuota', fn (Builder $q): Builder => $q->where('status', 'exceeded')),
+                            default => $query,
+                        };
+                    }),
             ])
             ->actions([
                 EditAction::make(),
@@ -237,6 +369,7 @@ class TenantResource extends Resource
         return [
             TenantUsersRelationManager::class,
             TenantMailLogsRelationManager::class,
+            TenantStorageQuotaEventsRelationManager::class,
         ];
     }
 

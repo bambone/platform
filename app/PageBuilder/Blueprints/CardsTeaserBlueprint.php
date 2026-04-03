@@ -2,6 +2,7 @@
 
 namespace App\PageBuilder\Blueprints;
 
+use App\Filament\Forms\Components\TenantPublicImagePicker;
 use App\PageBuilder\PageSectionCategory;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
@@ -59,7 +60,9 @@ final class CardsTeaserBlueprint extends AbstractPageSectionBlueprint
                 ->schema([
                     TextInput::make('title')->label('Заголовок')->required()->maxLength(255),
                     Textarea::make('text')->label('Текст')->rows(3)->columnSpanFull(),
-                    TextInput::make('image')->label('URL изображения')->maxLength(2048),
+                    TenantPublicImagePicker::make('image')
+                        ->label('Изображение')
+                        ->columnSpanFull(),
                     TextInput::make('button_text')->label('Текст кнопки')->maxLength(120),
                     TextInput::make('button_url')->label('Ссылка')->url()->maxLength(2048),
                 ])

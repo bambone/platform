@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\RecalculateAllTenantStorageUsageJob;
 use App\Models\Motorcycle;
 use App\Models\Tenant;
 use App\Models\TenantSeoFile;
@@ -10,6 +11,7 @@ use App\Models\TenantSetting;
 use App\Support\MediaLibrary\TenantMediaStoragePaths;
 use App\Support\Storage\TenantStorage;
 use App\Support\Storage\TenantStorageDisks;
+use App\Tenant\StorageQuota\TenantStorageQuotaService;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Cache;
@@ -40,37 +42,45 @@ class TenantNormalizeStorageCommand extends Command
             $this->warn('Режим dry-run: файлы и БД не меняются.');
         }
 
-        try {
-            if (! $this->option('skip-media')) {
-                $this->repairMisnestedSiteUnderPublicMedia($dry);
-                $this->relocateSpatieMedia($dry);
-                $this->alignMisplacedSpatieMediaFilesWithRecords($dry);
-            }
-            if (! $this->option('skip-branding')) {
-                $this->relocateBrandingIntoPublicSegment($dry);
-                $this->rewriteBrandingPathsInDatabase($dry);
-            }
-            if (! $this->option('skip-seo')) {
-                $this->relocateSeoIntoPrivateSegment($dry);
-                $this->rewriteSeoPathsInDatabase($dry);
-            }
-            if ($this->option('link-bikes')) {
-                $this->linkBikesFolderToMotorcycles($dry);
-            }
-            if ($this->option('seed-theme-assets') && ! $dry) {
-                $this->seedMotoTemplateThemeAssets();
-            }
-            $this->removeLegacySystemArchiveFolder($dry);
-        } catch (Throwable $e) {
-            $this->error($e->getMessage());
+        $exit = TenantStorageQuotaService::withoutQuotaEnforcement(function () use ($dry): int {
+            try {
+                if (! $this->option('skip-media')) {
+                    $this->repairMisnestedSiteUnderPublicMedia($dry);
+                    $this->relocateSpatieMedia($dry);
+                    $this->alignMisplacedSpatieMediaFilesWithRecords($dry);
+                }
+                if (! $this->option('skip-branding')) {
+                    $this->relocateBrandingIntoPublicSegment($dry);
+                    $this->rewriteBrandingPathsInDatabase($dry);
+                }
+                if (! $this->option('skip-seo')) {
+                    $this->relocateSeoIntoPrivateSegment($dry);
+                    $this->rewriteSeoPathsInDatabase($dry);
+                }
+                if ($this->option('link-bikes')) {
+                    $this->linkBikesFolderToMotorcycles($dry);
+                }
+                if ($this->option('seed-theme-assets') && ! $dry) {
+                    $this->seedMotoTemplateThemeAssets();
+                }
+                $this->removeLegacySystemArchiveFolder($dry);
+            } catch (Throwable $e) {
+                $this->error($e->getMessage());
 
-            return self::FAILURE;
+                return self::FAILURE;
+            }
+
+            return self::SUCCESS;
+        });
+
+        if (! $dry && $exit === self::SUCCESS) {
+            RecalculateAllTenantStorageUsageJob::dispatchSync(true);
         }
 
         $this->info('Готово.');
         $this->normalizeLog('=== tenant:normalize-storage done');
 
-        return self::SUCCESS;
+        return $exit;
     }
 
     private function normalizeLog(string $message): void
@@ -583,38 +593,65 @@ class TenantNormalizeStorageCommand extends Command
     }
 
     /**
-     * Кладёт дефолтное hero-видео в публичное хранилище тенанта (S3/R2 при настроенном диске).
-     * Постер не дублируем: в шаблонах дефолт — {@see theme_platform_asset_url('marketing/hero-bg.png')} (_system/…),
-     * иначе на CDN дубликат под tenants/{id}/public/site/… ловит ORB в Chrome.
+     * Кладёт hero-видео в {@code tenants/{id}/public/site/videos/…}: сначала копия с bundled-темы на диске
+     * ({@code tenants/_system/themes/…/videos/}), иначе локальный файл из public/resources.
+     * Уже существующий файл в site/videos не перезаписываем (можно свой ролик).
      */
     private function seedMotoTemplateThemeAssets(): void
     {
         $prefix = config('themes.legacy_asset_url_prefix', config('tenant_landing.motolevins_public_prefix', 'images/motolevins'));
         $videoName = config('tenant_landing.motolevins_hero_video', 'Moto_levins_1.mp4');
 
-        $videoSrc = public_path($prefix.'/videos/'.$videoName);
-        if (! is_file($videoSrc)) {
-            $videoSrc = resource_path('themes/moto/public/videos/'.$videoName);
+        $localPath = public_path($prefix.'/videos/'.$videoName);
+        if (! is_file($localPath)) {
+            $localPath = resource_path('themes/moto/public/videos/'.$videoName);
         }
+        $localBytes = is_file($localPath) ? (string) file_get_contents($localPath) : null;
 
-        if (! is_file($videoSrc)) {
-            $this->warn('Нет исходного hero-видео в public и в resources/themes/moto/public — пропуск seed-theme-assets.');
-
-            return;
-        }
-
+        $disk = Storage::disk(TenantStorageDisks::publicDiskName());
         $n = 0;
         foreach (Tenant::query()->cursor() as $tenant) {
             if (! $this->tenantShouldReceiveMotoHeroTemplateAssets($tenant)) {
                 continue;
             }
             $ts = TenantStorage::forTrusted($tenant);
-            $ts->putPublic('site/videos/'.$videoName, (string) file_get_contents($videoSrc));
-            $this->line("  hero video → tenant #{$tenant->id} ({$tenant->slug})");
-            $n++;
+            $rel = 'site/videos/'.$videoName;
+            if ($ts->existsPublic($rel)) {
+                continue;
+            }
+
+            $fromKey = null;
+            foreach ([
+                'tenants/_system/themes/'.$tenant->themeKey().'/videos/'.$videoName,
+                'tenants/_system/themes/moto/videos/'.$videoName,
+                'tenants/_system/themes/default/videos/'.$videoName,
+            ] as $key) {
+                if ($disk->exists($key)) {
+                    $fromKey = $key;
+                    break;
+                }
+            }
+
+            if ($fromKey !== null) {
+                $disk->copy($fromKey, $ts->publicPath($rel));
+                $this->line("  hero video (из _system темы) → tenant #{$tenant->id} ({$tenant->slug})");
+                $n++;
+
+                continue;
+            }
+
+            if ($localBytes !== null) {
+                $ts->putPublic($rel, $localBytes);
+                $this->line("  hero video (локальный файл) → tenant #{$tenant->id} ({$tenant->slug})");
+                $n++;
+            }
         }
 
-        $this->info("seed-theme-assets: обновлено тенантов: {$n}");
+        if ($n === 0) {
+            $this->warn('seed-theme-assets: нечего копировать (у целевых тенантов уже есть файл в site/videos/, или нет ни bundled на диске, ни локального MP4).');
+        } else {
+            $this->info("seed-theme-assets: обновлено тенантов: {$n}");
+        }
     }
 
     private function removeLegacySystemArchiveFolder(bool $dry): void

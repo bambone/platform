@@ -12,9 +12,12 @@
 @source "../../app/Livewire/Crm";
 @source "../../app/Livewire/Tenant";
 @source "../../resources/views/filament/tenant";
+@source "../../resources/views/filament/tenant/pages";
+@source "../../resources/views/filament/forms/components";
 @source "../../resources/views/filament/shared";
 @source "../../resources/views/livewire/crm";
 @source "../../resources/views/livewire/tenant";
+@source "../../resources/views/components/filament";
 @source "../../vendor/filament";
 
 /* Layered Surface Architecture for Dark Mode - Product DNA */
@@ -35,6 +38,21 @@
 
 .dark .text-gray-500, .dark .text-gray-400 {
     color: var(--fi-text-secondary);
+}
+
+/*
+ * Нативный <select>: сам тег стилизуется Tailwind, а выпадающий список рисует движок.
+ * Без color-scheme в тёмной теме (class="dark" на html, как у Filament) Chrome/Edge часто показывают белое меню.
+ * fi-select-input — нативный Select Filament; fi-input на <select> — кастомные модалки (файлы, фильтры).
+ */
+select.fi-select-input,
+select.fi-input:is(select) {
+    color-scheme: light;
+}
+
+.dark select.fi-select-input,
+.dark select.fi-input:is(select) {
+    color-scheme: dark;
 }
 
 /* Sidebar Styling */

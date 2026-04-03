@@ -23,7 +23,7 @@
             </p>
         @else
             <p class="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-400">
-                Дополнительные блоки главной страницы идут <strong class="font-medium text-gray-800 dark:text-gray-200">ниже основного контента</strong>. Каталог техники на сайте задаётся шаблоном темы.
+                Порядок блоков на главной совпадает со списком ниже (сверху вниз), включая блок <strong class="font-medium text-gray-800 dark:text-gray-200">«Каталог мотоциклов»</strong> — его можно перемещать как остальные секции.
             </p>
         @endif
         <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
@@ -198,8 +198,17 @@
     @endif
 
     @if($showEditor)
-        <div class="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-4 sm:items-center" role="dialog" aria-modal="true">
-            <div class="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-4 shadow-xl dark:bg-gray-900 sm:p-6">
+        <div
+            class="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+            role="dialog"
+            aria-modal="true"
+            wire:click="closeEditor"
+            wire:key="page-section-editor-backdrop"
+        >
+            <div
+                class="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-4 shadow-xl dark:bg-gray-900 sm:p-6"
+                wire:click.stop
+            >
                 <div class="mb-4 flex items-center justify-between gap-2">
                     <h4 class="text-lg font-semibold text-gray-950 dark:text-white">
                         {{ $editingSectionId ? 'Редактирование секции' : 'Новая секция' }}
@@ -223,6 +232,8 @@
             </div>
         </div>
     @endif
+
+    @include('livewire.tenant.partials.tenant-public-file-picker-modal', ['uploadSlotAttribute' => 'data-tenant-public-upload-input'])
 
     <x-filament-actions::modals />
 </div>

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Tenant;
 
+use App\Livewire\Concerns\InteractsWithTenantPublicFilePicker;
 use App\Models\Page;
 use App\Models\PageSection;
 use App\PageBuilder\LegacySectionTypeResolver;
@@ -21,11 +22,14 @@ use Filament\Schemas\Schema;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 class PageSectionsBuilder extends Component implements HasActions, HasSchemas
 {
     use InteractsWithActions;
     use InteractsWithSchemas;
+    use InteractsWithTenantPublicFilePicker;
+    use WithFileUploads;
 
     public Page $record;
 

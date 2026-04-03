@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Http\Request;
 
 class Tenant extends Model
@@ -57,6 +58,16 @@ class Tenant extends Model
     public function mailLogs(): HasMany
     {
         return $this->hasMany(TenantMailLog::class);
+    }
+
+    public function storageQuota(): HasOne
+    {
+        return $this->hasOne(TenantStorageQuota::class);
+    }
+
+    public function storageQuotaEvents(): HasMany
+    {
+        return $this->hasMany(TenantStorageQuotaEvent::class);
     }
 
     public function users(): BelongsToMany

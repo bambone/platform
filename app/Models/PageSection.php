@@ -68,6 +68,7 @@ class PageSection extends Model
             'reviews_block' => 'Блок отзывов',
             'faq_block' => 'Блок FAQ',
             'final_cta' => 'Финальный CTA',
+            'motorcycle_catalog' => 'Каталог мотоциклов (главная)',
         ];
     }
 

@@ -13,6 +13,7 @@
 @source "../../resources/views/filament/platform";
 @source "../../resources/views/filament/shared";
 @source "../../resources/views/livewire/crm";
+@source "../../resources/views/components/filament";
 @source "../../vendor/filament";
 
 /* Layered Surface Architecture for Dark Mode 
@@ -39,6 +40,17 @@
 .dark .text-gray-500, .dark .text-gray-400 {
     /* Prevent text from being too dim */
     color: var(--fi-text-secondary);
+}
+
+/* См. tenant-admin.css: нативный <select> и выпадающий список в тёмной теме (html.dark). */
+select.fi-select-input,
+select.fi-input:is(select) {
+    color-scheme: light;
+}
+
+.dark select.fi-select-input,
+.dark select.fi-input:is(select) {
+    color-scheme: dark;
 }
 
 /* Sidebar Styling: The main elevated surface */

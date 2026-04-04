@@ -40,6 +40,7 @@
 
 - **Экспериментальный** формат; **не** заменяет sitemap, нормальный HTML и JSON-LD.
 - Содержание: кто такой RentBase (или бренд), 5–10 ключевых URL, по 1–2 строки summary на URL.
+- **Тенант:** правка текста и JSON — Filament **Маркетинг → SEO-файлы**, секция «Настройки SEO» (`seo.llms_intro`, `seo.llms_entries`, при необходимости `seo.route_overrides`).
 - Опционально: расширенный `llms-full.txt` / markdown для агентов.
 
 ## Webmaster tools (чеклист)

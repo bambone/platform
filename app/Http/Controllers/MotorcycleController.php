@@ -8,6 +8,37 @@ use App\Support\RussianPhone;
 
 class MotorcycleController extends Controller
 {
+    /**
+     * Публичный каталог мотоциклов (отдельный URL /motorcycles): тот же парк, что на главной, без фильтров по датам.
+     */
+    public function catalogIndex()
+    {
+        abort_if(tenant() === null, 404);
+
+        $bikes = Motorcycle::query()
+            ->where('show_in_catalog', true)
+            ->where('status', 'available')
+            ->with(['category', 'media'])
+            ->orderBy('sort_order')
+            ->get();
+
+        $badges = [
+            'Хит',
+            'Новинка',
+            null,
+            'Лучший выбор',
+            null,
+            'Новинка',
+            null,
+            'Лучший выбор',
+        ];
+
+        return tenant_view('pages.motorcycles.index', [
+            'bikes' => $bikes,
+            'badges' => $badges,
+        ]);
+    }
+
     public function show(string $slug)
     {
         $motorcycle = Motorcycle::where('slug', $slug)

@@ -36,7 +36,7 @@ class SeoFiles extends Page
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-magnifying-glass';
 
-    protected static ?string $title = 'robots.txt и sitemap.xml';
+    protected static ?string $title = 'SEO: robots.txt, sitemap.xml, llms.txt';
 
     protected static ?string $slug = 'seo-files';
 
@@ -122,7 +122,7 @@ class SeoFiles extends Page
                     ])->columns(2),
 
                 Section::make('Настройки SEO')
-                    ->description('Всё в одном месте: индексация, шаблон allow/disallow, опционально полный свой robots.txt. Пустой текст и выключенный переключатель — тогда используется автоматический шаблон. Предпросмотр — кнопка «Предпросмотр robots».')
+                    ->description('Индексация, robots/sitemap, экспериментальный /llms.txt и переопределения title/description для публичных маршрутов без страницы в CMS. JSON для llms и маршрутов хранится строкой; при ошибке формата сохранение блокируется. Предпросмотр robots — кнопка в шапке.')
                     ->schema([
                         Toggle::make('seo_indexing_enabled')
                             ->label('Индексация включена')
@@ -159,6 +159,21 @@ class SeoFiles extends Page
                             ->label('Disallow paths (JSON-массив строк)')
                             ->rows(2)
                             ->helperText('seo.robots_disallow_paths, по умолчанию ["/admin","/api"]'),
+                        Textarea::make('seo_llms_intro')
+                            ->label('Введение для llms.txt')
+                            ->rows(4)
+                            ->columnSpanFull()
+                            ->helperText('seo.llms_intro — 2–4 строки о бизнесе и сайте. Показывается под заголовком с названием сайта.'),
+                        Textarea::make('seo_llms_entries_json')
+                            ->label('Список URL для llms.txt (JSON)')
+                            ->rows(8)
+                            ->columnSpanFull()
+                            ->helperText('seo.llms_entries: массив [{"path":"/","summary":"…"},…]. Если пусто — пути из sitemap без описаний.'),
+                        Textarea::make('seo_route_overrides_json')
+                            ->label('Переопределения SEO по имени маршрута (JSON)')
+                            ->rows(10)
+                            ->columnSpanFull()
+                            ->helperText('seo.route_overrides: объект { "faq": { "title", "description", "h1" }, … }. Плейсхолдеры: {site_name}, {page_name}, {motorcycle_name}.'),
                     ])->columns(2),
             ]);
     }
@@ -174,6 +189,10 @@ class SeoFiles extends Page
         abort_if($tenant === null, 403);
 
         $state = $this->getSchema('form')->getState();
+
+        if (! $this->validateTenantSeoJsonFields($state)) {
+            return;
+        }
 
         try {
             $allow = $this->decodeJsonArray((string) ($state['seo_robots_allow_paths_json'] ?? ''), 'Allow paths');
@@ -209,6 +228,25 @@ class SeoFiles extends Page
 
         TenantSetting::setForTenant($tenant->id, 'seo.robots_allow_paths', $allow, 'json');
         TenantSetting::setForTenant($tenant->id, 'seo.robots_disallow_paths', $disallow, 'json');
+
+        TenantSetting::setForTenant(
+            $tenant->id,
+            'seo.llms_intro',
+            trim((string) ($state['seo_llms_intro'] ?? '')),
+            'string',
+        );
+        TenantSetting::setForTenant(
+            $tenant->id,
+            'seo.llms_entries',
+            trim((string) ($state['seo_llms_entries_json'] ?? '')),
+            'string',
+        );
+        TenantSetting::setForTenant(
+            $tenant->id,
+            'seo.route_overrides',
+            trim((string) ($state['seo_route_overrides_json'] ?? '')),
+            'string',
+        );
 
         Notification::make()->title('Настройки сохранены')->success()->send();
     }
@@ -403,7 +441,68 @@ class SeoFiles extends Page
             'seo_sitemap_auto_schedule' => (bool) TenantSetting::getForTenant($id, 'seo.sitemap_auto_regenerate_on_schedule', false),
             'seo_robots_allow_paths_json' => is_array($allow) ? json_encode($allow, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : '["/"]',
             'seo_robots_disallow_paths_json' => is_array($disallow) ? json_encode($disallow, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : '["/admin","/api"]',
+            'seo_llms_intro' => (string) TenantSetting::getForTenant($id, 'seo.llms_intro', ''),
+            'seo_llms_entries_json' => (string) TenantSetting::getForTenant($id, 'seo.llms_entries', ''),
+            'seo_route_overrides_json' => (string) TenantSetting::getForTenant($id, 'seo.route_overrides', ''),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function validateTenantSeoJsonFields(array $data): bool
+    {
+        $entries = isset($data['seo_llms_entries_json']) ? trim((string) $data['seo_llms_entries_json']) : '';
+        if ($entries !== '' && ! $this->isValidJson($entries, $err)) {
+            Notification::make()->title('Список URL для llms.txt: невалидный JSON'.($err !== '' ? ' — '.$err : ''))->danger()->send();
+
+            return false;
+        }
+        if ($entries !== '') {
+            $decoded = json_decode($entries, true);
+            if (! is_array($decoded) || array_is_list($decoded) === false) {
+                Notification::make()->title('Список URL для llms.txt: ожидается JSON-массив [...]')->danger()->send();
+
+                return false;
+            }
+            foreach ($decoded as $i => $row) {
+                if (! is_array($row) || trim((string) ($row['path'] ?? '')) === '') {
+                    Notification::make()->title('Список URL для llms.txt: элемент #'.((int) $i + 1).' должен быть объектом с полем path')->danger()->send();
+
+                    return false;
+                }
+            }
+        }
+
+        $routes = isset($data['seo_route_overrides_json']) ? trim((string) $data['seo_route_overrides_json']) : '';
+        if ($routes !== '' && ! $this->isValidJson($routes, $err)) {
+            Notification::make()->title('Переопределения SEO маршрутов: невалидный JSON'.($err !== '' ? ' — '.$err : ''))->danger()->send();
+
+            return false;
+        }
+        if ($routes !== '') {
+            $decoded = json_decode($routes, true);
+            if (! is_array($decoded)) {
+                Notification::make()->title('Переопределения SEO маршрутов: ожидается JSON-объект {...}')->danger()->send();
+
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function isValidJson(string $raw, ?string &$error = null): bool
+    {
+        $error = '';
+        json_decode($raw, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $error = json_last_error_msg();
+
+            return false;
+        }
+
+        return true;
     }
 
     /**

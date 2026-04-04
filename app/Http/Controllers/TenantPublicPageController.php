@@ -8,7 +8,6 @@ class TenantPublicPageController extends Controller
 {
     /** @var list<string> */
     private const ALLOWED_LOGICAL = [
-        'pages.faq',
         'pages.about',
     ];
 

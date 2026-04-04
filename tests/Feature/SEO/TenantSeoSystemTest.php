@@ -104,6 +104,8 @@ class TenantSeoSystemTest extends TestCase
         $this->assertStringContainsString('application/ld+json', $html);
         $this->assertStringContainsString('Organization', $html);
         $this->assertStringContainsString('WebSite', $html);
+        $this->assertStringContainsString('"@context":"https://schema.org"', $html);
+        $this->assertStringNotContainsString('__contextArgs', $html);
     }
 
     public function test_motorcycle_show_includes_product_json_ld(): void

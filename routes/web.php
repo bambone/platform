@@ -13,6 +13,7 @@ use App\Http\Controllers\PublicBookingController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\TenantLlmsTxtController;
+use App\Http\Controllers\TenantPublicFaqController;
 use App\Http\Controllers\TenantPublicBookingAvailabilityController;
 use App\Http\Controllers\TenantPublicPageController;
 use App\Http\Controllers\TenantPublicStorageFileController;
@@ -90,13 +91,11 @@ Route::middleware([EnsureTenantContext::class, ResolveTenantPublicSeo::class])->
     Route::get('/usloviya-arenda', [PageController::class, 'show'])
         ->defaults('slug', 'usloviya-arenda')
         ->name('terms');
-    Route::view('/motorcycles', 'tenant.pages.motorcycles.index')->name('motorcycles.index');
+    Route::get('/motorcycles', [MotorcycleController::class, 'catalogIndex'])->name('motorcycles.index');
     Route::view('/prices', 'tenant.pages.prices')->name('prices');
     Route::view('/order', 'tenant.pages.order')->name('order');
     Route::view('/reviews', 'tenant.pages.reviews')->name('reviews');
-    Route::get('/faq', [TenantPublicPageController::class, 'show'])
-        ->defaults('logical', 'pages.faq')
-        ->name('faq');
+    Route::get('/faq', TenantPublicFaqController::class)->name('faq');
     Route::get('/about', [TenantPublicPageController::class, 'show'])
         ->defaults('logical', 'pages.about')
         ->name('about');

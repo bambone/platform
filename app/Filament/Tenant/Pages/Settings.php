@@ -229,23 +229,23 @@ class Settings extends Page
                     ])->columns(2),
 
                 Section::make('SEO и llms.txt')
-                    ->description('Текст для экспериментального /llms.txt и точечные шаблоны публичных маршрутов без отдельной страницы в CMS (FAQ, каталог-заглушка и т.д.). JSON хранится как строка; при ошибке формата сохранение блокируется.')
+                    ->description('Текст для /llms.txt и точечные шаблоны публичных маршрутов без отдельной CMS-страницы. JSON хранится строкой; при ошибке формата сохранение блокируется.')
                     ->schema([
                         Textarea::make('seo_llms_intro')
                             ->label('Введение для llms.txt')
                             ->rows(4)
                             ->columnSpanFull()
-                            ->helperText('2–4 строки о бизнесе и сайте. Показывается под заголовком с названием сайта.'),
+                            ->helperText('Несколько строк о бизнесе и сайте — под заголовком с названием сайта.'),
                         Textarea::make('seo_llms_entries_json')
                             ->label('Список URL для llms.txt (JSON)')
                             ->rows(8)
                             ->columnSpanFull()
-                            ->helperText('Массив объектов: [{"path":"/","summary":"…"},{"path":"/motorcycles","summary":"…"}]. Если пусто — берутся пути из конфигурации sitemap без описаний.'),
+                            ->helperText('Массив: [{"path":"/","summary":"…"}]. Пусто — пути из конфигурации sitemap без описаний.'),
                         Textarea::make('seo_route_overrides_json')
                             ->label('Переопределения SEO по имени маршрута (JSON)')
                             ->rows(10)
                             ->columnSpanFull()
-                            ->helperText('Объект: ключ — имя маршрута Laravel (например faq, motorcycles.index), значение — поля title, description, h1 (необязательно canonical, robots). Поддерживаются плейсхолдеры {site_name}, {page_name}, {motorcycle_name}.'),
+                            ->helperText('Объект: ключ — имя маршрута Laravel, значение — поля title, description, h1 (при необходимости canonical, robots). Плейсхолдеры: {site_name}, {page_name}, {motorcycle_name}.'),
                     ])
                     ->visible(fn () => \currentTenant() !== null)
                     ->collapsed(),
@@ -335,9 +335,6 @@ class Settings extends Page
     }
 
     /**
-     * @param  array<string, mixed>  $formData
-     */
-    /**
      * @param  array<string, mixed>  $data
      */
     private function validateTenantSeoJsonFields(array $data): bool
@@ -350,7 +347,7 @@ class Settings extends Page
         }
         if ($entries !== '') {
             $decoded = json_decode($entries, true);
-            if (! is_array($decoded) || array_is_list($decoded) === false) {
+            if (! is_array($decoded) || ! array_is_list($decoded)) {
                 Notification::make()->title('Список URL для llms.txt: ожидается JSON-массив [...]')->danger()->send();
 
                 return false;

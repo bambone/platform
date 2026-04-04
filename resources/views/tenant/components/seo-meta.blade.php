@@ -33,7 +33,14 @@
 @endif
 @if($r->jsonLd !== [])
 @push('tenant-jsonld')
-<script type="application/ld+json">{!! json_encode(['@context' => 'https://schema.org', '@graph' => $r->jsonLd], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
+@php
+    // Blade иначе воспринимает @context / @graph как директивы — собираем ключи без «сырого» @ в разметке.
+    $tenantJsonLdRoot = [
+        '@'.'context' => 'https://schema.org',
+        '@'.'graph' => $r->jsonLd,
+    ];
+@endphp
+<script type="application/ld+json">{!! json_encode($tenantJsonLdRoot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
 @endpush
 @endif
 @else

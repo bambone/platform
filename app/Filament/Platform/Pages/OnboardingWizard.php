@@ -12,6 +12,7 @@ use App\Models\Tenant;
 use App\Models\TenantSetting;
 use App\Services\TemplateCloningService;
 use App\Services\Tenancy\TenantDomainService;
+use App\Support\RussianPhone;
 use App\Tenant\StorageQuota\TenantStorageQuotaService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -147,7 +148,8 @@ class OnboardingWizard extends Page
                                     ->schema([
                                         TextInput::make('contact_phone')
                                             ->label('Телефон')
-                                            ->tel(),
+                                            ->tel()
+                                            ->telRegex(RussianPhone::filamentTelDisplayRegex()),
                                         TextInput::make('contact_email')
                                             ->label('Email')
                                             ->email(),

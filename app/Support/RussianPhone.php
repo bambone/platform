@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Filament\Forms\Components\TextInput;
+
 /** Russian numbers: normalize to +7 + 10 digits; validate flexible input (mask, spaces, leading 8). */
 final class RussianPhone
 {
@@ -40,6 +42,18 @@ final class RussianPhone
     public static function isValid(?string $input): bool
     {
         return self::normalize($input) !== null;
+    }
+
+    /**
+     * Pattern for Filament {@see TextInput::tel()} via {@see TextInput::telRegex()}.
+     *
+     * Default Filament tel regex only allows one optional parenthesis group at the start, so masked RU numbers
+     * like "+7 (913) 060-86-89" fail. This allows common display formatting; empty string is allowed
+     * (field is usually nullable); non-empty values must contain at least one digit.
+     */
+    public static function filamentTelDisplayRegex(): string
+    {
+        return '/^$|^[\+\d\s\(\)\-\.\/]*\d[\+\d\s\(\)\-\.\/]*$/u';
     }
 
     /**

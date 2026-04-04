@@ -75,6 +75,40 @@ class PageSectionOperationsServiceTest extends TestCase
         $this->assertMatchesRegularExpression('/^notice_box_\d+$/', $row->section_key);
     }
 
+    public function test_patch_section_meta_block_title_updates_structured_text_data_json(): void
+    {
+        $tenant = $this->tenantWithDomain('pbpatchbt');
+        $page = Page::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'P',
+            'slug' => 'pbpatchbt-page',
+            'template' => 'default',
+            'status' => 'published',
+            'published_at' => now(),
+        ]);
+        $section = PageSection::query()->create([
+            'tenant_id' => $tenant->id,
+            'page_id' => $page->id,
+            'section_key' => 'structured_text_1',
+            'section_type' => 'structured_text',
+            'title' => 'List label',
+            'data_json' => [
+                'title' => 'Old block',
+                'content' => '<p>Hi</p>',
+                'max_width' => 'prose',
+            ],
+            'sort_order' => 10,
+            'is_visible' => true,
+            'status' => 'published',
+        ]);
+
+        app(PageSectionOperationsService::class)->patchSectionMeta($section, ['block_title' => 'New block title'], $tenant->id);
+
+        $data = $section->fresh()->data_json;
+        $this->assertIsArray($data);
+        $this->assertSame('New block title', $data['title']);
+    }
+
     public function test_delete_main_section_throws(): void
     {
         $tenant = $this->tenantWithDomain('pbdel');

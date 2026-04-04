@@ -11,6 +11,8 @@ use App\Filament\Shared\TenantAnalyticsFormSchema;
 use App\Models\DomainLocalizationPreset;
 use App\Models\TemplatePreset;
 use App\Models\Tenant;
+use App\Models\TenantStorageQuota;
+use App\Models\User;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -24,6 +26,8 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
 
 class TenantResource extends Resource
@@ -50,7 +54,7 @@ class TenantResource extends Resource
         return $schema
             ->components([
                 Section::make('Основное')
-                    ->description('Клиент платформы — отдельный сайт и данные. Название и URL-идентификатор часто видны в адресах и внутренних списках.')
+                    ->description('Название, идентификатор и статус клиента в платформе.')
                     ->schema([
                         TextInput::make('name')
                             ->label('Название')
@@ -66,7 +70,26 @@ class TenantResource extends Resource
                             ->required()
                             ->unique(ignoreRecord: true)
                             ->maxLength(255)
-                            ->helperText('Используется в техническом поддомене и ссылках. Латиница, цифры и дефис.'),
+                            ->helperText('Технический поддомен и ссылки: латиница, цифры, дефис.'),
+                        Select::make('status')
+                            ->label('Статус клиента')
+                            ->options(Tenant::statuses())
+                            ->default('trial')
+                            ->required()
+                            ->helperText('Пробный / активен / приостановлен / архив.'),
+                    ])->columns(2),
+
+                Section::make('Бренд')
+                    ->schema([
+                        TextInput::make('brand_name')
+                            ->label('Бренд на сайте')
+                            ->maxLength(255)
+                            ->helperText('Как называть клиента для посетителей; можно совпадать с названием.'),
+                    ])->columns(2),
+
+                Section::make('Внешний вид сайта')
+                    ->description('Тема публичного сайта и терминология в кабинете — не путать с DNS-доменом (см. подзаголовок страницы).')
+                    ->schema([
                         Select::make('theme_key')
                             ->label('Тема публичного сайта')
                             ->options([
@@ -76,9 +99,9 @@ class TenantResource extends Resource
                             ])
                             ->default('default')
                             ->required()
-                            ->helperText('Пресет внешнего вида (Blade в tenant/themes/{ключ}). Недостающие страницы берутся из слоя default и движка.'),
+                            ->helperText('Пресет Blade в tenant/themes/{ключ}.'),
                         Select::make('domain_localization_preset_id')
-                            ->label('Тематика терминологии')
+                            ->label('Терминология интерфейса')
                             ->relationship(
                                 name: 'domainLocalizationPreset',
                                 titleAttribute: 'name',
@@ -86,33 +109,27 @@ class TenantResource extends Resource
                             )
                             ->preload()
                             ->default(fn (): ?int => DomainLocalizationPreset::query()->where('slug', 'generic_services')->value('id'))
-                            ->helperText('Подписи сущностей в кабинете клиента (заявки, брони, каталог). Не смешивать с темой оформления сайта выше.'),
-                        TextInput::make('brand_name')
-                            ->label('Бренд на сайте')
-                            ->maxLength(255)
-                            ->helperText('Как называть клиента для посетителей; можно совпадать с названием.'),
-                        Select::make('status')
-                            ->label('Статус клиента')
-                            ->options(Tenant::statuses())
-                            ->default('trial')
-                            ->required()
-                            ->helperText('Пробный — ограниченный период. Активен — полноценная работа. Приостановлен — доступ ограничен.'),
+                            ->helperText('Подписи сущностей в кабинете клиента.'),
+                    ])->columns(2),
+
+                Section::make('Тариф')
+                    ->schema([
                         Select::make('plan_id')
                             ->label('Тариф')
                             ->relationship('plan', 'name')
                             ->preload()
-                            ->helperText('Определяет лимиты и доступные функции.'),
+                            ->helperText('Лимиты и функции.'),
                         Select::make('template_preset_id')
                             ->label('Шаблон сайта при создании')
                             ->options(TemplatePreset::where('is_active', true)->pluck('name', 'id'))
                             ->searchable()
                             ->preload()
                             ->visibleOn('create')
-                            ->helperText('После сохранения шаблон копируется в сайт клиента. При редактировании клиента поле скрыто — шаблон уже применён.'),
+                            ->helperText('После сохранения копируется на сайт клиента.'),
                     ])->columns(2),
 
-                Section::make('Ответственные')
-                    ->description('Не обязательно сразу. Владелец и менеджер поддержки помогают ориентироваться в карточке клиента.')
+                Section::make('Контакты платформы')
+                    ->description('Сотрудники платформы для учёта по клиенту. Состав кабинета клиента — вкладка «Команда».')
                     ->schema([
                         Select::make('owner_user_id')
                             ->label('Владелец (контакт)')
@@ -124,8 +141,8 @@ class TenantResource extends Resource
                             ->preload(),
                     ])->columns(2),
 
-                Section::make('Лимиты и доставка почты')
-                    ->description('Исходящие письма кабинета клиента (транзакционная почта) ограничиваются в минуту на клиента, чтобы не перегружать SMTP и очередь.')
+                Section::make('Лимит почты')
+                    ->description('Исходящая транзакционная почта кабинета клиента, писем в минуту на клиента.')
                     ->schema([
                         TextInput::make('mail_rate_limit_per_minute')
                             ->label('Писем в минуту (на клиента)')
@@ -134,7 +151,7 @@ class TenantResource extends Resource
                             ->maxValue(1000)
                             ->default(10)
                             ->required()
-                            ->helperText('Значение из карточки клиента; позже может выводиться из тарифа. По умолчанию из MAIL_TENANT_PER_MINUTE, если поле некорректно.'),
+                            ->helperText('Позже может выводиться из тарифа; иначе см. MAIL_TENANT_PER_MINUTE.'),
                     ]),
 
                 Section::make('Регион и валюта')
@@ -164,13 +181,26 @@ class TenantResource extends Resource
                     ])->columns(2),
 
                 TenantAnalyticsFormSchema::section(
-                    fn (): bool => auth()->user()?->hasAnyRole(['platform_owner', 'platform_admin']) ?? false
+                    function (): bool {
+                        $u = Auth::user();
+                        if (! $u instanceof User) {
+                            return false;
+                        }
+
+                        return $u->hasAnyRole(['platform_owner', 'platform_admin']);
+                    }
                 ),
 
                 Section::make('Хранилище и квоты')
-                    ->description('Метрики обновляются при сохранении и по ночному расписанию. Управление — кнопками над формой.')
+                    ->description('Метрики по расписанию и кнопками в шапке страницы.')
                     ->visibleOn('edit')
                     ->schema([
+                        Placeholder::make('sq_progress')
+                            ->label('Заполнение')
+                            ->content(fn (Tenant $record): HtmlString => self::storageUsageProgressHtml($record)),
+                        Placeholder::make('sq_breakdown')
+                            ->label('Разбивка по категориям')
+                            ->content(fn (Tenant $record): HtmlString => self::storageBreakdownHtml($record)),
                         Placeholder::make('sq_used')
                             ->label('Использовано')
                             ->content(function (Tenant $record): string {
@@ -364,6 +394,10 @@ class TenantResource extends Resource
             ->emptyStateIcon('heroicon-o-building-office-2');
     }
 
+    /**
+     * Порядок = порядок вкладок на EditTenant (combined tabs). Первая вкладка — форма «Клиент», затем RM в этом порядке.
+     * Tab order: Client (form) → Team → Mail → Storage.
+     */
     public static function getRelations(): array
     {
         return [
@@ -380,5 +414,110 @@ class TenantResource extends Resource
             'create' => Pages\CreateTenant::route('/create'),
             'edit' => Pages\EditTenant::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Визуализация использования квоты по {@see TenantStorageQuota}; без деления на ноль и без JS.
+     */
+    private static function storageUsageProgressHtml(Tenant $record): HtmlString
+    {
+        $record->loadMissing('storageQuota');
+        $q = $record->storageQuota;
+        if ($q === null) {
+            return new HtmlString('<p class="text-sm text-gray-500 dark:text-gray-400">Нет записи квоты.</p>');
+        }
+
+        $used = max(0, (int) $q->used_bytes);
+        $effective = max(0, (int) $q->effective_quota_bytes);
+        $status = (string) ($q->status ?? 'ok');
+
+        if ($effective <= 0) {
+            return new HtmlString(
+                '<p class="text-sm text-gray-600 dark:text-gray-300">Лимит 0 — использовано '.e(Number::fileSize($used, precision: 2)).'.</p>'
+            );
+        }
+
+        $ratio = $used / $effective;
+        $pctDisplay = min(999.9, max(0.0, round($ratio * 100, 1)));
+        $barWidth = min(100.0, max(0.0, round($ratio * 100, 2)));
+        $overflow = $used > $effective;
+
+        $barColor = match ($status) {
+            'exceeded', 'critical_10' => '#dc2626',
+            'warning_20' => '#ca8a04',
+            default => $overflow ? '#dc2626' : '#2563eb',
+        };
+
+        $caption = e((string) $pctDisplay).'% · '.e(Number::fileSize($used, precision: 2)).' / '.e(Number::fileSize($effective, precision: 2));
+        if ($overflow) {
+            $caption .= ' · переполнение';
+        }
+
+        return new HtmlString(
+            '<div class="space-y-2">'
+            .'<div class="h-2 w-full overflow-hidden rounded-md bg-gray-200 dark:bg-gray-700">'
+            .'<div class="h-2 rounded-md" style="width: '.$barWidth.'%; background-color: '.e($barColor).';"></div>'
+            .'</div>'
+            .'<p class="text-xs text-gray-600 dark:text-gray-400">'.$caption.'</p>'
+            .'</div>'
+        );
+    }
+
+    /**
+     * Компактная таблица по полям {@see TenantStorageScanResult::toSummaryJson()} (последний пересчёт).
+     */
+    private static function storageBreakdownHtml(Tenant $record): HtmlString
+    {
+        $record->loadMissing('storageQuota');
+        $q = $record->storageQuota;
+        $raw = $q?->last_scan_summary_json;
+        if ($raw === null || $raw === [] || ! is_array($raw)) {
+            return new HtmlString('<p class="text-sm text-gray-500 dark:text-gray-400">Запустите пересчёт хранилища для разбивки.</p>');
+        }
+
+        $rows = [
+            ['Брендинг', 'branding_bytes'],
+            ['Медиа', 'media_bytes'],
+            ['SEO', 'seo_bytes'],
+            ['Прочее', 'other_bytes'],
+        ];
+
+        $tbody = '';
+        foreach ($rows as [$label, $key]) {
+            $cell = self::storageSummaryBytesCell($raw, $key);
+            $tbody .= '<tr>'
+                .'<th scope="row" class="px-2 py-1 text-start text-xs font-medium text-gray-700 dark:text-gray-300">'.e($label).'</th>'
+                .'<td class="px-2 py-1 text-end text-xs text-gray-900 tabular-nums dark:text-gray-100">'.$cell.'</td>'
+                .'</tr>';
+        }
+
+        return new HtmlString(
+            '<div class="overflow-x-auto rounded-md border border-gray-200 dark:border-white/10">'
+            .'<table class="w-full min-w-[12rem] border-collapse">'
+            .'<tbody>'.$tbody.'</tbody>'
+            .'</table>'
+            .'</div>'
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $summary
+     */
+    private static function storageSummaryBytesCell(array $summary, string $key): string
+    {
+        if (! array_key_exists($key, $summary)) {
+            return e('—');
+        }
+        $v = $summary[$key];
+        if (! is_numeric($v)) {
+            return e('—');
+        }
+
+        $bytes = (int) $v;
+        if ($bytes === 0) {
+            return e('0 B');
+        }
+
+        return e(Number::fileSize($bytes, precision: 2));
     }
 }

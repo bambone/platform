@@ -56,17 +56,12 @@
                         <span>Заполнено</span>
                         <span>{{ number_format($q->usedPercent, 1) }}%</span>
                     </div>
-                    <div class="h-3 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                        @php
-                            $bar = match ($q->progressBarTier()) {
-                                'exceeded' => 'bg-red-600',
-                                'danger' => 'bg-red-500',
-                                'warning' => 'bg-amber-500',
-                                default => 'bg-primary-500',
-                            };
-                            $w = min(100, $q->usedPercent);
-                        @endphp
-                        <div class="{{ $bar }} h-3 rounded-full transition-all" style="width: {{ $w }}%"></div>
+                    <div class="h-3 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700" role="presentation">
+                        @include('filament.tenant.partials.storage-quota-progress-meter', [
+                            'usedPercent' => $q->usedPercent,
+                            'tier' => $q->progressBarTier(),
+                            'variant' => 'page',
+                        ])
                     </div>
                 </div>
             </x-filament::section>

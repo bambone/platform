@@ -52,6 +52,7 @@ enum PageSectionCategory: string
     public static function orderedForContentPageCatalog(): array
     {
         return [
+            self::Basic,
             self::PageContent,
             self::StructureLists,
             self::HelpNotices,

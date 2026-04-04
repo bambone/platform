@@ -67,9 +67,8 @@ class PageSectionsBuilderScopeTest extends TestCase
         Livewire::test(PageSectionsBuilder::class, ['record' => $rules->fresh()])
             ->assertSee('Основной контент страницы', escape: false)
             ->assertSee('Правила аренды', escape: false)
-            ->assertSee('У этой страницы пока нет дополнительных секций', escape: false)
-            ->assertSee('Добавить первый блок', escape: false)
-            ->assertSee('Библиотека типов блоков', escape: false)
+            ->assertSee('Нет дополнительных секций', escape: false)
+            ->assertSee('Добавить блок', escape: false)
             ->assertDontSee('UNIQUE_HOME_ONLY_MARKER_PBSCOPE', escape: false);
     }
 
@@ -130,7 +129,7 @@ class PageSectionsBuilderScopeTest extends TestCase
 
         $this->assertStringContainsString('#1', $html);
         $this->assertStringContainsString('#2', $html);
-        $this->assertStringContainsString('Скрыт на сайте', $html);
-        $this->assertStringContainsString('Виден на сайте', $html);
+        $this->assertStringContainsString('Скрыт', $html);
+        $this->assertStringContainsString('На сайте', $html);
     }
 }

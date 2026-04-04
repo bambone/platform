@@ -166,37 +166,19 @@ class PagesAndSectionsSeeder extends Seeder
             );
         }
 
-        $this->seedCmsPage(
-            $tenant,
-            'contacts',
-            'Контакты',
-            'Основной контент',
-            '<p>Телефон, Telegram, WhatsApp, адрес и карту можно задать в разделе «Настройки» сайта; здесь — произвольный текст для страницы контактов.</p>'
-        );
-
-        $this->seedCmsPage(
-            $tenant,
-            'usloviya-arenda',
-            'Правила аренды',
-            'Условия',
-            '<p>Возраст, стаж, экипировка, залог, страхование и порядок бронирования. Редактируйте этот текст в кабинете: <strong>Контент → Страницы → Правила аренды</strong>.</p>'
-        );
+        $this->seedMotolevinsContactsPage($tenant);
+        $this->seedMotolevinsRentalTermsPage($tenant);
     }
 
-    private function seedCmsPage(
-        Tenant $tenant,
-        string $slug,
-        string $name,
-        string $sectionTitle,
-        string $htmlContent,
-    ): void {
+    private function seedMotolevinsContactsPage(Tenant $tenant): void
+    {
         $page = Page::withoutGlobalScopes()->updateOrCreate(
             [
                 'tenant_id' => $tenant->id,
-                'slug' => $slug,
+                'slug' => 'contacts',
             ],
             [
-                'name' => $name,
+                'name' => 'Контакты',
                 'template' => 'default',
                 'status' => 'published',
                 'published_at' => now(),
@@ -211,13 +193,225 @@ class PagesAndSectionsSeeder extends Seeder
             ],
             [
                 'tenant_id' => $tenant->id,
-                'title' => $sectionTitle,
+                'title' => 'Вводный текст',
                 'section_type' => 'rich_text',
-                'data_json' => ['content' => $htmlContent],
+                'data_json' => [
+                    'content' => '<p>Ответим на вопросы по моделям, свободным датам и условиям аренды. Если уже выбрали байк — напишите или позвоните, согласуем выдачу и время встречи.</p><p><a href="/usloviya-arenda">Кратко о правилах и документах</a></p>',
+                ],
                 'sort_order' => 0,
                 'status' => 'published',
                 'is_visible' => true,
             ]
         );
+
+        PageSection::withoutGlobalScopes()->updateOrCreate(
+            [
+                'tenant_id' => $tenant->id,
+                'page_id' => $page->id,
+                'section_key' => 'contacts_primary',
+            ],
+            [
+                'tenant_id' => $tenant->id,
+                'title' => 'Контакты и карта',
+                'section_type' => 'contacts_info',
+                'data_json' => [
+                    'title' => 'Свяжитесь с нами',
+                    'description' => 'Работаем круглый год. Напишите, когда вам удобно — подберём окно на выдачу и ответим по комплектации и маршрутам. Срочный вопрос в сезон удобнее закрыть звонком.',
+                    'phone' => '+7 (913) 060-86-89',
+                    'email' => null,
+                    'whatsapp' => '79130608689',
+                    'telegram' => 'motolevins',
+                    'address' => 'Точка выдачи согласуется при бронировании (Геленджик, Анапа или Новороссийск — по договорённости).',
+                    'working_hours' => "Ежедневно: 10:00–20:00 (МСК)\nВыдача и приём — по предварительной договорённости.",
+                    'map_embed' => null,
+                    'map_link' => null,
+                ],
+                'sort_order' => 10,
+                'status' => 'published',
+                'is_visible' => true,
+            ]
+        );
+
+        PageSection::withoutGlobalScopes()->updateOrCreate(
+            [
+                'tenant_id' => $tenant->id,
+                'page_id' => $page->id,
+                'section_key' => 'contacts_tips',
+            ],
+            [
+                'tenant_id' => $tenant->id,
+                'title' => 'Полезно знать',
+                'section_type' => 'structured_text',
+                'data_json' => [
+                    'title' => 'Перед визитом',
+                    'content' => '<ul><li>С собой — паспорт и водительское удостоверение категории&nbsp;A (оригиналы нужны при оформлении).</li><li>На первый визит заложите 15–20 минут: осмотр техники, акт приёма-передачи, короткий инструктаж.</li><li>В высокий сезон ответ в чате иногда задерживается — для срочных вопросов звонок обычно быстрее.</li></ul>',
+                    'max_width' => 'prose',
+                ],
+                'sort_order' => 20,
+                'status' => 'published',
+                'is_visible' => true,
+            ]
+        );
+    }
+
+    private function seedMotolevinsRentalTermsPage(Tenant $tenant): void
+    {
+        $page = Page::withoutGlobalScopes()->updateOrCreate(
+            [
+                'tenant_id' => $tenant->id,
+                'slug' => 'usloviya-arenda',
+            ],
+            [
+                'name' => 'Правила аренды',
+                'template' => 'default',
+                'status' => 'published',
+                'published_at' => now(),
+            ]
+        );
+
+        PageSection::withoutGlobalScopes()->updateOrCreate(
+            [
+                'tenant_id' => $tenant->id,
+                'page_id' => $page->id,
+                'section_key' => 'main',
+            ],
+            [
+                'tenant_id' => $tenant->id,
+                'title' => 'Вводный текст',
+                'section_type' => 'rich_text',
+                'data_json' => [
+                    'content' => '<p>Ниже изложены условия аренды мотоцикла в структурированном виде. Формулировки соответствуют договору, который вы подписываете при выдаче техники. Нюансы по конкретной модели или датам всегда можно уточнить — <a href="/contacts">контакты для связи</a>.</p>',
+                ],
+                'sort_order' => 0,
+                'status' => 'published',
+                'is_visible' => true,
+            ]
+        );
+
+        PageSection::withoutGlobalScopes()->updateOrCreate(
+            [
+                'tenant_id' => $tenant->id,
+                'page_id' => $page->id,
+                'section_key' => 'terms_hero',
+            ],
+            [
+                'tenant_id' => $tenant->id,
+                'title' => 'Баннер вводный',
+                'section_type' => 'hero',
+                'data_json' => [
+                    'variant' => 'compact',
+                    'heading' => 'Договор и правила в одном месте',
+                    'subheading' => 'Общие положения, требования к арендатору, залог, страхование, бронирование, эксплуатация и возврат — по разделам ниже. Используйте содержание слева для быстрого перехода.',
+                    'description' => '',
+                    'video_poster' => '',
+                    'video_src' => '',
+                    'button_text' => '',
+                    'button_url' => '',
+                    'background_image' => '',
+                    'overlay_dark' => true,
+                    'chips' => [],
+                ],
+                'sort_order' => 5,
+                'status' => 'published',
+                'is_visible' => true,
+            ]
+        );
+
+        PageSection::withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->where('page_id', $page->id)
+            ->whereIn('section_key', [
+                'rule_age', 'rule_docs', 'rule_deposit', 'rule_insurance',
+                'rule_booking', 'rule_use', 'rule_return', 'rule_fines',
+            ])
+            ->delete();
+
+        $chapters = [
+            [
+                'key' => 'terms_general',
+                'title' => 'Общие положения',
+                'content' => '<p>Аренда осуществляется на условиях договора проката и акта приёма-передачи. Условия на сайте носят информационный характер; при расхождении приоритет имеет подписанный договор и акт. Арендатор обязан соблюдать ПДД РФ и правила безопасной эксплуатации мотоцикла.</p>',
+            ],
+            [
+                'key' => 'terms_renter',
+                'title' => 'Требования к арендатору',
+                'content' => '<p>Возраст — не менее 21 года. Стаж управления мотоциклом по категории&nbsp;A — не менее двух лет. При выдаче проверяются паспорт и водительское удостоверение; права должны быть действительными на весь срок аренды.</p>',
+            ],
+            [
+                'key' => 'terms_documents',
+                'title' => 'Документы',
+                'content' => '<p>Для оформления нужны оригиналы паспорта и водительского удостоверения с категорией&nbsp;A. Для предварительной брони могут запрашиваться копии или фото — оригиналы обязательны при подписании акта приёма-передачи.</p>',
+            ],
+            [
+                'key' => 'terms_deposit_payment',
+                'title' => 'Залог и оплата',
+                'content' => '<p>Залог вносится для обеспечения исполнения обязательств и возвращается при сдаче техники без новых повреждений и нарушений условий договора, после осмотра представителем проката. Ориентиры по классу техники:</p><table><thead><tr><th>Класс техники</th><th>Ориентир залога</th></tr></thead><tbody><tr><td>Лёгкий туристический (до 400&nbsp;см³)</td><td>30&nbsp;000 – 45&nbsp;000&nbsp;₽</td></tr><tr><td>Средний / классический (400–900&nbsp;см³)</td><td>45&nbsp;000 – 60&nbsp;000&nbsp;₽</td></tr><tr><td>Крупный туринг или премиум (от 900&nbsp;см³)</td><td>60&nbsp;000 – 80&nbsp;000&nbsp;₽</td></tr></tbody></table><p>Итоговая сумма залога и порядок оплаты аренды фиксируются в договоре и могут зависеть от модели, сезона и длительности проката.</p>',
+            ],
+            [
+                'key' => 'terms_insurance',
+                'title' => 'Страхование и ответственность',
+                'content' => '<p>В состав аренды входит полис ОСАГО в соответствии с договором. Расширенная защита (в том числе КАСКО без франшизы) может предлагаться как опция — уточняйте при бронировании. Ущерб, не покрытый страховкой, а также нарушения ПДД и условий договора возмещаются арендатором в порядке, указанном в договоре.</p>',
+            ],
+            [
+                'key' => 'terms_operation',
+                'title' => 'Правила эксплуатации',
+                'content' => '<p>Мотоцикл передаётся в исправном состоянии; уровень топлива и пробег фиксируются в акте. Запрещено передавать управление третьим лицам, использовать технику в соревнованиях или на закрытых трассах без письменного согласия арендодателя, езда в состоянии алкогольного или наркотического опьянения. Соблюдайте регламент технического обслуживания и сигналы приборов.</p>',
+            ],
+            [
+                'key' => 'terms_booking',
+                'title' => 'Бронирование, перенос и отмена',
+                'content' => '<p>Бронь считается подтверждённой после согласования дат, модели и условий с представителем проката. Перенос и отмена регулируются договором и фиксированной перепиской. Рекомендуем сохранять договорённости в письменном виде (мессенджер, электронная почта).</p>',
+            ],
+            [
+                'key' => 'terms_return',
+                'title' => 'Возврат техники',
+                'content' => '<p>Возврат производится в согласованное время и место. При опоздании может начисляться дополнительная суточная ставка или неустойка по договору. В случае поломки или дорожно-транспортного происшествия немедленно свяжитесь с контактом, указанным в договоре.</p>',
+            ],
+            [
+                'key' => 'terms_restrictions',
+                'title' => 'Ограничения и запреты',
+                'content' => '<p>Административные штрафы и проезд по платным участкам дорог оплачивает арендатор. Курение на технике, возврат в сильном загрязнении без согласованной мойки, утрата ключей или документов комплекта могут повлечь удержания из залога по тарифам арендодателя. Детальный перечень — в договоре и акте приёма-передачи.</p>',
+            ],
+            [
+                'key' => 'terms_additional',
+                'title' => 'Дополнительные условия',
+                'content' => '<p>Арендодатель вправе отказать в выдаче техники при сомнениях в документах, состоянии арендатора или погодных/дорожных условиях, создающих повышенный риск. Спорные вопросы разрешаются переговорами; при невозможности согласования — в соответствии с законодательством РФ и договором.</p>',
+            ],
+        ];
+
+        $order = 20;
+        foreach ($chapters as $chapter) {
+            PageSection::withoutGlobalScopes()->updateOrCreate(
+                [
+                    'tenant_id' => $tenant->id,
+                    'page_id' => $page->id,
+                    'section_key' => $chapter['key'],
+                ],
+                [
+                    'tenant_id' => $tenant->id,
+                    'title' => $chapter['title'],
+                    'section_type' => 'structured_text',
+                    'data_json' => [
+                        'title' => $chapter['title'],
+                        'content' => $chapter['content'],
+                        'max_width' => 'prose',
+                    ],
+                    'sort_order' => $order,
+                    'status' => 'published',
+                    'is_visible' => true,
+                ]
+            );
+            $order += 10;
+        }
+
+        $allowedSectionKeys = array_merge(
+            ['main', 'terms_hero'],
+            array_column($chapters, 'key')
+        );
+        PageSection::withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->where('page_id', $page->id)
+            ->whereNotIn('section_key', $allowedSectionKeys)
+            ->delete();
     }
 }

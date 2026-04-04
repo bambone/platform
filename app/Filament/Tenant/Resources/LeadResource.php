@@ -13,6 +13,7 @@ use App\Product\CRM\DTO\ManualBookingCreateData;
 use App\Product\CRM\ManualLeadBookingService;
 use App\Support\FilamentMotorcycleThumbnail;
 use App\Support\PhoneNormalizer;
+use App\Support\RussianPhone;
 use App\Terminology\DomainTermKeys;
 use Closure;
 use Filament\Actions\Action;
@@ -201,6 +202,7 @@ class LeadResource extends Resource
                             ->label('Телефон')
                             ->required()
                             ->tel()
+                            ->telRegex(RussianPhone::filamentTelDisplayRegex())
                             ->maxLength(20)
                             ->live(onBlur: true)
                             ->afterStateUpdated(static::persistLeadFieldClosure('phone')),

@@ -19,9 +19,7 @@
         <h1 class="mb-6 text-balance text-2xl font-bold leading-tight text-white sm:mb-8 sm:text-3xl md:text-4xl">{{ $page->name }}</h1>
 
         @if($mainSection && is_array($mainSection->data_json) && filled($mainSection->data_json['content'] ?? null))
-            <div class="prose prose-invert mb-12 max-w-none text-sm text-silver prose-headings:text-white prose-p:leading-relaxed sm:text-base">
-                {!! $mainSection->data_json['content'] !!}
-            </div>
+            <x-tenant.rich-prose variant="default" class="mb-12" :content="$mainSection->data_json['content']" />
         @endif
 
         <div class="flex flex-col gap-12">
@@ -31,17 +29,17 @@
                     $viewName = $sectionResolver->resolveViewName($section);
                 @endphp
                 @if($viewName !== null)
-                    @include($viewName, ['section' => $section, 'data' => $data])
+                    @include($viewName, ['section' => $section, 'data' => $data, 'page' => $page])
                 @else
-                    <div class="prose prose-invert max-w-none text-sm text-silver prose-headings:text-white prose-p:leading-relaxed sm:text-base">
-                        @if($data !== [])
-                            @if(! empty($data['content']))
-                                {!! $data['content'] !!}
-                            @elseif(! empty($data['heading']))
+                    @if($data !== [])
+                        @if(! empty($data['content']))
+                            <x-tenant.rich-prose variant="default" :content="$data['content']" />
+                        @elseif(! empty($data['heading']))
+                            <div class="prose prose-invert max-w-none text-sm text-silver prose-headings:text-white prose-p:leading-relaxed sm:text-base">
                                 <h2>{{ $data['heading'] }}</h2>
-                            @endif
+                            </div>
                         @endif
-                    </div>
+                    @endif
                 @endif
             @endforeach
         </div>

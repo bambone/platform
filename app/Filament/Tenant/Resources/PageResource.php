@@ -5,6 +5,7 @@ namespace App\Filament\Tenant\Resources;
 use App\Filament\Forms\Components\SeoMetaFields;
 use App\Filament\Tenant\Resources\PageResource\Pages;
 use App\Filament\Tenant\Resources\PageResource\RelationManagers\PageSectionsBuilderRelationManager;
+use App\Filament\Tenant\Support\TenantPageRichEditor;
 use App\Models\Page;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\RichEditor;
@@ -52,23 +53,12 @@ class PageResource extends Resource
                             ->description('Основной текст, который увидит посетитель. Для главной (slug home) страница собирается из блоков на вкладке «Блоки страницы».')
                             ->visible(fn (Get $get): bool => ($get('slug') ?: '') !== 'home')
                             ->schema([
-                                RichEditor::make('primary_html')
-                                    ->label('Текст страницы')
-                                    ->toolbarButtons([
-                                        'bold',
-                                        'italic',
-                                        'underline',
-                                        'strike',
-                                        'link',
-                                        'bulletList',
-                                        'orderedList',
-                                        'h2',
-                                        'h3',
-                                        'blockquote',
-                                    ])
-                                    ->columnSpanFull()
-                                    ->extraInputAttributes(['class' => 'tenant-page-primary-html-editor'])
-                                    ->helperText('Этот текст выводится на публичной странице в основном блоке.'),
+                                TenantPageRichEditor::enhance(
+                                    RichEditor::make('primary_html')
+                                        ->label('Текст страницы')
+                                        ->columnSpanFull()
+                                        ->extraInputAttributes(['class' => 'tenant-page-primary-html-editor'])
+                                )->helperText('Этот текст выводится на публичной странице в основном блоке.'),
                             ])
                             ->columnSpan(['default' => 1, 'lg' => 8]),
                         Grid::make(1)

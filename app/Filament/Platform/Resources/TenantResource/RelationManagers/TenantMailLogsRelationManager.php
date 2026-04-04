@@ -7,6 +7,7 @@ use App\Models\TenantMailLog;
 use Filament\Actions\ViewAction;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -15,7 +16,9 @@ class TenantMailLogsRelationManager extends RelationManager
 {
     protected static string $relationship = 'mailLogs';
 
-    protected static ?string $title = 'Журнал почты';
+    protected static ?string $title = 'Почта';
+
+    protected static string|\BackedEnum|null $icon = Heroicon::OutlinedEnvelope;
 
     protected static bool $shouldSkipAuthorization = true;
 
@@ -73,7 +76,10 @@ class TenantMailLogsRelationManager extends RelationManager
                 ViewAction::make()
                     ->url(fn (TenantMailLog $record): string => TenantMailLogResource::getUrl('view', ['record' => $record])),
             ])
-            ->paginated([10, 25, 50]);
+            ->paginated([10, 25, 50])
+            ->emptyStateHeading('Писем пока нет')
+            ->emptyStateDescription('Когда платформа отправит письма этому клиенту (уведомления, приглашения и т.п.), они появятся здесь с датой, темой и статусом доставки.')
+            ->emptyStateIcon(Heroicon::OutlinedEnvelope);
     }
 
     public function isReadOnly(): bool

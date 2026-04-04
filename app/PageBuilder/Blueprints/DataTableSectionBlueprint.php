@@ -2,6 +2,8 @@
 
 namespace App\PageBuilder\Blueprints;
 
+use App\Filament\Tenant\PageBuilder\SectionAdminSummary;
+use App\Models\PageSection;
 use App\PageBuilder\PageSectionCategory;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
@@ -92,6 +94,31 @@ final class DataTableSectionBlueprint extends AbstractPageSectionBlueprint
         $rows = $data['rows'] ?? [];
 
         return is_array($rows) ? 'Таблица · '.count($rows).' '.self::pluralRows(count($rows)) : 'Таблица';
+    }
+
+    public function adminSummary(PageSection $section): SectionAdminSummary
+    {
+        $data = is_array($section->data_json) ? $section->data_json : [];
+        $label = $this->label();
+        $listTitle = trim((string) ($section->title ?? ''));
+        $displayTitle = $listTitle !== '' ? $listTitle : $label;
+        $rows = $data['rows'] ?? [];
+        $n = is_array($rows) ? count($rows) : 0;
+        $lines = [$n > 0 ? $n.' '.self::pluralRows($n) : 'Нет строк'];
+        $key = trim((string) ($section->section_key ?? ''));
+        $displaySubtitle = $key !== '' ? $key.' · '.$label : $label;
+
+        return new SectionAdminSummary(
+            displayTitle: $displayTitle,
+            displaySubtitle: $displaySubtitle,
+            summaryLines: $lines,
+            badges: ['Таблица'],
+            meta: ['row_count' => (string) $n],
+            isEmpty: $n === 0,
+            warning: $n === 0 ? 'В таблице нет строк' : null,
+            primaryHeadline: null,
+            channels: [],
+        );
     }
 
     private static function pluralRows(int $n): string

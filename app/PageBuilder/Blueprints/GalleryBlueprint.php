@@ -3,6 +3,8 @@
 namespace App\PageBuilder\Blueprints;
 
 use App\Filament\Forms\Components\TenantPublicImagePicker;
+use App\Filament\Tenant\PageBuilder\SectionAdminSummary;
+use App\Models\PageSection;
 use App\PageBuilder\PageSectionCategory;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
@@ -73,6 +75,34 @@ final class GalleryBlueprint extends AbstractPageSectionBlueprint
         $n = $this->countNestedList($data, 'images');
 
         return $n > 0 ? $n.' '.self::pluralImages($n) : 'Нет изображений';
+    }
+
+    public function adminSummary(PageSection $section): SectionAdminSummary
+    {
+        $data = is_array($section->data_json) ? $section->data_json : [];
+        $n = $this->countNestedList($data, 'images');
+        $heading = trim((string) ($data['heading'] ?? ''));
+        $listTitle = trim((string) ($section->title ?? ''));
+        $label = $this->label();
+        $displayTitle = $listTitle !== '' ? $listTitle : ($heading !== '' ? $heading : $label);
+        $lines = [];
+        $lines[] = $n > 0 ? $n.' '.self::pluralImages($n) : 'Нет изображений';
+        $key = trim((string) ($section->section_key ?? ''));
+        $displaySubtitle = $key !== '' ? $key.' · '.$label : $label;
+        $isEmpty = $n === 0;
+        $warning = $isEmpty ? 'В галерее нет изображений' : null;
+
+        return new SectionAdminSummary(
+            displayTitle: $displayTitle,
+            displaySubtitle: $displaySubtitle,
+            summaryLines: $lines,
+            badges: $n > 0 ? [(string) $n.' фото'] : [],
+            meta: ['image_count' => (string) $n],
+            isEmpty: $isEmpty,
+            warning: $warning,
+            primaryHeadline: $heading !== '' ? $heading : null,
+            channels: [],
+        );
     }
 
     private static function pluralImages(int $n): string

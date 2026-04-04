@@ -3,6 +3,7 @@
 namespace App\PageBuilder\Blueprints;
 
 use App\PageBuilder\PageSectionCategory;
+use App\Support\RussianPhone;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 
@@ -61,6 +62,7 @@ final class ContactsBlueprint extends AbstractPageSectionBlueprint
             TextInput::make('data_json.phone')
                 ->label('Телефон')
                 ->tel()
+                ->telRegex(RussianPhone::filamentTelDisplayRegex())
                 ->maxLength(64),
             TextInput::make('data_json.whatsapp')
                 ->label('WhatsApp (ссылка или номер)')

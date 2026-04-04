@@ -3,7 +3,7 @@
 ])
 
 @if($workingHours)
-<div class="mt-4 sm:mt-6 rounded-xl border border-white/5 bg-obsidian p-6 sm:p-8 relative overflow-hidden">
+<div class="rounded-xl border border-white/5 bg-obsidian p-6 sm:p-8 relative overflow-hidden">
     <!-- Decorative background glow -->
     <div class="absolute -top-10 -right-10 w-40 h-40 bg-moto-amber/5 rounded-full blur-3xl pointer-events-none"></div>
 

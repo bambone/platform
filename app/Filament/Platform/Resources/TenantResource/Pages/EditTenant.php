@@ -5,23 +5,116 @@ namespace App\Filament\Platform\Resources\TenantResource\Pages;
 use App\Filament\Platform\Resources\TenantResource;
 use App\Filament\Shared\TenantAnalyticsFormSchema;
 use App\Jobs\RecalculateTenantStorageUsageJob;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Analytics\AnalyticsSettingsPersistence;
 use App\Support\Analytics\AnalyticsSettingsFormMapper;
 use App\Tenant\StorageQuota\TenantStorageQuotaService;
 use Filament\Actions;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Enums\Size;
 use Filament\Support\Exceptions\Halt;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
 use Illuminate\Validation\ValidationException;
 
 class EditTenant extends EditRecord
 {
     protected static string $resource = TenantResource::class;
+
+    /**
+     * Filament v5: combined tabs — порядок вкладок задаётся {@see TenantResource::getRelations()}.
+     * Состояние формы в $this->data на странице; при смене вкладки рендерится только активная панель.
+     */
+    public function hasCombinedRelationManagerTabsWithContent(): bool
+    {
+        return true;
+    }
+
+    public function getContentTabLabel(): ?string
+    {
+        return 'Клиент';
+    }
+
+    public function getContentTabIcon(): string|\BackedEnum|Htmlable|null
+    {
+        return Heroicon::OutlinedBuildingOffice2;
+    }
+
+    public function areFormActionsSticky(): bool
+    {
+        return true;
+    }
+
+    public function getHeading(): string|Htmlable|null
+    {
+        $record = $this->getRecord();
+        if (! $record instanceof Tenant) {
+            return parent::getHeading();
+        }
+
+        $status = (string) ($record->status ?? '');
+        $label = Tenant::statuses()[$status] ?? ($status !== '' ? $status : '—');
+        $colorClass = match ($status) {
+            'active' => 'fi-color-success',
+            'trial' => 'fi-color-warning',
+            'suspended' => 'fi-color-danger',
+            'archived' => 'fi-color-gray',
+            default => 'fi-color-gray',
+        };
+
+        $name = e($record->name);
+        $badgeLabel = e(is_string($label) ? $label : (string) $label);
+        $html = '<span class="inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 align-middle">'
+            .'<span class="text-xl font-semibold leading-tight tracking-tight text-gray-950 dark:text-white">'.$name.'</span>'
+            .'<span class="fi-badge fi-color '.$colorClass.' fi-size-sm shrink-0 self-center leading-none"><span class="fi-badge-label-ctn"><span class="fi-badge-label">'.$badgeLabel.'</span></span></span>'
+            .'</span>';
+
+        return new HtmlString($html);
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        $record = $this->getRecord();
+        if (! $record instanceof Tenant) {
+            return null;
+        }
+
+        $record->loadMissing('domains');
+        $primary = $record->domains->firstWhere('is_primary', true) ?? $record->domains->first();
+        $host = $primary && filled($primary->host) ? strtolower(trim((string) $primary->host)) : null;
+        $cabinet = $record->cabinetAdminUrl();
+
+        $chunks = [];
+        if ($host !== null && $host !== '') {
+            $siteUrl = 'https://'.$host;
+            $chunks[] = 'Домен: <a class="fi-link text-primary-600 underline" href="'.e($siteUrl).'" target="_blank" rel="noopener noreferrer">'.e($host).'</a>';
+        } else {
+            $chunks[] = 'Домен не подключён';
+        }
+        if ($cabinet !== null) {
+            $cabinetHost = parse_url($cabinet, PHP_URL_HOST);
+            $label = is_string($cabinetHost) && $cabinetHost !== '' ? $cabinetHost.'/admin' : $cabinet;
+            $chunks[] = 'Кабинет: <a class="fi-link text-primary-600 underline" href="'.e($cabinet).'" target="_blank" rel="noopener noreferrer">'.e($label).'</a>';
+        }
+
+        return new HtmlString(implode(' · ', $chunks));
+    }
+
+    protected function getSaveFormAction(): Action
+    {
+        return parent::getSaveFormAction()
+            ->icon(Heroicon::OutlinedDocumentCheck)
+            ->size(Size::Large)
+            ->extraAttributes(['class' => 'fi-btn-tenant-edit-save']);
+    }
 
     /**
      * @var array<string, mixed>
@@ -31,7 +124,7 @@ class EditTenant extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('recalculateTenantStorage')
+            Action::make('recalculateTenantStorage')
                 ->label('Пересчитать хранилище')
                 ->icon('heroicon-o-arrow-path')
                 ->visible(fn (): bool => $this->canEditTenantStorage())
@@ -45,7 +138,7 @@ class EditTenant extends EditRecord
                         ->success()
                         ->send();
                 }),
-            Actions\Action::make('editExtraStorageQuota')
+            Action::make('editExtraStorageQuota')
                 ->label('Доп. квота (МБ)')
                 ->icon('heroicon-o-server-stack')
                 ->visible(fn (): bool => $this->canEditTenantStorage())
@@ -76,7 +169,7 @@ class EditTenant extends EditRecord
                     $this->record->load('storageQuota');
                     Notification::make()->title('Дополнительная квота обновлена')->success()->send();
                 }),
-            Actions\Action::make('editStoragePackageLabel')
+            Action::make('editStoragePackageLabel')
                 ->label('Пакет хранилища')
                 ->icon('heroicon-o-tag')
                 ->visible(fn (): bool => $this->canEditTenantStorage())

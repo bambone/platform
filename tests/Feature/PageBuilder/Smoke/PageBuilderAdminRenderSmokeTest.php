@@ -15,7 +15,7 @@ use Tests\Support\CreatesTenantsWithDomains;
 use Tests\TestCase;
 
 /**
- * Livewire HTML regression for tenant page sections builder (not E2E): catalog, main plaque, section rows, no landing bleed on non-home.
+ * Livewire HTML regression for tenant page sections builder (not E2E): catalog, main plaque, section rows; контентные страницы включают hero среди блоков.
  *
  * @group page-builder-smoke
  */
@@ -37,7 +37,7 @@ class PageBuilderAdminRenderSmokeTest extends TestCase
         $this->app->instance(CurrentTenant::class, new CurrentTenant($tenant, $domain, false, $host));
     }
 
-    public function test_non_home_builder_catalog_main_plaque_section_row_no_landing_hero(): void
+    public function test_non_home_builder_catalog_main_plaque_section_row_includes_hero(): void
     {
         $tenant = $this->createTenantWithActiveDomain('pbsmoke-admin');
         $this->bindTenantContext($tenant);
@@ -70,13 +70,13 @@ class PageBuilderAdminRenderSmokeTest extends TestCase
         ]);
 
         $html = Livewire::test(PageSectionsBuilder::class, ['record' => $page->fresh()])
-            ->assertSee('Библиотека типов блоков', escape: false)
+            ->assertSee('Добавить блок', escape: false)
             ->assertSee('Основной контент страницы', escape: false)
             ->assertSee('PB_ADMIN_SMOKE_SECTION_ROW_9K2M', escape: false)
-            ->assertSee("startAdd('structured_text')", false)
-            ->assertSee("startAdd('content_faq')", false)
-            ->assertDontSee("startAdd('hero')", false)
-            ->assertDontSee('Hero', escape: false)
+            ->assertSee("startAdd('structured_text', null)", false)
+            ->assertSee("startAdd('content_faq', null)", false)
+            ->assertSee("startAdd('hero', null)", false)
+            ->assertSee('Базовые', escape: false)
             ->html();
 
         $this->assertStringContainsString('#1', $html);

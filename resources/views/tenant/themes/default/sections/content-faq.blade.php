@@ -22,9 +22,7 @@
                             </span>
                         </summary>
                         @if(filled($a))
-                            <div class="prose prose-invert prose-sm mt-3 max-w-none border-t border-white/10 pt-3 text-silver prose-p:leading-relaxed">
-                                {!! $a !!}
-                            </div>
+                            <x-tenant.rich-prose variant="default" class="mt-3 border-t border-white/10 pt-3 text-silver" :content="$a" />
                         @endif
                     </details>
                 @endif

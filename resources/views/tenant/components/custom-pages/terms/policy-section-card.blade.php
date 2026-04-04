@@ -2,28 +2,27 @@
     'id' => '',
     'title' => '',
     'icon' => null,
+    'content' => null,
 ])
 
-<div id="{{ $id }}" class="scroll-mt-28 md:scroll-mt-32 mb-8 md:mb-12 group last:mb-0">
-    <div class="flex items-center gap-3 sm:gap-4 mb-5 sm:mb-6">
+@php
+    $body = $content;
+    if ($body === null || $body === '') {
+        $body = isset($slot) && $slot->isNotEmpty() ? $slot : null;
+    }
+@endphp
+
+<div id="{{ $id }}" class="scroll-mt-28 md:scroll-mt-32 group mb-8 transition-shadow last:mb-0 target:rounded-2xl target:ring-2 target:ring-moto-amber/40 target:ring-offset-2 target:ring-offset-carbon md:mb-12">
+    <div class="mb-5 flex items-start gap-3 sm:mb-6 sm:gap-4">
         @if($icon)
-            <div class="shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-moto-amber/10 flex items-center justify-center text-moto-amber ring-1 ring-moto-amber/20 group-hover:bg-moto-amber/20 transition-colors duration-300">
+            <div class="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-moto-amber/10 text-moto-amber ring-1 ring-moto-amber/20 transition-colors duration-300 group-hover:bg-moto-amber/20 sm:h-12 sm:w-12">
                 {!! $icon !!}
             </div>
         @endif
-        <h2 class="text-xl sm:text-2xl font-bold text-white">{{ $title }}</h2>
+        <h2 class="min-w-0 flex-1 text-2xl font-bold leading-tight text-white md:text-3xl">{{ $title }}</h2>
     </div>
-    
-    <div class="rounded-2xl border border-white/5 bg-obsidian/60 p-5 sm:p-7 md:p-8 transition-colors hover:bg-obsidian">
-        <!-- Robust prose styles for readability -->
-        <div class="prose prose-invert prose-sm sm:prose-base max-w-none 
-                    prose-p:leading-relaxed prose-p:text-silver/90 
-                    prose-ul:text-silver/90 prose-ol:text-silver/90
-                    prose-li:marker:text-moto-amber 
-                    prose-strong:text-white 
-                    prose-a:text-moto-amber prose-a:no-underline hover:prose-a:underline
-                    prose-headings:text-white prose-headings:font-bold">
-            {{ $slot }}
-        </div>
+
+    <div class="rounded-2xl border border-white/10 bg-obsidian/60 p-6 shadow-xl shadow-black/25 transition-colors hover:bg-obsidian/70 sm:p-8 md:p-10">
+        <x-tenant.rich-prose variant="policy" :content="$body" />
     </div>
 </div>

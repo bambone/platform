@@ -2,7 +2,11 @@
 
 namespace App\PageBuilder\Blueprints;
 
+use App\Filament\Tenant\PageBuilder\SectionAdminSummary;
+use App\Filament\Tenant\Support\TenantPageRichEditor;
+use App\Models\PageSection;
 use App\PageBuilder\PageSectionCategory;
+use App\Support\PageRichContent;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -50,14 +54,12 @@ final class StructuredTextSectionBlueprint extends AbstractPageSectionBlueprint
                 ->label('Заголовок (необязательно)')
                 ->maxLength(255)
                 ->columnSpanFull(),
-            RichEditor::make('data_json.content')
-                ->label('Текст')
-                ->toolbarButtons([
-                    'bold', 'italic', 'underline', 'strike', 'link',
-                    'bulletList', 'orderedList', 'h2', 'h3', 'blockquote',
-                ])
-                ->columnSpanFull()
-                ->extraInputAttributes(['class' => 'tenant-page-section-rich-editor']),
+            TenantPageRichEditor::enhance(
+                RichEditor::make('data_json.content')
+                    ->label('Текст')
+                    ->columnSpanFull()
+                    ->extraInputAttributes(['class' => 'tenant-page-section-rich-editor'])
+            ),
             Select::make('data_json.max_width')
                 ->label('Ширина контента')
                 ->options([
@@ -81,9 +83,54 @@ final class StructuredTextSectionBlueprint extends AbstractPageSectionBlueprint
         if ($title !== '') {
             return $this->stringPreview($data, 'title', 120);
         }
-        $plain = strip_tags((string) ($data['content'] ?? ''));
+        $plain = strip_tags(PageRichContent::toHtml($data['content'] ?? ''));
         $plain = trim(preg_replace('/\s+/', ' ', $plain) ?? '');
 
         return $plain !== '' ? (strlen($plain) > 120 ? substr($plain, 0, 120).'…' : $plain) : 'Пустой текстовый блок';
+    }
+
+    public function adminSummary(PageSection $section): SectionAdminSummary
+    {
+        $data = is_array($section->data_json) ? $section->data_json : [];
+        $listTitle = trim((string) ($section->title ?? ''));
+        $blockTitle = trim((string) ($data['title'] ?? ''));
+        $label = $this->label();
+        $displayTitle = $listTitle !== '' ? $listTitle : ($blockTitle !== '' ? $blockTitle : $label);
+        $html = PageRichContent::toHtml($data['content'] ?? '');
+        $lines = self::excerptAsTwoLines($data['content'] ?? '', 280);
+        $widthKey = (string) ($data['max_width'] ?? 'prose');
+        $widthLabel = match ($widthKey) {
+            'wide' => 'Шире',
+            'full' => 'На всю ширину',
+            default => 'Узкая колонка',
+        };
+        $badges = [$widthLabel];
+        if ($html !== '' && stripos($html, '<img') !== false) {
+            $badges[] = 'Изображения';
+        }
+        if ($html !== '' && stripos($html, '<table') !== false) {
+            $badges[] = 'Таблица';
+        }
+        if ($html !== '' && (stripos($html, '<ul') !== false || stripos($html, '<ol') !== false)) {
+            $badges[] = 'Список';
+        }
+        $key = trim((string) ($section->section_key ?? ''));
+        $displaySubtitle = $key !== '' ? $key.' · '.$label : $label;
+        $plainExcerpt = PageRichContent::toPlainTextExcerpt($data['content'] ?? '', 400);
+        $isEmpty = trim($plainExcerpt) === '' && $blockTitle === '';
+        $warning = $isEmpty ? 'Почти нет текста в блоке' : null;
+        $primaryHeadline = $blockTitle !== '' ? $blockTitle : null;
+
+        return new SectionAdminSummary(
+            displayTitle: $displayTitle,
+            displaySubtitle: $displaySubtitle,
+            summaryLines: $lines,
+            badges: $badges,
+            meta: ['max_width' => $widthKey],
+            isEmpty: $isEmpty,
+            warning: $warning,
+            primaryHeadline: $primaryHeadline,
+            channels: [],
+        );
     }
 }

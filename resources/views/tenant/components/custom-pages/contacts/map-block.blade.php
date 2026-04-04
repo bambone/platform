@@ -3,7 +3,7 @@
     'mapUrl' => null,
 ])
 
-<div class="rounded-2xl border border-white/5 bg-obsidian overflow-hidden mt-8 md:mt-12 aspect-[4/3] sm:aspect-[21/9] relative shadow-2xl shadow-black/50">
+<div class="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-obsidian shadow-2xl shadow-black/50 ring-1 ring-inset ring-white/5 sm:aspect-[21/9] sm:min-h-[280px]">
     @if($mapEmbedCode || $mapUrl)
         @if($mapEmbedCode)
             <div class="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0 filter invert-[90%] hue-rotate-180 opacity-90 transition-opacity hover:opacity-100">

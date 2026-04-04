@@ -7,8 +7,6 @@
         <h2 class="mb-4 text-balance text-xl font-semibold text-white sm:text-2xl">{{ $title }}</h2>
     @endif
     @if(filled($content))
-        <div class="prose prose-invert prose-sm max-w-none text-silver prose-headings:text-white prose-p:leading-relaxed sm:prose-base">
-            {!! $content !!}
-        </div>
+        <x-tenant.rich-prose variant="default" :content="$content" />
     @endif
 </section>

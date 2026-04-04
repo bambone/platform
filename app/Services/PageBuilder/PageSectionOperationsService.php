@@ -20,7 +20,7 @@ final class PageSectionOperationsService
         private readonly LegacySectionTypeResolver $legacyResolver,
     ) {}
 
-    public function createTypedSection(Page $page, string $typeId, array $payload, ?int $tenantId): PageSection
+    public function createTypedSection(Page $page, string $typeId, array $payload, ?int $tenantId, ?int $insertAfterSectionId = null): PageSection
     {
         $this->assertPageTenant($page, $tenantId);
         $themeKey = $this->themeKey();
@@ -35,6 +35,19 @@ final class PageSectionOperationsService
         $key = $this->keyGenerator->next($page, $typeId);
         $dataJson = $this->normalizeDataJson($blueprint->defaultData(), $payload['data_json'] ?? []);
 
+        $sortOrder = $this->nextSortOrder($page);
+        if ($insertAfterSectionId !== null) {
+            $after = PageSection::query()
+                ->where('page_id', $page->id)
+                ->whereKey($insertAfterSectionId)
+                ->where('section_key', '!=', 'main')
+                ->first();
+            if ($after === null) {
+                throw new RuntimeException('Invalid insert position for section.');
+            }
+            $sortOrder = $this->sortOrderAfter($after);
+        }
+
         return PageSection::query()->create([
             'tenant_id' => $page->tenant_id,
             'page_id' => $page->id,
@@ -42,10 +55,100 @@ final class PageSectionOperationsService
             'section_type' => $typeId,
             'title' => $payload['title'] ?? $blueprint->label(),
             'data_json' => $dataJson,
-            'sort_order' => $this->nextSortOrder($page),
+            'sort_order' => $sortOrder,
             'status' => $payload['status'] ?? 'published',
             'is_visible' => (bool) ($payload['is_visible'] ?? true),
         ]);
+    }
+
+    /**
+     * @param  list<int|string>  $orderedSectionIds
+     */
+    public function reorderSections(Page $page, array $orderedSectionIds, ?int $tenantId): void
+    {
+        $this->assertPageTenant($page, $tenantId);
+
+        $normalized = [];
+        foreach ($orderedSectionIds as $id) {
+            $normalized[] = (int) $id;
+        }
+
+        $existingIds = $page->sections()
+            ->where('section_key', '!=', 'main')
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        $a = $existingIds;
+        $b = $normalized;
+        sort($a);
+        sort($b);
+
+        if ($a !== $b || count($normalized) !== count($existingIds)) {
+            throw new RuntimeException('Invalid section order: IDs do not match page sections.');
+        }
+
+        DB::transaction(function () use ($page, $normalized): void {
+            $order = 0;
+            foreach ($normalized as $id) {
+                $order += 10;
+                PageSection::query()
+                    ->where('page_id', $page->id)
+                    ->whereKey($id)
+                    ->where('section_key', '!=', 'main')
+                    ->update(['sort_order' => $order]);
+            }
+        });
+    }
+
+    /**
+     * @param  array{title?: string, status?: string, is_visible?: bool, block_title?: string}  $payload
+     */
+    public function patchSectionMeta(PageSection $section, array $payload, ?int $tenantId): void
+    {
+        $this->assertSectionTenant($section, $tenantId);
+        $this->assertNotMain($section);
+
+        $updates = [];
+        if (array_key_exists('title', $payload)) {
+            $updates['title'] = (string) $payload['title'];
+        }
+        if (array_key_exists('status', $payload)) {
+            $status = (string) $payload['status'];
+            if (! array_key_exists($status, PageSection::statuses())) {
+                throw new RuntimeException('Invalid section status.');
+            }
+            $updates['status'] = $status;
+        }
+        if (array_key_exists('is_visible', $payload)) {
+            $updates['is_visible'] = (bool) $payload['is_visible'];
+        }
+        if (array_key_exists('block_title', $payload)) {
+            $typeId = $section->section_type;
+            if (! is_string($typeId) || $typeId === '' || ! $this->registry->has($typeId)) {
+                $typeId = $this->legacyResolver->effectiveTypeId($section);
+            }
+            $dataKey = match ($typeId) {
+                'structured_text', 'text_section', 'contacts_info', 'content_faq' => 'title',
+                'rich_text', 'gallery', 'hero' => 'heading',
+                default => null,
+            };
+            if ($dataKey !== null && $this->registry->has($typeId)) {
+                $data = is_array($section->data_json) ? $section->data_json : [];
+                $data = array_replace_recursive($this->registry->get($typeId)->defaultData(), $data);
+                $raw = trim((string) $payload['block_title']);
+                $data[$dataKey] = $raw === '' ? null : mb_substr($raw, 0, 255);
+                $updates['data_json'] = $data;
+            }
+        }
+
+        if ($updates === []) {
+            return;
+        }
+
+        $section->update($updates);
     }
 
     public function updateTypedSection(PageSection $section, array $payload, ?int $tenantId): void

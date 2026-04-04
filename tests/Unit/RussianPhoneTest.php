@@ -22,4 +22,13 @@ class RussianPhoneTest extends TestCase
     {
         $this->assertSame('+7 (913) 060-86-89', RussianPhone::toMasked('+79130608689'));
     }
+
+    public function test_filament_tel_display_regex_accepts_masked_ru(): void
+    {
+        $rx = RussianPhone::filamentTelDisplayRegex();
+        $this->assertSame(1, preg_match($rx, ''));
+        $this->assertSame(1, preg_match($rx, '+7 (913) 060-86-89'));
+        $this->assertSame(1, preg_match($rx, '+44 20 7946 0958'));
+        $this->assertSame(0, preg_match($rx, 'call me'));
+    }
 }

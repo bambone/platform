@@ -25,6 +25,7 @@ class PageSectionContentCatalogTest extends TestCase
 
     /** @var list<string> */
     private const CONTENT_TYPE_IDS = [
+        'hero',
         'structured_text',
         'text_section',
         'content_faq',
@@ -69,14 +70,14 @@ class PageSectionContentCatalogTest extends TestCase
         $this->assertNotContains('structured_text', $ids);
     }
 
-    public function test_non_home_catalog_is_content_only(): void
+    public function test_non_home_catalog_includes_hero_and_content_blocks(): void
     {
         $reg = app(PageSectionTypeRegistry::class);
         $tenant = $this->createTenantWithActiveDomain('cat-rules');
         $rules = $this->makePage($tenant, 'rules-cat');
 
         $ids = array_map(fn ($b) => $b->id(), $reg->forPage($rules, 'default'));
-        $this->assertNotContains('hero', $ids);
+        $this->assertContains('hero', $ids);
         $this->assertNotContains('cta', $ids);
         $this->assertNotContains('gallery', $ids);
         $this->assertNotContains('cards_teaser', $ids);
@@ -93,7 +94,7 @@ class PageSectionContentCatalogTest extends TestCase
         $rules = $this->makePage($tenant, 'doc');
         $home = $this->makePage($tenant, 'home');
 
-        $this->assertFalse($reg->typeAllowedOnPage('hero', $rules, 'default'));
+        $this->assertTrue($reg->typeAllowedOnPage('hero', $rules, 'default'));
         $this->assertTrue($reg->typeAllowedOnPage('structured_text', $rules, 'default'));
         $this->assertTrue($reg->typeAllowedOnPage('hero', $home, 'default'));
         $this->assertFalse($reg->typeAllowedOnPage('structured_text', $home, 'default'));
@@ -205,7 +206,7 @@ class PageSectionContentCatalogTest extends TestCase
         $this->assertNotNull($name);
     }
 
-    public function test_start_add_blocks_hero_on_non_home(): void
+    public function test_start_add_allows_hero_on_non_home(): void
     {
         $tenant = $this->createTenantWithActiveDomain('cat-lw');
         $this->bindTenantContext($tenant);
@@ -213,11 +214,11 @@ class PageSectionContentCatalogTest extends TestCase
 
         Livewire::test(PageSectionsBuilder::class, ['record' => $page])
             ->call('startAdd', 'hero')
-            ->assertSet('showEditor', false)
-            ->assertSet('activeTypeId', null);
+            ->assertSet('showEditor', true)
+            ->assertSet('activeTypeId', 'hero');
     }
 
-    public function test_non_home_builder_html_shows_content_catalog_not_hero(): void
+    public function test_non_home_builder_html_shows_content_catalog_including_hero(): void
     {
         $tenant = $this->createTenantWithActiveDomain('cat-lw-html');
         $this->bindTenantContext($tenant);
@@ -225,8 +226,8 @@ class PageSectionContentCatalogTest extends TestCase
 
         $html = Livewire::test(PageSectionsBuilder::class, ['record' => $page])->html();
 
-        $this->assertStringContainsString("startAdd('structured_text')", $html);
-        $this->assertStringContainsString("startAdd('content_faq')", $html);
-        $this->assertStringNotContainsString("startAdd('hero')", $html);
+        $this->assertStringContainsString("startAdd('structured_text', null)", $html);
+        $this->assertStringContainsString("startAdd('content_faq', null)", $html);
+        $this->assertStringContainsString("startAdd('hero', null)", $html);
     }
 }

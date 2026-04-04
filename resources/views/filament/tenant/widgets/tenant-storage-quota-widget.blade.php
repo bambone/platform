@@ -35,17 +35,12 @@
                         из {{ \Illuminate\Support\Number::fileSize($q->effectiveQuotaBytes, precision: 1) }}
                     </span>
                 </div>
-                <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                    @php
-                        $bar = match ($q->progressBarTier()) {
-                            'exceeded' => 'bg-red-600',
-                            'danger' => 'bg-red-500',
-                            'warning' => 'bg-amber-500',
-                            default => 'bg-primary-500',
-                        };
-                        $w = min(100, $q->usedPercent);
-                    @endphp
-                    <div class="{{ $bar }} h-2 rounded-full" style="width: {{ $w }}%"></div>
+                <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700" role="presentation">
+                    @include('filament.tenant.partials.storage-quota-progress-meter', [
+                        'usedPercent' => $q->usedPercent,
+                        'tier' => $q->progressBarTier(),
+                        'variant' => 'widget',
+                    ])
                 </div>
                 <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
                     <span class="text-gray-600 dark:text-gray-400">

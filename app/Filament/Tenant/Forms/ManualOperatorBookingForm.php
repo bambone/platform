@@ -9,6 +9,7 @@ use App\Models\RentalUnit;
 use App\Product\CRM\DTO\ManualBookingCreateData;
 use App\Product\CRM\ManualLeadBookingService;
 use App\Rules\ValidIntlPhone;
+use App\Support\RussianPhone;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
@@ -32,6 +33,7 @@ final class ManualOperatorBookingForm
         return TextInput::make('phone')
             ->label('Телефон')
             ->tel()
+            ->telRegex(RussianPhone::filamentTelDisplayRegex())
             ->required()
             ->mask('+7 (999) 999-99-99')
             ->placeholder('+7 (___) ___-__-__')

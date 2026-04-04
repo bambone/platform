@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Tenant;
 
+use App\Filament\Tenant\PageBuilder\PageSectionAdminSummaryPresenter;
+use App\Filament\Tenant\Resources\PageResource;
 use App\Livewire\Concerns\InteractsWithTenantPublicFilePicker;
 use App\Models\Page;
 use App\Models\PageSection;
@@ -9,6 +11,7 @@ use App\PageBuilder\LegacySectionTypeResolver;
 use App\PageBuilder\PageSectionCategory;
 use App\PageBuilder\PageSectionTypeRegistry;
 use App\Services\PageBuilder\PageSectionOperationsService;
+use App\Support\PageRichContent;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Forms\Components\Select;
@@ -41,6 +44,54 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
 
     /** @var array<string, mixed> */
     public array $sectionFormData = [];
+
+    /** After which section to insert a new block (null = end of list). */
+    public ?int $insertAfterSectionId = null;
+
+    /** @var list<int> */
+    public array $expandedSectionIds = [];
+
+    public string $listDensity = 'comfort';
+
+    public string $sectionSearch = '';
+
+    public bool $showOnlyHidden = false;
+
+    public bool $showDeleteModal = false;
+
+    public ?int $deleteTargetId = null;
+
+    public function mount(Page $record): void
+    {
+        $this->record = $record;
+        $this->expandedSectionIds = array_values(array_map(
+            'intval',
+            session()->get($this->builderSessionKey('expanded'), []) ?: []
+        ));
+        $this->listDensity = session()->get($this->builderSessionKey('density'), 'comfort') === 'compact'
+            ? 'compact'
+            : 'comfort';
+        $this->sectionSearch = (string) session()->get($this->builderSessionKey('search'), '');
+    }
+
+    private function builderSessionKey(string $suffix): string
+    {
+        $tenantId = currentTenant()?->id ?? 0;
+
+        return "page_sections_builder.{$tenantId}.{$this->record->getKey()}.{$suffix}";
+    }
+
+    private function persistUiSession(): void
+    {
+        session()->put($this->builderSessionKey('expanded'), $this->expandedSectionIds);
+        session()->put($this->builderSessionKey('density'), $this->listDensity);
+        session()->put($this->builderSessionKey('search'), $this->sectionSearch);
+    }
+
+    private function tenantIdForOps(): ?int
+    {
+        return currentTenant()?->id ?? ($this->record->tenant_id ? (int) $this->record->tenant_id : null);
+    }
 
     public function sectionEditor(Schema $schema): Schema
     {
@@ -99,6 +150,8 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
                     'label' => $bp->label(),
                     'description' => $bp->description(),
                     'icon' => $bp->icon(),
+                    'category' => $cat->value,
+                    'category_label' => $cat->label(),
                 ];
             }
             if ($items !== []) {
@@ -114,18 +167,14 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
     }
 
     /**
-     * Alias for {@see getBuilderRowsProperty()} — секции текущей страницы (без `main` в БД).
-     *
-     * @return list<array{id: int, type_id: string, type_label: string, title: string, preview: string, sort_order: int, position: int, is_visible: bool, status: string}>
+     * @return list<array<string, mixed>>
      */
     public function getCurrentSectionsProperty(): array
     {
-        return $this->builderRows;
+        return $this->filteredBuilderRows;
     }
 
     /**
-     * Alias for {@see getCatalogGroupedProperty()}.
-     *
      * @return Collection<int, array<string, mixed>>
      */
     public function getAvailableSectionCatalogProperty(): Collection
@@ -134,42 +183,194 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
     }
 
     /**
-     * @return list<array{id: int, type_id: string, type_label: string, title: string, preview: string, sort_order: int, position: int, is_visible: bool, status: string}>
+     * @return array{status_published: int, hidden_on_site: int, total: int}
+     */
+    public function getSectionMetricsProperty(): array
+    {
+        $rows = $this->builderRows;
+        $total = count($rows);
+        $statusPublished = 0;
+        $hiddenOnSite = 0;
+        foreach ($rows as $row) {
+            if (($row['status'] ?? '') === 'published') {
+                $statusPublished++;
+            }
+            if (! ($row['is_visible'] ?? true)) {
+                $hiddenOnSite++;
+            }
+        }
+
+        return [
+            'status_published' => $statusPublished,
+            'hidden_on_site' => $hiddenOnSite,
+            'total' => $total,
+        ];
+    }
+
+    /**
+     * @return ?array{excerpt: string, edit_url: string, mode: string}
+     */
+    public function getMainCardProperty(): ?array
+    {
+        if ($this->record->slug === 'home') {
+            return [
+                'excerpt' => '',
+                'edit_url' => $this->contentTabUrl,
+                'mode' => 'home',
+            ];
+        }
+
+        $main = $this->record->sections()->where('section_key', 'main')->first();
+        $raw = is_array($main?->data_json) ? ($main->data_json['content'] ?? '') : '';
+
+        return [
+            'excerpt' => PageRichContent::toPlainTextExcerpt($raw, 220),
+            'edit_url' => $this->contentTabUrl,
+            'mode' => 'content',
+        ];
+    }
+
+    public function getContentTabUrlProperty(): string
+    {
+        $url = PageResource::getUrl('edit', ['record' => $this->record]);
+
+        return $url.(str_contains($url, '?') ? '&' : '?').'relation=';
+    }
+
+    public function getPublicPageUrlProperty(): ?string
+    {
+        if ($this->record->status !== 'published') {
+            return null;
+        }
+
+        return $this->record->slug === 'home'
+            ? url('/')
+            : url('/'.ltrim((string) $this->record->slug, '/'));
+    }
+
+    /**
+     * @return list<array<string, mixed>>
      */
     public function getBuilderRowsProperty(): array
     {
         $ops = app(PageSectionOperationsService::class);
         $registry = app(PageSectionTypeRegistry::class);
         $legacy = app(LegacySectionTypeResolver::class);
+        $presenter = app(PageSectionAdminSummaryPresenter::class);
 
         $rows = [];
         $position = 0;
         foreach ($ops->listBuilderSections($this->record) as $section) {
             $position++;
             $typeId = $legacy->effectiveTypeId($section);
-            $label = $registry->has($typeId) ? $registry->get($typeId)->label() : $typeId;
-            $data = is_array($section->data_json) ? $section->data_json : [];
-            $preview = $registry->has($typeId)
-                ? $registry->get($typeId)->previewSummary($data)
-                : '';
+            $typeLabel = $registry->has($typeId) ? $registry->get($typeId)->label() : $typeId;
+            $icon = $registry->has($typeId) ? $registry->get($typeId)->icon() : 'heroicon-o-squares-2x2';
+            $summary = $presenter->summarize($section, $registry, $legacy);
+            $summaryArr = $summary->toArray();
+
+            $dataJson = is_array($section->data_json) ? $section->data_json : [];
+            $blockTitleQuick = match ($typeId) {
+                'structured_text', 'text_section', 'contacts_info', 'content_faq' => (string) ($dataJson['title'] ?? ''),
+                'rich_text', 'gallery', 'hero' => (string) ($dataJson['heading'] ?? ''),
+                default => null,
+            };
+            $hasBlockTitleQuick = $blockTitleQuick !== null;
 
             $rows[] = [
                 'id' => $section->id,
+                'section_key' => (string) $section->section_key,
                 'type_id' => $typeId,
-                'type_label' => $label,
+                'type_label' => $typeLabel,
+                'icon' => $icon,
                 'title' => (string) ($section->title ?? ''),
-                'preview' => $preview,
+                'preview' => $registry->has($typeId)
+                    ? $registry->get($typeId)->previewSummary($dataJson)
+                    : '',
+                'summary' => $summaryArr,
+                'search_blob' => $summary->searchBlob($typeLabel).' '.mb_strtolower($section->section_key),
                 'sort_order' => (int) $section->sort_order,
                 'position' => $position,
                 'is_visible' => (bool) $section->is_visible,
                 'status' => (string) $section->status,
+                'has_block_title_quick' => $hasBlockTitleQuick,
+                'block_title_quick_value' => $hasBlockTitleQuick ? $blockTitleQuick : '',
             ];
         }
 
         return $rows;
     }
 
-    public function startAdd(string $typeId): void
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function getFilteredBuilderRowsProperty(): array
+    {
+        $rows = $this->builderRows;
+        $q = mb_strtolower(trim($this->sectionSearch));
+        $out = [];
+        foreach ($rows as $row) {
+            if ($this->showOnlyHidden && ($row['is_visible'] ?? true)) {
+                continue;
+            }
+            if ($q !== '' && ! str_contains($row['search_blob'] ?? '', $q)) {
+                continue;
+            }
+            $out[] = $row;
+        }
+
+        return $out;
+    }
+
+    public function updatedSectionSearch(): void
+    {
+        $this->persistUiSession();
+    }
+
+    public function updatedListDensity(): void
+    {
+        $this->listDensity = $this->listDensity === 'compact' ? 'compact' : 'comfort';
+        $this->persistUiSession();
+    }
+
+    public function updatedShowOnlyHidden(): void
+    {
+        // no session for checkbox — optional; could add
+    }
+
+    public function isExpanded(int $sectionId): bool
+    {
+        return in_array($sectionId, $this->expandedSectionIds, true);
+    }
+
+    public function toggleExpanded(int $sectionId): void
+    {
+        $ids = $this->expandedSectionIds;
+        $idx = array_search($sectionId, $ids, true);
+        if ($idx !== false) {
+            unset($ids[$idx]);
+            $this->expandedSectionIds = array_values($ids);
+        } else {
+            $this->expandedSectionIds[] = $sectionId;
+        }
+        $this->persistUiSession();
+    }
+
+    public function expandAllSections(): void
+    {
+        $this->expandedSectionIds = array_map(
+            fn (array $r): int => (int) $r['id'],
+            $this->builderRows
+        );
+        $this->persistUiSession();
+    }
+
+    public function collapseAllSections(): void
+    {
+        $this->expandedSectionIds = [];
+        $this->persistUiSession();
+    }
+
+    public function startAdd(string $typeId, ?int $afterSectionId = null): void
     {
         $tenant = currentTenant();
         $themeKey = $tenant?->themeKey() ?? 'default';
@@ -197,6 +398,7 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
         $blueprint = $registry->get($typeId);
         $this->activeTypeId = $typeId;
         $this->editingSectionId = null;
+        $this->insertAfterSectionId = $afterSectionId;
         $this->sectionFormData = [
             'title' => $blueprint->label(),
             'status' => 'published',
@@ -205,6 +407,18 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
         ];
         $this->showEditor = true;
         $this->cacheSchema('sectionEditor', null);
+    }
+
+    public function startAddToEnd(): void
+    {
+        $this->insertAfterSectionId = null;
+        $this->js('document.getElementById("page-section-catalog")?.scrollIntoView({behavior:"smooth", block:"start"})');
+    }
+
+    public function startAddBelow(int $sectionId): void
+    {
+        $this->insertAfterSectionId = $sectionId;
+        $this->js('document.getElementById("page-section-catalog")?.scrollIntoView({behavior:"smooth", block:"start"})');
     }
 
     public function startEdit(int $sectionId): void
@@ -236,6 +450,7 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
 
         $this->activeTypeId = $typeId;
         $this->editingSectionId = $section->id;
+        $this->insertAfterSectionId = null;
         $this->sectionFormData = [
             'title' => $section->title ?? '',
             'status' => $section->status,
@@ -252,12 +467,13 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
         $this->activeTypeId = null;
         $this->editingSectionId = null;
         $this->sectionFormData = [];
+        $this->insertAfterSectionId = null;
         $this->cacheSchema('sectionEditor', null);
     }
 
     public function save(): void
     {
-        $tenantId = currentTenant()?->id;
+        $tenantId = $this->tenantIdForOps();
         $this->sectionEditor->validate();
         $data = $this->sectionEditor->getState();
         $ops = app(PageSectionOperationsService::class);
@@ -267,7 +483,8 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
                 if ($this->activeTypeId === null) {
                     return;
                 }
-                $ops->createTypedSection($this->record, $this->activeTypeId, $data, $tenantId);
+                $after = $this->insertAfterSectionId;
+                $ops->createTypedSection($this->record, $this->activeTypeId, $data, $tenantId, $after);
                 Notification::make()->title('Секция добавлена')->success()->send();
             } else {
                 $section = PageSection::query()
@@ -283,12 +500,36 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
             return;
         }
 
+        $this->record->refresh();
         $this->closeEditor();
+        $this->persistUiSession();
+    }
+
+    public function openDeleteModal(int $sectionId): void
+    {
+        $this->deleteTargetId = $sectionId;
+        $this->showDeleteModal = true;
+    }
+
+    public function closeDeleteModal(): void
+    {
+        $this->showDeleteModal = false;
+        $this->deleteTargetId = null;
+    }
+
+    public function confirmDelete(): void
+    {
+        if ($this->deleteTargetId === null) {
+            return;
+        }
+        $id = $this->deleteTargetId;
+        $this->closeDeleteModal();
+        $this->delete($id);
     }
 
     public function delete(int $sectionId): void
     {
-        $tenantId = currentTenant()?->id;
+        $tenantId = $this->tenantIdForOps();
         $section = PageSection::query()
             ->where('page_id', $this->record->id)
             ->whereKey($sectionId)
@@ -301,11 +542,17 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
             Notification::make()->title('Нельзя удалить')->body($e->getMessage())->warning()->send();
         }
 
+        $this->expandedSectionIds = array_values(array_filter(
+            $this->expandedSectionIds,
+            fn (int $i): bool => $i !== $sectionId
+        ));
+        $this->record->refresh();
+        $this->persistUiSession();
     }
 
     public function duplicate(int $sectionId): void
     {
-        $tenantId = currentTenant()?->id;
+        $tenantId = $this->tenantIdForOps();
         $section = PageSection::query()
             ->where('page_id', $this->record->id)
             ->whereKey($sectionId)
@@ -318,11 +565,12 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
             Notification::make()->title('Ошибка')->body($e->getMessage())->danger()->send();
         }
 
+        $this->record->refresh();
     }
 
     public function toggleVisibility(int $sectionId): void
     {
-        $tenantId = currentTenant()?->id;
+        $tenantId = $this->tenantIdForOps();
         $section = PageSection::query()
             ->where('page_id', $this->record->id)
             ->whereKey($sectionId)
@@ -334,6 +582,27 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
             Notification::make()->title('Ошибка')->body($e->getMessage())->danger()->send();
         }
 
+        $this->record->refresh();
+    }
+
+    /**
+     * @param  array{title?: string, status?: string, is_visible?: bool, block_title?: string}  $payload
+     */
+    public function patchSectionMeta(int $sectionId, array $payload): void
+    {
+        $tenantId = $this->tenantIdForOps();
+        $section = PageSection::query()
+            ->where('page_id', $this->record->id)
+            ->whereKey($sectionId)
+            ->firstOrFail();
+
+        try {
+            app(PageSectionOperationsService::class)->patchSectionMeta($section, $payload, $tenantId);
+        } catch (\Throwable $e) {
+            Notification::make()->title('Ошибка')->body($e->getMessage())->danger()->send();
+        }
+
+        $this->record->refresh();
     }
 
     public function moveUp(int $sectionId): void
@@ -346,9 +615,26 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
         $this->move($sectionId, 1);
     }
 
+    /**
+     * @param  list<int|string>  $orderedIds
+     */
+    public function reorderSections(array $orderedIds): void
+    {
+        $tenantId = $this->tenantIdForOps();
+        try {
+            app(PageSectionOperationsService::class)->reorderSections($this->record, $orderedIds, $tenantId);
+        } catch (\Throwable $e) {
+            Notification::make()->title('Не удалось изменить порядок')->body($e->getMessage())->danger()->send();
+
+            return;
+        }
+        $this->record->refresh();
+        $this->persistUiSession();
+    }
+
     private function move(int $sectionId, int $dir): void
     {
-        $tenantId = currentTenant()?->id;
+        $tenantId = $this->tenantIdForOps();
         $section = PageSection::query()
             ->where('page_id', $this->record->id)
             ->whereKey($sectionId)
@@ -364,6 +650,49 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
             Notification::make()->title('Ошибка')->body($e->getMessage())->danger()->send();
         }
 
+        $this->record->refresh();
+    }
+
+    public function getSortableEnabledProperty(): bool
+    {
+        return trim($this->sectionSearch) === '' && ! $this->showOnlyHidden;
+    }
+
+    public function getInsertAfterSectionLabelProperty(): ?string
+    {
+        if ($this->insertAfterSectionId === null) {
+            return null;
+        }
+        foreach ($this->builderRows as $row) {
+            if ((int) $row['id'] === $this->insertAfterSectionId) {
+                $s = $row['summary'] ?? [];
+
+                return is_array($s) && isset($s['displayTitle']) && (string) $s['displayTitle'] !== ''
+                    ? (string) $s['displayTitle']
+                    : ($row['title'] ?? $row['type_label'] ?? null);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Row for delete modal (must stay stable while modal open).
+     *
+     * @return ?array<string, mixed>
+     */
+    public function getDeleteTargetRowProperty(): ?array
+    {
+        if ($this->deleteTargetId === null) {
+            return null;
+        }
+        foreach ($this->builderRows as $row) {
+            if ((int) $row['id'] === $this->deleteTargetId) {
+                return $row;
+            }
+        }
+
+        return null;
     }
 
     public function render(): View

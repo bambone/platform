@@ -2,6 +2,8 @@
 
 namespace App\PageBuilder\Contracts;
 
+use App\Filament\Tenant\PageBuilder\SectionAdminSummary;
+use App\Models\PageSection;
 use App\PageBuilder\PageSectionCategory;
 use Filament\Forms\Components\Component;
 
@@ -37,4 +39,9 @@ interface PageSectionBlueprintInterface
     public function supportsTheme(string $themeKey): bool;
 
     public function previewSummary(array $data): string;
+
+    /**
+     * Plain-text admin card summary (list UI, delete confirm).
+     */
+    public function adminSummary(PageSection $section): SectionAdminSummary;
 }

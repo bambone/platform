@@ -15,9 +15,7 @@
             <h3 class="mb-2 text-base font-semibold text-white">{{ $title }}</h3>
         @endif
         @if(filled($text))
-            <div class="prose prose-invert prose-sm max-w-none prose-p:my-2 prose-p:leading-relaxed prose-a:text-inherit sm:prose-base">
-                {!! $text !!}
-            </div>
+            <x-tenant.rich-prose variant="notice" :content="$text" />
         @endif
     </div>
 </section>

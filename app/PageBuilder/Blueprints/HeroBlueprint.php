@@ -3,6 +3,8 @@
 namespace App\PageBuilder\Blueprints;
 
 use App\Filament\Forms\Components\TenantPublicImagePicker;
+use App\Filament\Tenant\PageBuilder\SectionAdminSummary;
+use App\Models\PageSection;
 use App\PageBuilder\PageSectionCategory;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -126,5 +128,45 @@ final class HeroBlueprint extends AbstractPageSectionBlueprint
         $parts = array_filter([$h, $btn ? 'Кнопка: '.$btn : '']);
 
         return $parts !== [] ? implode(' · ', $parts) : 'Пустой hero';
+    }
+
+    public function adminSummary(PageSection $section): SectionAdminSummary
+    {
+        $data = is_array($section->data_json) ? $section->data_json : [];
+        $label = $this->label();
+        $listTitle = trim((string) ($section->title ?? ''));
+        $displayTitle = $listTitle !== '' ? $listTitle : $label;
+        $variant = (string) ($data['variant'] ?? 'full_background');
+        $variantLabel = match ($variant) {
+            'image_right' => 'Вариант: картинка справа',
+            'compact' => 'Вариант: компактный',
+            default => 'Вариант: фон на всю ширину',
+        };
+        $h = trim((string) ($data['heading'] ?? ''));
+        $sub = trim((string) ($data['subheading'] ?? ''));
+        $btn = trim((string) ($data['button_text'] ?? ''));
+        $key = trim((string) ($section->section_key ?? ''));
+        $displaySubtitle = $key !== '' ? $key.' · '.$label : $label;
+        $isEmpty = $h === '' && $sub === '' && $btn === '';
+        $warning = $isEmpty ? 'Hero без заголовка и кнопки' : null;
+        $bodyLines = [];
+        if ($sub !== '') {
+            $bodyLines[] = $sub;
+        }
+        if ($btn !== '') {
+            $bodyLines[] = 'Кнопка: '.$btn;
+        }
+
+        return new SectionAdminSummary(
+            displayTitle: $displayTitle,
+            displaySubtitle: $displaySubtitle,
+            summaryLines: $bodyLines !== [] ? $bodyLines : ($isEmpty ? ['Пустой hero'] : []),
+            badges: [$variantLabel],
+            meta: ['variant' => $variant],
+            isEmpty: $isEmpty,
+            warning: $warning,
+            primaryHeadline: $h !== '' ? $h : null,
+            channels: [],
+        );
     }
 }

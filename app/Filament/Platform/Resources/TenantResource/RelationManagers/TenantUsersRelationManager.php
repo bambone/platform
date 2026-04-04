@@ -22,6 +22,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
 
@@ -29,9 +30,20 @@ class TenantUsersRelationManager extends RelationManager
 {
     protected static string $relationship = 'users';
 
-    protected static ?string $title = 'Команда клиента';
+    protected static ?string $title = 'Команда';
+
+    protected static string|\BackedEnum|null $icon = Heroicon::OutlinedUsers;
 
     protected static bool $shouldSkipAuthorization = true;
+
+    public static function getBadge(Model $ownerRecord, string $pageClass): ?string
+    {
+        if (! $ownerRecord instanceof Tenant) {
+            return null;
+        }
+
+        return (string) $ownerRecord->users()->count();
+    }
 
     /**
      * @return array<string, string>
@@ -106,13 +118,27 @@ class TenantUsersRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('name')
                     ->label('Имя')
-                    ->searchable(),
+                    ->searchable()
+                    ->formatStateUsing(function (?string $state, User $record): string {
+                        $base = (string) ($state ?? '');
+                        if ((int) $record->getKey() === (int) Auth::id()) {
+                            return $base.' (вы)';
+                        }
+
+                        return $base;
+                    }),
                 TextColumn::make('email')
                     ->label('Email')
                     ->searchable(),
                 TextColumn::make('pivot.role')
                     ->label('Роль в клиенте')
-                    ->formatStateUsing(fn (?string $state): string => $state ? (RoleLabels::tenantMembershipRoleOptions()[$state] ?? $state) : '—'),
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => $state ? (RoleLabels::tenantMembershipRoleOptions()[$state] ?? $state) : '—')
+                    ->color(fn (?string $state): string => match ($state) {
+                        'tenant_owner' => 'danger',
+                        'tenant_admin' => 'info',
+                        default => 'gray',
+                    }),
                 TextColumn::make('pivot.status')
                     ->label('Статус в команде')
                     ->badge()
@@ -231,6 +257,8 @@ class TenantUsersRelationManager extends RelationManager
                         }
                     }),
             ])
+            ->emptyStateHeading('Нет участников')
+            ->emptyStateDescription('Создайте пользователя или привяжите существующую учётную запись.')
             ->defaultSort('users.name');
     }
 }

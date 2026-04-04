@@ -21,7 +21,7 @@ class TenantStorageUsageScannerTest extends TestCase
         ]);
 
         Storage::disk('quota-scan-public')->put('tenants/7/public/media/x.bin', 'abcd');
-        Storage::disk('quota-scan-private')->put('tenants/7/private/seo/y.txt', '12');
+        Storage::disk('quota-scan-private')->put('tenants/7/private/site/seo/y.txt', '12');
 
         $result = app(TenantStorageUsageScanner::class)->scan(7);
 
@@ -29,5 +29,9 @@ class TenantStorageUsageScannerTest extends TestCase
         $this->assertSame(4, $result->publicBytes);
         $this->assertSame(2, $result->privateBytes);
         $this->assertSame(2, $result->objectCount);
+        $this->assertSame(4, $result->mediaBytes);
+        $this->assertSame(2, $result->seoBytes);
+        $this->assertSame(0, $result->brandingBytes);
+        $this->assertSame(0, $result->otherBytes);
     }
 }

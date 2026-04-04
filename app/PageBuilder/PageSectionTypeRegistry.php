@@ -63,6 +63,7 @@ final class PageSectionTypeRegistry
     public function contentPageBlueprintInstances(): array
     {
         return [
+            new HeroBlueprint,
             new StructuredTextSectionBlueprint,
             new TextSectionBlueprint,
             new ContentFaqSectionBlueprint,

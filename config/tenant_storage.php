@@ -12,7 +12,8 @@ return [
     | TENANT_STORAGE_PRIVATE_DISK=r2-private or SEO_FILES_DISK=r2-private.
     |
     | DB invariant: store only object keys relative to disk root (e.g. tenants/1/public/site/...),
-    | never full URLs or absolute filesystem paths. See docs/operations/r2-tenant-storage.md
+    | never full URLs or absolute filesystem paths. RichEditor вложения страниц: …/public/site/page-content/.
+    | See docs/operations/r2-tenant-storage.md
     |
     | Private disk (r2-private): do not expose via TenantStorage::publicUrl or disk->url in UI;
     | use backend / signed URL / temporary URL only.

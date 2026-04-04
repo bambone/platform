@@ -195,7 +195,7 @@ php artisan migrate --force
 **Важно:** переменные `TENANCY_*` должны быть в `.env` **до** `config:cache` и `route:cache` (маршруты читают `config('tenancy.*')` при регистрации). После смены доменов: `php artisan route:clear`, при необходимости `config:clear`, затем снова кеш.
 
 1. `.env`: `TENANCY_CENTRAL_DOMAINS`, `TENANCY_ROOT_DOMAIN`, `TENANCY_SERVER_IP`, при необходимости `TENANCY_PROVISION_SCRIPT`, `TENANCY_LE_WEBROOT`, `TENANCY_PROVISION_USE_SUDO`.
-2. Скрипт `scripts/rentbase-provision-domain.sh` на сервере, sudo для очереди при необходимости.
+2. Скрипт `scripts/rentbase-provision-domain.sh` на сервере, sudo для очереди при необходимости. Для `robots.txt` в конфиге должен быть `try_files` на `index.php` (как в актуальной версии скрипта): пустой `location = /robots.txt` без `try_files` отдаёт **404**, если в `public/` нет статического файла, и Laravel не вызывается (в отличие от `/sitemap.xml`).
 3. Выпуск TLS/nginx — через `ProvisionTenantCustomDomainJob` (очередь).
 4. `php artisan tenancy:report-domains` — сводка по доменам.
 

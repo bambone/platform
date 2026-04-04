@@ -64,6 +64,30 @@ class TenantDomain extends Model
         static::deleted(function (TenantDomain $domain) {
             self::forgetResolverCacheForModel($domain);
         });
+
+        static::deleting(function (TenantDomain $domain) {
+            $hasOtherDomains = self::query()
+                ->where('tenant_id', $domain->tenant_id)
+                ->whereKeyNot($domain->getKey())
+                ->exists();
+
+            if (! $hasOtherDomains) {
+                return false;
+            }
+
+            if ($domain->is_primary) {
+                $next = self::query()
+                    ->where('tenant_id', $domain->tenant_id)
+                    ->whereKeyNot($domain->getKey())
+                    ->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', [self::STATUS_ACTIVE])
+                    ->orderBy('id')
+                    ->first();
+
+                if ($next !== null) {
+                    $next->forceFill(['is_primary' => true])->saveQuietly();
+                }
+            }
+        });
     }
 
     public static function normalizeHost(?string $value): string

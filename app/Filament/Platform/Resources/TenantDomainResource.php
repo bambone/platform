@@ -6,9 +6,11 @@ use App\Filament\Platform\Resources\Concerns\GrantsPlatformPanelAccess;
 use App\Filament\Platform\Resources\TenantDomainResource\Pages;
 use App\Filament\Support\FilamentInlineMarkdown;
 use App\Filament\Support\TenantDomainStatusCopy;
+use App\Models\Tenant;
 use App\Models\TenantDomain;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -20,10 +22,18 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View as SchemaView;
 use Filament\Schemas\Schema;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
+use Illuminate\Support\LazyCollection;
 
 class TenantDomainResource extends Resource
 {
@@ -38,6 +48,12 @@ class TenantDomainResource extends Resource
     protected static ?string $pluralModelLabel = 'Домены';
 
     protected static ?string $panel = 'platform';
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with('tenant');
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -156,7 +172,8 @@ class TenantDomainResource extends Resource
                     ->sortable(),
                 TextColumn::make('tenant.name')
                     ->label('Клиент')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('type')
                     ->label('Тип')
                     ->formatStateUsing(fn (?string $state): string => $state ? (TenantDomain::types()[$state] ?? $state) : '—'),
@@ -190,6 +207,31 @@ class TenantDomainResource extends Resource
                     })
                     ->description(fn (TenantDomain $record): string => TenantDomainStatusCopy::sslNextStep($record->ssl_status))->wrap(),
             ])
+            ->defaultSort('host')
+            ->groups([
+                Group::make('tenant_id')
+                    ->label('Клиент')
+                    ->collapsible()
+                    ->titlePrefixedWithLabel(false)
+                    ->getTitleFromRecordUsing(fn (TenantDomain $record): string => $record->tenant?->name ?? '—')
+                    ->orderQueryUsing(function (Builder $query, string $direction): Builder {
+                        return $query->orderBy(
+                            Tenant::query()
+                                ->select('name')
+                                ->whereColumn('tenants.id', 'tenant_domains.tenant_id')
+                                ->limit(1),
+                            $direction
+                        );
+                    }),
+            ])
+            ->defaultGroup('tenant_id')
+            ->filters([
+                SelectFilter::make('tenant_id')
+                    ->label('Клиент')
+                    ->relationship('tenant', 'name')
+                    ->searchable()
+                    ->preload(),
+            ])
             ->recordAction(EditAction::class)
             ->recordUrl(null)
             ->actions([
@@ -211,12 +253,54 @@ class TenantDomainResource extends Resource
                         'x-on:click' => "window.navigator.clipboard.writeText('{$record->host}'); \$tooltip('Скопировано!')",
                     ]),
                 EditAction::make()->slideOver(),
+                DeleteAction::make()
+                    ->label('Удалить')
+                    ->modalHeading('Удалить домен?')
+                    ->modalDescription('Сайт может перестать открываться по этому адресу. У клиента должен остаться хотя бы один домен.')
+                    ->failureNotificationTitle('Нельзя удалить последний домен клиента')
+                    ->failureNotificationBody('Добавьте другой домен или отключите клиента иначе — без адреса сайт недоступен.'),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->modalHeading('Удалить домены?')
-                        ->modalDescription('Сайт клиента может перестать открываться по этим адресам. Проверьте, что остался хотя бы один рабочий домен.'),
+                        ->modalDescription('Сайт клиента может перестать открываться по этим адресам. Нельзя удалить все домены у одного клиента — у каждого должен остаться хотя бы один.')
+                        ->using(function (DeleteBulkAction $action, EloquentCollection | Collection | LazyCollection $records): void {
+                            $records = $records instanceof LazyCollection
+                                ? $records->collect()
+                                : Collection::wrap($records);
+
+                            foreach ($records->groupBy('tenant_id') as $tenantId => $group) {
+                                $selectedCount = $group->count();
+                                $totalForTenant = TenantDomain::query()->where('tenant_id', $tenantId)->count();
+
+                                if ($totalForTenant - $selectedCount < 1) {
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('Нельзя удалить все домены клиента')
+                                        ->body('Снимите часть выделения или оставьте хотя бы один домен у каждого клиента.')
+                                        ->send();
+
+                                    $action->halt();
+                                }
+                            }
+
+                            $isFirstException = true;
+
+                            $records->each(static function (Model $record) use ($action, &$isFirstException): void {
+                                try {
+                                    $record->delete() || $action->reportBulkProcessingFailure();
+                                } catch (\Throwable $exception) {
+                                    $action->reportBulkProcessingFailure();
+
+                                    if ($isFirstException) {
+                                        report($exception);
+
+                                        $isFirstException = false;
+                                    }
+                                }
+                            });
+                        }),
                 ]),
             ])
             ->emptyStateHeading('Домены ещё не добавлены')

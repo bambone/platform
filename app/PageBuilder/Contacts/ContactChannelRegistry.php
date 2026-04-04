@@ -2,6 +2,8 @@
 
 namespace App\PageBuilder\Contacts;
 
+use App\View\Components\AppIcon;
+
 /**
  * Single source of truth: labels, icons, internal/external, default new-tab policy, helper text.
  */
@@ -87,6 +89,28 @@ final class ContactChannelRegistry
             ContactChannelType::Sms => 'smartphone',
             ContactChannelType::Max => 'max',
             ContactChannelType::GenericUrl => 'link',
+        };
+    }
+
+    /**
+     * Имена иконок для Filament / BladeUI Heroicons (x-filament::icon).
+     * Не путать с {@see self::icon()} — там ключи для {@see AppIcon}.
+     */
+    public function filamentIcon(ContactChannelType $type): string
+    {
+        return match ($type) {
+            ContactChannelType::Phone => 'heroicon-o-phone',
+            ContactChannelType::Email => 'heroicon-o-envelope',
+            ContactChannelType::Telegram => 'heroicon-o-paper-airplane',
+            ContactChannelType::Vk => 'heroicon-o-user-group',
+            ContactChannelType::SiteForm => 'heroicon-o-clipboard-document-check',
+            ContactChannelType::Whatsapp => 'heroicon-o-chat-bubble-left-right',
+            ContactChannelType::Viber => 'heroicon-o-phone',
+            ContactChannelType::Instagram => 'heroicon-o-camera',
+            ContactChannelType::FacebookMessenger => 'heroicon-o-chat-bubble-left-ellipsis',
+            ContactChannelType::Sms => 'heroicon-o-device-phone-mobile',
+            ContactChannelType::Max => 'heroicon-o-globe-alt',
+            ContactChannelType::GenericUrl => 'heroicon-o-link',
         };
     }
 

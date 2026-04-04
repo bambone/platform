@@ -5,8 +5,8 @@ namespace App\PageBuilder\Blueprints;
 use App\Filament\Tenant\PageBuilder\SectionAdminSummary;
 use App\Models\PageSection;
 use App\PageBuilder\Contacts\ContactChannelRegistry;
-use App\PageBuilder\Contacts\ContactChannelType;
 use App\PageBuilder\Contacts\ContactChannelsResolver;
+use App\PageBuilder\Contacts\ContactChannelType;
 use App\PageBuilder\PageSectionCategory;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Placeholder;
@@ -404,7 +404,7 @@ final class ContactsInfoSectionBlueprint extends AbstractPageSectionBlueprint
                 }
                 $usable = $resolver->previewHrefForRow($row) !== null;
                 $hints[] = [
-                    'icon' => $registry->icon($type),
+                    'icon' => $registry->filamentIcon($type),
                     'label' => $registry->label($type),
                     'on' => $usable,
                     'primary' => (bool) ($row['is_primary'] ?? false),
@@ -418,7 +418,7 @@ final class ContactsInfoSectionBlueprint extends AbstractPageSectionBlueprint
         $hints = [];
         foreach ($presentation->allUsableChannels() as $ch) {
             $hints[] = [
-                'icon' => $ch->icon,
+                'icon' => $registry->filamentIcon($ch->type),
                 'label' => $ch->type->value,
                 'on' => true,
                 'primary' => false,

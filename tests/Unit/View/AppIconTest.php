@@ -3,7 +3,7 @@
 namespace Tests\Unit\View;
 
 use App\View\Components\AppIcon;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 final class AppIconTest extends TestCase
 {

@@ -144,7 +144,22 @@ class TenantSeoSystemTest extends TestCase
             ->assertOk()
             ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
             ->assertSee('Test Moto Rent', false)
-            ->assertSee('seollms.apex.test', false);
+            ->assertSee('seollms.apex.test', false)
+            ->assertSee('Полезные страницы', false);
+    }
+
+    public function test_tenant_route_overrides_merge_into_resolved_title(): void
+    {
+        $tenant = $this->seedTenantWithDomain('seorouteov.apex.test', 'seorouteov');
+        TenantSetting::setForTenant($tenant->id, 'seo.route_overrides', json_encode([
+            'faq' => ['title' => 'OVERRIDE FAQ TITLE — {site_name}'],
+        ], JSON_UNESCAPED_UNICODE));
+
+        $html = $this->call('GET', 'http://seorouteov.apex.test/faq')
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('OVERRIDE FAQ TITLE — Test Moto Rent', $html);
     }
 
     public function test_sitemap_lists_only_current_tenant_paths(): void

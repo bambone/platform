@@ -40,7 +40,7 @@
         <div class="mx-auto max-w-6xl px-3 pt-24 sm:px-4 sm:pt-28 md:px-8 xl:max-w-7xl xl:px-10">
             <header class="mb-8 max-w-3xl sm:mb-10 md:mb-12 @if($page->slug === 'contacts') relative @endif">
                 <h1 class="text-balance text-3xl font-bold leading-[1.12] tracking-tight text-white sm:text-4xl md:text-5xl md:font-semibold md:tracking-tight">
-                    {{ $page->name }}
+                    {{ ($resolvedSeo ?? null)?->h1 ?? $page->name }}
                 </h1>
                 @if($page->slug === 'contacts')
                     <div class="pointer-events-none mt-5 h-px w-full max-w-md bg-gradient-to-r from-moto-amber/50 via-moto-amber/20 to-transparent sm:mt-6" aria-hidden="true"></div>

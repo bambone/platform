@@ -7,7 +7,7 @@
     <div class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-green-500/30 bg-green-500/20 text-green-400 sm:mb-8 sm:h-20 sm:w-20">
         <svg class="h-8 w-8 sm:h-10 sm:w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
     </div>
-    <h1 class="mb-4 text-balance text-2xl font-bold leading-tight text-white sm:text-3xl">Бронирование принято!</h1>
+    <h1 class="mb-4 text-balance text-2xl font-bold leading-tight text-white sm:text-3xl">{{ ($resolvedSeo ?? null)?->h1 ?? 'Бронирование принято!' }}</h1>
     <p class="mx-auto mb-8 max-w-md text-sm leading-relaxed text-silver sm:text-base">
         Наш менеджер свяжется с вами в ближайшее время для подтверждения и уточнения деталей.
     </p>

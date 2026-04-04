@@ -6,6 +6,7 @@ use App\Models\Motorcycle;
 use App\Models\Page;
 use App\Models\SeoMeta;
 use App\Models\Tenant;
+use App\Models\TenantSetting;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
@@ -33,7 +34,7 @@ final class TenantSeoResolver
         $siteName = $this->fallback->siteName($tenant);
         $vars = $this->interpolationVars($tenant, $routeName, $model, $siteName);
 
-        $registryRow = $this->registry->get($routeName);
+        $registryRow = $this->mergeTenantRouteOverrides($tenant, $routeName, $this->registry->get($routeName));
         $registryInterpolated = is_array($registryRow) ? $this->registry->interpolateRow($registryRow, $vars) : [];
 
         if ($routeName === 'page.show' && ($vars['page_name'] ?? '') === '') {
@@ -182,6 +183,45 @@ final class TenantSeoResolver
         }
 
         return $scheme.'://'.$host.$port.$path;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    /**
+     * Per-tenant patches over {@see config('seo_routes.routes')} (JSON in `tenant_settings` key `seo.route_overrides`).
+     *
+     * @param  array<string, mixed>|null  $base
+     * @return array<string, mixed>|null
+     */
+    private function mergeTenantRouteOverrides(Tenant $tenant, string $routeName, ?array $base): ?array
+    {
+        $raw = TenantSetting::getForTenant($tenant->id, 'seo.route_overrides', '');
+        if (! is_string($raw) || trim($raw) === '') {
+            return $base;
+        }
+
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded)) {
+            return $base;
+        }
+
+        $patch = $decoded[$routeName] ?? null;
+        if (! is_array($patch)) {
+            return $base;
+        }
+
+        $allowed = ['title', 'description', 'h1', 'canonical', 'robots'];
+        $patch = array_intersect_key($patch, array_flip($allowed));
+        if ($patch === []) {
+            return $base;
+        }
+
+        if ($base === null) {
+            return $patch;
+        }
+
+        return array_merge($base, $patch);
     }
 
     /**

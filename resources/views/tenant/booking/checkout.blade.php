@@ -4,6 +4,7 @@
 
 @section('content')
 <section class="mx-auto max-w-2xl px-3 pb-12 pt-24 sm:px-4 sm:pb-16 sm:pt-28 md:px-8">
+    <h1 class="sr-only">{{ ($resolvedSeo ?? null)?->h1 ?? 'Оформление бронирования' }}</h1>
     <a href="{{ route('booking.show', $motorcycle->slug) }}" class="mb-6 inline-flex min-h-10 items-center gap-2 text-sm text-silver transition-colors hover:text-white sm:mb-8 sm:text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber">
         <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
         Изменить даты

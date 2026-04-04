@@ -70,6 +70,14 @@ final class FallbackSeoGenerator
             : (TenantSeoMerge::isFilled($moto->full_description)
                 ? strip_tags((string) $moto->full_description)
                 : '');
+        if ($plain === '') {
+            $card = $moto->catalogCardForView();
+            $bits = array_filter([
+                trim((string) ($card['positioning'] ?? '')),
+                trim((string) ($card['scenario'] ?? '')),
+            ]);
+            $plain = implode(' ', $bits);
+        }
         $description = $this->excerptFromPlain($plain, 160);
         if ($description === '') {
             $description = $this->excerptFromPlain('Аренда '.$name.' у '.$site.'.', 160);

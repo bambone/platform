@@ -57,6 +57,9 @@ class Settings extends Page
         'contacts_telegram' => 'contacts.telegram',
         'contacts_address' => 'contacts.address',
         'contacts_hours' => 'contacts.hours',
+        'seo_llms_intro' => 'seo.llms_intro',
+        'seo_llms_entries_json' => 'seo.llms_entries',
+        'seo_route_overrides_json' => 'seo.route_overrides',
     ];
 
     protected static ?string $navigationLabel = 'Настройки';
@@ -106,6 +109,9 @@ class Settings extends Page
                 'contacts_telegram' => TenantSetting::getForTenant($tenant->id, 'contacts.telegram', ''),
                 'contacts_address' => TenantSetting::getForTenant($tenant->id, 'contacts.address', ''),
                 'contacts_hours' => TenantSetting::getForTenant($tenant->id, 'contacts.hours', ''),
+                'seo_llms_intro' => (string) TenantSetting::getForTenant($tenant->id, 'seo.llms_intro', ''),
+                'seo_llms_entries_json' => (string) TenantSetting::getForTenant($tenant->id, 'seo.llms_entries', ''),
+                'seo_route_overrides_json' => (string) TenantSetting::getForTenant($tenant->id, 'seo.route_overrides', ''),
                 ...AnalyticsSettingsFormMapper::toFormState(
                     app(AnalyticsSettingsPersistence::class)->load((int) $tenant->id)
                 ),
@@ -222,6 +228,28 @@ class Settings extends Page
                         Textarea::make('contacts_hours')->label('Часы работы')->rows(2)->placeholder('Например: Пн–Вс 9:00–21:00'),
                     ])->columns(2),
 
+                Section::make('SEO и llms.txt')
+                    ->description('Текст для экспериментального /llms.txt и точечные шаблоны публичных маршрутов без отдельной страницы в CMS (FAQ, каталог-заглушка и т.д.). JSON хранится как строка; при ошибке формата сохранение блокируется.')
+                    ->schema([
+                        Textarea::make('seo_llms_intro')
+                            ->label('Введение для llms.txt')
+                            ->rows(4)
+                            ->columnSpanFull()
+                            ->helperText('2–4 строки о бизнесе и сайте. Показывается под заголовком с названием сайта.'),
+                        Textarea::make('seo_llms_entries_json')
+                            ->label('Список URL для llms.txt (JSON)')
+                            ->rows(8)
+                            ->columnSpanFull()
+                            ->helperText('Массив объектов: [{"path":"/","summary":"…"},{"path":"/motorcycles","summary":"…"}]. Если пусто — берутся пути из конфигурации sitemap без описаний.'),
+                        Textarea::make('seo_route_overrides_json')
+                            ->label('Переопределения SEO по имени маршрута (JSON)')
+                            ->rows(10)
+                            ->columnSpanFull()
+                            ->helperText('Объект: ключ — имя маршрута Laravel (например faq, motorcycles.index), значение — поля title, description, h1 (необязательно canonical, robots). Поддерживаются плейсхолдеры {site_name}, {page_name}, {motorcycle_name}.'),
+                    ])
+                    ->visible(fn () => \currentTenant() !== null)
+                    ->collapsed(),
+
                 TenantAnalyticsFormSchema::section(fn (): bool => \currentTenant() !== null),
             ]);
     }
@@ -240,6 +268,12 @@ class Settings extends Page
                     ->danger()
                     ->send();
 
+                return;
+            }
+        }
+
+        if ($tenant) {
+            if (! $this->validateTenantSeoJsonFields($data)) {
                 return;
             }
         }
@@ -303,6 +337,64 @@ class Settings extends Page
     /**
      * @param  array<string, mixed>  $formData
      */
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function validateTenantSeoJsonFields(array $data): bool
+    {
+        $entries = isset($data['seo_llms_entries_json']) ? trim((string) $data['seo_llms_entries_json']) : '';
+        if ($entries !== '' && ! $this->isValidJson($entries, $err)) {
+            Notification::make()->title('Список URL для llms.txt: невалидный JSON'.($err !== '' ? ' — '.$err : ''))->danger()->send();
+
+            return false;
+        }
+        if ($entries !== '') {
+            $decoded = json_decode($entries, true);
+            if (! is_array($decoded) || array_is_list($decoded) === false) {
+                Notification::make()->title('Список URL для llms.txt: ожидается JSON-массив [...]')->danger()->send();
+
+                return false;
+            }
+            foreach ($decoded as $i => $row) {
+                if (! is_array($row) || trim((string) ($row['path'] ?? '')) === '') {
+                    Notification::make()->title('Список URL для llms.txt: элемент #'.((int) $i + 1).' должен быть объектом с полем path')->danger()->send();
+
+                    return false;
+                }
+            }
+        }
+
+        $routes = isset($data['seo_route_overrides_json']) ? trim((string) $data['seo_route_overrides_json']) : '';
+        if ($routes !== '' && ! $this->isValidJson($routes, $err)) {
+            Notification::make()->title('Переопределения SEO маршрутов: невалидный JSON'.($err !== '' ? ' — '.$err : ''))->danger()->send();
+
+            return false;
+        }
+        if ($routes !== '') {
+            $decoded = json_decode($routes, true);
+            if (! is_array($decoded)) {
+                Notification::make()->title('Переопределения SEO маршрутов: ожидается JSON-объект {...}')->danger()->send();
+
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function isValidJson(string $raw, ?string &$error = null): bool
+    {
+        $error = '';
+        json_decode($raw, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $error = json_last_error_msg();
+
+            return false;
+        }
+
+        return true;
+    }
+
     private function assertBrandingUploadsWithinQuota(Tenant $tenant, array $formData): void
     {
         if (! TenantStorageQuotaService::isQuotaEnforcementActive()) {

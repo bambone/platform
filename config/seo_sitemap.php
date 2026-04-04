@@ -31,10 +31,12 @@ return [
     'llms_paths' => [
         '/',
         '/motorcycles',
+        '/booking',
         '/contacts',
         '/faq',
         '/about',
-        '/booking',
         '/prices',
+        '/reviews',
+        '/usloviya-arenda',
     ],
 ];

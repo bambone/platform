@@ -84,11 +84,7 @@ class SeoFiles extends Page
                             ->content(fn (): string => $this->robotsRow()?->generated_at?->format('Y-m-d H:i') ?? '—'),
                         Placeholder::make('robots_checksum')
                             ->label('Checksum (SHA-256)')
-                            ->content(function (): string {
-                                $h = $this->robotsRow()?->checksum;
-
-                                return $h ? substr($h, 0, 16).'…' : '—';
-                            }),
+                            ->content(fn (): string => $this->robotsRow()?->checksum ?: '—'),
                         Placeholder::make('robots_size')
                             ->label('Размер')
                             ->content(fn (): string => $this->robotsRow()?->size_bytes !== null
@@ -116,11 +112,7 @@ class SeoFiles extends Page
                             ->content(fn (): string => $this->lastPublicContentLabel()),
                         Placeholder::make('sitemap_checksum')
                             ->label('Checksum (SHA-256)')
-                            ->content(function (): string {
-                                $h = $this->sitemapRow()?->checksum;
-
-                                return $h ? substr($h, 0, 16).'…' : '—';
-                            }),
+                            ->content(fn (): string => $this->sitemapRow()?->checksum ?: '—'),
                         Placeholder::make('sitemap_backup')
                             ->label('Последний backup (путь)')
                             ->content(fn (): string => $this->sitemapRow()?->backup_storage_path ?? '—'),
@@ -322,7 +314,8 @@ class SeoFiles extends Page
             ->label('robots.txt')
             ->icon('heroicon-s-document-text')
             ->color('gray')
-            ->button(),
+            ->button()
+            ->dropdownWidth('fi-seo-files-fit-dropdown'),
 
             ActionGroup::make([
                 Action::make('previewSitemap')
@@ -379,7 +372,8 @@ class SeoFiles extends Page
             ->label('sitemap.xml')
             ->icon('heroicon-s-map')
             ->color('gray')
-            ->button(),
+            ->button()
+            ->dropdownWidth('fi-seo-files-fit-dropdown'),
 
             ActionGroup::make([
                 Action::make('seoAutopilotBootstrap')
@@ -430,7 +424,8 @@ class SeoFiles extends Page
             ->label('Утилиты')
             ->icon('heroicon-s-wrench-screwdriver')
             ->color('primary')
-            ->button(),
+            ->button()
+            ->dropdownWidth('fi-seo-files-fit-dropdown'),
         ];
     }
 

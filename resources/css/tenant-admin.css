@@ -76,6 +76,36 @@ select.psb-select {
     flex-shrink: 0;
 }
 
+/*
+ * SEO-файлы: ширина меню по самому длинному пункту.
+ * Filament: панель — w-screen + max-w-[14rem]; пункты — w-full + label truncate → узкий max-content и ellipsis.
+ * Floating UI может выставить inline width на панели — перебиваем !important.
+ */
+.fi-dropdown-panel.fi-seo-files-fit-dropdown {
+    width: max-content !important;
+    min-width: max-content !important;
+    max-width: min(42rem, calc(100vw - 2rem)) !important;
+    box-sizing: border-box !important;
+}
+
+.fi-dropdown-panel.fi-seo-files-fit-dropdown .fi-dropdown-list {
+    width: max-content !important;
+}
+
+.fi-dropdown-panel.fi-seo-files-fit-dropdown .fi-dropdown-list-item {
+    width: max-content !important;
+    max-width: none !important;
+    overflow: visible !important;
+}
+
+.fi-dropdown-panel.fi-seo-files-fit-dropdown .fi-dropdown-list-item-label {
+    flex: 0 1 auto !important;
+    min-width: max-content !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+}
+
 /* Topbar Styling */
 .dark .fi-topbar {
     background-color: rgba(18, 20, 28, 0.8) !important;

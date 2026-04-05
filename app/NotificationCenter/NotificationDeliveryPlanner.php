@@ -18,11 +18,13 @@ final class NotificationDeliveryPlanner
     /**
      * Create queued deliveries for matching subscription rows (immediate mode only in core v1).
      *
+     * @param  list<int>  $blockedDestinationIds  Destination ids already allocated for this event in this route pass (avoid duplicate deliveries).
      * @return list<NotificationDelivery>
      */
     public function planFromSubscription(
         NotificationEvent $event,
         NotificationSubscription $subscription,
+        array $blockedDestinationIds = [],
     ): array {
         if ((int) $subscription->tenant_id !== (int) $event->tenant_id) {
             return [];
@@ -33,6 +35,10 @@ final class NotificationDeliveryPlanner
 
         foreach ($subscription->destinations as $destination) {
             if ((int) $destination->tenant_id !== (int) $event->tenant_id) {
+                continue;
+            }
+
+            if (in_array((int) $destination->id, $blockedDestinationIds, true)) {
                 continue;
             }
 

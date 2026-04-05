@@ -11,6 +11,7 @@ use App\Models\Tenant;
 use App\NotificationCenter\NotificationChannelType;
 use App\NotificationCenter\NotificationDeliveryStatus;
 use App\NotificationCenter\NotificationDestinationStatus;
+use App\Jobs\DispatchNotificationDeliveryJob;
 use App\NotificationCenter\NotificationEventRecorder;
 use App\NotificationCenter\NotificationPayloadDto;
 use App\NotificationCenter\Presenters\CrmRequestNotificationPresenter;
@@ -55,6 +56,68 @@ class NotificationCoreTest extends TestCase
         $this->assertNull($r2['event']);
 
         $this->assertSame(1, NotificationEvent::query()->where('tenant_id', $tenant->id)->count());
+    }
+
+    public function test_dedupe_second_record_does_not_dispatch_extra_delivery_jobs(): void
+    {
+        Queue::fake();
+
+        $tenant = Tenant::query()->create([
+            'name' => 'Test tenant',
+            'slug' => 't-'.substr(uniqid(), -10),
+        ]);
+
+        $dest = NotificationDestination::query()->create([
+            'tenant_id' => $tenant->id,
+            'user_id' => null,
+            'name' => 'In-app',
+            'type' => NotificationChannelType::InApp->value,
+            'status' => NotificationDestinationStatus::Verified->value,
+            'is_shared' => true,
+            'config_json' => [],
+        ]);
+
+        $sub = NotificationSubscription::query()->create([
+            'tenant_id' => $tenant->id,
+            'user_id' => null,
+            'name' => 'Sub',
+            'event_key' => 'crm_request.created',
+            'enabled' => true,
+            'conditions_json' => null,
+            'schedule_json' => null,
+            'severity_min' => null,
+            'created_by_user_id' => null,
+        ]);
+        $sub->destinations()->attach($dest->id, [
+            'delivery_mode' => 'immediate',
+            'delay_seconds' => null,
+            'order_index' => 0,
+            'is_enabled' => true,
+        ]);
+
+        $payload = new NotificationPayloadDto('t', 'b', null, null, []);
+        $recorder = app(NotificationEventRecorder::class);
+
+        $recorder->record(
+            $tenant->id,
+            'crm_request.created',
+            'CrmRequest',
+            1,
+            $payload,
+            dedupeKey: 'stable',
+        );
+        $recorder->record(
+            $tenant->id,
+            'crm_request.created',
+            'CrmRequest',
+            1,
+            $payload,
+            dedupeKey: 'stable',
+        );
+
+        $this->assertSame(1, NotificationEvent::query()->where('tenant_id', $tenant->id)->count());
+        $this->assertSame(1, NotificationDelivery::query()->where('tenant_id', $tenant->id)->count());
+        Queue::assertPushed(DispatchNotificationDeliveryJob::class, 1);
     }
 
     public function test_router_creates_in_app_delivery_for_subscription(): void

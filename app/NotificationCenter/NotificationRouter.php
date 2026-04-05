@@ -42,16 +42,18 @@ final class NotificationRouter
             ->get();
 
         $deliveryIds = [];
+        $blockedDestinationIds = [];
 
         foreach ($subs as $subscription) {
             if (! $this->passesSeverityMin($subscription, $eventSeverity)) {
                 continue;
             }
 
-            $deliveries = $this->planner->planFromSubscription($event, $subscription);
+            $deliveries = $this->planner->planFromSubscription($event, $subscription, $blockedDestinationIds);
 
             foreach ($deliveries as $d) {
                 $deliveryIds[] = $d->id;
+                $blockedDestinationIds[] = (int) $d->destination_id;
             }
         }
 

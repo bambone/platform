@@ -443,4 +443,109 @@ class NotificationSchedulePolicyTest extends TestCase
 
         $this->assertFalse(app(NotificationSchedulePolicy::class)->allowsImmediateDelivery($sub, $event));
     }
+
+    public function test_invalid_to_time_format_skips_time_window(): void
+    {
+        $tenant = Tenant::query()->create([
+            'name' => 'T',
+            'slug' => 's-'.substr(uniqid(), -10),
+            'status' => 'active',
+        ]);
+        Carbon::setTestNow(Carbon::create(2026, 4, 6, 23, 0, 0, 'UTC'));
+
+        $sub = new NotificationSubscription([
+            'schedule_json' => [
+                'timezone' => 'UTC',
+                'from' => '09:00',
+                'to' => 'aa:bb',
+            ],
+        ]);
+        $event = new NotificationEvent([
+            'tenant_id' => $tenant->id,
+            'severity' => 'normal',
+        ]);
+
+        $this->assertTrue(app(NotificationSchedulePolicy::class)->allowsImmediateDelivery($sub, $event));
+    }
+
+    public function test_whitespace_trimmed_time_strings_parse_correctly(): void
+    {
+        $tenant = Tenant::query()->create([
+            'name' => 'T',
+            'slug' => 's-'.substr(uniqid(), -10),
+            'status' => 'active',
+        ]);
+        Carbon::setTestNow(Carbon::create(2026, 4, 6, 10, 0, 0, 'UTC'));
+
+        $sub = new NotificationSubscription([
+            'schedule_json' => [
+                'timezone' => 'UTC',
+                'from' => ' 09:00 ',
+                'to' => ' 22:00 ',
+            ],
+        ]);
+        $event = new NotificationEvent([
+            'tenant_id' => $tenant->id,
+            'severity' => 'normal',
+        ]);
+
+        $this->assertTrue(app(NotificationSchedulePolicy::class)->allowsImmediateDelivery($sub, $event));
+    }
+
+    public function test_mixed_valid_and_invalid_weekdays_keeps_valid_only(): void
+    {
+        $tenant = Tenant::query()->create([
+            'name' => 'T',
+            'slug' => 's-'.substr(uniqid(), -10),
+            'status' => 'active',
+        ]);
+        // Wednesday ISO 3 — not in {1, 9}
+        Carbon::setTestNow(Carbon::create(2026, 4, 8, 12, 0, 0, 'UTC'));
+
+        $sub = new NotificationSubscription([
+            'schedule_json' => [
+                'timezone' => 'UTC',
+                'days' => [1, 'foo', 9],
+            ],
+        ]);
+        $event = new NotificationEvent([
+            'tenant_id' => $tenant->id,
+            'severity' => 'normal',
+        ]);
+
+        $this->assertFalse(app(NotificationSchedulePolicy::class)->allowsImmediateDelivery($sub, $event));
+    }
+
+    public function test_window_endpoints_are_inclusive(): void
+    {
+        $tenant = Tenant::query()->create([
+            'name' => 'T',
+            'slug' => 's-'.substr(uniqid(), -10),
+            'status' => 'active',
+        ]);
+        $sub = new NotificationSubscription([
+            'schedule_json' => [
+                'timezone' => 'UTC',
+                'from' => '09:00',
+                'to' => '17:00',
+            ],
+        ]);
+        $event = new NotificationEvent([
+            'tenant_id' => $tenant->id,
+            'severity' => 'normal',
+        ]);
+        $policy = app(NotificationSchedulePolicy::class);
+
+        Carbon::setTestNow(Carbon::create(2026, 4, 6, 9, 0, 0, 'UTC'));
+        $this->assertTrue($policy->allowsImmediateDelivery($sub, $event));
+
+        Carbon::setTestNow(Carbon::create(2026, 4, 6, 17, 0, 0, 'UTC'));
+        $this->assertTrue($policy->allowsImmediateDelivery($sub, $event));
+
+        Carbon::setTestNow(Carbon::create(2026, 4, 6, 8, 59, 0, 'UTC'));
+        $this->assertFalse($policy->allowsImmediateDelivery($sub, $event));
+
+        Carbon::setTestNow(Carbon::create(2026, 4, 6, 17, 1, 0, 'UTC'));
+        $this->assertFalse($policy->allowsImmediateDelivery($sub, $event));
+    }
 }

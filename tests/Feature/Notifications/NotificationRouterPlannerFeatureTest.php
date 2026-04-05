@@ -8,6 +8,7 @@ use App\Models\NotificationSubscription;
 use App\Models\User;
 use App\NotificationCenter\NotificationEventRecorder;
 use App\NotificationCenter\NotificationRoutingContext;
+use App\NotificationCenter\NotificationSeverity;
 use App\NotificationCenter\Presenters\CrmRequestNotificationPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -192,5 +193,141 @@ class NotificationRouterPlannerFeatureTest extends TestCase
         );
 
         $this->assertSame([], $out['delivery_ids']);
+    }
+
+    public function test_two_subscriptions_same_destination_yield_single_delivery(): void
+    {
+        Queue::fake();
+
+        $tenant = $this->createNotificationTenant();
+        $dest = $this->createSharedInAppDestination($tenant);
+
+        $subA = NotificationSubscription::factory()->create([
+            'tenant_id' => $tenant->id,
+            'event_key' => 'crm_request.created',
+        ]);
+        $this->attachDestinationsToSubscription($subA, $dest, ['order_index' => 0]);
+
+        $subB = NotificationSubscription::factory()->create([
+            'tenant_id' => $tenant->id,
+            'event_key' => 'crm_request.created',
+        ]);
+        $this->attachDestinationsToSubscription($subB, $dest, ['order_index' => 0]);
+
+        $out = app(NotificationEventRecorder::class)->record(
+            $tenant->id,
+            'crm_request.created',
+            'CrmRequest',
+            1,
+            $this->samplePayload(),
+        );
+
+        $this->assertCount(1, $out['delivery_ids']);
+        $this->assertSame(1, NotificationDelivery::query()->where('event_id', $out['event']?->id)->count());
+    }
+
+    public function test_personal_subscription_delivers_when_routing_context_includes_user(): void
+    {
+        Queue::fake();
+
+        $tenant = $this->createNotificationTenant();
+        $userId = (int) User::factory()->create(['status' => 'active'])->id;
+        $dest = $this->createPersonalInAppDestination($tenant, $userId);
+        $sub = NotificationSubscription::factory()->forUser($userId)->create([
+            'tenant_id' => $tenant->id,
+            'event_key' => 'crm_request.created',
+        ]);
+        $this->attachDestinationsToSubscription($sub, $dest);
+
+        $out = app(NotificationEventRecorder::class)->record(
+            $tenant->id,
+            'crm_request.created',
+            'CrmRequest',
+            1,
+            $this->samplePayload(),
+            routingContext: NotificationRoutingContext::forUsers([$userId]),
+        );
+
+        $this->assertCount(1, $out['delivery_ids']);
+    }
+
+    public function test_severity_min_high_allows_high_event(): void
+    {
+        Queue::fake();
+
+        $tenant = $this->createNotificationTenant();
+        $dest = $this->createSharedInAppDestination($tenant);
+        $sub = NotificationSubscription::factory()->create([
+            'tenant_id' => $tenant->id,
+            'event_key' => 'crm_request.note_added',
+            'severity_min' => 'high',
+        ]);
+        $this->attachDestinationsToSubscription($sub, $dest);
+
+        $out = app(NotificationEventRecorder::class)->record(
+            $tenant->id,
+            'crm_request.note_added',
+            'CrmRequest',
+            1,
+            $this->samplePayload(),
+            severityOverride: NotificationSeverity::High,
+        );
+
+        $this->assertNotEmpty($out['delivery_ids']);
+    }
+
+    public function test_severity_min_high_allows_critical_event(): void
+    {
+        Queue::fake();
+
+        $tenant = $this->createNotificationTenant();
+        $dest = $this->createSharedInAppDestination($tenant);
+        $sub = NotificationSubscription::factory()->create([
+            'tenant_id' => $tenant->id,
+            'event_key' => 'crm_request.note_added',
+            'severity_min' => 'high',
+        ]);
+        $this->attachDestinationsToSubscription($sub, $dest);
+
+        $out = app(NotificationEventRecorder::class)->record(
+            $tenant->id,
+            'crm_request.note_added',
+            'CrmRequest',
+            1,
+            $this->samplePayload(),
+            severityOverride: NotificationSeverity::Critical,
+        );
+
+        $this->assertNotEmpty($out['delivery_ids']);
+    }
+
+    public function test_schedule_inside_window_creates_delivery(): void
+    {
+        Queue::fake();
+
+        $tenant = $this->createNotificationTenant(['timezone' => 'Europe/Moscow']);
+        Carbon::setTestNow(Carbon::parse('2026-04-06 10:00:00', 'Europe/Moscow'));
+
+        $dest = $this->createSharedInAppDestination($tenant);
+        $sub = NotificationSubscription::factory()->create([
+            'tenant_id' => $tenant->id,
+            'event_key' => 'crm_request.created',
+            'schedule_json' => [
+                'timezone' => 'Europe/Moscow',
+                'from' => '09:00',
+                'to' => '22:00',
+            ],
+        ]);
+        $this->attachDestinationsToSubscription($sub, $dest);
+
+        $out = app(NotificationEventRecorder::class)->record(
+            $tenant->id,
+            'crm_request.created',
+            'CrmRequest',
+            1,
+            $this->samplePayload(),
+        );
+
+        $this->assertNotEmpty($out['delivery_ids']);
     }
 }

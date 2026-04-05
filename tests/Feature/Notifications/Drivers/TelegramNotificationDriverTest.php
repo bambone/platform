@@ -6,6 +6,7 @@ use App\Jobs\DispatchNotificationDeliveryJob;
 use App\Models\NotificationDelivery;
 use App\Models\NotificationDestination;
 use App\Models\NotificationEvent;
+use App\NotificationCenter\Drivers\TelegramNotificationDriver;
 use App\NotificationCenter\NotificationChannelDriverFactory;
 use App\NotificationCenter\NotificationChannelType;
 use App\NotificationCenter\NotificationDeliveryStatus;
@@ -28,7 +29,9 @@ class TelegramNotificationDriverTest extends TestCase
     {
         Http::fake();
         if (class_exists(PlatformNotificationSettings::class)) {
-            app(PlatformNotificationSettings::class)->setChannelEnabled('telegram', true);
+            $settings = app(PlatformNotificationSettings::class);
+            $settings->setChannelEnabled('telegram', true);
+            $settings->setTelegramBotToken('test-bot-token');
         }
         parent::tearDown();
     }
@@ -182,5 +185,131 @@ class TelegramNotificationDriverTest extends TestCase
         $this->assertSame(NotificationDeliveryStatus::Skipped->value, $delivery->status);
 
         app(PlatformNotificationSettings::class)->setChannelEnabled('telegram', true);
+    }
+
+    public function test_driver_throws_when_bot_token_not_configured(): void
+    {
+        Http::fake();
+        app(PlatformNotificationSettings::class)->setTelegramBotToken(null);
+
+        $tenant = $this->createNotificationTenant();
+        $dest = NotificationDestination::query()->create([
+            'tenant_id' => $tenant->id,
+            'user_id' => null,
+            'name' => 'TG',
+            'type' => NotificationChannelType::Telegram->value,
+            'status' => NotificationDestinationStatus::Verified->value,
+            'is_shared' => true,
+            'config_json' => ['chat_id' => '1'],
+        ]);
+        $event = NotificationEvent::factory()->create([
+            'tenant_id' => $tenant->id,
+            'event_key' => 'crm_request.created',
+            'subject_type' => 'CrmRequest',
+            'subject_id' => 1,
+            'severity' => 'normal',
+            'dedupe_key' => null,
+            'payload_json' => (new NotificationPayloadDto('T', 'B', null, null, []))->toArray(),
+            'occurred_at' => now(),
+        ]);
+        $delivery = NotificationDelivery::factory()->create([
+            'tenant_id' => $tenant->id,
+            'event_id' => $event->id,
+            'destination_id' => $dest->id,
+            'channel_type' => NotificationChannelType::Telegram->value,
+            'status' => NotificationDeliveryStatus::Queued->value,
+            'queued_at' => now(),
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Telegram bot token');
+
+        app(TelegramNotificationDriver::class)->send($delivery, $event, $dest);
+    }
+
+    public function test_driver_throws_when_chat_id_missing(): void
+    {
+        Http::fake();
+        app(PlatformNotificationSettings::class)->setTelegramBotToken('x');
+
+        $tenant = $this->createNotificationTenant();
+        $dest = NotificationDestination::query()->create([
+            'tenant_id' => $tenant->id,
+            'user_id' => null,
+            'name' => 'TG',
+            'type' => NotificationChannelType::Telegram->value,
+            'status' => NotificationDestinationStatus::Verified->value,
+            'is_shared' => true,
+            'config_json' => ['chat_id' => '  '],
+        ]);
+        $event = NotificationEvent::factory()->create([
+            'tenant_id' => $tenant->id,
+            'event_key' => 'crm_request.created',
+            'subject_type' => 'CrmRequest',
+            'subject_id' => 1,
+            'severity' => 'normal',
+            'dedupe_key' => null,
+            'payload_json' => (new NotificationPayloadDto('T', 'B', null, null, []))->toArray(),
+            'occurred_at' => now(),
+        ]);
+        $delivery = NotificationDelivery::factory()->create([
+            'tenant_id' => $tenant->id,
+            'event_id' => $event->id,
+            'destination_id' => $dest->id,
+            'channel_type' => NotificationChannelType::Telegram->value,
+            'status' => NotificationDeliveryStatus::Queued->value,
+            'queued_at' => now(),
+        ]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        app(TelegramNotificationDriver::class)->send($delivery, $event, $dest);
+    }
+
+    public function test_telegram_api_error_marks_delivery_failed(): void
+    {
+        Http::fake([
+            'api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Bad'], 502),
+        ]);
+
+        $tenant = $this->createNotificationTenant();
+        app(PlatformNotificationSettings::class)->setTelegramBotToken('tok');
+
+        $dest = NotificationDestination::query()->create([
+            'tenant_id' => $tenant->id,
+            'user_id' => null,
+            'name' => 'TG',
+            'type' => NotificationChannelType::Telegram->value,
+            'status' => NotificationDestinationStatus::Verified->value,
+            'is_shared' => true,
+            'config_json' => ['chat_id' => '1'],
+        ]);
+        $event = NotificationEvent::factory()->create([
+            'tenant_id' => $tenant->id,
+            'event_key' => 'crm_request.created',
+            'subject_type' => 'CrmRequest',
+            'subject_id' => 1,
+            'severity' => 'normal',
+            'dedupe_key' => null,
+            'payload_json' => (new NotificationPayloadDto('T', 'B', null, null, []))->toArray(),
+            'occurred_at' => now(),
+        ]);
+        $delivery = NotificationDelivery::factory()->create([
+            'tenant_id' => $tenant->id,
+            'event_id' => $event->id,
+            'destination_id' => $dest->id,
+            'channel_type' => NotificationChannelType::Telegram->value,
+            'status' => NotificationDeliveryStatus::Queued->value,
+            'queued_at' => now(),
+        ]);
+
+        app(CurrentTenantManager::class)->setTenant($tenant);
+        $job = new DispatchNotificationDeliveryJob((int) $delivery->id);
+        try {
+            $job->handle(app(CurrentTenantManager::class), app(NotificationChannelDriverFactory::class));
+        } catch (\Throwable) {
+        }
+
+        $delivery->refresh();
+        $this->assertSame(NotificationDeliveryStatus::Failed->value, $delivery->status);
     }
 }

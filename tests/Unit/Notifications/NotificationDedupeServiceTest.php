@@ -165,4 +165,63 @@ class NotificationDedupeServiceTest extends TestCase
 
         $this->assertSame(2, NotificationEvent::query()->count());
     }
+
+    /**
+     * Dedupe uniqueness is (tenant_id, event_key, dedupe_key) only — subject_id does not create a second event.
+     */
+    public function test_same_dedupe_key_duplicate_even_when_subject_id_differs(): void
+    {
+        $tenant = Tenant::query()->create([
+            'name' => 'T',
+            'slug' => 'd-'.substr(uniqid(), -10),
+            'status' => 'active',
+        ]);
+        $payload = new NotificationPayloadDto('a', 'b', null, null, []);
+        $svc = app(NotificationDedupeService::class);
+
+        $base = [
+            'tenant_id' => $tenant->id,
+            'event_key' => 'crm_request.created',
+            'subject_type' => 'CrmRequest',
+            'severity' => 'normal',
+            'dedupe_key' => 'same-subject-agnostic',
+            'payload_json' => $payload->toArray(),
+            'actor_user_id' => null,
+            'occurred_at' => now(),
+        ];
+
+        $this->assertFalse($svc->tryCreateEvent([...$base, 'subject_id' => 1])['duplicate']);
+        $this->assertTrue($svc->tryCreateEvent([...$base, 'subject_id' => 999])['duplicate']);
+        $this->assertSame(1, NotificationEvent::query()->where('tenant_id', $tenant->id)->count());
+    }
+
+    public function test_row_inserted_before_second_try_yields_duplicate_without_query_exception(): void
+    {
+        $tenant = Tenant::query()->create([
+            'name' => 'T',
+            'slug' => 'd-'.substr(uniqid(), -10),
+            'status' => 'active',
+        ]);
+        $payload = new NotificationPayloadDto('a', 'b', null, null, []);
+        $svc = app(NotificationDedupeService::class);
+
+        $attrs = [
+            'tenant_id' => $tenant->id,
+            'event_key' => 'crm_request.created',
+            'subject_type' => 'CrmRequest',
+            'subject_id' => 1,
+            'severity' => 'normal',
+            'dedupe_key' => 'pre-existing',
+            'payload_json' => $payload->toArray(),
+            'actor_user_id' => null,
+            'occurred_at' => now(),
+        ];
+
+        NotificationEvent::factory()->create($attrs);
+
+        $out = $svc->tryCreateEvent($attrs);
+        $this->assertTrue($out['duplicate']);
+        $this->assertNull($out['event']);
+        $this->assertSame(1, NotificationEvent::query()->where('tenant_id', $tenant->id)->count());
+    }
 }

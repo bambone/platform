@@ -18,6 +18,7 @@ use App\Services\Seo\TenantSeoPublicContentService;
 use App\Services\Seo\TenantSeoSnapshotReader;
 use App\Support\Storage\TenantStorage;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -265,146 +266,171 @@ class SeoFiles extends Page
         $base = app(TenantCanonicalPublicBaseUrl::class)->resolve($tenant);
 
         return [
-            Action::make('previewRobots')
-                ->label('Предпросмотр robots')
-                ->modalHeading('Предпросмотр robots.txt')
-                ->modalWidth(Width::TwoExtraLarge)
-                ->modalContent(fn () => view('filament.partials.seo-text-preview', [
-                    'content' => app(TenantSeoPublicContentService::class)->robotsBody($tenant),
-                ]))
-                ->modalSubmitAction(false),
+            ActionGroup::make([
+                Action::make('previewRobots')
+                    ->label('Предпросмотр robots')
+                    ->icon('heroicon-m-eye')
+                    ->modalHeading('Предпросмотр robots.txt')
+                    ->modalWidth(Width::TwoExtraLarge)
+                    ->modalContent(fn () => view('filament.partials.seo-text-preview', [
+                        'content' => app(TenantSeoPublicContentService::class)->robotsBody($tenant),
+                    ]))
+                    ->modalSubmitAction(false),
 
-            Action::make('previewSitemap')
-                ->label('Предпросмотр sitemap')
-                ->visible(fn (): bool => (bool) TenantSetting::getForTenant($tenant->id, 'seo.sitemap_enabled', true))
-                ->modalHeading('Предпросмотр sitemap.xml')
-                ->modalWidth(Width::TwoExtraLarge)
-                ->modalContent(fn () => view('filament.partials.seo-text-preview', [
-                    'content' => app(TenantSeoPublicContentService::class)->sitemapBodyForEnabledTenant($tenant),
-                ]))
-                ->modalSubmitAction(false),
+                Action::make('openRobots')
+                    ->label('Открыть robots.txt')
+                    ->icon('heroicon-m-arrow-top-right-on-square')
+                    ->url($base.'/robots.txt')
+                    ->openUrlInNewTab(),
 
-            Action::make('openRobots')
-                ->label('Открыть robots.txt')
-                ->url($base.'/robots.txt')
-                ->openUrlInNewTab(),
+                Action::make('generateRobotsFirst')
+                    ->label('Сгенерировать robots.txt')
+                    ->icon('heroicon-o-document-plus')
+                    ->visible(fn (): bool => Gate::allows('manage_seo_files') && ! $this->robotsSnapshotValid())
+                    ->requiresConfirmation()
+                    ->modalHeading('Сгенерировать robots.txt?')
+                    ->modalDescription('Будет создан снимок файла для публичного URL.')
+                    ->action(function () use ($tenant): void {
+                        $this->runPublishRobots($tenant, false, false);
+                    }),
 
-            Action::make('openSitemap')
-                ->label('Открыть sitemap.xml')
-                ->visible(fn (): bool => (bool) TenantSetting::getForTenant($tenant->id, 'seo.sitemap_enabled', true))
-                ->url($base.'/sitemap.xml')
-                ->openUrlInNewTab(),
+                Action::make('generateRobotsOverwrite')
+                    ->label('Перезаписать robots.txt')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->visible(fn (): bool => Gate::allows('manage_seo_files') && $this->robotsSnapshotValid())
+                    ->form([
+                        Toggle::make('create_backup')
+                            ->label('Создать резервную копию перед перезаписью')
+                            ->default(true),
+                    ])
+                    ->modalHeading('Файл robots.txt уже существует')
+                    ->modalDescription('Генерация создаст новую версию и перезапишет текущий публичный снимок.')
+                    ->modalSubmitActionLabel('Перезаписать robots.txt')
+                    ->action(function (array $data) use ($tenant): void {
+                        $this->runPublishRobots($tenant, true, (bool) ($data['create_backup'] ?? true));
+                    }),
 
-            Action::make('generateRobotsFirst')
-                ->label('Сгенерировать robots.txt')
-                ->icon('heroicon-o-document-plus')
-                ->visible(fn (): bool => Gate::allows('manage_seo_files') && ! $this->robotsSnapshotValid())
-                ->requiresConfirmation()
-                ->modalHeading('Сгенерировать robots.txt?')
-                ->modalDescription('Будет создан снимок файла для публичного URL.')
-                ->action(function () use ($tenant): void {
-                    $this->runPublishRobots($tenant, false, false);
-                }),
+                Action::make('downloadRobotsBackup')
+                    ->label('Скачать backup robots')
+                    ->icon('heroicon-m-arrow-down-tray')
+                    ->visible(fn (): bool => Gate::allows('manage_seo_files') && filled($this->robotsRow()?->backup_storage_path))
+                    ->action(function () use ($tenant): mixed {
+                        return $this->streamBackupDownload($tenant, $this->robotsRow()?->backup_storage_path);
+                    }),
+            ])
+            ->label('robots.txt')
+            ->icon('heroicon-s-document-text')
+            ->color('gray')
+            ->button(),
 
-            Action::make('generateRobotsOverwrite')
-                ->label('Перезаписать robots.txt')
-                ->icon('heroicon-o-arrow-path')
-                ->color('warning')
-                ->visible(fn (): bool => Gate::allows('manage_seo_files') && $this->robotsSnapshotValid())
-                ->form([
-                    Toggle::make('create_backup')
-                        ->label('Создать резервную копию перед перезаписью')
-                        ->default(true),
-                ])
-                ->modalHeading('Файл robots.txt уже существует')
-                ->modalDescription('Генерация создаст новую версию и перезапишет текущий публичный снимок.')
-                ->modalSubmitActionLabel('Перезаписать robots.txt')
-                ->action(function (array $data) use ($tenant): void {
-                    $this->runPublishRobots($tenant, true, (bool) ($data['create_backup'] ?? true));
-                }),
+            ActionGroup::make([
+                Action::make('previewSitemap')
+                    ->label('Предпросмотр sitemap')
+                    ->icon('heroicon-m-eye')
+                    ->visible(fn (): bool => (bool) TenantSetting::getForTenant($tenant->id, 'seo.sitemap_enabled', true))
+                    ->modalHeading('Предпросмотр sitemap.xml')
+                    ->modalWidth(Width::TwoExtraLarge)
+                    ->modalContent(fn () => view('filament.partials.seo-text-preview', [
+                        'content' => app(TenantSeoPublicContentService::class)->sitemapBodyForEnabledTenant($tenant),
+                    ]))
+                    ->modalSubmitAction(false),
 
-            Action::make('generateSitemapFirst')
-                ->label('Сгенерировать sitemap')
-                ->icon('heroicon-o-map')
-                ->visible(fn (): bool => Gate::allows('manage_seo_files') && ! $this->sitemapSnapshotValid())
-                ->requiresConfirmation()
-                ->modalHeading('Сгенерировать sitemap.xml?')
-                ->action(function () use ($tenant): void {
-                    $this->runPublishSitemap($tenant, false);
-                }),
+                Action::make('openSitemap')
+                    ->label('Открыть sitemap.xml')
+                    ->icon('heroicon-m-arrow-top-right-on-square')
+                    ->visible(fn (): bool => (bool) TenantSetting::getForTenant($tenant->id, 'seo.sitemap_enabled', true))
+                    ->url($base.'/sitemap.xml')
+                    ->openUrlInNewTab(),
 
-            Action::make('generateSitemapRebuild')
-                ->label('Пересобрать sitemap')
-                ->icon('heroicon-o-arrow-path')
-                ->visible(fn (): bool => Gate::allows('manage_seo_files') && $this->sitemapSnapshotValid())
-                ->form([
-                    Toggle::make('create_backup')
-                        ->label('Создать резервную копию перед перезаписью')
-                        ->default(true),
-                ])
-                ->modalSubmitActionLabel('Пересобрать sitemap.xml')
-                ->action(function (array $data) use ($tenant): void {
-                    $this->runPublishSitemap($tenant, (bool) ($data['create_backup'] ?? true));
-                }),
+                Action::make('generateSitemapFirst')
+                    ->label('Сгенерировать sitemap')
+                    ->icon('heroicon-o-map')
+                    ->visible(fn (): bool => Gate::allows('manage_seo_files') && ! $this->sitemapSnapshotValid())
+                    ->requiresConfirmation()
+                    ->modalHeading('Сгенерировать sitemap.xml?')
+                    ->action(function () use ($tenant): void {
+                        $this->runPublishSitemap($tenant, false);
+                    }),
 
-            Action::make('downloadRobotsBackup')
-                ->label('Скачать backup robots')
-                ->visible(fn (): bool => Gate::allows('manage_seo_files') && filled($this->robotsRow()?->backup_storage_path))
-                ->action(function () use ($tenant): mixed {
-                    return $this->streamBackupDownload($tenant, $this->robotsRow()?->backup_storage_path);
-                }),
+                Action::make('generateSitemapRebuild')
+                    ->label('Пересобрать sitemap')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->visible(fn (): bool => Gate::allows('manage_seo_files') && $this->sitemapSnapshotValid())
+                    ->form([
+                        Toggle::make('create_backup')
+                            ->label('Создать резервную копию перед перезаписью')
+                            ->default(true),
+                    ])
+                    ->modalSubmitActionLabel('Пересобрать sitemap.xml')
+                    ->action(function (array $data) use ($tenant): void {
+                        $this->runPublishSitemap($tenant, (bool) ($data['create_backup'] ?? true));
+                    }),
 
-            Action::make('downloadSitemapBackup')
-                ->label('Скачать backup sitemap')
-                ->visible(fn (): bool => Gate::allows('manage_seo_files') && filled($this->sitemapRow()?->backup_storage_path))
-                ->action(function () use ($tenant): mixed {
-                    return $this->streamBackupDownload($tenant, $this->sitemapRow()?->backup_storage_path);
-                }),
+                Action::make('downloadSitemapBackup')
+                    ->label('Скачать backup sitemap')
+                    ->icon('heroicon-m-arrow-down-tray')
+                    ->visible(fn (): bool => Gate::allows('manage_seo_files') && filled($this->sitemapRow()?->backup_storage_path))
+                    ->action(function () use ($tenant): mixed {
+                        return $this->streamBackupDownload($tenant, $this->sitemapRow()?->backup_storage_path);
+                    }),
+            ])
+            ->label('sitemap.xml')
+            ->icon('heroicon-s-map')
+            ->color('gray')
+            ->button(),
 
-            Action::make('seoAutopilotBootstrap')
-                ->label('SEO autopilot: значения по умолчанию')
-                ->icon('heroicon-o-sparkles')
-                ->visible(fn (): bool => Gate::allows('manage_seo_files') || Gate::allows('manage_settings'))
-                ->requiresConfirmation()
-                ->modalHeading('Сгенерировать SEO по умолчанию?')
-                ->modalDescription('Заполняет llms.txt, переопределения маршрутов и при необходимости мету главной. Уже заполненные поля не перезаписываются.')
-                ->action(function () use ($tenant): void {
-                    abort_unless(Gate::allows('manage_seo_files') || Gate::allows('manage_settings'), 403);
-                    $result = app(InitializeTenantSeoDefaults::class)->execute($tenant, false, false);
-                    $this->data = $this->loadFormState();
-                    $body = $result->messages !== [] ? implode("\n", $result->messages) : 'Изменений нет (поля уже заполнены).';
-                    Notification::make()->title('SEO autopilot')->body($body)->success()->send();
-                }),
+            ActionGroup::make([
+                Action::make('seoAutopilotBootstrap')
+                    ->label('SEO autopilot: значения по умолчанию')
+                    ->icon('heroicon-o-sparkles')
+                    ->visible(fn (): bool => Gate::allows('manage_seo_files') || Gate::allows('manage_settings'))
+                    ->requiresConfirmation()
+                    ->modalHeading('Сгенерировать SEO по умолчанию?')
+                    ->modalDescription('Заполняет llms.txt, переопределения маршрутов и при необходимости мету главной. Уже заполненные поля не перезаписываются.')
+                    ->action(function () use ($tenant): void {
+                        abort_unless(Gate::allows('manage_seo_files') || Gate::allows('manage_settings'), 403);
+                        $result = app(InitializeTenantSeoDefaults::class)->execute($tenant, false, false);
+                        $this->data = $this->loadFormState();
+                        $body = $result->messages !== [] ? implode("\n", $result->messages) : 'Изменений нет (поля уже заполнены).';
+                        Notification::make()->title('SEO autopilot')->body($body)->success()->send();
+                    }),
 
-            Action::make('seoAutopilotRefreshLlms')
-                ->label('Обновить llms из данных сайта')
-                ->icon('heroicon-o-arrow-path')
-                ->visible(fn (): bool => Gate::allows('manage_seo_files') || Gate::allows('manage_settings'))
-                ->requiresConfirmation()
-                ->modalHeading('Перезаписать llms.txt в настройках?')
-                ->modalDescription('Обновляет только поля введения и списка ссылок для /llms.txt.')
-                ->action(function () use ($tenant): void {
-                    abort_unless(Gate::allows('manage_seo_files') || Gate::allows('manage_settings'), 403);
-                    app(TenantSeoAutopilotService::class)->refreshLlmsOnly($tenant, false);
-                    $this->data = $this->loadFormState();
-                    Notification::make()->title('llms обновлён')->success()->send();
-                }),
+                Action::make('seoAutopilotRefreshLlms')
+                    ->label('Обновить llms из данных сайта')
+                    ->icon('heroicon-o-arrow-path')
+                    ->visible(fn (): bool => Gate::allows('manage_seo_files') || Gate::allows('manage_settings'))
+                    ->requiresConfirmation()
+                    ->modalHeading('Перезаписать llms.txt в настройках?')
+                    ->modalDescription('Обновляет только поля введения и списка ссылок для /llms.txt.')
+                    ->action(function () use ($tenant): void {
+                        abort_unless(Gate::allows('manage_seo_files') || Gate::allows('manage_settings'), 403);
+                        app(TenantSeoAutopilotService::class)->refreshLlmsOnly($tenant, false);
+                        $this->data = $this->loadFormState();
+                        Notification::make()->title('llms обновлён')->success()->send();
+                    }),
 
-            Action::make('seoAutopilotLint')
-                ->label('Проверка SEO (lint)')
-                ->icon('heroicon-o-shield-check')
-                ->visible(fn (): bool => Gate::allows('manage_seo_files') || Gate::allows('manage_settings'))
-                ->modalHeading('Результат проверки SEO')
-                ->modalWidth(Width::TwoExtraLarge)
-                ->modalContent(function () use ($tenant): View {
-                    abort_unless(Gate::allows('manage_seo_files') || Gate::allows('manage_settings'), 403);
-                    $lint = app(TenantSeoLintService::class)->lint($tenant, false);
+                Action::make('seoAutopilotLint')
+                    ->label('Проверка SEO (lint)')
+                    ->icon('heroicon-o-shield-check')
+                    ->visible(fn (): bool => Gate::allows('manage_seo_files') || Gate::allows('manage_settings'))
+                    ->modalHeading('Результат проверки SEO')
+                    ->modalWidth(Width::TwoExtraLarge)
+                    ->modalContent(function () use ($tenant): View {
+                        abort_unless(Gate::allows('manage_seo_files') || Gate::allows('manage_settings'), 403);
+                        $lint = app(TenantSeoLintService::class)->lint($tenant, false);
 
-                    return view('filament.partials.seo-lint-result', [
-                        'result' => $lint,
-                    ]);
-                })
-                ->modalSubmitAction(false),
+                        return view('filament.partials.seo-lint-result', [
+                            'result' => $lint,
+                        ]);
+                    })
+                    ->modalSubmitAction(false),
+            ])
+            ->label('Утилиты')
+            ->icon('heroicon-s-wrench-screwdriver')
+            ->color('primary')
+            ->button(),
         ];
     }
 

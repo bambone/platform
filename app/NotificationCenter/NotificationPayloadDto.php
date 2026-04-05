@@ -39,11 +39,16 @@ final readonly class NotificationPayloadDto
      */
     public static function fromStoredArray(array $data): self
     {
+        [$actionUrl, $actionLabel] = self::normalizedActionFields(
+            isset($data['action_url']) ? (string) $data['action_url'] : null,
+            isset($data['action_label']) ? (string) $data['action_label'] : null,
+        );
+
         return new self(
             title: (string) ($data['title'] ?? ''),
             body: (string) ($data['body'] ?? ''),
-            actionUrl: isset($data['action_url']) ? (string) $data['action_url'] : null,
-            actionLabel: isset($data['action_label']) ? (string) $data['action_label'] : null,
+            actionUrl: $actionUrl,
+            actionLabel: $actionLabel,
             meta: is_array($data['meta'] ?? null) ? $data['meta'] : [],
         );
     }
@@ -59,13 +64,33 @@ final readonly class NotificationPayloadDto
             throw new InvalidArgumentException('Notification payload requires non-empty title and body.');
         }
 
+        [$actionUrl, $actionLabel] = self::normalizedActionFields(
+            isset($data['action_url']) ? (string) $data['action_url'] : null,
+            isset($data['action_label']) ? (string) $data['action_label'] : null,
+        );
+
         return new self(
             title: $title,
             body: $body,
-            actionUrl: isset($data['action_url']) ? (string) $data['action_url'] : null,
-            actionLabel: isset($data['action_label']) ? (string) $data['action_label'] : null,
+            actionUrl: $actionUrl,
+            actionLabel: $actionLabel,
             meta: is_array($data['meta'] ?? null) ? $data['meta'] : [],
         );
+    }
+
+    /**
+     * @return array{0: ?string, 1: ?string}
+     */
+    private static function normalizedActionFields(?string $urlRaw, ?string $labelRaw): array
+    {
+        $url = $urlRaw === null ? '' : trim($urlRaw);
+        if ($url === '') {
+            return [null, null];
+        }
+
+        $label = $labelRaw === null ? '' : trim($labelRaw);
+
+        return [$url, $label === '' ? null : $label];
     }
 
     public function assertValidForRecording(): void

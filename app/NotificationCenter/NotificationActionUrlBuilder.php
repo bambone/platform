@@ -11,6 +11,9 @@ use App\Models\Tenant;
  * Tenant admin deep links only (never platform host). Uses cabinet base URL + path.
  * Returns null when the tenant has no cabinet base URL, the subject type is unsupported,
  * or the subject row does not belong to the tenant (avoids broken deep links after delete/mismatch).
+ *
+ * Tech debt: routing keys are `class_basename()` of models and hand-built paths; if Filament slugs
+ * diverge or two models share a basename, prefer an explicit registry + named routes.
  */
 final class NotificationActionUrlBuilder
 {

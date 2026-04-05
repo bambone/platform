@@ -4,14 +4,13 @@ namespace App\NotificationCenter;
 
 use App\Models\NotificationEvent;
 use App\Models\NotificationSubscription;
-use App\Models\Tenant;
 use DateTimeZone;
 use Illuminate\Support\Carbon;
 
 /**
  * Quiet / working hours via schedule_json on the subscription.
  *
- * Expected shape (all optional except when using a window):
+ * Expected shape (all keys optional; combine `days` and/or `from`–`to` as needed):
  * - timezone: string (IANA); invalid values fall back to safer resolution order below
  * - user_timezone_override: string — personal TZ; invalid → next candidate
  * - days: int[] ISO weekday 1–7 (Mon–Sun); omit or empty array = all days
@@ -22,10 +21,14 @@ use Illuminate\Support\Carbon;
  * - critical_bypass: bool — only {@see NotificationSeverity::Critical} bypasses the window (not High)
  *
  * Timezone resolution (first valid IANA wins):
- * 1) schedule.timezone
- * 2) schedule.user_timezone_override
- * 3) tenant.timezone (from event.tenant_id)
+ * 1) schedule.user_timezone_override
+ * 2) schedule.timezone
+ * 3) tenant.timezone (from {@see NotificationEvent::$tenant} when loaded, else relation)
  * 4) UTC
+ *
+ * Day filter and time window are independent: a non-empty `days` list always applies.
+ * `from` / `to` restrict by clock only when both are present and parseable; otherwise there is no
+ * time-of-day restriction (still subject to `days` when set).
  */
 final class NotificationSchedulePolicy
 {
@@ -35,18 +38,6 @@ final class NotificationSchedulePolicy
     ): bool {
         $schedule = $subscription->schedule_json;
         if (! is_array($schedule) || $schedule === []) {
-            return true;
-        }
-
-        $from = $schedule['from'] ?? null;
-        $to = $schedule['to'] ?? null;
-        if (! is_string($from) || ! is_string($to) || trim($from) === '' || trim($to) === '') {
-            return true;
-        }
-
-        $fromM = $this->timeToMinutes($from);
-        $toM = $this->timeToMinutes($to);
-        if ($fromM === null || $toM === null) {
             return true;
         }
 
@@ -60,6 +51,18 @@ final class NotificationSchedulePolicy
             if (! in_array($dow, $allowed, true)) {
                 return $this->criticalBypassAllows($schedule, $event);
             }
+        }
+
+        $from = $schedule['from'] ?? null;
+        $to = $schedule['to'] ?? null;
+        if (! is_string($from) || ! is_string($to) || trim($from) === '' || trim($to) === '') {
+            return true;
+        }
+
+        $fromM = $this->timeToMinutes($from);
+        $toM = $this->timeToMinutes($to);
+        if ($fromM === null || $toM === null) {
+            return true;
         }
 
         $cur = $now->hour * 60 + $now->minute;
@@ -91,12 +94,12 @@ final class NotificationSchedulePolicy
     {
         $candidates = [];
 
-        if (isset($schedule['timezone']) && is_string($schedule['timezone']) && trim($schedule['timezone']) !== '') {
-            $candidates[] = trim($schedule['timezone']);
-        }
-
         if (isset($schedule['user_timezone_override']) && is_string($schedule['user_timezone_override']) && trim($schedule['user_timezone_override']) !== '') {
             $candidates[] = trim($schedule['user_timezone_override']);
+        }
+
+        if (isset($schedule['timezone']) && is_string($schedule['timezone']) && trim($schedule['timezone']) !== '') {
+            $candidates[] = trim($schedule['timezone']);
         }
 
         foreach ($candidates as $raw) {
@@ -106,7 +109,7 @@ final class NotificationSchedulePolicy
             }
         }
 
-        $tenant = Tenant::query()->find($event->tenant_id);
+        $tenant = $event->tenant;
         $tz = $tenant?->timezone;
         if (is_string($tz) && trim($tz) !== '') {
             $safe = $this->safeTimezoneIdentifier(trim($tz));

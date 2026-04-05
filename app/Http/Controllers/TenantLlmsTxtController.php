@@ -30,7 +30,8 @@ class TenantLlmsTxtController extends Controller
             }
             $lines[] = '';
         } else {
-            $lines[] = 'Публичный сайт проката мототехники. Экспериментальный llms.txt; не заменяет sitemap.xml и HTML.';
+            $label = $siteName !== '' ? $siteName : 'Сайт';
+            $lines[] = $label.' — публичный сайт компании. Экспериментальный llms.txt; не заменяет sitemap.xml и HTML.';
             $lines[] = '';
         }
 

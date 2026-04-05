@@ -6,11 +6,14 @@ use App\Models\Tenant;
 use App\Models\TenantSeoFile;
 use App\Models\TenantSeoFileGeneration;
 use App\Models\TenantSetting;
+use App\Services\Seo\InitializeTenantSeoDefaults;
 use App\Services\Seo\PublicContentLastUpdatedService;
 use App\Services\Seo\SeoFileStorage;
 use App\Services\Seo\SitemapFreshnessService;
 use App\Services\Seo\TenantCanonicalPublicBaseUrl;
+use App\Services\Seo\TenantSeoAutopilotService;
 use App\Services\Seo\TenantSeoFilePublisher;
+use App\Services\Seo\TenantSeoLintService;
 use App\Services\Seo\TenantSeoPublicContentService;
 use App\Services\Seo\TenantSeoSnapshotReader;
 use App\Support\Storage\TenantStorage;
@@ -24,6 +27,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use JsonException;
@@ -356,6 +360,51 @@ class SeoFiles extends Page
                 ->action(function () use ($tenant): mixed {
                     return $this->streamBackupDownload($tenant, $this->sitemapRow()?->backup_storage_path);
                 }),
+
+            Action::make('seoAutopilotBootstrap')
+                ->label('SEO autopilot: значения по умолчанию')
+                ->icon('heroicon-o-sparkles')
+                ->visible(fn (): bool => Gate::allows('manage_seo_files') || Gate::allows('manage_settings'))
+                ->requiresConfirmation()
+                ->modalHeading('Сгенерировать SEO по умолчанию?')
+                ->modalDescription('Заполняет llms.txt, переопределения маршрутов и при необходимости мету главной. Уже заполненные поля не перезаписываются.')
+                ->action(function () use ($tenant): void {
+                    abort_unless(Gate::allows('manage_seo_files') || Gate::allows('manage_settings'), 403);
+                    $result = app(InitializeTenantSeoDefaults::class)->execute($tenant, false, false);
+                    $this->data = $this->loadFormState();
+                    $body = $result->messages !== [] ? implode("\n", $result->messages) : 'Изменений нет (поля уже заполнены).';
+                    Notification::make()->title('SEO autopilot')->body($body)->success()->send();
+                }),
+
+            Action::make('seoAutopilotRefreshLlms')
+                ->label('Обновить llms из данных сайта')
+                ->icon('heroicon-o-arrow-path')
+                ->visible(fn (): bool => Gate::allows('manage_seo_files') || Gate::allows('manage_settings'))
+                ->requiresConfirmation()
+                ->modalHeading('Перезаписать llms.txt в настройках?')
+                ->modalDescription('Обновляет только поля введения и списка ссылок для /llms.txt.')
+                ->action(function () use ($tenant): void {
+                    abort_unless(Gate::allows('manage_seo_files') || Gate::allows('manage_settings'), 403);
+                    app(TenantSeoAutopilotService::class)->refreshLlmsOnly($tenant, false);
+                    $this->data = $this->loadFormState();
+                    Notification::make()->title('llms обновлён')->success()->send();
+                }),
+
+            Action::make('seoAutopilotLint')
+                ->label('Проверка SEO (lint)')
+                ->icon('heroicon-o-shield-check')
+                ->visible(fn (): bool => Gate::allows('manage_seo_files') || Gate::allows('manage_settings'))
+                ->modalHeading('Результат проверки SEO')
+                ->modalWidth(Width::TwoExtraLarge)
+                ->modalContent(function () use ($tenant): View {
+                    abort_unless(Gate::allows('manage_seo_files') || Gate::allows('manage_settings'), 403);
+                    $lint = app(TenantSeoLintService::class)->lint($tenant, false);
+
+                    return view('filament.partials.seo-lint-result', [
+                        'result' => $lint,
+                    ]);
+                })
+                ->modalSubmitAction(false),
         ];
     }
 

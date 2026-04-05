@@ -3,6 +3,7 @@
 namespace Tests\Feature\SEO;
 
 use App\Models\Category;
+use App\Models\Faq;
 use App\Models\Motorcycle;
 use App\Models\Page;
 use App\Models\SeoMeta;
@@ -136,6 +137,27 @@ class TenantSeoSystemTest extends TestCase
         $this->assertStringContainsString('application/ld+json', $html);
         $this->assertStringContainsString('Product', $html);
         $this->assertStringContainsString('Offer', $html);
+        $this->assertStringContainsString('"priceCurrency":"RUB"', $html);
+    }
+
+    public function test_faq_page_includes_faqpage_json_ld_when_faqs_exist(): void
+    {
+        $tenant = $this->seedTenantWithDomain('seofaq.apex.test', 'seofaq');
+
+        Faq::query()->create([
+            'tenant_id' => $tenant->id,
+            'question' => 'Вопрос?',
+            'answer' => '<p>Ответ.</p>',
+            'status' => 'published',
+            'sort_order' => 1,
+        ]);
+
+        $html = $this->call('GET', 'http://seofaq.apex.test/faq')
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('FAQPage', $html);
+        $this->assertStringContainsString('Question', $html);
     }
 
     public function test_llms_txt_is_served_on_tenant_host(): void
@@ -147,7 +169,8 @@ class TenantSeoSystemTest extends TestCase
             ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
             ->assertSee('Test Moto Rent', false)
             ->assertSee('seollms.apex.test', false)
-            ->assertSee('Полезные страницы', false);
+            ->assertSee('Полезные страницы', false)
+            ->assertSee('публичный сайт компании', false);
     }
 
     public function test_tenant_route_overrides_merge_into_resolved_title(): void

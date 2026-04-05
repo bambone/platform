@@ -10,6 +10,7 @@ use App\Models\Plan;
 use App\Models\TemplatePreset;
 use App\Models\Tenant;
 use App\Models\TenantSetting;
+use App\Services\Seo\InitializeTenantSeoDefaults;
 use App\Services\TemplateCloningService;
 use App\Services\Tenancy\TenantDomainService;
 use App\Support\RussianPhone;
@@ -229,6 +230,8 @@ class OnboardingWizard extends Page
         if (! empty($data['brand_name'])) {
             TenantSetting::setForTenant($tenant->id, 'general.site_name', $data['brand_name']);
         }
+
+        app(InitializeTenantSeoDefaults::class)->execute($tenant, false, false);
 
         $this->redirect(TenantResource::getUrl('edit', ['record' => $tenant]));
     }

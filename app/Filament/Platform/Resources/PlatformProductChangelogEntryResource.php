@@ -9,18 +9,22 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
+use Filament\Forms\Components\ViewField;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 use UnitEnum;
 
 class PlatformProductChangelogEntryResource extends Resource
@@ -54,13 +58,39 @@ class PlatformProductChangelogEntryResource extends Resource
                             ->label('Заголовок')
                             ->required()
                             ->maxLength(255),
-                        Textarea::make('summary')
-                            ->label('Кратко')
-                            ->rows(3)
+                        ToggleButtons::make('_changelog_markdown_mode')
+                            ->label('Режим текста')
+                            ->helperText('«Отображение» — как в кабинете клиента (Markdown → HTML).')
+                            ->options([
+                                'edit' => 'Исходный код',
+                                'preview' => 'Отображение',
+                            ])
+                            ->default('edit')
+                            ->inline()
+                            ->live()
+                            ->dehydrated(false)
                             ->columnSpanFull(),
-                        Textarea::make('body')
+                        MarkdownEditor::make('summary')
+                            ->label('Кратко (Markdown)')
+                            ->fileAttachments(false)
+                            ->minHeight('6rem')
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get): bool => ($get('_changelog_markdown_mode') ?? 'edit') === 'edit'),
+                        MarkdownEditor::make('body')
                             ->label('Полный текст (Markdown)')
-                            ->rows(12)
+                            ->fileAttachments(false)
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get): bool => ($get('_changelog_markdown_mode') ?? 'edit') === 'edit'),
+                        ViewField::make('changelog_markdown_preview')
+                            ->hiddenLabel()
+                            ->visible(fn (Get $get): bool => ($get('_changelog_markdown_mode') ?? 'edit') === 'preview')
+                            ->view('filament.platform.resources.platform-product-changelog-entry.markdown-preview')
+                            ->viewData(function (Get $get): array {
+                                return [
+                                    'summaryHtml' => Str::markdown($get('summary') ?? ''),
+                                    'bodyHtml' => Str::markdown($get('body') ?? ''),
+                                ];
+                            })
                             ->columnSpanFull(),
                         TextInput::make('sort_weight')
                             ->label('Порядок внутри дня (больше — выше)')

@@ -38,16 +38,20 @@
 
 @section('content')
     @include('platform.marketing.partials.home-hero', ['pm' => $pm])
-    @include('platform.marketing.partials.home-trust', ['pm' => $pm])
-    @include('platform.marketing.partials.home-audience', ['pm' => $pm])
+    @include('platform.marketing.partials.home-category', ['pm' => $pm])
+    @include('platform.marketing.partials.home-compare', ['pm' => $pm])
+    @include('platform.marketing.partials.home-contrast', ['pm' => $pm])
     @include('platform.marketing.partials.home-benefits', ['pm' => $pm])
-    @include('platform.marketing.partials.home-control', ['pm' => $pm])
     @include('platform.marketing.partials.home-how', ['pm' => $pm])
+    @include('platform.marketing.partials.home-niches', ['pm' => $pm])
+    @include('platform.marketing.partials.home-proof', ['pm' => $pm])
+    
+    {{-- Social Proof & Cases --}}
     @include('platform.marketing.partials.home-cases', ['pm' => $pm])
     @include('platform.marketing.partials.home-kpi', ['pm' => $pm])
-    @include('platform.marketing.partials.home-model', ['pm' => $pm])
+    @include('platform.marketing.partials.home-pricing-bridge', ['pm' => $pm])
+
+    {{-- Final Push --}}
     @include('platform.marketing.partials.home-pricing', ['pm' => $pm])
-    @include('platform.marketing.partials.home-quality', ['pm' => $pm])
-    @include('platform.marketing.partials.home-compare', ['pm' => $pm])
     @include('platform.marketing.partials.home-final-cta', ['pm' => $pm])
 @endsection

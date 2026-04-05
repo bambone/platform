@@ -1,28 +1,37 @@
 @php
     $casesContactUrl = platform_marketing_contact_url($pm['intent']['launch'] ?? 'launch');
+    $casesList = $pm['cases'] ?? [];
+    $casesTagline = trim((string) ($pm['cases_tagline'] ?? ''));
+    $casesLead = trim((string) ($pm['cases_lead'] ?? ''));
 @endphp
-<section id="primery" class="pm-section-anchor border-b border-slate-200 bg-slate-50 py-16 sm:py-24" aria-labelledby="primery-heading">
+<section id="primery" class="pm-section-anchor pm-section-y border-b border-slate-200 bg-slate-50" aria-labelledby="primery-heading">
     <div class="relative z-10 mx-auto max-w-6xl px-3 sm:px-4 md:px-6">
         <div class="text-center">
             @if(!empty($pm['cases_intro']))
                 <p class="mb-4 text-center text-sm text-slate-500">{{ $pm['cases_intro'] }}</p>
             @endif
-            <h2 id="primery-heading" class="fade-reveal text-balance text-2xl font-bold leading-tight text-slate-900 sm:text-3xl md:text-4xl">Примеры проектов</h2>
-            <p class="fade-reveal mx-auto mt-3 max-w-2xl text-sm font-medium text-slate-700 sm:text-base" style="transition-delay: 80ms;">Первые проекты уже работают на&nbsp;платформе</p>
-            <p class="fade-reveal mx-auto mt-3 max-w-2xl text-pretty text-base leading-relaxed text-slate-600" style="transition-delay: 100ms;">Только реальные сайты или честные плейсхолдеры&nbsp;— без вымышленных брендов.</p>
+            <h2 id="primery-heading" class="fade-reveal text-balance text-2xl font-bold leading-tight text-slate-900 sm:text-3xl md:text-4xl">{!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $pm['cases_heading'] ?? 'Как это работает в реальном бизнесе') !!}</h2>
+            @if($casesLead !== '')
+                <p class="fade-reveal mx-auto mt-3 max-w-2xl text-sm font-semibold text-slate-800 sm:text-base" style="transition-delay: 80ms;">{!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $casesLead) !!}</p>
+            @endif
+            <p class="fade-reveal mx-auto mt-3 max-w-2xl text-pretty text-base leading-relaxed text-slate-600 sm:text-lg" style="transition-delay: 100ms;">{!! str_replace([' для ', ' с ', ' в ', ' и ', ' — '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;', '&nbsp;— '], $pm['cases_sub'] ?? '') !!}</p>
         </div>
 
-        <div class="mt-12 grid gap-6 sm:grid-cols-2 md:mt-16 lg:grid-cols-3">
-            @foreach($pm['cases'] ?? [] as $index => $case)
+        <div class="mt-10 grid gap-5 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+            @foreach($casesList as $index => $case)
                 @php
                     $caseIsLink = !empty($case['url']) && !empty($case['real']);
+                    $subtitle = $case['subtitle'] ?? $case['type'] ?? '';
+                    $bullets = $case['bullets'] ?? $case['stats'] ?? [];
+                    $footer = $case['footer'] ?? '';
+                    $iconKey = $case['icon'] ?? '';
                 @endphp
                 <article @class([
                     'group fade-reveal pm-reveal-cases-' . min($index, 4) => true,
-                    'relative flex flex-col rounded-2xl border bg-white p-5 shadow-sm transition-[transform,box-shadow,border-color] duration-300 sm:p-6',
-                    'cursor-pointer hover:-translate-y-1.5 hover:border-pm-accent/35 hover:shadow-lg focus-within:-translate-y-1.5 focus-within:border-pm-accent/35 focus-within:shadow-lg' => $caseIsLink,
-                    'cursor-default hover:-translate-y-1.5 hover:shadow-md' => ! $caseIsLink,
-                    'border-slate-200' => true,
+                    'relative flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-[transform,box-shadow,border-color] duration-300 sm:p-6',
+                    'hover:-translate-y-1 hover:shadow-md' => true,
+                    'cursor-pointer hover:border-pm-accent/30 focus-within:-translate-y-1 focus-within:border-pm-accent/30 focus-within:shadow-md' => $caseIsLink,
+                    'cursor-default' => ! $caseIsLink,
                 ])>
                     @if($caseIsLink)
                         <a
@@ -36,93 +45,83 @@
                         ></a>
                     @endif
 
-                    @if($index === 0)
-                        <!-- MotoLevins Mockup View (Realistic Hero Mini) -->
-                        <div class="relative flex aspect-video w-full flex-col items-center justify-center overflow-hidden rounded-xl border border-slate-200 p-4 shadow-inner transition-colors group-hover:border-slate-300">
-                            @if($caseIsLink)
-                                <div class="pointer-events-none absolute right-3 top-3 z-[5] flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-pm-accent shadow-md ring-1 ring-slate-200/80 transition-opacity duration-300 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" aria-hidden="true">
-                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    <div class="relative z-[5] flex items-start gap-4">
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100 transition-colors group-hover:bg-indigo-100/80" aria-hidden="true">
+                            @switch($iconKey)
+                                @case('moto')
+                                    {{-- Прокат / техника: двухколёсный силуэт (outline, как в наборах Lucide/Hero) --}}
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="5.5" cy="17.5" r="3.25"/>
+                                        <circle cx="18" cy="17.5" r="3.25"/>
+                                        <path d="M8.75 17.5h5.25"/>
+                                        <path d="M14 17.5l-1.25-6.5-3.25 1.25L8 8.25H5.75"/>
+                                        <path d="M12.75 11l3-2.75h3.5L21 11.5V14"/>
+                                        <path d="M17.25 11l1.5 3.25"/>
                                     </svg>
-                                </div>
+                                    @break
+                                @case('academic')
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 14l9-5-9-5-9 5 9 5z"/>
+                                        <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                                        <path d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"/>
+                                    </svg>
+                                    @break
+                                @case('services')
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        <path d="M9 12h6M9 16h4"/>
+                                    </svg>
+                                    @break
+                                @default
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M4 6h16M4 12h16M4 18h10"/>
+                                    </svg>
+                            @endswitch
+                        </div>
+                        <div class="min-w-0 flex-1 text-left">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h3 class="text-lg font-bold text-slate-900 transition-colors group-hover:text-pm-accent sm:text-xl">{{ $case['title'] }}</h3>
+                                @if(!empty($case['real']))
+                                    <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">Реальный проект</span>
+                                @endif
+                            </div>
+                            @if($subtitle !== '')
+                                <p class="mt-1 text-sm font-medium text-slate-500">{{ $subtitle }}</p>
                             @endif
-                            <!-- Background: Simulated Sunset Road -->
-                            <div class="absolute inset-0 z-0 bg-gradient-to-br from-slate-900 via-slate-800 to-amber-900/60"></div>
-                            <div class="absolute inset-0 z-0 bg-[linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.7))]"></div>
-
-                            <!-- Browser Header Overlay (Minimal) -->
-                            <div class="absolute inset-x-0 top-0 z-10 flex h-4 items-center px-2 opacity-70">
-                                <span class="mr-0.5 h-1 w-1 rounded-full bg-slate-400"></span>
-                                <span class="mr-0.5 h-1 w-1 rounded-full bg-slate-400"></span>
-                                <span class="h-1 w-1 rounded-full bg-slate-400"></span>
-                            </div>
-
-                            <!-- Hero Content -->
-                            <div class="relative z-10 mt-2 flex w-full flex-col items-center">
-                                <!-- Headline -->
-                                <div class="mb-1.5 h-2.5 w-3/4 rounded-full bg-white opacity-90 shadow-sm"></div>
-                                <div class="mb-3 h-2.5 w-1/2 rounded-full bg-white opacity-90 shadow-sm"></div>
-
-                                <!-- Amber Price Line -->
-                                <div class="mb-3 h-3 w-1/3 rounded-full shadow-sm" style="background-color: var(--color-moto-amber, #e85d04);"></div>
-
-                                <!-- Small Subtitle -->
-                                <div class="mb-1 h-1 w-2/5 rounded-full bg-white/60"></div>
-                                <div class="mb-4 h-1 w-1/4 rounded-full bg-white/60"></div>
-
-                                <!-- Booking Bar -->
-                                <div class="flex w-full max-w-[85%] gap-1 rounded-lg border border-white/10 bg-black/60 p-1.5 shadow-lg backdrop-blur-sm transition-transform duration-500 group-hover:-translate-y-0.5">
-                                    <div class="box-border flex flex-1 flex-col justify-center rounded border-r border-white/5 bg-white/5 py-1 pl-1.5">
-                                       <div class="mb-0.5 h-0.5 w-1/3 rounded bg-white/30"></div>
-                                       <div class="h-1 w-1/2 rounded bg-white/60"></div>
-                                    </div>
-                                    <div class="box-border flex flex-1 flex-col justify-center rounded border-r border-white/5 bg-white/5 py-1 pl-1.5">
-                                       <div class="mb-0.5 h-0.5 w-1/3 rounded bg-white/30"></div>
-                                       <div class="h-1 w-1/2 rounded bg-white/60"></div>
-                                    </div>
-                                    <div class="flex flex-1 flex-col justify-center rounded bg-white/5 py-1 pl-1.5">
-                                       <div class="mb-0.5 h-0.5 w-1/3 rounded bg-white/30"></div>
-                                       <div class="h-1 w-1/2 rounded bg-white/60"></div>
-                                    </div>
-
-                                    <!-- CTA Button -->
-                                    <div class="flex w-10 items-center justify-center rounded p-0.5" style="background-color: var(--color-moto-amber, #e85d04);">
-                                        <div class="h-1 w-3/4 rounded-sm bg-black/80"></div>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
-                    @else
-                        <!-- Skeleton Empty State view -->
-                        <div class="relative flex aspect-video w-full flex-col items-center justify-center overflow-hidden rounded-xl border border-slate-100 bg-slate-50 shadow-inner transition-colors group-hover:bg-slate-100">
-                            <div class="h-12 w-12 rounded-full border-[3px] border-dashed border-slate-200 opacity-50 animate-[spin_10s_linear_infinite]"></div>
-                            <div class="mt-4 h-2 w-20 rounded-full bg-slate-200 opacity-70"></div>
-                        </div>
+                    </div>
+
+                    @if(!empty($bullets) && is_array($bullets))
+                        <ul class="relative z-[5] mt-5 space-y-2.5 border-t border-slate-100 pt-5 text-left" aria-label="Возможности в системе">
+                            @foreach($bullets as $line)
+                                <li class="text-sm leading-snug text-slate-700">{{ $line }}</li>
+                            @endforeach
+                        </ul>
                     @endif
 
-                    <div class="mt-5 flex flex-wrap items-center gap-2">
-                        <h3 class="font-bold text-slate-900 transition-colors group-hover:text-pm-accent">{{ $case['title'] }}</h3>
-                        @if(!empty($case['real']))
-                            <span class="text-xs font-medium text-green-600">Реальный проект</span>
-                        @endif
-                    </div>
-                    <p class="mt-1.5 text-sm leading-relaxed text-slate-600">{{ $case['type'] }}</p>
-                    @if(!empty($case['real']) && $index === 0)
-                        <p class="mt-2 text-xs font-medium text-slate-500">Публичный сайт и&nbsp;приём заявок в&nbsp;бою.</p>
+                    @if($footer !== '')
+                        <p class="relative z-[5] mt-5 border-t border-slate-100 pt-4 text-sm font-semibold leading-snug text-slate-800">{!! str_replace([' для ', ' с ', ' в '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;'], $footer) !!}</p>
                     @endif
 
                     @if($caseIsLink)
-                        <div class="mt-auto shrink-0 pt-4" aria-hidden="true"></div>
-                    @else
-                        <span class="mt-auto mt-5 inline-block self-start rounded-lg bg-slate-100 px-3 py-1 text-sm font-medium text-slate-500">Ожидается</span>
+                        <div class="min-h-2 flex-1" aria-hidden="true"></div>
+                        <p class="pointer-events-none relative z-[11] pt-3 text-sm font-bold text-pm-accent opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100">
+                            Открыть сайт →
+                        </p>
                     @endif
                 </article>
             @endforeach
         </div>
 
-        <div class="fade-reveal mt-12 flex flex-col items-center gap-4 border-t border-slate-200 pt-12 text-center sm:mt-16 sm:pt-16" style="transition-delay: 400ms;">
+        @if($casesTagline !== '')
+            <p class="fade-reveal mx-auto mt-10 max-w-2xl text-center text-balance text-base font-bold leading-snug text-slate-900 sm:mt-12 sm:text-lg" style="transition-delay: 320ms;">
+                {!! str_replace([' для ', ' с ', ' в ', ' и ', ' — '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;', '&nbsp;— '], $casesTagline) !!}
+            </p>
+        @endif
+
+        <div class="fade-reveal mt-10 flex flex-col items-center gap-4 border-t border-slate-200 pt-10 text-center sm:mt-12 sm:pt-12" style="transition-delay: 400ms;">
             <p class="max-w-xl text-base font-semibold text-slate-800">Ваш проект может быть следующим</p>
-            <p class="max-w-xl text-pretty text-base leading-relaxed text-slate-600">Готовы к&nbsp;такому же публичному сайту и&nbsp;контуру заявок&nbsp;— с&nbsp;рабочей системой, а&nbsp;не&nbsp;картинками в&nbsp;портфолио.</p>
+            <p class="max-w-xl text-pretty text-base leading-relaxed text-slate-600">Готовы к&nbsp;такому же контуру заявок и&nbsp;операций&nbsp;— с&nbsp;рабочей системой, а&nbsp;не картинками в&nbsp;портфолио.</p>
             <a href="{{ $casesContactUrl }}" class="inline-flex min-h-12 items-center justify-center rounded-xl bg-pm-accent px-8 py-3 text-base font-bold text-white shadow-premium transition-all hover:-translate-y-0.5 hover:bg-pm-accent-hover" data-pm-event="cta_click" data-pm-cta="primary" data-pm-location="cases_footer">
                 Запустить свой проект
             </a>

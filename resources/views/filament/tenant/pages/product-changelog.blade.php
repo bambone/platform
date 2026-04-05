@@ -26,7 +26,9 @@
                                 <article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900 sm:p-6">
                                     <h3 class="text-base font-semibold text-gray-950 dark:text-white sm:text-lg">{{ $entry->title }}</h3>
                                     @if (filled($entry->summary))
-                                        <p class="mt-3 whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{{ $entry->summary }}</p>
+                                        <div class="tenant-changelog-md-summary prose prose-sm dark:prose-invert mt-3 max-w-none text-sm text-gray-700 dark:text-gray-300 [&_a]:text-primary-600 dark:[&_a]:text-primary-400">
+                                            {!! \Illuminate\Support\Str::markdown($entry->summary) !!}
+                                        </div>
                                     @endif
                                     @if (filled($entry->body))
                                         <div class="tenant-changelog-md prose prose-sm dark:prose-invert mt-5 max-w-none text-gray-800 dark:text-gray-200 [&_a]:text-primary-600 dark:[&_a]:text-primary-400">

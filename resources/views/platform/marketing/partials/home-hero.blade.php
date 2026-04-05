@@ -18,44 +18,44 @@
         <div class="absolute left-1/2 top-0 h-[600px] w-[800px] -translate-x-1/2 -translate-y-1/4 animate-glow-breath rounded-full bg-[radial-gradient(circle_at_center,var(--color-pm-accent),transparent_70%)] opacity-10"></div>
     </div>
 
-    <div class="relative z-10 mx-auto max-w-6xl px-3 pb-16 pt-8 sm:px-4 sm:pb-24 sm:pt-12 md:px-6 md:pb-32 md:pt-16">
-        <div class="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+    <div class="relative z-10 mx-auto max-w-6xl px-3 pb-12 pt-8 sm:px-4 sm:pb-16 sm:pt-10 md:px-6 md:pb-20 md:pt-14">
+        <div class="grid items-start gap-10 lg:grid-cols-2 lg:items-center lg:gap-12 xl:gap-16">
 
             <div class="max-w-2xl lg:max-w-xl">
                 <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-pm-accent/20 bg-pm-accent/5 px-3 py-1 text-sm font-semibold text-pm-accent fade-reveal" style="transition-delay: 50ms;">
                     <span class="h-2 w-2 shrink-0 rounded-full bg-pm-accent" aria-hidden="true"></span>
                     {!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $pm['hero_badge'] ?? 'Бронирования и заявки в одном контуре') !!}
                 </div>
-                <h1 id="hero-heading" class="fade-reveal text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl md:text-6xl" style="transition-delay: 150ms;">
+                <h1 id="hero-heading" class="fade-reveal text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl" style="transition-delay: 150ms;">
                     {!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $heroHeadline) !!}
                 </h1>
                 <p class="fade-reveal mt-6 text-pretty text-lg leading-relaxed text-slate-600 sm:text-xl md:mt-8" style="transition-delay: 250ms;">
                     {!! str_replace([' для ', ' с ', ' в ', ' и ', ' — '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;', '&nbsp;— '], $pm['hero_subtitle'] ?? '') !!}
                 </p>
-                <div class="fade-reveal mt-8 flex flex-col gap-4 sm:flex-row md:mt-10" style="transition-delay: 350ms;">
-                    <a href="{{ $urlLaunch }}" class="inline-flex min-h-12 items-center justify-center rounded-xl bg-pm-accent px-8 py-3 text-base font-bold text-white shadow-lg transition-colors hover:bg-pm-accent-hover" data-pm-event="cta_click" data-pm-cta="primary" data-pm-location="hero">
-                        {{ $pm['cta']['primary'] }}
+                <div class="fade-reveal mt-8 flex flex-col gap-4 sm:flex-row md:mt-10 lg:mt-12" style="transition-delay: 350ms;">
+                    <a href="{{ $urlLaunch }}" class="group relative inline-flex min-h-[56px] items-center justify-center overflow-hidden rounded-2xl bg-pm-accent px-10 py-4 text-lg font-bold text-white shadow-xl transition-all hover:bg-pm-accent-hover hover:shadow-pm-accent/25 active:scale-95" data-pm-event="cta_click" data-pm-cta="primary" data-pm-location="hero">
+                        <span class="relative z-10">{{ $pm['cta']['primary'] }}</span>
+                        <div class="absolute inset-0 z-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/20 opacity-0 transition-opacity group-hover:opacity-100"></div>
                     </a>
-                    <a href="{{ $urlDemo }}" class="inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-8 py-3 text-base font-semibold text-slate-700 transition-colors hover:bg-slate-50" data-pm-event="cta_click" data-pm-cta="secondary" data-pm-location="hero">
+                    <a href="{{ $urlDemo }}" class="inline-flex min-h-[56px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-10 py-4 text-lg font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:shadow-md active:scale-95" data-pm-event="cta_click" data-pm-cta="secondary" data-pm-location="hero">
                         {{ $pm['cta']['secondary'] }}
                     </a>
                 </div>
-                @if($heroSubline !== '')
-                    <p class="fade-reveal mt-4 text-pretty text-sm text-slate-500" style="transition-delay: 400ms;">{!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $heroSubline) !!}</p>
-                @elseif($heroProofFallback !== '')
-                    <p class="fade-reveal mt-4 text-pretty text-sm font-medium text-slate-600" style="transition-delay: 400ms;">{!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $heroProofFallback) !!}</p>
+
+                {{-- Micro-proof labels --}}
+                @if(!empty($pm['hero_micro_proof']))
+                <div class="fade-reveal mt-8 flex flex-wrap items-center gap-x-6 gap-y-3" style="transition-delay: 450ms;">
+                    @foreach($pm['hero_micro_proof'] as $proof)
+                        <div class="flex items-center gap-2 text-sm font-bold text-slate-500 transition-colors hover:text-slate-800">
+                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-[10px] text-emerald-600 shadow-sm">
+                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                            </span>
+                            {{ $proof }}
+                        </div>
+                    @endforeach
+                </div>
                 @endif
-                <p class="fade-reveal mt-2 text-xs text-slate-400" style="transition-delay: 420ms;">Уже используют {{ $trustBiz }}&nbsp;бизнесов</p>
-                @if($heroNext !== '')
-                    <p class="fade-reveal mt-2 text-pretty text-sm text-slate-500" style="transition-delay: 450ms;">{!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $heroNext) !!}</p>
-                @endif
-                @if(!empty($heroTrustMicro))
-                    <ul class="fade-reveal mt-4 flex flex-col gap-1 text-xs text-slate-500 sm:flex-row sm:flex-wrap sm:gap-x-4" style="transition-delay: 480ms;">
-                        @foreach($heroTrustMicro as $line)
-                            <li class="flex items-center gap-1.5"><span class="h-1 w-1 shrink-0 rounded-full bg-pm-accent" aria-hidden="true"></span>{{ $line }}</li>
-                        @endforeach
-                    </ul>
-                @endif
+                <p class="fade-reveal mt-4 text-xs text-slate-400" style="transition-delay: 480ms;">Уже используют {{ $trustBiz }}&nbsp;бизнесов • Покажем демо и&nbsp;запустим за&nbsp;дни</p>
             </div>
 
             {{-- Один макет + одна карточка --}}
@@ -139,7 +139,7 @@
                         animation: notificationPop 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards, notificationFloat 6s ease-in-out infinite forwards;
                         animation-delay: 0.6s, 1.4s;
                         opacity: 0;
-                        margin: -50px;
+                        margin: -50px 50px;
                         box-shadow: 0 24px 60px -10px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.05); /* Premium depth */
                         background: rgba(255, 255, 255, 0.85);
                         backdrop-filter: blur(24px); /* Glassmorphism */

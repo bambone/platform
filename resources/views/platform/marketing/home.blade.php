@@ -40,7 +40,6 @@
     @include('platform.marketing.partials.home-hero', ['pm' => $pm])
     @include('platform.marketing.partials.home-category', ['pm' => $pm])
     @include('platform.marketing.partials.home-compare', ['pm' => $pm])
-    @include('platform.marketing.partials.home-cta-strip', ['pm' => $pm, 'headline' => $pm['landing_cta_strip_1'] ?? '', 'variant' => 'indigo'])
     @include('platform.marketing.partials.home-contrast', ['pm' => $pm])
     @include('platform.marketing.partials.home-benefits', ['pm' => $pm])
     @include('platform.marketing.partials.home-how', ['pm' => $pm])

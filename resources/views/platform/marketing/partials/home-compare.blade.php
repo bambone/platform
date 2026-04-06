@@ -66,11 +66,10 @@
 
         <div class="fade-reveal mt-10 flex flex-col items-stretch justify-center gap-4 rounded-2xl border border-indigo-100 bg-indigo-50/80 p-6 sm:mt-12 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-8" style="transition-delay: 300ms;">
             <p class="text-balance text-center text-lg font-bold text-slate-900 sm:text-left sm:text-xl">
-                Готовы заменить 4–7 инструментов на&nbsp;один?
+                {!! $cmp['cta_headline'] ?? 'Готовы заменить 4–7 инструментов одним решением?' !!}
             </p>
-            <a href="{{ platform_marketing_contact_url($pm['intent']['launch'] ?? 'launch') }}" class="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-pm-accent px-6 py-3 text-center font-extrabold text-white shadow-lg transition-transform hover:bg-pm-accent-hover active:scale-95">
-                Начать работу
-                <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+            <a href="{{ platform_marketing_contact_url($pm['intent']['launch'] ?? 'launch') }}" class="inline-flex min-h-12 w-full shrink-0 items-center justify-center rounded-xl bg-pm-accent px-6 py-3.5 text-center text-base font-extrabold text-white shadow-md transition-transform hover:bg-pm-accent-hover active:scale-[0.98] sm:w-auto sm:min-w-[11rem] sm:px-8" data-pm-event="cta_click" data-pm-cta="primary" data-pm-location="compare">
+                {{ $pm['cta']['primary'] ?? 'Запустить свой сервис' }}
             </a>
         </div>
     </div>

@@ -1,5 +1,6 @@
 # Top-level name must stay exactly "Tests" — deploy workflow_run references it.
 # Page builder smoke is a second job here (same run), not a separate workflow — avoids two full runners for one commit.
+# Jobs: path-filter (changes) → then test and page-builder-smoke in parallel (smoke only if paths matched or workflow_dispatch).
 name: Tests
 
 on:
@@ -61,6 +62,7 @@ jobs:
 
   test:
     name: test
+    needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 20
 

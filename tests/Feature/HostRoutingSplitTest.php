@@ -38,7 +38,7 @@ class HostRoutingSplitTest extends TestCase
         $this->getWithHost('apex.test', '/')
             ->assertOk()
             ->assertSee('Операционная система', false)
-            ->assertSee('бронированиями', false)
+            ->assertSee('бронирования', false)
             ->assertSee($pm['cta']['primary'], false)
             ->assertSee($pm['cta']['secondary'], false)
             ->assertSee($pm['cta']['discuss'], false);

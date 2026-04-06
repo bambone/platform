@@ -95,9 +95,23 @@
         scroll-margin-top: clamp(3.75rem, 11vw, 5.75rem);
     }
 
-    /* Единый вертикальный ритм маркетинговых секций (меньше «дыр» между блоками) */
+    /*
+     * Вертикальный ритм лендинга (мобайл-first):
+     * — секция: 64px (py-16) сверху/снизу;
+     * — внутри: опирайтесь на space-y-6 (24px) и gap-3/gap-4 (12–16px) в шаблонах.
+     */
     .pm-section-y {
-        @apply py-14 sm:py-20 lg:py-24;
+        @apply py-16 lg:py-20;
+    }
+
+    /* Внутренний стек под заголовок секции: 24px до основного контента */
+    .pm-section-lead {
+        @apply mt-6;
+    }
+
+    /* Компактная полоса CTA между секциями (границу не задаём здесь — на тёмном фоне светлый border-b даёт «белую полоску») */
+    .pm-cta-strip {
+        @apply py-10 sm:py-12;
     }
 
     /* Мобильный sticky CTA на всех маркетинговых страницах: запас снизу у main */
@@ -224,8 +238,8 @@
 
     .pm-chaos-wires path {
         vector-effect: non-scaling-stroke;
-        stroke: rgb(220 38 38 / 0.72);
-        stroke-width: 1.35px;
+        stroke: rgb(220 38 38 / 0.82);
+        stroke-width: 1.45px;
         fill: none;
         stroke-linecap: round;
         stroke-linejoin: round;
@@ -274,6 +288,54 @@
     html.reduced-motion .pm-chaos-wires .pm-chaos-fault {
         animation: none !important;
         opacity: 0.9;
+    }
+
+    /* Лёгкое «напряжение» панели хаоса (мобилка тоже); уважаем reduced-motion */
+    @keyframes pm-chaos-panel-tension {
+        0%, 100% { transform: translate(0, 0); }
+        33% { transform: translate(0.4px, -0.3px); }
+        66% { transform: translate(-0.35px, 0.35px); }
+    }
+
+    .pm-chaos-panel {
+        animation: pm-chaos-panel-tension 5s ease-in-out infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .pm-chaos-panel {
+            animation: none;
+        }
+    }
+
+    html.reduced-motion .pm-chaos-panel {
+        animation: none !important;
+    }
+
+    /* Карточки преимуществ: градиентная обводка при hover/focus-visible */
+    .pm-benefit-card {
+        position: relative;
+        background-clip: padding-box;
+    }
+
+    .pm-benefit-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        padding: 1px;
+        background: linear-gradient(135deg, rgb(99 102 241 / 0.35), rgb(16 185 129 / 0.2), rgb(99 102 241 / 0.15));
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        opacity: 0;
+        transition: opacity 0.35s ease;
+        pointer-events: none;
+    }
+
+    .pm-benefit-card:hover::before,
+    .pm-benefit-card:focus-within::before {
+        opacity: 1;
     }
 
     /* Блок proof: лёгкий «живой» glow у мини-карточек */

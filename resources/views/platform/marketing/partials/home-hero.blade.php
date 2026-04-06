@@ -8,6 +8,10 @@
     $heroTrustMicro = array_slice($pm['trust_micro']['hero'] ?? [], 0, 3);
     $urlLaunch = platform_marketing_contact_url($pm['intent']['launch'] ?? 'launch');
     $urlDemo = platform_marketing_demo_url();
+    $heroKicker = trim((string) ($pm['hero_conversion_kicker'] ?? ''));
+    if ($heroKicker !== '') {
+        $heroKicker = str_replace(':businesses', $trustBiz, $heroKicker);
+    }
 @endphp
 <section id="hero" class="pm-section-anchor relative overflow-x-clip overflow-y-visible border-b border-slate-200 bg-slate-50" aria-labelledby="hero-heading">
     <!-- Background grid and ambient glow (No SVG, No Blur) -->
@@ -18,44 +22,53 @@
         <div class="absolute left-1/2 top-0 h-[600px] w-[800px] -translate-x-1/2 -translate-y-1/4 animate-glow-breath rounded-full bg-[radial-gradient(circle_at_center,var(--color-pm-accent),transparent_70%)] opacity-10"></div>
     </div>
 
-    <div class="relative z-10 mx-auto max-w-6xl px-3 pb-12 pt-8 sm:px-4 sm:pb-16 sm:pt-10 md:px-6 md:pb-20 md:pt-14">
-        <div class="grid items-start gap-10 lg:grid-cols-2 lg:items-center lg:gap-12 xl:gap-16">
+    <div class="relative z-10 mx-auto max-w-6xl px-3 pb-14 pt-8 sm:px-4 sm:pb-16 sm:pt-10 md:px-6 md:pb-20 md:pt-14">
+        <div class="grid items-start gap-8 sm:gap-10 lg:grid-cols-2 lg:items-center lg:gap-12 xl:gap-16">
 
             <div class="max-w-2xl lg:max-w-xl">
-                <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-pm-accent/20 bg-pm-accent/5 px-3 py-1 text-sm font-semibold text-pm-accent fade-reveal" style="transition-delay: 50ms;">
+                <div class="mb-4 inline-flex max-w-full items-center gap-2 rounded-full border border-pm-accent/20 bg-pm-accent/5 px-3 py-1 text-xs font-semibold text-pm-accent fade-reveal sm:mb-5 sm:text-sm [transition-delay:50ms]">
                     <span class="h-2 w-2 shrink-0 rounded-full bg-pm-accent" aria-hidden="true"></span>
                     {!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $pm['hero_badge'] ?? 'Бронирования и заявки в одном контуре') !!}
                 </div>
-                <h1 id="hero-heading" class="fade-reveal text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl" style="transition-delay: 150ms;">
+                <h1 id="hero-heading" class="fade-reveal text-balance text-3xl font-extrabold leading-[1.12] tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl [transition-delay:150ms]">
                     {!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $heroHeadline) !!}
                 </h1>
-                <p class="fade-reveal mt-6 text-pretty text-lg leading-relaxed text-slate-600 sm:text-xl md:mt-8" style="transition-delay: 250ms;">
+                <p class="fade-reveal pm-section-lead max-w-xl text-pretty text-base leading-snug text-slate-600 sm:text-lg md:text-xl [transition-delay:250ms]">
                     {!! str_replace([' для ', ' с ', ' в ', ' и ', ' — '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;', '&nbsp;— '], $pm['hero_subtitle'] ?? '') !!}
                 </p>
-                <div class="fade-reveal mt-8 flex flex-col gap-4 sm:flex-row md:mt-10 lg:mt-12" style="transition-delay: 350ms;">
-                    <a href="{{ $urlLaunch }}" class="group relative inline-flex min-h-[56px] items-center justify-center overflow-hidden rounded-2xl bg-pm-accent px-10 py-4 text-lg font-bold text-white shadow-xl transition-all hover:bg-pm-accent-hover hover:shadow-pm-accent/25 active:scale-95" data-pm-event="cta_click" data-pm-cta="primary" data-pm-location="hero">
+                <div class="fade-reveal mt-6 flex w-full max-w-xl flex-col gap-3 sm:mt-8 sm:flex-row sm:gap-4 md:mt-10 [transition-delay:350ms]">
+                    <a href="{{ $urlLaunch }}" class="group relative inline-flex min-h-14 w-full items-center justify-center overflow-hidden rounded-2xl bg-pm-accent px-6 py-4 text-lg font-extrabold text-white shadow-xl transition-all hover:bg-pm-accent-hover hover:shadow-pm-accent/25 active:scale-[0.98] sm:min-h-[3.75rem] sm:flex-1 sm:px-8 sm:text-xl" data-pm-event="cta_click" data-pm-cta="primary" data-pm-location="hero">
                         <span class="relative z-10">{{ $pm['cta']['primary'] }}</span>
                         <div class="absolute inset-0 z-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/20 opacity-0 transition-opacity group-hover:opacity-100"></div>
                     </a>
-                    <a href="{{ $urlDemo }}" class="inline-flex min-h-[56px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-10 py-4 text-lg font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:shadow-md active:scale-95" data-pm-event="cta_click" data-pm-cta="secondary" data-pm-location="hero">
+                    <a href="{{ $urlDemo }}" class="inline-flex min-h-14 w-full items-center justify-center rounded-2xl border-2 border-pm-accent/80 bg-transparent px-6 py-4 text-base font-bold text-pm-accent shadow-none transition-all hover:border-pm-accent hover:bg-pm-accent/5 active:scale-[0.98] sm:min-h-[3.75rem] sm:w-auto sm:min-w-[10.5rem] sm:px-8 sm:text-lg" data-pm-event="cta_click" data-pm-cta="secondary" data-pm-location="hero">
                         {{ $pm['cta']['secondary'] }}
                     </a>
                 </div>
 
-                {{-- Micro-proof labels --}}
+                @if($heroKicker !== '')
+                    <p class="fade-reveal mt-5 max-w-xl rounded-2xl border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50/90 px-4 py-3 text-center text-sm font-extrabold leading-snug text-amber-950 shadow-sm ring-1 ring-amber-100 sm:mt-6 sm:px-5 sm:text-base [transition-delay:380ms]">
+                        {{ $heroKicker }}
+                    </p>
+                @endif
+
+                {{-- Micro-proof: после CTA, компактнее на мобиле --}}
                 @if(!empty($pm['hero_micro_proof']))
-                <div class="fade-reveal mt-8 flex flex-wrap items-center gap-x-6 gap-y-3" style="transition-delay: 450ms;">
-                    @foreach($pm['hero_micro_proof'] as $proof)
-                        <div class="flex items-center gap-2 text-sm font-bold text-slate-500 transition-colors hover:text-slate-800">
-                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-[10px] text-emerald-600 shadow-sm">
-                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                <div class="fade-reveal mt-6 flex flex-col gap-2.5 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5 sm:gap-y-2 [transition-delay:450ms]">
+                    @foreach($pm['hero_micro_proof'] as $i => $proof)
+                        <div @class([
+                            'flex items-center gap-2 text-xs font-semibold text-slate-500 sm:text-sm',
+                            'max-sm:hidden' => $i >= 2,
+                        ])>
+                            <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-sm" aria-hidden="true">
+                                <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
                             </span>
                             {{ $proof }}
                         </div>
                     @endforeach
                 </div>
                 @endif
-                <p class="fade-reveal mt-4 text-xs text-slate-400" style="transition-delay: 480ms;">Уже используют {{ $trustBiz }}&nbsp;бизнесов • Покажем демо и&nbsp;запустим за&nbsp;дни</p>
+                <p class="fade-reveal mt-4 text-xs text-slate-500 max-sm:mt-3 [transition-delay:480ms]">Покажем демо под вашу нишу — ответим быстро.</p>
             </div>
 
             {{-- Один макет + одна карточка --}}

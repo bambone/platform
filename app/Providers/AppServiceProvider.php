@@ -57,6 +57,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        /* До boot(): иначе blade.compiler может получить стандартный Filesystem до подмены. */
+        if (DIRECTORY_SEPARATOR === '\\') {
+            $this->app->singleton('files', fn () => new WindowsSafeFilesystem);
+        }
+
         $this->app->singleton(CurrentTenantManager::class);
         $this->app->singleton(TenantViewResolver::class);
         $this->app->singleton(TenantMailer::class);
@@ -88,12 +93,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if (DIRECTORY_SEPARATOR === '\\') {
-            $this->app->singleton('files', function () {
-                return new WindowsSafeFilesystem;
-            });
-        }
-
         // Filament FileUpload: дольше ждём завершения временной загрузки Livewire (по умолчанию 5 мин).
         config([
             'livewire.temporary_file_upload.max_upload_time' => max(

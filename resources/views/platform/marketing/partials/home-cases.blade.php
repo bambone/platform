@@ -17,7 +17,7 @@
             <p class="fade-reveal mx-auto mt-3 max-w-2xl text-pretty text-base leading-relaxed text-slate-600 sm:text-lg" style="transition-delay: 100ms;">{!! str_replace([' для ', ' с ', ' в ', ' и ', ' — '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;', '&nbsp;— '], $pm['cases_sub'] ?? '') !!}</p>
         </div>
 
-        <div class="mt-10 grid gap-5 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+        <div class="mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
             @foreach($casesList as $index => $case)
                 @php
                     $caseIsLink = !empty($case['url']) && !empty($case['real']);
@@ -25,6 +25,18 @@
                     $bullets = $case['bullets'] ?? $case['stats'] ?? [];
                     $footer = $case['footer'] ?? '';
                     $iconKey = $case['icon'] ?? '';
+                    $metrics = trim((string) ($case['metrics'] ?? ''));
+                    $initials = '';
+                    if (! empty($case['real'])) {
+                        $titleForInitials = trim((string) ($case['title'] ?? ''));
+                        if ($titleForInitials !== '') {
+                            $parts = preg_split('/\s+/u', $titleForInitials, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                            $initials = mb_strtoupper(mb_substr($parts[0] ?? '', 0, 1));
+                            if (isset($parts[1])) {
+                                $initials .= mb_strtoupper(mb_substr($parts[1], 0, 1));
+                            }
+                        }
+                    }
                 @endphp
                 <article @class([
                     'group fade-reveal pm-reveal-cases-' . min($index, 4) => true,
@@ -46,7 +58,13 @@
                     @endif
 
                     <div class="relative z-[5] flex items-start gap-4">
-                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100 transition-colors group-hover:bg-indigo-100/80" aria-hidden="true">
+                        @if($initials !== '')
+                            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 text-sm font-black text-white shadow-md ring-1 ring-white/10" aria-hidden="true">{{ $initials }}</div>
+                        @endif
+                        <div @class([
+                            'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100 transition-colors group-hover:bg-indigo-100/80',
+                            'hidden' => $initials !== '',
+                        ]) aria-hidden="true">
                             @switch($iconKey)
                                 @case('moto')
                                     {{-- Прокат / техника: двухколёсный силуэт (outline, как в наборах Lucide/Hero) --}}
@@ -83,10 +101,15 @@
                                 <h3 class="text-lg font-bold text-slate-900 transition-colors group-hover:text-pm-accent sm:text-xl">{{ $case['title'] }}</h3>
                                 @if(!empty($case['real']))
                                     <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">Реальный проект</span>
+                                @else
+                                    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">Пример сценария</span>
                                 @endif
                             </div>
                             @if($subtitle !== '')
                                 <p class="mt-1 text-sm font-medium text-slate-500">{{ $subtitle }}</p>
+                            @endif
+                            @if($metrics !== '')
+                                <p class="mt-2 text-xs font-semibold leading-snug text-slate-600">{{ $metrics }}</p>
                             @endif
                         </div>
                     </div>

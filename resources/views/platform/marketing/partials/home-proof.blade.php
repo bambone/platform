@@ -7,7 +7,7 @@
     ];
     $proofFooter = trim((string) ($prf['footer_line'] ?? ''));
 @endphp
-<section id="proof" class="pm-section-anchor pm-section-y border-b border-slate-200 bg-slate-900" aria-labelledby="proof-heading">
+<section id="proof" class="pm-section-anchor pm-section-y bg-slate-900" aria-labelledby="proof-heading">
     <div class="mx-auto max-w-6xl px-4 md:px-6">
         <div class="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-start lg:gap-16">
             <div>
@@ -26,7 +26,24 @@
                     @endforeach
                 </div>
 
-                <div class="mt-12 space-y-10 sm:space-y-11">
+                {{-- Мобилка: аккордеон — меньше стены текста; десктоп: раскрытый список --}}
+                <div class="mt-8 space-y-2 lg:hidden">
+                    @foreach($prf['items'] ?? [] as $i => $item)
+                        <details @class([
+                            'group fade-reveal overflow-hidden rounded-xl border border-white/10 bg-white/[0.06] ring-1 ring-white/5 open:bg-white/[0.09]',
+                            'pm-reveal-proof-' . min($i, 5),
+                        ])>
+                            <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 text-left text-sm font-bold text-white marker:hidden [&::-webkit-details-marker]:hidden">
+                                <span class="min-w-0 pr-2">{{ $item['title'] }}</span>
+                                <svg class="h-5 w-5 shrink-0 text-indigo-300 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                            </summary>
+                            <div class="border-t border-white/10 px-4 pb-4 pt-1">
+                                <p class="text-sm leading-relaxed text-slate-300">{!! $item['description'] ?? '' !!}</p>
+                            </div>
+                        </details>
+                    @endforeach
+                </div>
+                <div class="mt-12 hidden space-y-10 sm:space-y-11 lg:block">
                     @foreach($prf['items'] ?? [] as $i => $item)
                         <div @class(['fade-reveal flex gap-4 sm:gap-5', 'pm-reveal-proof-' . min($i, 5)])>
                             <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-400/30 sm:h-12 sm:w-12">

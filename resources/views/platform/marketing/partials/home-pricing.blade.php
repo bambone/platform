@@ -22,10 +22,55 @@
             <p class="fade-reveal mx-auto mt-4 max-w-2xl text-center text-sm text-slate-600" style="transition-delay: 120ms;">{!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $planHelp) !!}</p>
         @endif
 
-        <div class="mx-auto mt-10 grid max-w-4xl gap-6 sm:mt-12 lg:grid-cols-2 lg:gap-10">
+        <div class="mx-auto mt-10 grid max-w-4xl gap-6 sm:mt-12 lg:grid-cols-2 lg:gap-10 lg:items-start">
+
+            <!-- Custom / Enterprise — HERO: первым на мобиле, справа на десктопе -->
+            <div class="fade-reveal relative order-1 flex cursor-default flex-col overflow-hidden rounded-3xl border-2 border-pm-accent/40 bg-navy p-8 shadow-2xl transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/25 lg:order-2 lg:min-h-[min(100%,28rem)] lg:scale-[1.03] lg:p-9" style="transition-delay: 200ms;">
+                <div class="pointer-events-none absolute right-0 top-0 h-72 w-72 translate-x-1/3 -translate-y-1/3 animate-glow-breath rounded-full bg-pm-accent opacity-35 blur-[70px]"></div>
+
+                <div class="relative z-10 flex h-full flex-col">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="text-xl font-bold text-white lg:text-2xl">{{ $p['custom']['name'] ?? 'Кастомный' }}</h3>
+                        <span class="inline-flex rounded-full bg-pm-accent px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-white shadow-md ring-2 ring-white/20">{{ $p['custom_badge'] ?? '🔥 Рекомендуем' }}</span>
+                    </div>
+                    <p class="mt-2 text-sm text-slate-200 lg:text-base">Для сложных процессов и&nbsp;больших парков.</p>
+
+                    <div class="mt-6 flex flex-col gap-2">
+                        <div class="text-[min(2.75rem,9vw)] font-extrabold leading-none tracking-tight text-white">
+                            {{ number_format($p['custom']['launch'] ?? 0, 0, ',', ' ') }} ₽ <span class="text-xl font-medium tracking-normal text-slate-400 lg:text-2xl">запуск</span>
+                        </div>
+                        <div class="inline-flex max-w-fit items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1 text-sm font-medium text-slate-200">
+                            <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-pm-accent"></span>
+                            {{ number_format($p['custom']['monthly'] ?? 0, 0, ',', ' ') }} ₽ / месяц
+                        </div>
+                    </div>
+                    @if(!empty($underPrice) && is_array($underPrice))
+                        <ul class="mt-3 space-y-1 text-sm text-slate-300">
+                            @foreach($underPrice as $line)
+                                <li>{!! str_replace([' для ', ' с ', ' в '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;'], $line) !!}</li>
+                            @endforeach
+                        </ul>
+                    @endif
+
+                    <ul class="mt-8 flex-1 space-y-3 text-sm text-slate-200 lg:text-[0.9375rem]">
+                        @foreach($p['custom']['bullets'] ?? [] as $b)
+                            <li class="flex items-start gap-3">
+                                <svg class="mt-0.5 h-5 w-5 shrink-0 text-pm-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <span>{!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $b) !!}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+
+                    <a href="{{ $urlCustom }}" class="mt-8 block w-full rounded-xl bg-pm-accent py-3.5 text-center text-base font-extrabold tracking-wide text-white shadow-lg transition-colors hover:bg-pm-accent-hover" data-pm-event="cta_click" data-pm-cta="consult" data-pm-location="pricing_custom" data-pm-tier="custom">Обсудить проект</a>
+                    <p class="mt-3 text-center text-sm text-slate-300">{{ $reassurance }}</p>
+                    @if($supportLine !== '')
+                        <p class="mt-1 text-center text-sm text-slate-400">{{ $supportLine }}</p>
+                    @endif
+                </div>
+            </div>
 
             <!-- Standard Plan -->
-            <div class="fade-reveal relative flex cursor-default flex-col rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-[transform,box-shadow] duration-300 hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-lg hover:shadow-indigo-900/10" style="transition-delay: 200ms;">
+            <div class="fade-reveal relative order-2 flex cursor-default flex-col rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-900/10 lg:order-1" style="transition-delay: 350ms;">
                 @if(!empty($p['basic_badge']))
                     <p class="mb-3 inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-800">{{ $p['basic_badge'] }}</p>
                 @endif
@@ -70,52 +115,6 @@
                         @endforeach
                     </ul>
                 @endif
-            </div>
-
-            <!-- Custom / Enterprise Plan -->
-            <div class="fade-reveal relative flex cursor-default flex-col overflow-hidden rounded-3xl border border-white/10 bg-navy p-8 shadow-xl transition-[transform,box-shadow] duration-300 hover:-translate-y-1.5 hover:scale-[1.01] hover:shadow-2xl hover:shadow-indigo-500/20" style="transition-delay: 350ms;">
-                <!-- Glowing accent bg -->
-                <div class="pointer-events-none absolute right-0 top-0 h-64 w-64 translate-x-1/2 -translate-y-1/2 animate-glow-breath rounded-full bg-pm-accent opacity-30 blur-[60px]"></div>
-
-                <div class="relative z-10 flex h-full flex-col">
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <h3 class="text-xl font-bold text-white">{{ $p['custom']['name'] ?? 'Кастомный' }}</h3>
-                        <span class="inline-flex rounded-full bg-pm-accent/25 px-3 py-1 text-xs font-bold text-indigo-100 ring-1 ring-inset ring-pm-accent/40">{{ $p['custom_badge'] ?? '🔥 Рекомендуем' }}</span>
-                    </div>
-                    <p class="mt-2 text-sm text-slate-300">Для сложных процессов и&nbsp;больших парков.</p>
-
-                    <div class="mt-6 flex flex-col gap-2">
-                        <div class="text-[min(2.5rem,8vw)] font-extrabold leading-none tracking-tight text-white">
-                            {{ number_format($p['custom']['launch'] ?? 0, 0, ',', ' ') }} ₽ <span class="text-xl font-medium tracking-normal text-slate-400">запуск</span>
-                        </div>
-                        <div class="inline-flex max-w-fit items-center gap-1.5 rounded-md bg-white/5 px-2.5 py-1 text-sm font-medium text-slate-300">
-                            <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-pm-accent"></span>
-                            {{ number_format($p['custom']['monthly'] ?? 0, 0, ',', ' ') }} ₽ / месяц
-                        </div>
-                    </div>
-                    @if(!empty($underPrice) && is_array($underPrice))
-                        <ul class="mt-3 space-y-1 text-sm text-slate-300">
-                            @foreach($underPrice as $line)
-                                <li>{!! str_replace([' для ', ' с ', ' в '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;'], $line) !!}</li>
-                            @endforeach
-                        </ul>
-                    @endif
-
-                    <ul class="mt-8 flex-1 space-y-3 text-sm text-slate-300">
-                        @foreach($p['custom']['bullets'] ?? [] as $b)
-                            <li class="flex items-start gap-3">
-                                <svg class="mt-0.5 h-5 w-5 shrink-0 text-pm-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                <span>{!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $b) !!}</span>
-                            </li>
-                        @endforeach
-                    </ul>
-
-                    <a href="{{ $urlCustom }}" class="mt-8 block w-full rounded-xl bg-pm-accent py-3 text-center text-sm font-bold tracking-wide text-white shadow-premium transition-colors hover:bg-pm-accent-hover" data-pm-event="cta_click" data-pm-cta="consult" data-pm-location="pricing_custom" data-pm-tier="custom">Обсудить проект</a>
-                    <p class="mt-3 text-center text-sm text-slate-300">{{ $reassurance }}</p>
-                    @if($supportLine !== '')
-                        <p class="mt-1 text-center text-sm text-slate-300">{{ $supportLine }}</p>
-                    @endif
-                </div>
             </div>
 
         </div>

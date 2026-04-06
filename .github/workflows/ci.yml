@@ -1,36 +1,174 @@
-name: Deploy platform
+# Один прогон: path-filter → тесты (+ smoke по путям) → деплой на master (push / ручной запуск).
+name: CI
 
-# Gated: runs after successful "Tests" on master. workflow_dispatch is an intentional CI bypass.
 on:
-  workflow_run:
-    workflows: [Tests]
-    types: [completed]
-  workflow_dispatch: {}
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
-  group: deploy-platform
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  changes:
+    name: path-filter
     runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'master') ||
-      github.event_name == 'workflow_dispatch'
-
+    outputs:
+      page_builder: ${{ steps.decide.outputs.page_builder }}
     steps:
-      - name: Checkout (gated commit)
-        if: github.event_name == 'workflow_run'
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          submodules: false
+          fetch-depth: 0
 
-      - name: Checkout (manual dispatch)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Detect page-builder-related paths
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            page_builder:
+              - 'app/PageBuilder/**'
+              - 'app/Services/PageBuilder/**'
+              - 'resources/views/tenant/themes/**/sections/**'
+              - 'app/Livewire/Tenant/PageSectionsBuilder.php'
+              - 'tests/Feature/PageBuilder/Smoke/**'
+              - 'tests/Support/PageBuilderSmokeFixtures.php'
+              - 'tests/Support/AssertsHtmlMarkerOrder.php'
+              - 'tests/Support/InteractsWithTenantSmokeHttp.php'
+              - 'phpunit.xml'
+
+      - name: Decide page builder smoke
+        id: decide
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "page_builder=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.filter.outputs.page_builder }}" = "true" ]; then
+            echo "page_builder=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "page_builder=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    name: test
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, dom, fileinfo, pdo, tokenizer, xml, ctype, json, bcmath, curl, intl, zip, sqlite, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+
+      - name: Get Composer cache dir
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Prepare application key
+        run: |
+          cp .env.example .env
+          php artisan key:generate --no-interaction
+
+      - name: Run tests
+        run: composer test
+
+      - name: Diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo "=== PHP ==="
+          php -v || true
+          echo "=== Composer ==="
+          composer --version || true
+          echo "=== PHP extensions (loaded) ==="
+          php -m | sort || true
+          echo "=== php artisan about ==="
+          php artisan about || true
+          echo "=== ls -la (repo root) ==="
+          ls -la
+          echo "=== ls -la storage ==="
+          ls -la storage || true
+          echo "=== ls -la bootstrap/cache ==="
+          ls -la bootstrap/cache || true
+          echo "=== Laravel log tail (last 200 lines) ==="
+          if [ -f storage/logs/laravel.log ]; then tail -n 200 storage/logs/laravel.log; else echo "(no storage/logs/laravel.log)"; fi
+
+  page-builder-smoke:
+    name: page-builder-smoke
+    needs: changes
+    if: needs.changes.outputs.page_builder == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, fileinfo, pdo, tokenizer, xml, ctype, json, bcmath, curl, intl, zip, sqlite, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+
+      - name: Get Composer cache dir
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Prepare application key
+        run: |
+          cp .env.example .env
+          php artisan key:generate --no-interaction
+
+      - name: Run page builder smoke suite
+        env:
+          APP_ENV: testing
+        run: composer test:page-builder-smoke
+
+  deploy:
+    name: deploy
+    needs: [test, page-builder-smoke]
+    if: ${{ always() && needs.test.result == 'success' && (needs.page-builder-smoke.result == 'success' || needs.page-builder-smoke.result == 'skipped') && github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: false
@@ -209,11 +347,6 @@ jobs:
           rm -rf "$REL" "$PRES" 2>/dev/null || true
           EOF
 
-      # HTTP liveness (2xx after redirects). Обязательные Variables — иначе шаг падает (явная настройка после деплоя).
-      # Repo → Settings → Secrets and variables → Actions → Variables:
-      #   SMOKE_MARKETING_URL = https://rentbase.su
-      #   SMOKE_PLATFORM_URL  = https://platform.rentbase.su
-      #   SMOKE_TENANT_URL    = https://<tenant>.rentbase.su (опционально)
       - name: Post-deploy smoke
         shell: bash
         env:

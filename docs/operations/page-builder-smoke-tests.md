@@ -28,7 +28,7 @@ php artisan test --group=page-builder-smoke
 
 ## CI
 
-GitHub Actions: в workflow **Tests** (`.github/workflows/tests.yml`) джоба **page-builder-smoke** ставится в очередь, если в коммите затронуты пути page builder / секций / smoke-тестов (тот же список, что раньше в отдельном workflow). Ручной запуск smoke вместе с основными тестами: **Actions → Tests → Run workflow**. На шаге smoke задано `APP_ENV=testing` (дублирует `phpunit.xml`, страховка для окружения).
+GitHub Actions: в workflow **CI** (`.github/workflows/ci.yml`) джоба **page-builder-smoke** ставится в очередь, если в коммите затронуты пути page builder / секций / smoke-тестов (тот же список, что раньше в отдельном workflow). Ручной запуск: **Actions → CI → Run workflow** (на `master` после тестов пойдёт и **deploy**). На шаге smoke задано `APP_ENV=testing` (дублирует `phpunit.xml`, страховка для окружения).
 
 ## Когда обязательно гонять
 

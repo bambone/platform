@@ -39,6 +39,7 @@ class PlatformContactMailRoutingTest extends TestCase
             'name' => 'Spoof try',
             'phone' => '+79990001122',
             'email' => 'attacker-wants-copy@evil.test',
+            'preferred_contact_channel' => 'phone',
             'message' => 'Long enough message body for validation.',
             'intent' => 'launch',
             'company_site' => '',

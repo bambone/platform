@@ -44,7 +44,8 @@ class PlatformMarketingContactTest extends TestCase
         $response = $this->postWithHost('apex.test', '/contact', [
             'name' => 'Тест Тестов',
             'phone' => '+79990001122',
-            'email' => '',
+            'email' => 'test-contact@example.test',
+            'preferred_contact_channel' => 'phone',
             'message' => 'Нужен прокат мото, онлайн-запись и учёт парка.',
             'intent' => 'launch',
             'company_site' => '',
@@ -60,7 +61,7 @@ class PlatformMarketingContactTest extends TestCase
         $this->assertSame(1, CrmRequest::query()->whereNull('tenant_id')->count());
     }
 
-    public function test_contact_post_requires_phone_or_email(): void
+    public function test_contact_post_requires_email(): void
     {
         $this->withoutMiddleware(VerifyCsrfToken::class);
         Mail::fake();
@@ -69,9 +70,10 @@ class PlatformMarketingContactTest extends TestCase
             'name' => 'Тест',
             'phone' => '',
             'email' => '',
+            'preferred_contact_channel' => 'email',
             'message' => 'Достаточно длинный текст для валидации.',
             'intent' => 'demo',
             'company_site' => '',
-        ])->assertSessionHasErrors(['phone', 'email']);
+        ])->assertSessionHasErrors(['email']);
     }
 }

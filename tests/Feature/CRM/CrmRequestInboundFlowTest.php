@@ -39,7 +39,8 @@ class CrmRequestInboundFlowTest extends TestCase
         $response = $this->postWithHost('apex.test', '/contact', [
             'name' => 'Inbound Platform',
             'phone' => '+79990001122',
-            'email' => '',
+            'email' => 'inbound-platform@example.test',
+            'preferred_contact_channel' => 'phone',
             'message' => 'Message long enough for validation rules.',
             'intent' => 'launch',
             'company_site' => '',

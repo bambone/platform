@@ -446,25 +446,7 @@
         .tenant-thin-scrollbar::-webkit-scrollbar-thumb:hover {
             background: rgba(232, 93, 4, 0.5);
         }
-        /* Подсветка поля при ошибке валидации (модалка / формы): вспышка и возврат к обычному виду ~2 с */
-        @keyframes tenant-field-error-burst {
-            0% {
-                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-            }
-            35% {
-                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.45), 0 0 22px rgba(239, 68, 68, 0.3);
-            }
-            70% {
-                box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.25);
-            }
-            100% {
-                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-            }
-        }
-        .tenant-field-error-flash {
-            border-color: rgb(248 113 113) !important;
-            animation: tenant-field-error-burst 0.55s ease-out 2;
-        }
+        /* Подсветка ошибок публичных форм: resources/css/shared/public-form-field-feedback.css (rb-public-field-error-flash) */
     </style>
 </head>
 <body class="antialiased premium-bg text-silver selection:bg-moto-amber selection:text-[#0c0c0c] overflow-x-clip pb-32 sm:pb-0">

@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './shared/public-form-field-feedback.css';
 
 /* Только маркетинг платформы — меньше CSS в бандле, чем скан всего resources/ */
 @source '../views/platform/**/*.blade.php';
@@ -356,5 +357,266 @@
 
     html.reduced-motion .pm-proof-mini-card {
         animation: none !important;
+    }
+}
+
+/* Оверлей отправки контактов: «сборка» витрины вместо пустого ожидания */
+@layer components {
+    .pm-contact-submit-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background: rgb(15 23 42 / 0.42);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    }
+
+    .pm-contact-submit-overlay.pm-contact-submit-overlay--visible {
+        display: flex;
+    }
+
+    .pm-contact-submit-overlay__card {
+        width: 100%;
+        max-width: 22rem;
+        border-radius: 1.25rem;
+        border: 1px solid rgb(226 232 240 / 0.95);
+        background: rgb(255 255 255 / 0.97);
+        padding: 1.5rem 1.35rem 1.65rem;
+        box-shadow:
+            0 24px 48px -12px rgb(15 23 42 / 0.22),
+            0 0 0 1px rgb(255 255 255 / 0.6) inset;
+    }
+
+    @media (min-width: 640px) {
+        .pm-contact-submit-overlay__card {
+            max-width: 24rem;
+            padding: 1.75rem 1.5rem 1.85rem;
+        }
+    }
+
+    .pm-contact-build__title {
+        font-size: 1.0625rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: rgb(15 23 42);
+        text-align: center;
+    }
+
+    .pm-contact-build__lead {
+        margin-top: 0.35rem;
+        font-size: 0.8125rem;
+        line-height: 1.45;
+        color: rgb(71 85 105);
+        text-align: center;
+    }
+
+    .pm-contact-build__stage {
+        margin-top: 1.25rem;
+        border-radius: 0.875rem;
+        border: 1px solid rgb(226 232 240);
+        background: linear-gradient(180deg, rgb(248 250 252) 0%, rgb(241 245 249) 100%);
+        padding: 0.75rem 0.85rem 1rem;
+        overflow: hidden;
+    }
+
+    .pm-contact-build__browser-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-bottom: 0.65rem;
+    }
+
+    .pm-contact-build__dot {
+        width: 0.45rem;
+        height: 0.45rem;
+        border-radius: 999px;
+        background: rgb(203 213 225);
+    }
+
+    .pm-contact-build__dot:nth-child(1) {
+        background: rgb(251 113 133 / 0.85);
+    }
+
+    .pm-contact-build__dot:nth-child(2) {
+        background: rgb(250 204 21 / 0.9);
+    }
+
+    .pm-contact-build__dot:nth-child(3) {
+        background: rgb(52 211 153 / 0.9);
+    }
+
+    .pm-contact-build__url {
+        margin-left: 0.35rem;
+        flex: 1;
+        height: 0.45rem;
+        border-radius: 999px;
+        background: rgb(226 232 240 / 0.95);
+    }
+
+    .pm-contact-build__canvas {
+        position: relative;
+        min-height: 7.5rem;
+        border-radius: 0.5rem;
+        background: rgb(255 255 255 / 0.85);
+        border: 1px dashed rgb(203 213 225);
+    }
+
+    .pm-contact-build__crane {
+        position: absolute;
+        top: 0.35rem;
+        right: 0.35rem;
+        width: 3.5rem;
+        height: 2.65rem;
+        transform-origin: 70% 8%;
+        animation: pm-contact-crane-sway 2.8s ease-in-out infinite;
+    }
+
+    .pm-contact-build__crane-svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+
+    .pm-contact-build__crane-svg .pm-contact-build__crane-load {
+        transform-origin: 22px 12px;
+        animation: pm-contact-hook-bob 1.4s ease-in-out infinite;
+    }
+
+    .pm-contact-build__floors {
+        position: absolute;
+        left: 0.65rem;
+        right: 0.65rem;
+        bottom: 0.55rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .pm-contact-build__floor {
+        height: 0.65rem;
+        border-radius: 0.35rem;
+        background: linear-gradient(90deg, rgb(99 102 241 / 0.2), rgb(99 102 241 / 0.55), rgb(16 185 129 / 0.35));
+        transform-origin: 50% 100%;
+        transform: scaleX(0.08);
+        opacity: 0.35;
+        animation: pm-contact-floor-rise 2.4s ease-in-out infinite;
+        animation-delay: calc(var(--pm-floor, 0) * 0.35s);
+    }
+
+    .pm-contact-build__floor:nth-child(1) {
+        --pm-floor: 0;
+    }
+
+    .pm-contact-build__floor:nth-child(2) {
+        --pm-floor: 1;
+    }
+
+    .pm-contact-build__floor:nth-child(3) {
+        --pm-floor: 2;
+    }
+
+    .pm-contact-build__floor:nth-child(4) {
+        --pm-floor: 3;
+    }
+
+    .pm-contact-build__spark {
+        position: absolute;
+        left: 50%;
+        bottom: 1.1rem;
+        width: 4px;
+        height: 4px;
+        margin-left: -2px;
+        border-radius: 999px;
+        background: rgb(99 102 241);
+        opacity: 0;
+        animation: pm-contact-spark 2.4s ease-out infinite;
+    }
+
+    @keyframes pm-contact-crane-sway {
+        0%,
+        100% {
+            transform: rotate(-4deg);
+        }
+        50% {
+            transform: rotate(5deg);
+        }
+    }
+
+    @keyframes pm-contact-hook-bob {
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(2px);
+        }
+    }
+
+    @keyframes pm-contact-floor-rise {
+        0%,
+        12% {
+            transform: scaleX(0.06);
+            opacity: 0.25;
+        }
+        40% {
+            transform: scaleX(1);
+            opacity: 1;
+        }
+        70%,
+        100% {
+            transform: scaleX(1);
+            opacity: 0.88;
+        }
+    }
+
+    @keyframes pm-contact-spark {
+        0%,
+        35% {
+            opacity: 0;
+            transform: scale(0.4);
+        }
+        45% {
+            opacity: 0.85;
+            transform: scale(1);
+        }
+        60%,
+        100% {
+            opacity: 0;
+            transform: scale(0.2);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .pm-contact-build__crane,
+        .pm-contact-build__crane-svg .pm-contact-build__crane-load,
+        .pm-contact-build__floor,
+        .pm-contact-build__spark {
+            animation: none;
+        }
+
+        .pm-contact-build__floor {
+            transform: scaleX(1);
+            opacity: 0.9;
+        }
+
+        .pm-contact-build__crane {
+            transform: none;
+        }
+    }
+
+    html.reduced-motion .pm-contact-build__crane,
+    html.reduced-motion .pm-contact-build__crane-svg .pm-contact-build__crane-load,
+    html.reduced-motion .pm-contact-build__floor,
+    html.reduced-motion .pm-contact-build__spark {
+        animation: none !important;
+    }
+
+    html.reduced-motion .pm-contact-build__floor {
+        transform: scaleX(1);
+        opacity: 0.9;
     }
 }

@@ -53,6 +53,10 @@ final class ContactChannelRegistry
 
     public static function label(string $type): string
     {
+        if ($type === 'email') {
+            return 'Email';
+        }
+
         return self::definitions()[$type]['label'] ?? $type;
     }
 

@@ -292,12 +292,12 @@ document.addEventListener('alpine:init', () => {
         _flashedEls: [],
 
         fieldFlashClear() {
-            (this._flashedEls || []).forEach((el) => el.classList.remove('tenant-field-error-flash'));
+            (this._flashedEls || []).forEach((el) => el.classList.remove('rb-public-field-error-flash'));
             this._flashedEls = [];
         },
 
         /**
-         * Прокрутка к проблемному полю и красная «вспышка» ~2 с (см. .tenant-field-error-flash в layout).
+         * Прокрутка к проблемному полю и красная «вспышка» (см. .rb-public-field-error-flash в shared CSS).
          *
          * @param  {Element|Element[]|null|undefined}  els
          */
@@ -310,7 +310,7 @@ document.addEventListener('alpine:init', () => {
             this._flashedEls = list;
             this.$nextTick(() => {
                 list[0].scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-                list.forEach((el) => el.classList.add('tenant-field-error-flash'));
+                list.forEach((el) => el.classList.add('rb-public-field-error-flash'));
                 clearTimeout(this._fieldFlashTimer);
                 this._fieldFlashTimer = setTimeout(() => this.fieldFlashClear(), 2000);
             });

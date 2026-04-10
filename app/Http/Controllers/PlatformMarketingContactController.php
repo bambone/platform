@@ -22,14 +22,19 @@ class PlatformMarketingContactController extends Controller
         $intentMeta = is_array($intentsMeta[$intent] ?? null) ? $intentsMeta[$intent] : [];
         $intentLabel = (string) ($intentMeta['title'] ?? $intent);
 
+        $contact = $request->resolvedContactPayload();
+
         $submission = new PublicInboundSubmission(
             requestType: 'platform_contact',
             name: $request->validated('name'),
-            phone: $request->validated('phone'),
+            phone: $contact['phone'],
             email: $request->validated('email') ?: null,
             message: $request->validated('message'),
             source: 'platform_marketing_contact',
             channel: 'web',
+            preferredContactChannel: $contact['preferred_contact_channel'],
+            preferredContactValue: $contact['preferred_contact_value'],
+            visitorContactChannelsJson: $contact['visitor_contact_channels_json'],
             payloadJson: [
                 'intent' => $intent,
                 'intent_label' => $intentLabel,

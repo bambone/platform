@@ -6,6 +6,9 @@
 Имя: {{ $payload['name'] ?? '—' }}
 Телефон: {{ $payload['phone'] ?? '—' }}
 Email: {{ $payload['email'] ?? '—' }}
+@if(!empty($payload['preferred_contact_label']))
+Предпочитаемый канал: {{ $payload['preferred_contact_label'] }}
+@endif
 
 Сообщение:
 {{ $payload['message'] ?? '—' }}

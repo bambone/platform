@@ -2,6 +2,7 @@
 
 namespace App\Product\Mail;
 
+use App\ContactChannels\ContactChannelRegistry;
 use App\Mail\PlatformMarketingContactMail;
 use App\Models\CrmRequest;
 use App\Models\CrmRequestActivity;
@@ -53,10 +54,15 @@ class ProductMailOrchestrator
     {
         $payload = $crm->payload_json ?? [];
 
+        $pref = (string) ($crm->preferred_contact_channel ?? '');
+
         return [
             'name' => $crm->name,
             'phone' => $crm->phone,
             'email' => $crm->email,
+            'preferred_contact_channel' => $pref,
+            'preferred_contact_label' => $pref !== '' ? ContactChannelRegistry::label($pref) : '',
+            'visitor_contact_channels_json' => $crm->visitor_contact_channels_json,
             'message' => $crm->message ?? '',
             'intent' => $payload['intent'] ?? '',
             'intent_label' => $payload['intent_label'] ?? ($payload['intent'] ?? ''),

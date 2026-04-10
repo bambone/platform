@@ -1,3 +1,5 @@
+import { initPublicFormValidationErrorsFromJson } from './shared/publicFormValidation.js';
+
 const pmIsLowPerfDevice = () =>
     window.innerWidth < 768 || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -212,6 +214,144 @@ const initPmFaqDetails = () => {
     });
 };
 
+/**
+ * Форма /contact: показ телефона / доп. поля в зависимости от выбранного канала связи.
+ */
+const initPmContactPreferredChannels = () => {
+    const form = document.querySelector('form[data-pm-contact-form="1"]');
+    const metaEl = document.getElementById('pm-contact-channel-meta');
+    if (!form || !metaEl) {
+        return;
+    }
+
+    let meta = [];
+    try {
+        meta = JSON.parse(metaEl.textContent || '[]');
+    } catch {
+        return;
+    }
+    if (!Array.isArray(meta) || meta.length === 0) {
+        return;
+    }
+
+    const byId = new Map(meta.map((row) => [row.id, row]));
+    const phoneBlock = document.getElementById('pm-contact-phone-block');
+    const phoneInput = document.getElementById('pm-contact-phone');
+    const phoneStar = phoneBlock?.querySelector('.pm-contact-phone-required');
+    const phoneHintEl = document.getElementById('pm-contact-phone-hint');
+    const valueBlock = document.getElementById('pm-contact-pref-value-block');
+    const valueInput = document.getElementById('pm-contact-pref-value');
+    const valueHint = document.getElementById('pm-contact-pref-value-dynamic-hint');
+
+    const selectedId = () => {
+        const el = form.querySelector('input[name="preferred_contact_channel"]:checked');
+        if (el) {
+            return el.value;
+        }
+        const hidden = form.querySelector('input[name="preferred_contact_channel"][type="hidden"]');
+        return hidden ? hidden.value : '';
+    };
+
+    let prevPreferredId = null;
+
+    const sync = () => {
+        const id = selectedId();
+        const row = byId.get(id);
+        if (!row || !phoneBlock || !phoneInput || !valueBlock || !valueInput) {
+            return;
+        }
+
+        const needPhone = Boolean(row.needs_phone);
+        const needValue = Boolean(row.needs_value);
+
+        if (prevPreferredId !== null && prevPreferredId !== id && valueInput) {
+            valueInput.value = '';
+        }
+        prevPreferredId = id;
+
+        phoneBlock.classList.toggle('hidden', !needPhone);
+        phoneInput.toggleAttribute('required', needPhone);
+        if (phoneStar) {
+            phoneStar.classList.toggle('hidden', !needPhone);
+        }
+
+        valueBlock.classList.toggle('hidden', !needValue);
+        valueInput.toggleAttribute('required', needValue);
+
+        const ph = String(row.value_placeholder ?? '').trim();
+        const hintText = String(row.value_hint ?? '').trim();
+        valueInput.setAttribute('placeholder', ph);
+        if (ph === '') {
+            valueInput.removeAttribute('placeholder');
+        }
+
+        if (id === 'whatsapp') {
+            valueInput.setAttribute('inputmode', 'tel');
+            valueInput.setAttribute('autocomplete', 'tel');
+        } else {
+            valueInput.setAttribute('inputmode', 'text');
+            valueInput.setAttribute('autocomplete', 'off');
+        }
+
+        if (phoneHintEl) {
+            const phoneHint =
+                id === 'whatsapp'
+                    ? 'Укажите тот же номер, что в WhatsApp (международный формат).'
+                    : 'Международный формат, для РФ можно с +7 или 8.';
+            phoneHintEl.textContent = phoneHint;
+        }
+
+        if (valueHint) {
+            valueHint.textContent = hintText;
+            valueHint.classList.toggle('hidden', hintText === '');
+        }
+    };
+
+    form.addEventListener('change', (e) => {
+        const t = e.target;
+        if (t && t.matches('input[name="preferred_contact_channel"]')) {
+            sync();
+        }
+    });
+
+    sync();
+};
+
+/**
+ * Оверлей «сборки сайта» при отправке формы контактов (мгновенная обратная связь до ответа сервера).
+ */
+const initPmContactSubmitBuildOverlay = () => {
+    const form = document.querySelector('form[data-pm-contact-form="1"]');
+    const overlay = document.getElementById('pm-contact-submit-overlay');
+    const btn = document.getElementById('pm-contact-submit-btn');
+    if (!form || !overlay) {
+        return;
+    }
+
+    form.addEventListener('submit', () => {
+        overlay.classList.add('pm-contact-submit-overlay--visible');
+        overlay.setAttribute('aria-hidden', 'false');
+        if (btn) {
+            btn.disabled = true;
+            btn.setAttribute('aria-busy', 'true');
+        }
+        form.setAttribute('data-pm-contact-submitting', '1');
+    });
+
+    window.addEventListener('pageshow', (ev) => {
+        if (!ev.persisted) {
+            return;
+        }
+        overlay.classList.remove('pm-contact-submit-overlay--visible');
+        overlay.setAttribute('aria-hidden', 'true');
+        if (btn) {
+            btn.disabled = false;
+            btn.removeAttribute('aria-busy');
+        }
+        form.removeAttribute('data-pm-contact-submitting');
+    });
+};
+
 const initPlatformMarketing = () => {
     initPmAnchorScroll();
     initPmMobileNav();
@@ -220,6 +360,17 @@ const initPlatformMarketing = () => {
     initPmContactSuccess();
     initPmScrollDepth();
     initPmFaqDetails();
+    initPmContactPreferredChannels();
+    initPmContactSubmitBuildOverlay();
+    const prefersReducedMotion =
+        document.documentElement.classList.contains('reduced-motion') ||
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    initPublicFormValidationErrorsFromJson({
+        formSelector: 'form[data-pm-contact-form="1"]',
+        errorKeysScriptId: 'pm-contact-validation-error-keys',
+        getStickyOffset: headerOffset,
+        afterScrollDelayMs: prefersReducedMotion ? 0 : 480,
+    });
 };
 
 if (document.readyState === 'loading') {

@@ -30,6 +30,10 @@ return [
 
         'yandex_metrica' => [
             'enabled' => true,
+            /** Opt-in: only if product explicitly enables SSR-style init for Metrika. */
+            'ssr' => env('ANALYTICS_YANDEX_SSR', false),
+            /** Opt-in: emit ecommerce: "dataLayer" only when pages use a dataLayer. */
+            'ecommerce_data_layer' => env('ANALYTICS_YANDEX_ECOMMERCE_DATALAYER', false),
             'allowed_script_hosts' => [
                 'mc.yandex.ru',
             ],

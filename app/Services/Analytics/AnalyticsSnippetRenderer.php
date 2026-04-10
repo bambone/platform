@@ -4,11 +4,15 @@ namespace App\Services\Analytics;
 
 use App\Models\TenantDomain;
 use App\Support\Analytics\AnalyticsSettingsData;
+use App\Support\Analytics\ResolvedPublicAnalytics;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
 
 final class AnalyticsSnippetRenderer
 {
+    private const string RESOLVED_PUBLIC_ANALYTICS_ATTRIBUTE = '_analytics_resolved_public';
+
     public function __construct(
         private readonly AnalyticsSettingsPersistence $persistence,
         private readonly PlatformMarketingAnalyticsPersistence $platformMarketingPersistence,
@@ -77,27 +81,110 @@ final class AnalyticsSnippetRenderer
      */
     public function renderHeadHtml(?Request $request = null): string
     {
+        $request ??= request();
+
         try {
             return $this->renderHeadHtmlInternal($request);
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            $this->logRenderFailure($e, $request);
+
             return '';
         }
     }
 
-    private function renderHeadHtmlInternal(?Request $request = null): string
+    /**
+     * Yandex Metrika noscript (body): must match {@see renderHeadHtml} via {@see resolvePublicAnalytics}.
+     */
+    public function renderYandexNoscriptBodyHtml(?Request $request = null): string
     {
         $request ??= request();
 
+        try {
+            return $this->renderYandexNoscriptBodyInternal($request);
+        } catch (\Throwable $e) {
+            $this->logRenderFailure($e, $request);
+
+            return '';
+        }
+    }
+
+    public function resolvePublicAnalytics(?Request $request = null): ResolvedPublicAnalytics
+    {
+        $request ??= request();
+        if ($request->attributes->has(self::RESOLVED_PUBLIC_ANALYTICS_ATTRIBUTE)) {
+            return $request->attributes->get(self::RESOLVED_PUBLIC_ANALYTICS_ATTRIBUTE);
+        }
+
+        $resolved = $this->computeResolvedPublicAnalytics($request);
+        $request->attributes->set(self::RESOLVED_PUBLIC_ANALYTICS_ATTRIBUTE, $resolved);
+
+        return $resolved;
+    }
+
+    private function renderHeadHtmlInternal(Request $request): string
+    {
         if (! $this->shouldRenderForRequest($request)) {
             return '';
         }
 
-        $data = $this->resolveSettingsData($request);
-        if ($data === null || ! $this->hasRenderableProviders($data)) {
+        $resolved = $this->resolvePublicAnalytics($request);
+        if (! $resolved->shouldRenderGa4() && ! $resolved->shouldRenderYandex()) {
             return '';
         }
 
-        return $this->buildSnippetsHtml($data);
+        return $this->buildHeadSnippetsHtml($resolved);
+    }
+
+    private function renderYandexNoscriptBodyInternal(Request $request): string
+    {
+        if (! $this->shouldRenderForRequest($request)) {
+            return '';
+        }
+
+        $resolved = $this->resolvePublicAnalytics($request);
+        if (! $resolved->shouldRenderYandex()) {
+            return '';
+        }
+
+        return View::make('analytics.yandex-metrica-noscript', [
+            'counterId' => $resolved->yandexCounterId,
+        ])->render();
+    }
+
+    private function computeResolvedPublicAnalytics(Request $request): ResolvedPublicAnalytics
+    {
+        if (! $this->shouldRenderForRequest($request)) {
+            return ResolvedPublicAnalytics::empty();
+        }
+
+        $data = $this->resolveSettingsData($request);
+        if ($data === null || ! $this->hasRenderableProviders($data)) {
+            return ResolvedPublicAnalytics::empty();
+        }
+
+        $ymEnabled = (bool) config('analytics.providers.yandex_metrica.enabled', true);
+        $gaEnabled = (bool) config('analytics.providers.ga4.enabled', true);
+
+        $yandexCounterId = null;
+        if ($ymEnabled && $data->hasRenderableYandex()) {
+            $yandexCounterId = (int) $data->yandexCounterId;
+        }
+
+        $ga4MeasurementId = null;
+        if ($gaEnabled && $data->hasRenderableGa4()) {
+            $ga4MeasurementId = $data->ga4MeasurementId;
+        }
+
+        return new ResolvedPublicAnalytics(
+            yandexCounterId: $yandexCounterId,
+            yandexClickmap: $data->yandexClickmap,
+            yandexTrackLinks: $data->yandexTrackLinks,
+            yandexAccurateTrackBounce: $data->yandexAccurateBounce,
+            yandexWebvisor: $data->yandexWebvisor,
+            yandexIncludeSsr: (bool) config('analytics.providers.yandex_metrica.ssr', false),
+            yandexIncludeEcommerceDataLayer: (bool) config('analytics.providers.yandex_metrica.ecommerce_data_layer', false),
+            ga4MeasurementId: $ga4MeasurementId,
+        );
     }
 
     private function resolveSettingsData(Request $request): ?AnalyticsSettingsData
@@ -132,26 +219,51 @@ final class AnalyticsSnippetRenderer
         return is_string($routeName) && str_starts_with($routeName, 'platform.');
     }
 
-    private function buildSnippetsHtml(AnalyticsSettingsData $data): string
+    private function buildHeadSnippetsHtml(ResolvedPublicAnalytics $resolved): string
     {
         $parts = [];
 
-        if (config('analytics.providers.ga4.enabled', true) && $data->hasRenderableGa4()) {
+        if ($resolved->shouldRenderGa4()) {
             $parts[] = View::make('analytics.ga4', [
-                'measurementId' => $data->ga4MeasurementId,
+                'measurementId' => $resolved->ga4MeasurementId,
             ])->render();
         }
 
-        if (config('analytics.providers.yandex_metrica.enabled', true) && $data->hasRenderableYandex()) {
-            $parts[] = View::make('analytics.yandex-metrica', [
-                'counterId' => (int) $data->yandexCounterId,
-                'webvisor' => $data->yandexWebvisor,
-                'clickmap' => $data->yandexClickmap,
-                'trackLinks' => $data->yandexTrackLinks,
-                'accurateTrackBounce' => $data->yandexAccurateBounce,
+        if ($resolved->shouldRenderYandex()) {
+            $parts[] = View::make('analytics.yandex-metrica-head', [
+                'counterId' => $resolved->yandexCounterId,
+                'clickmap' => $resolved->yandexClickmap,
+                'trackLinks' => $resolved->yandexTrackLinks,
+                'accurateTrackBounce' => $resolved->yandexAccurateTrackBounce,
+                'webvisor' => $resolved->yandexWebvisor,
+                'includeSsr' => $resolved->yandexIncludeSsr,
+                'includeEcommerceDataLayer' => $resolved->yandexIncludeEcommerceDataLayer,
             ])->render();
         }
 
         return implode("\n", array_filter($parts));
+    }
+
+    private function logRenderFailure(\Throwable $e, Request $request): void
+    {
+        Log::warning('analytics_snippet_render_failed', [
+            'exception' => $e->getMessage(),
+            'route' => $request->route()?->getName(),
+            'path' => $request->path(),
+            'analytics_context' => $this->analyticsContextLabel($request),
+        ]);
+    }
+
+    private function analyticsContextLabel(Request $request): string
+    {
+        if (currentTenant() !== null) {
+            return 'tenant';
+        }
+
+        if ($this->requestIsPlatformMarketingPublicContext($request)) {
+            return 'platform_marketing';
+        }
+
+        return 'none';
     }
 }

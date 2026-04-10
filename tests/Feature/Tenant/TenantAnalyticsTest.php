@@ -86,8 +86,13 @@ class TenantAnalyticsTest extends TestCase
             ->getContent();
 
         $this->assertStringContainsString('googletagmanager.com/gtag/js?id=G-TESTPUBLIC1', $html);
-        $this->assertStringContainsString('mc.yandex.ru/metrika/tag.js', $html);
-        $this->assertStringContainsString('ym(123456', $html);
+        $this->assertStringContainsString('<!-- Yandex.Metrika counter -->', $html);
+        $this->assertStringContainsString('https://mc.yandex.ru/metrika/tag.js?id=123456', $html);
+        $this->assertStringContainsString("ym(123456, 'init',", $html);
+        $this->assertStringContainsString('https://mc.yandex.ru/watch/123456', $html);
+        $posBody = stripos($html, '<body');
+        $this->assertNotFalse($posBody);
+        $this->assertStringNotContainsString('mc.yandex.ru/watch/', substr($html, 0, $posBody));
     }
 
     public function test_yandex_disabled_does_not_render_even_with_counter_in_storage(): void

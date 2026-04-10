@@ -468,6 +468,7 @@
     </style>
 </head>
 <body class="antialiased premium-bg text-silver selection:bg-moto-amber selection:text-[#0c0c0c] overflow-x-clip pb-32 sm:pb-0">
+    @include('partials.analytics-yandex-noscript-body')
 
     <x-header />
 

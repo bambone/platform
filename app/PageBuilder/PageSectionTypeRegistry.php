@@ -9,6 +9,17 @@ use App\PageBuilder\Blueprints\ContactsInfoSectionBlueprint;
 use App\PageBuilder\Blueprints\ContentFaqSectionBlueprint;
 use App\PageBuilder\Blueprints\CtaBlueprint;
 use App\PageBuilder\Blueprints\DataTableSectionBlueprint;
+use App\PageBuilder\Blueprints\Expert\CredentialsGridBlueprint;
+use App\PageBuilder\Blueprints\Expert\EditorialGalleryBlueprint;
+use App\PageBuilder\Blueprints\Expert\ExpertHeroBlueprint;
+use App\PageBuilder\Blueprints\Expert\ExpertLeadFormBlueprint;
+use App\PageBuilder\Blueprints\Expert\FounderExpertBioBlueprint;
+use App\PageBuilder\Blueprints\Expert\ImportantConditionsBlueprint;
+use App\PageBuilder\Blueprints\Expert\PricingCardsBlueprint;
+use App\PageBuilder\Blueprints\Expert\ProblemCardsBlueprint;
+use App\PageBuilder\Blueprints\Expert\ProcessStepsBlueprint;
+use App\PageBuilder\Blueprints\Expert\ReviewFeedBlueprint;
+use App\PageBuilder\Blueprints\Expert\ServiceProgramCardsBlueprint;
 use App\PageBuilder\Blueprints\FaqBlueprint;
 use App\PageBuilder\Blueprints\FeaturesBlueprint;
 use App\PageBuilder\Blueprints\GalleryBlueprint;
@@ -52,6 +63,17 @@ final class PageSectionTypeRegistry
             new GalleryBlueprint,
             new CardsTeaserBlueprint,
             new MotorcycleCatalogBlueprint,
+            new ExpertHeroBlueprint,
+            new ProblemCardsBlueprint,
+            new CredentialsGridBlueprint,
+            new ServiceProgramCardsBlueprint,
+            new ProcessStepsBlueprint,
+            new ImportantConditionsBlueprint,
+            new PricingCardsBlueprint,
+            new ReviewFeedBlueprint,
+            new EditorialGalleryBlueprint,
+            new FounderExpertBioBlueprint,
+            new ExpertLeadFormBlueprint,
         ];
     }
 

@@ -1,7 +1,17 @@
 @php
-    $h = $data['section_heading'] ?? '';
+    $h = $data['section_heading'] ?? ($data['heading'] ?? '');
     $items = is_array($data['items'] ?? null) ? $data['items'] : [];
+    if ($items === [] && tenant() && ($data['source'] ?? null) === 'faqs_table') {
+        $items = \App\Models\Faq::query()
+            ->where('show_on_home', true)
+            ->where('status', 'published')
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn ($faq) => ['question' => $faq->question, 'answer' => $faq->answer])
+            ->all();
+    }
 @endphp
+@if(count($items) > 0)
 <section>
     @if(filled($h))
         <h2 class="mb-6 text-balance text-xl font-bold text-white sm:text-2xl">{{ $h }}</h2>
@@ -15,3 +25,4 @@
         @endforeach
     </dl>
 </section>
+@endif

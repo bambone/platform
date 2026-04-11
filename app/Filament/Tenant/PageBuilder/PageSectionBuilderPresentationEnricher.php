@@ -57,6 +57,11 @@ final class PageSectionBuilderPresentationEnricher
                 $notes = $n;
                 $presentation = array_merge($presentation, $p);
                 break;
+            case 'faq':
+                [$onSite, $n, $p] = $this->faqPresentation($themeKey);
+                $notes = $n;
+                $presentation = array_merge($presentation, $p);
+                break;
             case 'gallery':
                 [$onSite, $n, $p] = $this->galleryPresentation($themeKey);
                 $notes = $n;

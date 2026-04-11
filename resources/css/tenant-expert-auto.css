@@ -1,0 +1,438 @@
+/* Expert / instructor landing (theme expert_auto) — премиальная тёмная палитра (без «оранжевого шаблона») */
+
+:root {
+    --ex-accent: #c9a87c;
+    --ex-accent-soft: rgba(201, 168, 124, 0.16);
+    --ex-hero-overlay: rgba(6, 9, 14, 0.52);
+    --ex-surface: rgba(22, 26, 34, 0.78);
+    --ex-border: rgba(255, 255, 255, 0.09);
+    --ex-ink: #e8eaef;
+}
+
+/*
+ * На body вешается .expert-auto-theme (tenant/layouts/app.blade.php).
+ * Переопределяем Tailwind-токен moto-amber для утилит text-moto-amber / border-moto-amber на публичном сайте.
+ */
+body.expert-auto-theme {
+    --color-moto-amber: #c9a87c;
+}
+
+body.expert-auto-theme.premium-bg {
+    background:
+        radial-gradient(ellipse 120% 70% at 50% -25%, rgba(201, 168, 124, 0.1), transparent 55%),
+        radial-gradient(ellipse 50% 40% at 100% 0%, rgba(80, 120, 180, 0.14), transparent 50%),
+        radial-gradient(ellipse 60% 50% at 0% 100%, rgba(201, 168, 124, 0.06), transparent 45%),
+        linear-gradient(168deg, #0f1628 0%, #0c1222 38%, #0a0f1c 100%);
+    min-height: 100vh;
+}
+
+body.expert-auto-theme .tenant-btn-primary {
+    background: linear-gradient(145deg, #e2cfaa 0%, #c9a87c 48%, #a68958 100%);
+    color: #10131a;
+    box-shadow: 0 6px 22px -4px rgba(201, 168, 124, 0.38);
+}
+
+body.expert-auto-theme .tenant-btn-primary:hover {
+    background: linear-gradient(145deg, #efe4cc 0%, #d4bc94 50%, #b89762 100%);
+    color: #0a0c12;
+}
+
+body.expert-auto-theme .tenant-btn-primary:focus-visible {
+    outline-color: rgba(201, 168, 124, 0.85);
+}
+
+body.expert-auto-theme .tenant-btn-secondary:focus-visible {
+    outline-color: rgba(201, 168, 124, 0.75);
+}
+
+/*
+ * Sticky CTA: держим ниже типичных cookie/consent-слоёв (часто z-index 50–100).
+ */
+.expert-home {
+    --ex-sticky-z: 24;
+}
+
+@media (min-width: 1024px) {
+    .expert-sticky-cta {
+        display: none !important;
+    }
+}
+
+.expert-sticky-cta {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--ex-sticky-z);
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    pointer-events: none;
+}
+
+.expert-sticky-cta__inner {
+    pointer-events: auto;
+    margin: 0 auto;
+    max-width: 28rem;
+    padding: 0 0.75rem 0.25rem;
+}
+
+.expert-hero-bg {
+    background:
+        linear-gradient(var(--ex-hero-overlay), var(--ex-hero-overlay)),
+        radial-gradient(circle at 18% 18%, rgba(201, 168, 124, 0.1), transparent 46%),
+        radial-gradient(circle at 82% 58%, rgba(100, 140, 180, 0.09), transparent 42%),
+        #080a10;
+}
+
+.expert-card {
+    border-radius: 1rem;
+    border: 1px solid var(--ex-border);
+    background: var(--ex-surface);
+    backdrop-filter: blur(14px);
+}
+
+/* Чередование «воздух / плотность» между секциями (обёртка .expert-home-section) */
+.expert-home-main > .expert-home-section:nth-child(even):not(:has([data-expert-hero])) {
+    position: relative;
+}
+
+.expert-home-main > .expert-home-section:nth-child(even):not(:has([data-expert-hero]))::before {
+    content: "";
+    position: absolute;
+    inset: -0.5rem -0.75rem;
+    z-index: -1;
+    border-radius: 1.5rem;
+    background: linear-gradient(165deg, rgba(255, 255, 255, 0.028) 0%, transparent 55%);
+    pointer-events: none;
+}
+
+@media (min-width: 1024px) {
+    .expert-home-main > .expert-home-section:nth-child(even):not(:has([data-expert-hero]))::before {
+        inset: -0.75rem -1rem;
+    }
+}
+
+.expert-sticky-cta.is-hidden {
+    opacity: 0;
+    transform: translateY(0.5rem);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.expert-sticky-cta:not(.is-hidden) .expert-sticky-cta__btn {
+    transition: transform 0.15s ease;
+}
+
+/* Hero trust chips */
+.expert-trust-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(10, 12, 18, 0.58);
+    padding: 0.45rem 0.85rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(248, 250, 252, 0.94);
+    backdrop-filter: blur(10px);
+}
+
+@media (min-width: 640px) {
+    .expert-trust-badge {
+        padding: 0.5rem 1rem;
+        font-size: 0.8125rem;
+    }
+}
+
+/* Отзывы */
+.expert-review__quote {
+    font-size: clamp(1rem, 2.5vw, 1.125rem);
+    line-height: 1.65;
+}
+
+.expert-review--featured .expert-review__quote {
+    font-size: clamp(1.0625rem, 2.6vw, 1.25rem);
+    line-height: 1.7;
+}
+
+body.expert-auto-theme .expert-review--featured {
+    border-color: rgba(201, 168, 124, 0.32);
+    background: linear-gradient(135deg, rgba(201, 168, 124, 0.1), rgba(255, 255, 255, 0.03));
+}
+
+body.expert-auto-theme .tenant-thin-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(201, 168, 124, 0.32);
+}
+
+body.expert-auto-theme .tenant-thin-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(201, 168, 124, 0.48);
+}
+
+/* —— Cinematic hero (full-bleed, deep navy, крупный визуал) —— */
+.expert-hero-cinematic__bleed {
+    position: relative;
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    overflow: clip;
+}
+
+.expert-hero-cinematic__bg {
+    background:
+        radial-gradient(ellipse 95% 75% at 12% 18%, rgba(201, 168, 124, 0.14), transparent 52%),
+        radial-gradient(ellipse 55% 50% at 95% 32%, rgba(90, 125, 185, 0.11), transparent 50%),
+        linear-gradient(158deg, #141c30 0%, #101828 35%, #0c1222 100%);
+}
+
+.expert-hero-cinematic__bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+        102deg,
+        transparent,
+        transparent 18px,
+        rgba(255, 255, 255, 0.018) 18px,
+        rgba(255, 255, 255, 0.018) 19px
+    );
+    opacity: 0.5;
+    mask-image: linear-gradient(90deg, transparent, black 28%, black 72%, transparent);
+    pointer-events: none;
+}
+
+.expert-hero-cinematic__glow {
+    background: radial-gradient(ellipse 70% 55% at 78% 42%, rgba(201, 168, 124, 0.09), transparent 62%);
+    mix-blend-mode: screen;
+    opacity: 0.85;
+}
+
+.expert-hero-cinematic__h1 {
+    font-size: clamp(2rem, 5.2vw, 3.65rem);
+    letter-spacing: -0.035em;
+    line-height: 1.04;
+    text-shadow: 0 4px 56px rgba(0, 0, 0, 0.5);
+}
+
+.expert-hero-cinematic__lead {
+    font-size: clamp(1.0625rem, 2.15vw, 1.3rem);
+    line-height: 1.45;
+    max-width: 36rem;
+}
+
+.expert-hero-cinematic__img {
+    transform: scale(1.12);
+    transform-origin: center center;
+}
+
+.expert-hero-cinematic__photo-shell {
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.04),
+        0 40px 100px -32px rgba(0, 0, 0, 0.75),
+        0 0 80px -20px rgba(201, 168, 124, 0.12);
+}
+
+.expert-trust-badge--hero-lite {
+    list-style: none;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.035);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: rgba(248, 250, 252, 0.8);
+    letter-spacing: 0.02em;
+}
+
+@media (min-width: 640px) {
+    .expert-trust-badge--hero-lite {
+        padding: 0.4rem 0.95rem;
+    }
+}
+
+.expert-trust-badge--soft {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(248, 250, 252, 0.88);
+    font-weight: 500;
+}
+
+/* —— Native video / media dialogs —— */
+.expert-video-dialog {
+    margin: auto;
+    max-width: calc(100vw - 2rem);
+    width: min(56rem, 100%);
+    border: none;
+    padding: 0;
+    background: transparent;
+}
+
+.expert-video-dialog::backdrop {
+    background: rgba(2, 4, 8, 0.82);
+    backdrop-filter: blur(8px);
+}
+
+.expert-video-dialog__panel {
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: #0a0c12;
+    box-shadow: 0 24px 80px -20px rgba(0, 0, 0, 0.75);
+}
+
+.expert-video-dialog__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.expert-video-dialog__body {
+    padding: 1rem;
+}
+
+.expert-video-dialog__body--flush {
+    padding: 0;
+}
+
+.expert-video-dialog__video {
+    display: block;
+    width: 100%;
+    max-height: min(78vh, 900px);
+    background: #000;
+}
+
+.expert-video-dialog--wide {
+    width: min(72rem, 100%);
+}
+
+/* —— Section rhythm —— */
+.expert-home .expert-review--mega .expert-review__stars,
+.expert-home .expert-review--grid .expert-review__stars {
+    user-select: none;
+}
+
+.expert-faq-item button:focus-visible {
+    outline: 2px solid rgba(201, 168, 124, 0.55);
+    outline-offset: 2px;
+}
+
+.expert-faq-chevron {
+    font-size: 1.25rem;
+    font-weight: 300;
+    line-height: 1;
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.expert-faq-item:has(.expert-faq-panel:not(.hidden)) .expert-faq-chevron {
+    transform: rotate(180deg);
+    background: rgba(201, 168, 124, 0.12);
+    border-color: rgba(201, 168, 124, 0.25);
+}
+
+@media (min-width: 1024px) {
+    .expert-program-card--featured {
+        grid-column: span 2;
+    }
+}
+
+/* —— Шапка expert_auto: три колонки, без тесноты —— */
+body.expert-auto-theme .expert-header-bar__brand {
+    max-width: min(100%, 16rem);
+}
+
+@media (min-width: 768px) {
+    body.expert-auto-theme .expert-header-bar__brand {
+        max-width: min(100%, 22rem);
+    }
+}
+
+@media (min-width: 1280px) {
+    body.expert-auto-theme .expert-header-bar__brand {
+        max-width: none;
+    }
+}
+
+/* —— Секции главной: ритм плотности (не сплошные «коробки») —— */
+.expert-home-section {
+    margin-bottom: 0;
+}
+
+.expert-home-section--problem-cards .expert-problems-mega,
+.expert-home-section--credentials-grid .expert-cred-mega > div:first-child {
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
+.expert-home-section--service-program-cards .expert-programs-mega > div:first-child {
+    border-color: rgba(255, 255, 255, 0.06);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 42%);
+}
+
+.expert-home-section--process-steps {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+
+.expert-home-section--important-conditions .expert-conditions-mega {
+    padding: 0.5rem 0;
+}
+
+.expert-home-section--editorial-gallery .expert-media-gallery {
+    padding: 0.75rem 0 0.25rem;
+}
+
+.expert-home-section--faq {
+    padding-top: 0.5rem;
+}
+
+.expert-section-title {
+    text-shadow: 0 2px 40px rgba(0, 0, 0, 0.35);
+}
+
+/* Программы: второстепенные карточки чуть проще */
+body.expert-auto-theme .expert-program-card:not(.expert-program-card--featured) {
+    border-color: rgba(255, 255, 255, 0.07);
+    background: rgba(10, 12, 18, 0.55);
+}
+
+/* Процесс: шаги и медиа */
+.expert-process-mega__step {
+    border-left-color: rgba(201, 168, 124, 0.2);
+}
+
+.expert-process-mega__aside {
+    border-color: rgba(201, 168, 124, 0.22);
+}
+
+/* Медиа-сетка: акцент на первой ячейке и видео */
+.expert-media-gallery__cell:has([data-expert-video-open]) {
+    box-shadow: 0 0 0 1px rgba(201, 168, 124, 0.15);
+}
+
+/* Отзывы spotlight */
+body.expert-auto-theme .expert-review--spotlight {
+    position: relative;
+}
+
+body.expert-auto-theme .expert-review--spotlight::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(201, 168, 124, 0.35), transparent 45%, rgba(255, 255, 255, 0.06));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* Чередование even-секций: мягче, чем раньше */
+.expert-home-main > .expert-home-section:nth-child(even):not(:has([data-expert-hero]))::before {
+    opacity: 0.65;
+}

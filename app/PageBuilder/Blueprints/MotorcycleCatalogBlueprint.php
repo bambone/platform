@@ -11,6 +11,11 @@ use Filament\Forms\Components\TextInput;
  */
 final class MotorcycleCatalogBlueprint extends AbstractPageSectionBlueprint
 {
+    public function supportsTheme(string $themeKey): bool
+    {
+        return in_array($themeKey, ['default', 'moto'], true);
+    }
+
     public function id(): string
     {
         return 'motorcycle_catalog';

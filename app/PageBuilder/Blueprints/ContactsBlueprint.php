@@ -9,6 +9,11 @@ use Filament\Forms\Components\TextInput;
 
 final class ContactsBlueprint extends AbstractPageSectionBlueprint
 {
+    public function supportsTheme(string $themeKey): bool
+    {
+        return in_array($themeKey, ['default', 'moto', 'expert_auto'], true);
+    }
+
     public function id(): string
     {
         return 'contacts';
@@ -40,11 +45,13 @@ final class ContactsBlueprint extends AbstractPageSectionBlueprint
             'heading' => '',
             'description' => '',
             'phone' => '',
+            'email' => '',
             'whatsapp' => '',
             'telegram' => '',
             'address' => '',
             'map_embed_html' => '',
             'map_url' => '',
+            'social_note' => '',
         ];
     }
 
@@ -64,6 +71,10 @@ final class ContactsBlueprint extends AbstractPageSectionBlueprint
                 ->tel()
                 ->telRegex(RussianPhone::filamentTelDisplayRegex())
                 ->maxLength(64),
+            TextInput::make('data_json.email')
+                ->label('Email')
+                ->email()
+                ->maxLength(255),
             TextInput::make('data_json.whatsapp')
                 ->label('WhatsApp (ссылка или номер)')
                 ->maxLength(255),
@@ -82,6 +93,10 @@ final class ContactsBlueprint extends AbstractPageSectionBlueprint
                 ->label('Ссылка на карту')
                 ->url()
                 ->maxLength(2048),
+            TextInput::make('data_json.social_note')
+                ->label('Соцсети (текстом)')
+                ->maxLength(255)
+                ->columnSpanFull(),
         ];
     }
 
@@ -93,8 +108,9 @@ final class ContactsBlueprint extends AbstractPageSectionBlueprint
     public function previewSummary(array $data): string
     {
         $phone = trim((string) ($data['phone'] ?? ''));
+        $email = trim((string) ($data['email'] ?? ''));
         $addr = $this->stringPreview($data, 'address', 50);
 
-        return trim(implode(' · ', array_filter([$phone, $addr], fn (string $s): bool => $s !== ''))) ?: 'Контакты не заполнены';
+        return trim(implode(' · ', array_filter([$phone, $email, $addr], fn (string $s): bool => $s !== ''))) ?: 'Контакты не заполнены';
     }
 }

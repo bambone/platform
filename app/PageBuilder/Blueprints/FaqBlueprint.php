@@ -6,9 +6,15 @@ use App\PageBuilder\PageSectionCategory;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 
 final class FaqBlueprint extends AbstractPageSectionBlueprint
 {
+    public function supportsTheme(string $themeKey): bool
+    {
+        return in_array($themeKey, ['default', 'moto', 'expert_auto'], true);
+    }
+
     public function id(): string
     {
         return 'faq';
@@ -39,6 +45,7 @@ final class FaqBlueprint extends AbstractPageSectionBlueprint
         return [
             'section_heading' => '',
             'items' => [],
+            'source' => '',
         ];
     }
 
@@ -49,6 +56,12 @@ final class FaqBlueprint extends AbstractPageSectionBlueprint
                 ->label('Заголовок секции')
                 ->maxLength(255)
                 ->columnSpanFull(),
+            Toggle::make('data_json.source')
+                ->label('Брать вопросы из раздела FAQ (таблица, show_on_home)')
+                ->dehydrated(true)
+                ->formatStateUsing(fn (?string $state): bool => $state === 'faqs_table')
+                ->dehydrateStateUsing(fn (bool $state): string => $state ? 'faqs_table' : '')
+                ->helperText('Если включено, список ниже не используется на сайте — выводятся опубликованные FAQ с признаком «на главной».'),
             Repeater::make('data_json.items')
                 ->label('Вопросы и ответы')
                 ->schema([

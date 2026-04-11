@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    @php($__stripTenantServiceWorker = ! app()->isProduction() || str_ends_with(request()->getHost(), '.local') || in_array(request()->getHost(), ['localhost', '127.0.0.1'], true))
+    @php
+        $__stripTenantServiceWorker = ! app()->isProduction() || str_ends_with(request()->getHost(), '.local') || in_array(request()->getHost(), ['localhost', '127.0.0.1'], true);
+    @endphp
     @if ($__stripTenantServiceWorker)
         {{-- Старый SW из прошлых деплоев продолжает перехватывать навигацию и отдаёт offline при медленном ответе; на *.local / dev снимаем регистрацию и чистим Cache Storage. --}}
         <script>
@@ -24,7 +26,9 @@
         </script>
     @endif
 
-    @php($tenantFavicon = trim($branding['favicon'] ?? ''))
+    @php
+        $tenantFavicon = trim($branding['favicon'] ?? '');
+    @endphp
     @if($tenantFavicon !== '')
         <link rel="icon" href="{{ $tenantFavicon }}" type="image/png">
     @endif
@@ -43,13 +47,30 @@
 
     @include('tenant.partials.analytics-head')
 
-    @php($bunnyInterCss = 'https://fonts.bunny.net/css?family=inter:400,500,600,700,800&display=swap')
+    @php
+        $bunnyInterCss = 'https://fonts.bunny.net/css?family=inter:400,500,600,700,800&display=swap';
+    @endphp
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link rel="preload" href="{{ $bunnyInterCss }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="{{ $bunnyInterCss }}" rel="stylesheet"></noscript>
 
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @if (tenant()?->themeKey() === 'expert_auto')
+            @php
+                $__expertAutoViteOk = file_exists(public_path('hot'));
+                if (! $__expertAutoViteOk) {
+                    $__manifestPath = public_path('build/manifest.json');
+                    if (is_file($__manifestPath) && is_readable($__manifestPath)) {
+                        $__manifest = json_decode((string) file_get_contents($__manifestPath), true) ?: [];
+                        $__expertAutoViteOk = isset($__manifest['resources/css/tenant-expert-auto.css']);
+                    }
+                }
+            @endphp
+            @if ($__expertAutoViteOk)
+                @vite(['resources/css/tenant-expert-auto.css'])
+            @endif
+        @endif
     @else
         <script src="https://cdn.tailwindcss.com"></script>
         <script>
@@ -270,6 +291,7 @@
             *, *::before, *::after { animation-duration: 0.2s !important; transition-duration: 0.2s !important; }
         }
         .premium-bg { background: radial-gradient(circle at 50% -20%, #1a1a1a 0%, #050505 70%); min-height: 100vh; }
+        /* expert_auto: усиленный фон в tenant-expert-auto.css (.expert-auto-theme.premium-bg) */
         .glass { background: rgba(25, 25, 25, 0.6); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); }
         .glass-card { background: rgba(30, 30, 30, 0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease; }
         .glass-card:hover { transform: translateY(-4px); background: rgba(40, 40, 40, 0.6); border-color: rgba(255, 255, 255, 0.15); }
@@ -449,7 +471,14 @@
         /* Подсветка ошибок публичных форм: resources/css/shared/public-form-field-feedback.css (rb-public-field-error-flash) */
     </style>
 </head>
-<body class="antialiased premium-bg text-silver selection:bg-moto-amber selection:text-[#0c0c0c] overflow-x-clip pb-32 sm:pb-0">
+@php
+    $__tenantExpertAuto = tenant()?->themeKey() === 'expert_auto';
+@endphp
+<body @class([
+    'antialiased premium-bg text-silver overflow-x-clip pb-32 sm:pb-0',
+    'expert-auto-theme' => $__tenantExpertAuto,
+    'selection:bg-moto-amber selection:text-[#0c0c0c]' => true,
+])>
     @include('partials.analytics-yandex-noscript-body')
 
     <x-header />
@@ -472,11 +501,19 @@
         @endif
     </div>
 
-    <div class="fixed bottom-0 left-0 w-full z-50 bg-white/5 backdrop-blur-xl border-t border-white/10 p-4 sm:hidden pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <button type="button" onclick="document.getElementById('catalog')?.scrollIntoView({behavior: 'smooth'})" class="tenant-btn-primary w-full min-h-12 text-base">
-            В автопарк
-        </button>
-    </div>
+    @if($__tenantExpertAuto)
+        <div class="fixed bottom-0 left-0 z-50 w-full border-t border-white/10 bg-[rgba(8,10,14,0.92)] p-4 backdrop-blur-xl sm:hidden pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <a href="{{ route('home') }}#expert-inquiry" class="tenant-btn-primary flex w-full min-h-12 items-center justify-center text-base">
+                Записаться
+            </a>
+        </div>
+    @else
+        <div class="fixed bottom-0 left-0 w-full z-50 bg-white/5 backdrop-blur-xl border-t border-white/10 p-4 sm:hidden pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <button type="button" onclick="document.getElementById('catalog')?.scrollIntoView({behavior: 'smooth'})" class="tenant-btn-primary w-full min-h-12 text-base">
+                В автопарк
+            </button>
+        </div>
+    @endif
 
     <div class="hidden sm:block">
         <x-contact-cta />

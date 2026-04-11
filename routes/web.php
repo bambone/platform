@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\ExpertInquiryController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\LocationLandingController;
@@ -138,6 +139,8 @@ Route::middleware([EnsureTenantContext::class, RememberTenantCatalogLocation::cl
         ->name('api.tenant.booking.motorcycle-calendar-hints');
     Route::post('/api/bookings', [BookingController::class, 'store'])->name('api.bookings.store');
     Route::post('/api/leads', [LeadController::class, 'store'])->name('api.leads.store');
+    Route::post('/api/tenant/expert-inquiry', [ExpertInquiryController::class, 'store'])
+        ->name('api.tenant.expert-inquiry.store');
     Route::get('/api/tenant/scheduling/bookable-services', [TenantPublicSchedulingController::class, 'bookableServices'])
         ->middleware('throttle:60,1')
         ->name('api.tenant.scheduling.bookable-services');

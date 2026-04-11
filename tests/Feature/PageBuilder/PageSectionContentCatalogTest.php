@@ -70,6 +70,22 @@ class PageSectionContentCatalogTest extends TestCase
         $this->assertNotContains('structured_text', $ids);
     }
 
+    public function test_expert_auto_home_landing_excludes_motorcycle_catalog(): void
+    {
+        $reg = app(PageSectionTypeRegistry::class);
+        $tenant = $this->createTenantWithActiveDomain('cat-expert-auto');
+        $home = $this->makePage($tenant, 'home');
+
+        $idsExpert = array_map(fn ($b) => $b->id(), $reg->forPage($home, 'expert_auto'));
+        $this->assertNotContains('motorcycle_catalog', $idsExpert);
+        $this->assertContains('expert_hero', $idsExpert);
+        $this->assertContains('pricing_cards', $idsExpert);
+
+        $idsDefault = array_map(fn ($b) => $b->id(), $reg->forPage($home, 'default'));
+        $this->assertContains('motorcycle_catalog', $idsDefault);
+        $this->assertNotContains('expert_hero', $idsDefault);
+    }
+
     public function test_non_home_catalog_includes_hero_and_content_blocks(): void
     {
         $reg = app(PageSectionTypeRegistry::class);

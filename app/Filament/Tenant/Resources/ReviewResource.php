@@ -2,12 +2,12 @@
 
 namespace App\Filament\Tenant\Resources;
 
+use App\Filament\Forms\Components\TenantSpatieMediaLibraryFileUpload;
 use App\Filament\Tenant\Resources\ReviewResource\Pages;
 use App\Models\Review;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use App\Filament\Forms\Components\TenantSpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -46,8 +46,18 @@ class ReviewResource extends Resource
                     ->schema([
                         TextInput::make('name')->required()->maxLength(255),
                         TextInput::make('city')->maxLength(255),
-                        Textarea::make('text')->required()->rows(4),
+                        TextInput::make('headline')->label('Заголовок / лид')->maxLength(255),
+                        TextInput::make('category_key')->label('Категория (ключ)')->maxLength(64),
+                        Textarea::make('text_short')->label('Короткий текст')->rows(2),
+                        Textarea::make('text_long')->label('Полный текст')->rows(5),
+                        Textarea::make('text')->label('Текст (legacy)')->rows(3)
+                            ->helperText('Заполняется автоматически из полного/короткого при сохранении, если пусто.'),
                         TextInput::make('rating')->numeric()->minValue(1)->maxValue(5)->default(5),
+                        Select::make('media_type')
+                            ->label('Тип медиа')
+                            ->options(['text' => 'Текст', 'video' => 'Видео'])
+                            ->default('text'),
+                        TextInput::make('video_url')->label('URL видео')->url()->maxLength(2048),
                         Select::make('motorcycle_id')
                             ->relationship('motorcycle', 'name')
                             ->searchable()

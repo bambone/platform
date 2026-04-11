@@ -25,7 +25,8 @@ class HomeController extends Controller
         TenantPublicCatalogLocationService $catalogLocation,
         MotorcycleLocationCatalogService $locationScope,
     ) {
-        if (tenant() === null) {
+        $tenant = tenant();
+        if ($tenant === null) {
             abort(404);
         }
 
@@ -33,7 +34,48 @@ class HomeController extends Controller
          * Не кэшируем массив для Blade через Cache::remember: внутри Eloquent Collection / Model.
          * После serialize/unserialize из Redis на проде возможен «incomplete object» и 500 на home.blade.php.
          */
+        if ($tenant->themeKey() === 'expert_auto') {
+            return tenant_view('pages.home', $this->buildExpertAutoHomeIndexData());
+        }
+
         return tenant_view('pages.home', $this->buildHomeIndexData($catalogLocation, $locationScope));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildExpertAutoHomeIndexData(): array
+    {
+        $page = Page::query()
+            ->where('slug', 'home')
+            ->where('status', 'published')
+            ->with(['sections' => function ($q): void {
+                $q->where('status', 'published')
+                    ->where('is_visible', true)
+                    ->where('section_key', '!=', 'main')
+                    ->orderBy('sort_order')
+                    ->orderBy('id');
+            }])
+            ->first();
+
+        $homeLayoutSections = $page ? $page->sections : collect();
+        $sections = $this->sectionsKeyedForLegacyComponents($homeLayoutSections);
+        $faqs = Faq::where('show_on_home', true)
+            ->where('status', 'published')
+            ->orderBy('sort_order')
+            ->get();
+
+        return [
+            'bikes' => collect(),
+            'badges' => [],
+            'sections' => $sections,
+            'homeLayoutSections' => $homeLayoutSections,
+            'faqs' => $faqs,
+            'reviews' => collect(),
+            'selectedCatalogLocation' => null,
+            'catalogLocations' => collect(),
+            'catalogLocationFormAction' => route('home'),
+        ];
     }
 
     /**

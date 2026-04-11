@@ -2,16 +2,19 @@
 
 namespace App\Filament\Tenant\Resources;
 
+use App\Filament\Forms\Components\TenantPublicImagePicker;
 use App\Filament\Tenant\Resources\TenantServiceProgramResource\Pages;
 use App\Models\TenantServiceProgram;
 use App\Tenant\Expert\ServiceProgramType;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -40,7 +43,8 @@ class TenantServiceProgramResource extends Resource
     {
         return $schema
             ->components([
-                Section::make()
+                Section::make('Основное')
+                    ->description('Оформление главной и других страниц — в разделе «Страницы» (конструктор секций).')
                     ->schema([
                         TextInput::make('slug')
                             ->label('Slug')
@@ -62,12 +66,63 @@ class TenantServiceProgramResource extends Resource
                             ->label('Цена (копейки)')
                             ->numeric()
                             ->minValue(0)
-                            ->helperText('Целое число в минимальных единицах валюты (для RUB — копейки).'),
+                            ->helperText('Целое число в минимальных единицах валюты (для RUB — копейки). Оставьте пустым для «По запросу».'),
                         TextInput::make('price_prefix')->label('Префикс цены («от» и т.п.)')->maxLength(32),
-                        Toggle::make('is_featured')->label('Избранное'),
+                        Toggle::make('is_featured')->label('Избранное (широкая карточка)'),
                         Toggle::make('is_visible')->label('Видимость на сайте')->default(true),
                         TextInput::make('sort_order')->numeric()->default(0),
                     ])->columns(2),
+                Section::make('Тексты на карточке программы')
+                    ->schema([
+                        Repeater::make('audience_json')
+                            ->label('Кому подходит')
+                            ->schema([
+                                TextInput::make('text')
+                                    ->label('Пункт')
+                                    ->maxLength(500)
+                                    ->required(),
+                            ])
+                            ->defaultItems(0)
+                            ->addActionLabel('Добавить пункт')
+                            ->reorderable()
+                            ->columnSpanFull(),
+                        Repeater::make('outcomes_json')
+                            ->label('Результат / что даёт программа')
+                            ->schema([
+                                TextInput::make('text')
+                                    ->label('Пункт')
+                                    ->maxLength(500)
+                                    ->required(),
+                            ])
+                            ->defaultItems(0)
+                            ->addActionLabel('Добавить пункт')
+                            ->reorderable()
+                            ->columnSpanFull(),
+                    ])->columns(1),
+                Section::make('Обложка карточки программы (R2)')
+                    ->description('Рекомендуемый путь: expert_auto/programs/{slug}/card-cover-desktop.webp и card-cover-mobile.webp (публичный диск тенанта).')
+                    ->schema([
+                        TenantPublicImagePicker::make('cover_image_ref')
+                            ->label('Desktop (портретная панель, ~1200×1500)')
+                            ->uploadPublicSiteSubdirectory(fn (Get $get): string => 'expert_auto/programs/'.trim((string) ($get('slug') ?: 'draft')))
+                            ->helperText('Ключ вида tenants/{id}/public/expert_auto/programs/{slug}/card-cover-desktop.webp или относительный путь под public.')
+                            ->columnSpanFull(),
+                        TenantPublicImagePicker::make('cover_mobile_ref')
+                            ->label('Mobile (широкий crop, ~1280×720), опционально')
+                            ->uploadPublicSiteSubdirectory(fn (Get $get): string => 'expert_auto/programs/'.trim((string) ($get('slug') ?: 'draft')))
+                            ->helperText('Если пусто — на узких экранах подставится desktop-версия.')
+                            ->columnSpanFull(),
+                        TextInput::make('cover_image_alt')
+                            ->label('Alt-текст для изображения')
+                            ->maxLength(500)
+                            ->columnSpanFull(),
+                        TextInput::make('cover_object_position')
+                            ->label('Object position (CSS)')
+                            ->maxLength(64)
+                            ->placeholder('напр. center 30%')
+                            ->helperText('Только для тонкой подгонки кадра; оставьте пустым для center.')
+                            ->columnSpanFull(),
+                    ]),
             ]);
     }
 

@@ -5,7 +5,9 @@ namespace Database\Seeders\Tenant;
 use App\Http\Controllers\HomeController;
 use App\Models\TenantSetting;
 use App\Support\Storage\TenantStorage;
+use App\Support\Storage\TenantStorageArea;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Демо-контент expert-тенанта aflyatunov (страница home, секции, программы, FAQ и т.д.).
@@ -271,6 +273,97 @@ final class AflyatunovExpertBootstrap
         $file = ltrim($file, '/');
 
         return TenantStorage::forTrusted($tenantId)->publicUrl('site/brand/'.$file);
+    }
+
+    /**
+     * Загружает WebP-обложки из {@see self::programCoverBundleDir()} в публичное хранилище тенанта (R2/local):
+     * {@code expert_auto/programs/{slug}/card-cover-desktop.webp} и дубликат в {@code card-cover-mobile.webp}
+     * до появления отдельных mobile-мастеров. Прописывает {@code cover_image_ref}, {@code cover_mobile_ref}, {@code cover_image_alt}.
+     */
+    public static function syncProgramCoverAssetsToTenantPublicDisk(?int $tenantId = null): void
+    {
+        $tenantId ??= (int) DB::table('tenants')->where('slug', self::SLUG)->value('id');
+        if ($tenantId <= 0) {
+            return;
+        }
+
+        if (! Schema::hasTable('tenant_service_programs') || ! Schema::hasColumn('tenant_service_programs', 'cover_image_ref')) {
+            return;
+        }
+
+        $dir = self::programCoverBundleDir();
+        $map = [
+            'single-session' => 'single-session.webp',
+            'confidence' => 'confidence.webp',
+            'counter-emergency' => 'counter-emergency.webp',
+            'parking' => 'parking.webp',
+            'city-driving' => 'city-driving.webp',
+            'route' => 'route.webp',
+            'motorsport' => 'motorsport.webp',
+        ];
+
+        $altBySlug = [
+            'single-session' => 'Индивидуальное занятие по вождению',
+            'confidence' => 'Уверенное спокойное вождение в городе',
+            'counter-emergency' => 'Контраварийная подготовка на зимней площадке',
+            'parking' => 'Практика парковки в городских условиях',
+            'city-driving' => 'Городское движение и перестроения',
+            'route' => 'Практика по маршруту в реальном районе',
+            'motorsport' => 'Тренировка и сопровождение в автоспорте',
+        ];
+
+        $ts = TenantStorage::forTrusted($tenantId);
+        $now = now();
+        $hasMobile = Schema::hasColumn('tenant_service_programs', 'cover_mobile_ref');
+        $hasAlt = Schema::hasColumn('tenant_service_programs', 'cover_image_alt');
+
+        foreach ($map as $slug => $filename) {
+            $path = $dir.DIRECTORY_SEPARATOR.$filename;
+            if (! is_file($path)) {
+                continue;
+            }
+            $bytes = file_get_contents($path);
+            if ($bytes === false || $bytes === '') {
+                continue;
+            }
+            $relDesktop = 'expert_auto/programs/'.$slug.'/card-cover-desktop.webp';
+            $relMobile = 'expert_auto/programs/'.$slug.'/card-cover-mobile.webp';
+            $ts->putInArea(TenantStorageArea::PublicSite, $relDesktop, $bytes, [
+                'visibility' => 'public',
+                'ContentType' => 'image/webp',
+            ]);
+            $ts->putInArea(TenantStorageArea::PublicSite, $relMobile, $bytes, [
+                'visibility' => 'public',
+                'ContentType' => 'image/webp',
+            ]);
+            $keyDesktop = 'tenants/'.$tenantId.'/public/'.$relDesktop;
+            $keyMobile = 'tenants/'.$tenantId.'/public/'.$relMobile;
+
+            $payload = [
+                'cover_image_ref' => $keyDesktop,
+                'updated_at' => $now,
+            ];
+            if ($hasMobile) {
+                $payload['cover_mobile_ref'] = $keyMobile;
+            }
+            if ($hasAlt) {
+                $payload['cover_image_alt'] = $altBySlug[$slug] ?? null;
+            }
+
+            DB::table('tenant_service_programs')
+                ->where('tenant_id', $tenantId)
+                ->where('slug', $slug)
+                ->update($payload);
+        }
+
+        HomeController::forgetCachedPayloadForTenant($tenantId);
+    }
+
+    private static function programCoverBundleDir(): string
+    {
+        return dirname((new \ReflectionClass(self::class))->getFileName())
+            .DIRECTORY_SEPARATOR.'assets'
+            .DIRECTORY_SEPARATOR.'program-covers';
     }
 
     private static function ensureExpertPublicBranding(int $tenantId): void

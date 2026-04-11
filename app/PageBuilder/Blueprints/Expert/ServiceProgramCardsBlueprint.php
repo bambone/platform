@@ -4,6 +4,7 @@ namespace App\PageBuilder\Blueprints\Expert;
 
 use App\PageBuilder\PageSectionCategory;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 
 final class ServiceProgramCardsBlueprint extends ExpertSectionBlueprint
@@ -20,7 +21,7 @@ final class ServiceProgramCardsBlueprint extends ExpertSectionBlueprint
 
     public function description(): string
     {
-        return 'Карточки из сущности «Программы»; в секции только заголовки и лимит.';
+        return 'Карточки из «Программы» (тексты и фон каждой — в разделе Программы). Здесь — заголовок секции, подзаголовок и лимит.';
     }
 
     public function icon(): string
@@ -37,6 +38,7 @@ final class ServiceProgramCardsBlueprint extends ExpertSectionBlueprint
     {
         return [
             'section_heading' => '',
+            'section_lead' => 'Модули обучения под конкретную задачу: от городского комфорта до зимней безопасности и спорта.',
             'section_id' => 'programs',
             'limit' => 12,
             'layout' => 'grid',
@@ -49,6 +51,12 @@ final class ServiceProgramCardsBlueprint extends ExpertSectionBlueprint
     {
         return [
             TextInput::make('data_json.section_heading')->label('Заголовок')->maxLength(255)->columnSpanFull(),
+            Textarea::make('data_json.section_lead')
+                ->label('Подзаголовок под заголовком')
+                ->rows(3)
+                ->maxLength(2000)
+                ->helperText('Пустое поле — на сайте подзаголовок не показывается.')
+                ->columnSpanFull(),
             TextInput::make('data_json.section_id')->label('HTML id секции')->maxLength(64),
             TextInput::make('data_json.limit')->numeric()->label('Лимит')->minValue(1)->maxValue(48)->default(12),
             Select::make('data_json.layout')

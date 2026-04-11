@@ -1,3 +1,13 @@
+@php
+    $pwaAppTitle = $site_name ?? config('app.name');
+    if (is_string($pwaAppTitle)) {
+        $pwaParts = preg_split('/\s*[—–]\s*/u', $pwaAppTitle, 2);
+        $pwaAppTitle = trim((string) ($pwaParts[0] ?? $pwaAppTitle));
+        if ($pwaAppTitle === '') {
+            $pwaAppTitle = $site_name ?? config('app.name');
+        }
+    }
+@endphp
 <div x-data="pwaInstallPrompt()"
      x-init="initPrompt()"
      x-show="showPrompt"
@@ -17,8 +27,8 @@
             </svg>
         </div>
         <div class="flex-1">
-            <h4 class="text-white font-bold text-base mb-1">Установить Moto Levins</h4>
-            <p class="text-silver/90 text-sm leading-snug mb-3">Добавьте на главный экран для быстрого доступа к каталогу в 1 клик.</p>
+            <h4 class="text-white font-bold text-base mb-1">Установить {{ $pwaAppTitle }}</h4>
+            <p class="text-silver/90 text-sm leading-snug mb-3">Добавьте на главный экран для быстрого доступа к сайту в один клик.</p>
             
             <!-- iOS Instructions -->
             <div x-show="isIos" class="bg-white/5 rounded-lg p-3 text-sm text-silver mb-4 border border-white/5" style="display: none;">
@@ -83,7 +93,7 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('appinstalled', () => {
                 this.showPrompt = false;
                 this.deferredPrompt = null;
-                console.log('Moto Levins PWA safely installed');
+                console.log('PWA install completed');
             });
         },
 

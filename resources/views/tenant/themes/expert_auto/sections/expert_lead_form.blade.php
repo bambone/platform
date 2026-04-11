@@ -18,7 +18,7 @@
         }
     }
     $sectionId = trim((string) ($data['section_id'] ?? 'expert-inquiry')) ?: 'expert-inquiry';
-    $stickyLabel = trim((string) ($data['sticky_cta_label'] ?? ''));
+    $stickyLabel = trim((string) ($data['sticky_cta_label'] ?? '')) ?: 'Записаться';
     $programs = \App\Models\TenantServiceProgram::query()
         ->where('is_visible', true)
         ->orderBy('sort_order')
@@ -27,27 +27,31 @@
     $successMessage = $config?->success_message ?? 'Спасибо! Заявка отправлена.';
     $endpoint = route('api.tenant.expert-inquiry.store');
 @endphp
-<section id="{{ e($sectionId) }}" class="expert-lead-mega mb-14 scroll-mt-24 sm:mb-20">
-    <div id="expert-inquiry-block" class="expert-lead-mega__shell relative overflow-hidden rounded-[1.35rem] border border-moto-amber/20 bg-gradient-to-br from-moto-amber/[0.08] via-[#0e121c] to-[#080a10] p-6 shadow-[0_24px_60px_-28px_rgba(201,168,124,0.2)] sm:p-9 lg:p-10">
+<section id="{{ e($sectionId) }}" class="expert-lead-mega relative mb-14 min-w-0 scroll-mt-24 sm:mb-20 lg:mb-28">
+    <div id="expert-inquiry-block" class="expert-lead-mega__shell relative mx-auto max-w-4xl overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-gradient-to-br from-[#0c0f17] to-[#050608] p-5 shadow-[0_32px_80px_-24px_rgba(201,168,124,0.2)] sm:rounded-[2rem] sm:p-10 lg:p-14">
         <div class="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-moto-amber/10 blur-3xl" aria-hidden="true"></div>
         <div class="relative z-10">
         @if($heading !== '')
-            <h2 class="text-balance text-[clamp(1.45rem,3.2vw,2rem)] font-extrabold leading-tight text-white sm:text-3xl">{{ $heading }}</h2>
+            <div class="px-1 text-center">
+                <h2 class="expert-section-title text-balance text-[clamp(1.55rem,4.5vw,3.1rem)] font-extrabold leading-[1.12] tracking-tight text-white/95 sm:leading-[1.1]">{{ $heading }}</h2>
+            </div>
         @endif
         @if($sub !== '')
-            <p class="mt-3 max-w-2xl text-sm leading-relaxed text-silver sm:mt-4 sm:text-base">{{ $sub }}</p>
+            <div class="mt-5 text-center">
+                <p class="mx-auto max-w-2xl text-[15px] font-normal leading-[1.6] text-silver/85 sm:text-[17px]">{{ $sub }}</p>
+            </div>
         @endif
         @if(count($trustChips) > 0)
-            <ul class="mt-6 flex flex-wrap gap-2 sm:gap-3">
+            <ul class="mt-8 flex flex-wrap justify-center gap-2 sm:gap-3">
                 @foreach($trustChips as $chip)
-                    <li class="expert-trust-badge expert-trust-badge--soft">{{ $chip }}</li>
+                    <li class="inline-flex rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-silver/70 sm:px-4 sm:py-2">{{ $chip }}</li>
                 @endforeach
             </ul>
         @endif
 
         <div id="expert-inquiry-alert" class="mt-4 hidden rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-silver" role="status"></div>
 
-        <form id="expert-inquiry-form" class="mt-6 space-y-4" novalidate
+        <form id="expert-inquiry-form" class="expert-inquiry-form mt-8 space-y-5 sm:mt-10 sm:space-y-5" novalidate
               data-expert-inquiry-endpoint="{{ e($endpoint) }}"
               data-expert-inquiry-default-success="{{ e($successMessage) }}">
             @csrf
@@ -55,92 +59,100 @@
             <input type="hidden" name="preferred_contact_channel" value="phone">
             <input type="hidden" name="page_url" value="{{ url()->current() }}">
 
-            <div>
-                <label for="expert-name" class="mb-1 block text-sm font-medium text-white">Имя <span class="text-red-400">*</span></label>
-                <input id="expert-name" name="name" type="text" required autocomplete="name" maxlength="255"
-                       class="w-full min-h-11 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-moto-amber/60">
+            <div class="grid min-w-0 gap-4 sm:gap-5 md:grid-cols-2">
+                <div>
+                    <label for="expert-name" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">Имя <span class="text-moto-amber">*</span></label>
+                    <input id="expert-name" name="name" type="text" required autocomplete="name" maxlength="255"
+                           class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors placeholder:text-silver/40 focus:border-moto-amber/50 focus:bg-white/[0.04]">
+                </div>
+                <div>
+                    <label for="expert-phone" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">Телефон <span class="text-moto-amber">*</span></label>
+                    <input id="expert-phone" name="phone" type="tel" required autocomplete="tel" inputmode="tel" maxlength="16"
+                           class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors placeholder:text-silver/40 focus:border-moto-amber/50 focus:bg-white/[0.04]">
+                </div>
             </div>
+
             <div>
-                <label for="expert-phone" class="mb-1 block text-sm font-medium text-white">Телефон <span class="text-red-400">*</span></label>
-                <input id="expert-phone" name="phone" type="tel" required autocomplete="tel" inputmode="tel" maxlength="16"
-                       class="w-full min-h-11 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-moto-amber/60">
-            </div>
-            <div>
-                <label for="expert-goal" class="mb-1 block text-sm font-medium text-white">Что хотите улучшить <span class="text-red-400">*</span></label>
+                <label for="expert-goal" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">Что хотите улучшить <span class="text-moto-amber">*</span></label>
                 <textarea id="expert-goal" name="goal_text" required rows="3" maxlength="2000"
-                          class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-moto-amber/60"></textarea>
+                          class="expert-form-input w-full min-h-[6.5rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors placeholder:text-silver/40 focus:border-moto-amber/50 focus:bg-white/[0.04]"></textarea>
             </div>
 
             @if($programs->isNotEmpty())
                 <div>
-                    <label for="expert-program" class="mb-1 block text-sm font-medium text-white">Программа (необязательно)</label>
+                    <label for="expert-program" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">Программа (необязательно)</label>
                     <select id="expert-program" name="program_slug"
-                            class="w-full min-h-11 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-moto-amber/60">
-                        <option value="">—</option>
+                            class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors focus:border-moto-amber/50 focus:bg-white/[0.04] appearance-none">
+                        <option value="" class="bg-black text-white">—</option>
                         @foreach($programs as $p)
-                            <option value="{{ e($p->slug) }}">{{ e($p->title) }}</option>
+                            <option value="{{ e($p->slug) }}" class="bg-black text-white">{{ e($p->title) }}</option>
                         @endforeach
                     </select>
                 </div>
             @endif
 
-            <div>
-                <label for="expert-schedule" class="mb-1 block text-sm font-medium text-white">Удобное время</label>
-                <input id="expert-schedule" name="preferred_schedule" type="text" maxlength="500"
-                       class="w-full min-h-11 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-moto-amber/60">
-            </div>
-            <div>
-                <label for="expert-district" class="mb-1 block text-sm font-medium text-white">Район</label>
-                <input id="expert-district" name="district" type="text" maxlength="255"
-                       class="w-full min-h-11 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-moto-amber/60">
-            </div>
-            <div class="grid gap-4 sm:grid-cols-2">
+            <div class="grid min-w-0 gap-4 sm:gap-5 md:grid-cols-2">
                 <div>
-                    <label for="expert-car" class="mb-1 block text-sm font-medium text-white">Свой автомобиль</label>
-                    <select id="expert-car" name="has_own_car" class="w-full min-h-11 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white">
-                        <option value="">Не указано</option>
-                        <option value="yes">Да</option>
-                        <option value="no">Нет</option>
+                    <label for="expert-schedule" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">Удобное время</label>
+                    <input id="expert-schedule" name="preferred_schedule" type="text" maxlength="500"
+                           class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors placeholder:text-silver/40 focus:border-moto-amber/50 focus:bg-white/[0.04]">
+                </div>
+                <div>
+                    <label for="expert-district" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">Район</label>
+                    <input id="expert-district" name="district" type="text" maxlength="255"
+                           class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors placeholder:text-silver/40 focus:border-moto-amber/50 focus:bg-white/[0.04]">
+                </div>
+            </div>
+
+            <div class="grid min-w-0 gap-4 sm:grid-cols-3 sm:gap-5">
+                <div>
+                    <label for="expert-car" class="mb-2 block text-[13px] font-semibold tracking-wide text-white/90">Свой авто</label>
+                    <select id="expert-car" name="has_own_car" class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[14px] text-white outline-none appearance-none focus:border-moto-amber/50">
+                        <option value="" class="bg-black text-white">Не указано</option>
+                        <option value="yes" class="bg-black text-white">Да</option>
+                        <option value="no" class="bg-black text-white">Нет</option>
                     </select>
                 </div>
                 <div>
-                    <label for="expert-trans" class="mb-1 block text-sm font-medium text-white">Коробка передач</label>
+                    <label for="expert-trans" class="mb-2 block text-[13px] font-semibold tracking-wide text-white/90">Коробка передач</label>
                     <input id="expert-trans" name="transmission" type="text" maxlength="64"
-                           class="w-full min-h-11 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-moto-amber/60">
+                           class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[14px] text-white outline-none transition-colors placeholder:text-silver/40 focus:border-moto-amber/50 focus:bg-white/[0.04]">
+                </div>
+                <div>
+                    <label for="expert-license" class="mb-2 block text-[13px] font-semibold tracking-wide text-white/90">Есть права</label>
+                    <select id="expert-license" name="has_license" class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[14px] text-white outline-none appearance-none focus:border-moto-amber/50">
+                        <option value="" class="bg-black text-white">Не указано</option>
+                        <option value="yes" class="bg-black text-white">Да</option>
+                        <option value="no" class="bg-black text-white">Нет</option>
+                    </select>
                 </div>
             </div>
+            
             <div>
-                <label for="expert-license" class="mb-1 block text-sm font-medium text-white">Есть водительское удостоверение</label>
-                <select id="expert-license" name="has_license" class="w-full min-h-11 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white">
-                    <option value="">Не указано</option>
-                    <option value="yes">Да</option>
-                    <option value="no">Нет</option>
-                </select>
-            </div>
-            <div>
-                <label for="expert-comment" class="mb-1 block text-sm font-medium text-white">Комментарий</label>
+                <label for="expert-comment" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">Комментарий</label>
                 <textarea id="expert-comment" name="comment" rows="2" maxlength="2000"
-                          class="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-moto-amber/60"></textarea>
+                          class="expert-form-input w-full min-h-[4.5rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors placeholder:text-silver/40 focus:border-moto-amber/50 focus:bg-white/[0.04]"></textarea>
             </div>
 
-            <button type="submit" id="expert-inquiry-submit" class="tenant-btn-primary w-full justify-center sm:w-auto">
-                Отправить заявку
-            </button>
+            <div class="mt-8 text-center sm:mt-10">
+                <button type="submit" id="expert-inquiry-submit" class="tenant-btn-primary inline-flex min-h-[4rem] w-full items-center justify-center rounded-xl px-12 text-[17px] font-bold shadow-2xl transition-transform hover:scale-[1.02] sm:w-auto">
+                    Отправить заявку
+                </button>
+            </div>
         </form>
         </div>
     </div>
 </section>
 
-@if($stickyLabel !== '')
-    @once('expert-sticky-bar')
-        <div id="expert-sticky-cta" class="expert-sticky-cta" data-target="{{ e($sectionId) }}" aria-hidden="false">
-            <div class="expert-sticky-cta__inner">
-                <a href="#{{ e($sectionId) }}" class="expert-sticky-cta__btn tenant-btn-primary flex w-full justify-center shadow-lg shadow-black/40">{{ e($stickyLabel) }}</a>
-            </div>
+@once('expert-sticky-bar')
+    <div id="expert-sticky-cta" class="expert-sticky-cta" data-target="{{ e($sectionId) }}" aria-hidden="false">
+        <div class="expert-sticky-cta__inner">
+            <a href="#{{ e($sectionId) }}" class="expert-sticky-cta__btn tenant-btn-primary flex w-full justify-center rounded-xl py-3 text-[15px] font-bold shadow-md shadow-black/30 min-h-0">{{ e($stickyLabel) }}</a>
         </div>
-    @endonce
+    </div>
+@endonce
 
-    @once('expert-sticky-bar-script')
+@once('expert-sticky-bar-script')
         <script>
             (function () {
                 const bar = document.getElementById('expert-sticky-cta');
@@ -200,8 +212,7 @@
                 apply();
             })();
         </script>
-    @endonce
-@endif
+@endonce
 
 @once('expert-inquiry-form-script')
     <script>

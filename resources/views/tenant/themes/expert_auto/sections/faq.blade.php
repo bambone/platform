@@ -12,22 +12,26 @@
     }
 @endphp
 @if(count($items) > 0)
-<section class="expert-faq-mega mb-16 sm:mb-24">
+<section class="expert-faq-mega relative mb-14 min-w-0 sm:mb-20 lg:mb-28">
     @if(filled($h))
-        <h2 class="mb-8 text-balance text-[clamp(1.45rem,3.2vw,2.1rem)] font-bold tracking-tight text-white sm:mb-10">{{ $h }}</h2>
+        <h2 class="expert-section-title mb-8 max-w-4xl text-balance text-[clamp(1.65rem,4vw,3rem)] font-bold leading-[1.12] tracking-tight text-white/95 sm:mb-10 sm:leading-[1.1] lg:mb-12 lg:w-2/3">{{ $h }}</h2>
     @endif
-    <dl class="space-y-2.5 sm:space-y-3.5">
+    <dl class="expert-faq-list mx-auto min-w-0 max-w-5xl space-y-2 sm:space-y-4 lg:space-y-5 xl:max-w-6xl">
         @foreach($items as $i => $item)
             @php $fid = 'expert-faq-'.$i; @endphp
-            <div class="expert-faq-item rounded-2xl border border-white/[0.06] bg-white/[0.02] transition-colors hover:border-white/12">
+            <div class="expert-faq-item overflow-hidden rounded-[1.15rem] border border-white/[0.05] bg-white/[0.015] backdrop-blur-sm transition-all duration-300 hover:border-white/[0.1] hover:bg-white/[0.03] sm:rounded-[1.5rem]">
                 <dt>
-                    <button type="button" class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left sm:px-6 sm:py-[1.125rem]" aria-expanded="false" aria-controls="{{ $fid }}" data-expert-faq-toggle>
-                        <span class="text-base font-semibold text-white sm:text-lg">{{ $item['question'] ?? '' }}</span>
-                        <span class="expert-faq-chevron inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-moto-amber" aria-hidden="true">+</span>
+                    <button type="button" class="group flex w-full min-w-0 min-h-[3.25rem] items-center justify-between gap-3 px-4 py-3.5 text-left sm:min-h-0 sm:gap-5 sm:px-8 sm:py-6" aria-expanded="false" aria-controls="{{ $fid }}" data-expert-faq-toggle>
+                        <span class="min-w-0 flex-1 text-[1rem] font-bold leading-snug tracking-wide text-white/95 sm:text-[1.05rem] md:text-[1.15rem]">{{ $item['question'] ?? '' }}</span>
+                        <span class="expert-faq-chevron relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-moto-amber/10 text-moto-amber ring-1 ring-inset ring-moto-amber/30 transition-transform duration-300 group-hover:bg-moto-amber/20 sm:h-10 sm:w-10" aria-hidden="true">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m-6-6h12" class="expert-faq-icon-line transition-transform duration-300"/></svg>
+                        </span>
                     </button>
                 </dt>
-                <dd id="{{ $fid }}" class="expert-faq-panel hidden border-t border-white/[0.05] px-5 pb-5 pt-0 sm:px-6 sm:pb-6">
-                    <div class="pt-3 text-sm leading-relaxed text-silver/95 sm:pt-4 sm:text-base">{!! nl2br(e($item['answer'] ?? '')) !!}</div>
+                <dd id="{{ $fid }}" class="expert-faq-panel hidden px-4 pb-5 pt-0 sm:px-8 sm:pb-8">
+                    <div class="border-t border-white/[0.06] pt-4 sm:pt-6">
+                        <div class="max-w-4xl text-[15px] font-medium leading-[1.75] text-silver/85 text-pretty sm:text-[16px]">{!! nl2br(e($item['answer'] ?? '')) !!}</div>
+                    </div>
                 </dd>
             </div>
         @endforeach
@@ -53,17 +57,20 @@
                     var b = document.querySelector('[aria-controls="' + p.id + '"]');
                     if (b) b.setAttribute('aria-expanded', 'false');
                     var r = b ? b.closest('.expert-faq-item') : null;
-                    var c = r ? r.querySelector('.expert-faq-chevron') : null;
-                    if (c) c.textContent = '+';
+                    var prevChev = r ? r.querySelector('.expert-faq-chevron') : null;
+                    var prevPath = prevChev ? prevChev.querySelector('svg path') : null;
+                    if (prevPath) prevPath.setAttribute('d', 'M12 6v12m-6-6h12');
                 });
                 if (open) {
                     panel.classList.add('hidden');
                     btn.setAttribute('aria-expanded', 'false');
-                    if (chev) chev.textContent = '+';
+                    var svg = chev ? chev.querySelector('svg path') : null;
+                    if (svg) svg.setAttribute('d', 'M12 6v12m-6-6h12'); // +
                 } else {
                     panel.classList.remove('hidden');
                     btn.setAttribute('aria-expanded', 'true');
-                    if (chev) chev.textContent = '−';
+                    var svg = chev ? chev.querySelector('svg path') : null;
+                    if (svg) svg.setAttribute('d', 'M18 12H6'); // -
                 }
             });
         })();

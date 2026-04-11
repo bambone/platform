@@ -34,12 +34,14 @@ final class TenantPushBrandAssetsFromDocsCommand extends Command
      * @var array<string, string>
      */
     private const AFLYATUNOV_SOURCES = [
-        'gallery-2.jpg' => '9ZFRE_a6qRt6nv4rZnC6DWkc6AukL1l8NKd1G188ZUoh-w18MQ51x8NRr59m77Zu8bse2u7tpk-EJC8kfSKVjVmX.jpg',
+        // Hero = тот же кадр, что gallery-2 (инструктор между машинами на снегу), не грязевой RVM1 и не только «брызги».
+        'hero.jpg' => '9ZFRE_a6qRt6nv4rZnC6DWkc6AukL1l8NKd1G188ZUoh-w18MQ51x8NRr59m77Zu8bse2u7tpk-EJC8kfSKVjVmX.jpg',
+        'gallery-1.jpg' => 'aG4tubA-b7OX3OEu5nwG8H6qH5CeoNX3SngrQOyrrhGadbqRG0w2_8kCnPvsPSRmYSfqzWTq7aUFYqfVjovvChOw.jpg',
+        'gallery-2.jpg' => 'uzWtsTjuJ9bWZkHqaTcQTqJWPWvHJMUydG3UGgkMQiIRuSYbMoRW4GgJgoIx1oei2MfGGdR5vaVvrJBmm_8A6idD.jpg',
+        'gallery-3.jpg' => 'RVM1WLeO4qG7Nmk8xhVRmPbC5eNwzN8mqffSINbKAt_Cvtlpb6U9l7OQIrF_zeTlEMcdO8kCI-8DlZINOEsYuKhm.jpg',
         'portrait.jpg' => 'XJfSyqMeoLUBYofocC0hPsVFcGFqHNsHP5ZoY1MCETNM27mcH9ZeCebxnuN6W_gWQKWZU3YA.jpg',
         'credentials-bg.jpg' => 'vxuR83OeYf0aEFtx_HDTjm7LUIly-am1EEUVHoIbaU5iM4QrTLeeTclcJXPAWNrk74vH0Bcketj3KUh9DWBC2e4s.jpg',
         'process-accent.jpg' => '1xuCpiN_NhtGBTPTkz-pEu0BW8aOWCQxxhjW0Z_De8JCubxsYXTtVeCQ1W-5gFd5_U7rjmWXN8dOOfdC7INURJMK.jpg',
-        'gallery-1.jpg' => 'aG4tubA-b7OX3OEu5nwG8H6qH5CeoNX3SngrQOyrrhGadbqRG0w2_8kCnPvsPSRmYSfqzWTq7aUFYqfVjovvChOw.jpg',
-        'gallery-3.jpg' => 'uzWtsTjuJ9bWZkHqaTcQTqJWPWvHJMUydG3UGgkMQiIRuSYbMoRW4GgJgoIx1oei2MfGGdR5vaVvrJBmm_8A6idD.jpg',
     ];
 
     private const INTRO_VIDEO_LOGICAL = 'site/brand/video-intro.mp4';
@@ -96,7 +98,12 @@ final class TenantPushBrandAssetsFromDocsCommand extends Command
                 if ($dry) {
                     continue;
                 }
-                $ok = $storage->putPublic($logical, File::get($srcPath), ['visibility' => 'public']);
+                $putOptions = ['visibility' => 'public'];
+                $ct = self::contentTypeForBrandFile($destName);
+                if ($ct !== null) {
+                    $putOptions['ContentType'] = $ct;
+                }
+                $ok = $storage->putPublic($logical, File::get($srcPath), $putOptions);
                 if (! $ok) {
                     $this->error('Не удалось записать: '.$logical);
 
@@ -201,5 +208,16 @@ final class TenantPushBrandAssetsFromDocsCommand extends Command
         }
 
         $this->info('Обновлён hero_video_url в секции expert_hero (главная).');
+    }
+
+    private static function contentTypeForBrandFile(string $destName): ?string
+    {
+        return match (strtolower(pathinfo($destName, PATHINFO_EXTENSION))) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'mp4' => 'video/mp4',
+            default => null,
+        };
     }
 }

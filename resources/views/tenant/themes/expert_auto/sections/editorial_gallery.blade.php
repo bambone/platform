@@ -33,44 +33,50 @@
     }
     $h = trim((string) ($data['section_heading'] ?? ''));
     $lead = trim((string) ($data['section_lead'] ?? ''));
-    $sid = (int) ($section->id ?? 0);
+    $sid = (int) data_get($section ?? [], 'id', 0);
 @endphp
-<section class="expert-media-gallery mb-16 sm:mb-24">
-    <div class="mb-10 max-w-3xl lg:mb-12">
+<section class="expert-media-gallery relative mb-14 min-w-0 sm:mb-20 lg:mb-28" x-data="{ galleryMore: false }">
+    <div class="mb-8 min-w-0 sm:mb-10 lg:mb-14">
         @if($h !== '')
-            <h2 class="text-balance text-[clamp(1.5rem,3.5vw,2.25rem)] font-bold tracking-tight text-white">{{ $h }}</h2>
+            <h2 class="expert-section-title text-balance text-[clamp(1.65rem,4vw,3rem)] font-bold leading-[1.12] tracking-tight text-white/95 sm:leading-[1.1]">{{ $h }}</h2>
         @endif
         @if($lead !== '')
-            <p class="mt-4 text-base leading-relaxed text-silver sm:text-lg">{{ $lead }}</p>
+            <p class="mt-4 max-w-3xl text-[15px] font-normal leading-[1.65] text-silver/85 sm:mt-5 sm:text-lg">{{ $lead }}</p>
         @endif
     </div>
 
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+    <div class="grid min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-4 lg:gap-6">
         @foreach($items as $i => $item)
             @php
                 $isHero = $i === 0;
                 $dlgId = 'expert-media-'.$sid.'-'.$i;
             @endphp
-            <figure class="expert-media-gallery__cell group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] {{ $isHero ? 'col-span-2 row-span-2 min-h-[14rem] sm:min-h-[18rem]' : 'min-h-[9rem] sm:min-h-[11rem]' }}">
+            <figure
+                class="expert-media-gallery__cell group relative min-w-0 overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.03] sm:rounded-2xl lg:rounded-[1.5rem] {{ $isHero ? 'col-span-2 row-span-2 min-h-[12rem] sm:min-h-[20rem] lg:min-h-[26rem]' : 'min-h-[8.5rem] sm:min-h-[11rem] lg:min-h-[14rem]' }}"
+                @if($i >= 3)
+                    x-bind:class="{ 'max-lg:hidden': !galleryMore }"
+                @endif
+            >
                 @if($item['kind'] === 'video')
                     <button type="button" class="relative block h-full w-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber/70" data-expert-video-open="{{ e($dlgId) }}" aria-label="{{ e($item['caption'] ?: 'Воспроизвести видео') }}">
                         @if($item['poster_url'] !== '')
-                            <img src="{{ e($item['poster_url']) }}" alt="" class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" loading="{{ $isHero ? 'eager' : 'lazy' }}" decoding="async" width="800" height="600">
+                            <img src="{{ e($item['poster_url']) }}" alt="" class="h-full w-full object-cover transition-transform duration-[1.5s] group-hover:scale-105" loading="{{ $isHero ? 'eager' : 'lazy' }}" decoding="async" width="800" height="600">
                         @else
                             <div class="flex h-full min-h-[inherit] w-full items-center justify-center bg-gradient-to-br from-[#12151f] to-[#070910]"></div>
                         @endif
-                        <span class="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#05070f]/90 via-[#05070f]/20 to-transparent"></span>
-                        <span class="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-moto-amber/90 text-[#0a0c12] shadow-lg ring-2 ring-white/20" aria-hidden="true">
-                            <svg class="h-6 w-6 translate-x-0.5" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M8 5v14l11-7L8 5z"/></svg>
+                        <span class="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#050608]/90 via-[#050608]/10 to-transparent transition-opacity duration-300 group-hover:opacity-80"></span>
+                        <span class="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5)] ring-1 ring-inset ring-white/30 backdrop-blur-md transition-all duration-300 group-hover:bg-moto-amber group-hover:text-black group-hover:ring-moto-amber/50 sm:h-20 sm:w-20" aria-hidden="true">
+                            <svg class="h-7 w-7 translate-x-[2px] sm:h-10 sm:w-10" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7L8 5z"/></svg>
                         </span>
                     </button>
                 @elseif($item['image_url'] !== '')
-                    <button type="button" class="block h-full w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber/70" data-expert-video-open="{{ e($dlgId) }}" aria-label="{{ e($item['caption'] ?: 'Открыть фото') }}">
-                        <img src="{{ e($item['image_url']) }}" alt="{{ e($item['caption'] ?: 'Фото с занятий') }}" class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03] {{ $isHero ? 'aspect-[16/11] min-h-[12rem] sm:min-h-[16rem]' : 'aspect-[4/3]' }}" loading="{{ $isHero ? 'eager' : 'lazy' }}" decoding="async" width="800" height="600">
+                    <button type="button" class="group/img relative block h-full w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber/70" data-expert-video-open="{{ e($dlgId) }}" aria-label="{{ e($item['caption'] ?: 'Открыть фото') }}">
+                        <img src="{{ e($item['image_url']) }}" alt="{{ e($item['caption'] ?: 'Фото с занятий') }}" class="h-full w-full object-cover transition-transform duration-[1.5s] group-hover/img:scale-105 {{ $isHero ? 'aspect-[16/11]' : 'aspect-[4/3]' }}" loading="{{ $isHero ? 'eager' : 'lazy' }}" decoding="async" width="800" height="600">
+                        <span class="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#050608]/80 via-transparent to-transparent opacity-60 transition-opacity duration-300 group-hover/img:opacity-100"></span>
                     </button>
                 @endif
                 @if($item['caption'] !== '')
-                    <figcaption class="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#05070f] to-transparent px-3 pb-3 pt-10 text-xs font-medium text-white/90 sm:text-sm">{{ $item['caption'] }}</figcaption>
+                    <figcaption class="pointer-events-none absolute inset-x-0 bottom-0 px-3 pb-3 pt-10 text-left text-[12px] font-semibold leading-snug tracking-wide text-white/95 text-pretty sm:px-5 sm:pb-5 sm:pt-12 sm:text-[15px] drop-shadow-md">{{ $item['caption'] }}</figcaption>
                 @endif
             </figure>
 
@@ -92,6 +98,11 @@
                 </div>
             </dialog>
         @endforeach
+        @if(count($items) > 3)
+            <div class="col-span-2 flex justify-center pt-2 sm:col-span-4 lg:hidden">
+                <button type="button" class="min-h-11 rounded-full border border-white/12 bg-white/[0.05] px-5 py-2 text-sm font-semibold text-white/90" @click="galleryMore = !galleryMore" x-text="galleryMore ? 'Свернуть' : 'Ещё фото и видео'"></button>
+            </div>
+        @endif
     </div>
 </section>
 

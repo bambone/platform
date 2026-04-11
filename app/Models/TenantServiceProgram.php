@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use App\Support\Storage\TenantPublicAssetResolver;
 use App\Tenant\Expert\ServiceProgramType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -23,6 +24,10 @@ class TenantServiceProgram extends Model
         'description',
         'audience_json',
         'outcomes_json',
+        'cover_image_ref',
+        'cover_mobile_ref',
+        'cover_image_alt',
+        'cover_object_position',
         'duration_label',
         'price_amount',
         'price_prefix',
@@ -154,6 +159,40 @@ class TenantServiceProgram extends Model
         }
 
         return (string) $this->price_amount;
+    }
+
+    /**
+     * Desktop / tall crop URL for program card media pane (R2 public key or https).
+     */
+    public function coverDesktopPublicUrl(?Tenant $tenant): ?string
+    {
+        return TenantPublicAssetResolver::resolveForTenantModel(
+            trim((string) $this->cover_image_ref) !== '' ? trim((string) $this->cover_image_ref) : null,
+            $tenant
+        );
+    }
+
+    /**
+     * Mobile / wide crop URL; falls back to desktop when unset.
+     */
+    public function coverMobilePublicUrl(?Tenant $tenant): ?string
+    {
+        $mobile = TenantPublicAssetResolver::resolveForTenantModel(
+            trim((string) $this->cover_mobile_ref) !== '' ? trim((string) $this->cover_mobile_ref) : null,
+            $tenant
+        );
+        if ($mobile !== null) {
+            return $mobile;
+        }
+
+        return $this->coverDesktopPublicUrl($tenant);
+    }
+
+    public function coverImageAlt(): string
+    {
+        $a = trim((string) $this->cover_image_alt);
+
+        return $a !== '' ? $a : (string) $this->title;
     }
 
     /**

@@ -15,50 +15,78 @@
     $note = trim((string) ($data['note'] ?? ''));
     $entrySlug = trim((string) ($data['entry_point_slug'] ?? 'single-session'));
 @endphp
-<section class="expert-pricing-mega mb-16 sm:mb-24">
+<section class="expert-pricing-mega relative mb-14 min-w-0 sm:mb-20 lg:mb-28" x-data="{ priceMore: false }">
     @if($h !== '')
-        <h2 class="text-balance text-[clamp(1.5rem,3.5vw,2.35rem)] font-bold tracking-tight text-white">{{ $h }}</h2>
+        <h2 class="expert-section-title text-balance text-[clamp(1.65rem,4vw,3rem)] font-bold leading-[1.12] tracking-tight text-white/95 sm:leading-[1.1]">{{ $h }}</h2>
     @endif
     @if($sub !== '')
-        <p class="mt-4 max-w-3xl text-base leading-relaxed text-silver sm:text-lg">{{ $sub }}</p>
+        <p class="mt-4 max-w-3xl text-[15px] font-normal leading-[1.65] text-silver/85 sm:mt-5 sm:text-lg">{{ $sub }}</p>
     @endif
 
-    <div class="mt-9 grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-        @foreach($programs as $program)
+    <div class="mt-6 grid min-w-0 gap-3 sm:mt-10 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-8">
+        @foreach($programs as $pi => $program)
             @php
                 $price = $program->formattedPriceLabel($currency);
                 $isEntry = $entrySlug !== '' && $program->slug === $entrySlug;
             @endphp
-            <div class="expert-pricing-card flex flex-col rounded-2xl border p-6 {{ $isEntry ? 'expert-pricing-card--entry border-moto-amber/40 bg-gradient-to-br from-moto-amber/[0.14] to-white/[0.03] ring-1 ring-moto-amber/25' : 'border-white/10 bg-[#0b0d14]/85 backdrop-blur-sm' }}">
-                @if($isEntry)
-                    <span class="mb-3 inline-flex w-fit rounded-full bg-moto-amber/25 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-moto-amber">Старт с одного занятия</span>
+            <div
+                class="expert-pricing-card flex min-h-full min-w-0 flex-col overflow-hidden rounded-[1.35rem] border transition-all duration-300 sm:rounded-[1.5rem] sm:hover:-translate-y-1 {{ $isEntry ? 'expert-pricing-card--entry border-moto-amber/30 bg-gradient-to-br from-[#12141c] to-[#0a0c12] shadow-[0_16px_48px_-16px_rgba(201,168,124,0.3)]' : 'border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04]' }}"
+                @if($pi >= 3)
+                    x-bind:class="{ 'max-lg:hidden': !priceMore }"
                 @endif
-                <h3 class="text-lg font-semibold text-white">{{ $program->title }}</h3>
-                @if(filled($program->teaser))
-                    <p class="mt-2 flex-1 text-sm leading-relaxed text-silver">{{ $program->teaser }}</p>
-                @endif
-                <div class="mt-5 border-t border-white/10 pt-5 text-xl font-bold text-white">
+            >
+                <div class="min-w-0 flex-1 p-4 sm:p-8">
+                    @if($isEntry)
+                        <div class="mb-4 flex items-center gap-2">
+                            <span class="flex h-1.5 w-1.5 rounded-full bg-moto-amber ring-2 ring-moto-amber/40"></span>
+                            <span class="text-[0.65rem] font-bold uppercase tracking-widest text-moto-amber/90">Старт | Одно занятие</span>
+                        </div>
+                    @endif
+                    <h3 class="text-xl font-bold text-white/95 leading-tight sm:text-2xl">{{ $program->title }}</h3>
+                    @if(filled($program->teaser))
+                        <p class="mt-4 text-[14px] leading-relaxed text-silver/80">{{ $program->teaser }}</p>
+                    @endif
+                </div>
+                
+                <div class="mt-auto border-t border-white/[0.05] bg-black/20 p-4 sm:p-8">
                     @if($price !== null)
-                        @if(filled($program->price_prefix))
-                            <span class="block text-xs font-normal uppercase tracking-wide text-silver">{{ $program->price_prefix }}</span>
-                        @endif
-                        {{ $price }}
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-extrabold tracking-tight text-white/95">{{ $price }}</span>
+                            @if(filled($program->price_prefix))
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-silver/70">/ {{ $program->price_prefix }}</span>
+                            @endif
+                        </div>
                     @else
-                        <span class="text-base font-medium text-silver">По запросу</span>
+                        <span class="text-lg font-bold tracking-tight text-white/90">По запросу</span>
                     @endif
                 </div>
             </div>
         @endforeach
-        @foreach($manual as $row)
-            <div class="expert-pricing-card rounded-2xl border border-white/10 bg-[#0b0d14]/85 p-6 backdrop-blur-sm">
-                <h3 class="text-lg font-semibold text-white">{{ $row['title'] }}</h3>
+        @foreach($manual as $mi => $row)
+            @php $priceIdx = $programs->count() + $mi; @endphp
+            <div
+                class="expert-pricing-card flex min-h-full min-w-0 flex-col rounded-[1.35rem] border border-white/[0.05] bg-white/[0.015] p-4 transition-colors hover:bg-white/[0.03] sm:rounded-[1.5rem] sm:p-8"
+                @if($priceIdx >= 3)
+                    x-bind:class="{ 'max-lg:hidden': !priceMore }"
+                @endif
+            >
+                <h3 class="text-xl font-bold text-white/95 leading-tight sm:text-2xl">{{ $row['title'] }}</h3>
                 @if(filled($row['body'] ?? ''))
-                    <p class="mt-2 text-sm leading-relaxed text-silver">{{ $row['body'] }}</p>
+                    <p class="mt-4 text-[14px] leading-relaxed text-silver/80">{{ $row['body'] }}</p>
                 @endif
             </div>
         @endforeach
+        @php $priceCardCount = $programs->count() + count($manual); @endphp
+        @if($priceCardCount > 3)
+            <div class="col-span-full flex justify-center pt-1 sm:col-span-2 lg:hidden">
+                <button type="button" class="min-h-11 rounded-full border border-white/12 bg-white/[0.04] px-5 py-2 text-sm font-semibold text-white/90" @click="priceMore = !priceMore" x-text="priceMore ? 'Свернуть прайс' : 'Посмотреть весь прайс'"></button>
+            </div>
+        @endif
     </div>
     @if($note !== '')
-        <p class="mt-7 max-w-3xl text-sm leading-relaxed text-silver/80">{{ $note }}</p>
+        <div class="mt-8 flex items-start gap-4 rounded-xl border border-white/[0.03] bg-white/[0.015] p-5 sm:p-6 lg:mt-10">
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <p class="text-[13px] leading-relaxed text-silver/70 sm:text-[14px] max-w-4xl">{{ $note }}</p>
+        </div>
     @endif
 </section>

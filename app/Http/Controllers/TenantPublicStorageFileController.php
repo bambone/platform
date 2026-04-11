@@ -13,8 +13,9 @@ class TenantPublicStorageFileController extends Controller
     /**
      * Tenant public files under {@code tenants/{id}/public/…} on the configured public disk.
      *
-     * Local disk: {@code response()->file()}. Cloud public disk (R2/S3): HTTP 302 to canonical object URL.
-     * Route stays under /storage/tenants/… for same-origin bookmarks; cloud mode redirects to CDN.
+     * Local disk: {@code response()->file()}. Cloud (R2/S3): изображения и видео стримятся через приложение
+     * с явным {@code Content-Type} (избегаем {@code ERR_BLOCKED_BY_ORB} при неверных метаданных на CDN);
+     * прочие типы — HTTP 302 на канонический URL объекта.
      */
     public function show(Request $request, string $tenantId, string $path): Response
     {
@@ -43,7 +44,66 @@ class TenantPublicStorageFileController extends Controller
             return response()->file($absolute);
         }
 
-        // R2/S3: skip exists() (remote HEAD); CDN returns 404 if key missing.
+        if ($this->shouldStreamThroughOrigin($path)) {
+            if (! $disk->exists($relative)) {
+                abort(404);
+            }
+            $stream = $disk->readStream($relative);
+            if (! is_resource($stream)) {
+                abort(404);
+            }
+            $mime = $disk->mimeType($relative);
+            $mime = is_string($mime) && $mime !== '' ? $mime : $this->mimeFromFilename($path);
+            if ($this->shouldOverrideCloudMime($mime, $path)) {
+                $mime = $this->mimeFromFilename($path);
+            }
+
+            return response()->stream(function () use ($stream): void {
+                fpassthru($stream);
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+            }, 200, [
+                'Content-Type' => $mime,
+                'Cache-Control' => 'public, max-age=31536000, immutable',
+            ]);
+        }
+
         return redirect()->away($disk->url($relative), 302);
+    }
+
+    private function shouldStreamThroughOrigin(string $path): bool
+    {
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+        return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif', 'mp4', 'webm', 'mov'], true);
+    }
+
+    private function shouldOverrideCloudMime(string $mime, string $path): bool
+    {
+        if (in_array($mime, ['application/octet-stream', 'binary/octet-stream', 'application/x-www-form-urlencoded'], true)) {
+            return true;
+        }
+        if (str_starts_with($mime, 'text/') || str_contains($mime, 'html') || str_contains($mime, 'xml')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function mimeFromFilename(string $path): string
+    {
+        return match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'svg' => 'image/svg+xml',
+            'avif' => 'image/avif',
+            'mp4' => 'video/mp4',
+            'webm' => 'video/webm',
+            'mov' => 'video/quicktime',
+            default => 'application/octet-stream',
+        };
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Support\Storage;
 
 use App\Models\Tenant;
+use Throwable;
 
 /**
  * Разрешение значений из JSON секций / настроек в публичный URL для img и CSS background.
@@ -31,14 +32,31 @@ final class TenantPublicAssetResolver
             }
             $relativeUnderPublic = $m[2];
 
-            return TenantStorage::forTrusted($tenantId)->publicUrl($relativeUnderPublic);
+            return self::safePublicUrl($tenantId, $relativeUnderPublic);
         }
 
         if (str_starts_with($v, 'tenants/')) {
             return null;
         }
 
-        return TenantStorage::forTrusted($tenantId)->publicUrl(ltrim($v, '/'));
+        return self::safePublicUrl($tenantId, ltrim($v, '/'));
+    }
+
+    /**
+     * @return non-empty-string|null
+     */
+    private static function safePublicUrl(int $tenantId, string $pathUnderPublicSegment): ?string
+    {
+        try {
+            $url = TenantStorage::forTrusted($tenantId)->publicUrl($pathUnderPublicSegment);
+            $url = trim($url);
+
+            return $url !== '' ? $url : null;
+        } catch (Throwable $e) {
+            report($e);
+
+            return null;
+        }
     }
 
     public static function resolveForCurrentTenant(?string $value): ?string

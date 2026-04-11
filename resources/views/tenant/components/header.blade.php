@@ -14,45 +14,43 @@
         @keydown.escape.window="mobileNavOpen = false"
         @hero-video-playing.window="videoPlaying = true"
         @hero-video-stopped.window="videoPlaying = false"
-        :class="(videoPlaying || compact) ? 'bg-obsidian/85 backdrop-blur-md shadow-sm' : 'bg-gradient-to-b from-black/60 to-transparent'"
-        class="fixed top-0 left-0 right-0 z-50 flex h-16 flex-col md:h-[4.5rem] transition-colors duration-300">
-    <div class="relative flex h-16 w-full shrink-0 items-center md:h-[4.5rem]">
+        :class="(videoPlaying || compact || mobileNavOpen) ? 'bg-[#050608] backdrop-blur-xl border-b border-white/[0.06] shadow-[0_4px_32px_rgba(0,0,0,0.4)]' : 'bg-gradient-to-b from-[#050608]/90 via-[#050608]/40 to-transparent'"
+        class="fixed top-0 left-0 right-0 z-50 flex flex-col transition-all duration-300 {{ $isExpertAuto ? 'h-[3.75rem]' : 'h-[4.5rem]' }} md:h-[5rem] lg:h-[5.5rem]">
+    <div class="relative flex h-full w-full shrink-0 items-center">
         @if($isExpertAuto)
-        {{-- Три зоны: бренд | навигация | телефон; короткое имя в шапке — без обрезки длинного слогана --}}
-        <div class="expert-header-bar mx-auto grid h-full w-full max-w-[min(92rem,calc(100vw-0.75rem))] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 sm:px-4 md:grid-cols-[minmax(0,max-content)_minmax(0,1fr)_auto] md:gap-3 md:px-5 lg:gap-5 lg:px-8">
-            <a href="{{ route('home') }}" class="expert-header-bar__brand group relative flex min-w-0 max-w-full items-center gap-2.5 sm:gap-3" style="text-shadow: 0 2px 10px rgba(0,0,0,0.6);">
-                <div class="pointer-events-none absolute inset-0 rounded-xl bg-white/[0.03] opacity-0 transition duration-300 group-hover:opacity-100"></div>
+        {{-- Три зоны: бренд | навигация | телефон; увеличенный отступ, убран конфликт --}}
+        <div class="expert-header-bar mx-auto flex h-full w-full max-w-[100rem] items-center justify-between gap-3 px-4 md:gap-4 md:px-8 lg:px-12">
+            <a href="{{ route('home') }}" class="expert-header-bar__brand group relative flex min-w-0 max-w-[65vw] items-center gap-2.5 md:gap-3">
                 @if(($branding['logo'] ?? null))
                     <img src="{{ $branding['logo'] }}" alt="{{ $headerBrandTitle }}"
                          width="96" height="96"
                          loading="eager"
                          decoding="async"
-                         class="relative h-10 w-10 shrink-0 rounded-full object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] sm:h-11 sm:w-11" />
+                         class="relative h-9 w-9 shrink-0 object-contain md:h-11 md:w-11" />
                 @else
                     @include('tenant.components.expert-brand-mark', ['compact' => true])
                 @endif
-                <span class="min-w-0 text-balance text-base font-bold leading-snug tracking-tight text-white sm:text-lg lg:text-xl">{{ $headerBrandTitle }}</span>
+                <span class="min-w-0 truncate text-[15px] font-bold tracking-wide text-white/95 md:text-[17px] lg:text-[19px]">{{ $headerBrandTitle }}</span>
             </a>
 
-            <nav class="expert-header-bar__nav hidden min-w-0 items-center justify-center gap-3 text-[13px] font-medium md:flex lg:gap-5 lg:text-[15px] xl:gap-7" aria-label="Основное меню">
-                <a href="{{ route('home') }}" class="shrink-0 whitespace-nowrap text-white/90 transition-colors hover:text-moto-amber">Главная</a>
+            <nav class="expert-header-bar__nav hidden flex-1 items-center justify-center gap-6 text-[14px] font-semibold tracking-wide md:flex lg:gap-10 lg:text-[15px]" aria-label="Основное меню">
+                <a href="{{ route('home') }}" class="shrink-0 text-white/95 transition-colors hover:text-moto-amber">Главная</a>
                 @foreach($tenantMainMenuPages ?? [] as $navItem)
-                    <a href="{{ $navItem['url'] }}" class="shrink-0 whitespace-nowrap text-white/80 transition-colors hover:text-white">{{ $navItem['label'] }}</a>
+                    <a href="{{ $navItem['url'] }}" class="shrink-0 text-silver/80 transition-colors hover:text-white">{{ $navItem['label'] }}</a>
                 @endforeach
             </nav>
 
-            <div class="expert-header-bar__actions flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
+            <div class="expert-header-bar__actions flex shrink-0 items-center gap-4">
                 @if($contacts['phone'] ?? null)
                     @php $telDigits = preg_replace('/\D/', '', $contacts['phone']); @endphp
                     <a href="tel:{{ $telDigits }}"
-                       class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-white/18 bg-white/[0.04] text-white/90 transition-colors hover:border-moto-amber/40 hover:bg-white/[0.08] md:min-h-10 md:gap-2 md:px-3 md:py-2 lg:px-4"
+                       class="hidden text-[15px] font-semibold tracking-wide text-white/90 transition-colors hover:text-moto-amber md:block"
                        aria-label="Позвонить: {{ $contacts['phone'] }}">
-                        <svg class="h-5 w-5 shrink-0 text-moto-amber md:h-4 md:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
-                        <span class="hidden max-w-[11rem] truncate text-sm font-medium text-white/85 lg:inline xl:max-w-none xl:whitespace-nowrap">{{ $contacts['phone'] }}</span>
+                        {{ $contacts['phone'] }}
                     </a>
                 @endif
                 <button type="button"
-                        class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-white/20 text-white/90 transition-colors hover:border-white/40 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber md:hidden"
+                        class="inline-flex h-11 w-11 items-center justify-center rounded-xl text-white/90 transition-colors hover:bg-white/[0.05] md:hidden"
                         @click.stop="mobileNavOpen = !mobileNavOpen"
                         :aria-expanded="mobileNavOpen"
                         aria-controls="tenant-mobile-nav"
@@ -120,12 +118,12 @@
              x-show="mobileNavOpen"
              x-cloak
              x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 -translate-y-1"
-             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
              x-transition:leave="transition ease-in duration-150"
-             x-transition:leave-start="opacity-100 translate-y-0"
-             x-transition:leave-end="opacity-0 -translate-y-1"
-             class="absolute left-0 right-0 top-full z-40 max-h-[min(70vh,calc(100dvh-4rem))] overflow-y-auto border-b border-white/10 bg-obsidian/95 px-3 py-3 shadow-lg backdrop-blur-md md:hidden"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="tenant-mobile-nav-panel absolute inset-x-0 top-full z-40 -mt-px overflow-y-auto border-b border-white/[0.08] bg-[#080b10] px-3 py-3 shadow-lg md:hidden {{ $isExpertAuto ? 'max-h-[min(72vh,calc(100dvh-3.75rem))]' : 'max-h-[min(72vh,calc(100dvh-4.5rem))]' }}"
              role="navigation"
              aria-label="Мобильное меню">
             <div class="flex flex-col gap-1">
@@ -145,6 +143,11 @@
                     <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
                     {{ $contacts['phone'] }}
                 </a>
+                @endif
+                @if($isExpertAuto)
+                    <a href="{{ route('home') }}#expert-inquiry" @click="mobileNavOpen = false" class="mt-3 flex min-h-12 items-center justify-center rounded-xl bg-moto-amber px-4 text-[15px] font-bold text-black shadow-lg shadow-moto-amber/15">
+                        Записаться
+                    </a>
                 @endif
             </div>
         </div>

@@ -7,7 +7,7 @@ use App\Support\Storage\TenantStorage;
 
 /**
  * Нормализует URL бренд-фото expert_auto: в БД могут быть устаревшие пути (другой tenant_id, удалённый public/tenants/…).
- * Актуальный URL всегда строится через {@see TenantStorage::publicUrl} для текущего тенанта.
+ * Актуальный URL — {@see TenantStorage::publicUrl} для {@code site/brand/…} (локальный диск или R2 / {@code TENANT_STORAGE_PUBLIC_CDN_URL}).
  */
 final class ExpertBrandMediaUrl
 {

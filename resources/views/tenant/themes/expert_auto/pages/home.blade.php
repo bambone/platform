@@ -6,7 +6,8 @@
 
 @section('content')
     <div class="expert-home w-full min-w-0 pb-24 lg:pb-8">
-        <div class="expert-home-main mx-auto max-w-[min(88rem,calc(100vw-1.5rem))] px-3 pt-12 sm:px-4 sm:pt-16 md:px-8 lg:px-12 lg:pt-20">
+        {{-- Отступ под фиксированную шапку (h 4.5rem / 5rem / 5.5rem) + небольшой зазор --}}
+        <div class="expert-home-main mx-auto max-w-[min(88rem,calc(100vw-1.5rem))] px-3 pt-[calc(3.75rem+0.5rem)] sm:px-4 md:px-8 md:pt-[calc(5rem+0.75rem)] lg:px-12 lg:pt-[calc(5.5rem+1rem)]">
             @forelse ($homeLayoutSections as $section)
                 @php
                     $sk = (string) ($section->section_key ?? '');

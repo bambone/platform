@@ -1,0 +1,10 @@
+Square-cropped WebP thumbnail for the RentBase marketing hero (demo notification card).
+
+Source image (Honda CTX, Paris Motorcycle Show 2013):
+https://commons.wikimedia.org/wiki/File:Salon_de_la_Moto_et_du_Scooter_de_Paris_2013_-_Honda_-_CTX_-_001.jpg
+
+Author: Thesupermat (Wikimedia Commons)
+License: Creative Commons Attribution-Share Alike 3.0 Unported (CC BY-SA 3.0)
+https://creativecommons.org/licenses/by-sa/3.0/deed.en
+
+The on-card title and tagline mirror Moto Levins’ public product copy for HONDA CTX 1300; replace hero-booking-thumb.webp with your own export if you prefer the exact production photo.

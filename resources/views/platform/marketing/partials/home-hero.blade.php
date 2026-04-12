@@ -161,33 +161,32 @@
                     }
                 </style>
 
-                <!-- Gemini-Style Animated Notification Block -->
-                <div class="pm-hero-notification absolute bottom-3 left-3 z-50 flex w-[calc(100%-1.5rem)] max-w-[280px] items-center gap-3.5 rounded-2xl p-3.5 will-change-transform motion-reduce:animate-none sm:bottom-[30px] sm:-left-[80px] sm:w-auto sm:max-w-[360px] sm:gap-4 sm:p-4">
-                    
-                    <!-- App Image/Avatar Style -->
+                <!-- Demo notification: горизонтально — слева превью, справа блок текста + бейдж -->
+                <div class="pm-hero-notification absolute bottom-3 left-3 z-50 flex w-[calc(100%-1.5rem)] max-w-[min(100%,20rem)] items-center gap-3 rounded-2xl p-3.5 will-change-transform motion-reduce:animate-none sm:bottom-[30px] sm:-left-[80px] sm:w-auto sm:max-w-[22rem] sm:gap-4 sm:p-4">
+                    {{-- Превью WebP + лицензия: public/img/platform-marketing/hero-booking-thumb.license.txt --}}
                     <div class="relative flex h-12 w-12 shrink-0 rounded-xl bg-slate-100 shadow-md ring-1 ring-black/5 sm:h-14 sm:w-14" aria-hidden="true">
-                        <img src="https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=120&h=120" alt="Motorcycle mockup" class="h-full w-full rounded-xl object-cover" />
-                        
-                        <!-- Pulse Indicator -->
+                        <img src="{{ asset('img/platform-marketing/hero-booking-thumb.webp') }}" alt="" width="168" height="168" class="h-full w-full rounded-xl object-cover" decoding="async" />
                         <span class="absolute -right-1.5 -top-1.5 flex h-4 w-4">
                             <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75 motion-reduce:animate-none"></span>
                             <span class="relative inline-flex h-4 w-4 rounded-full border-2 border-white bg-green-500 shadow-sm"></span>
                         </span>
                     </div>
 
-                    <!-- Content -->
-                    <div class="min-w-0 flex-1">
-                        <div class="truncate text-[10.5px] font-bold uppercase tracking-widest text-slate-500 sm:text-[11px]">Новая бронь</div>
-                        <div class="mt-0.5 truncate text-sm font-extrabold tracking-tight text-slate-900 sm:text-base">BMW S 1000 RR</div>
-                    </div>
-
-                    <!-- Status -->
-                    <div class="flex shrink-0 items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-indigo-700 shadow-sm">
-                        <span class="relative flex h-2 w-2">
-                            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75 motion-reduce:animate-none"></span>
-                            <span class="relative inline-flex h-2 w-2 rounded-full bg-indigo-500"></span>
-                        </span>
-                        <span class="text-[10px] font-bold uppercase tracking-wide sm:text-[11px]">Забронировано</span>
+                    <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+                        <div class="min-w-0">
+                            <div class="truncate text-[10.5px] font-bold uppercase tracking-widest text-slate-500 sm:text-[11px]">Новая бронь</div>
+                            <div
+                                class="mt-0.5 truncate text-sm font-extrabold tracking-tight text-slate-900 sm:text-base"
+                                title="Расслабленная посадка и ровный ход на дальняк."
+                            >HONDA CTX 1300</div>
+                        </div>
+                        <div class="flex w-fit max-w-full items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-indigo-700 shadow-sm">
+                            <span class="relative flex h-2 w-2 shrink-0">
+                                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75 motion-reduce:animate-none"></span>
+                                <span class="relative inline-flex h-2 w-2 rounded-full bg-indigo-500"></span>
+                            </span>
+                            <span class="text-[10px] font-bold uppercase tracking-wide sm:text-[11px]">Забронировано</span>
+                        </div>
                     </div>
                 </div>
             </div>

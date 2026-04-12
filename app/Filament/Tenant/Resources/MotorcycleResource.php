@@ -38,6 +38,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class MotorcycleResource extends Resource
@@ -49,6 +50,20 @@ class MotorcycleResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = 'Catalog';
 
     protected static ?int $navigationSort = 10;
+
+    /**
+     * Тема expert_auto — лендинг инструктора: каталог «техники» (Motorcycle) не используется;
+     * программы на сайте ведутся через {@see TenantServiceProgramResource}.
+     */
+    public static function canAccess(): bool
+    {
+        $tenant = currentTenant();
+        if ($tenant !== null && $tenant->themeKey() === 'expert_auto') {
+            return false;
+        }
+
+        return Gate::allows('manage_motorcycles');
+    }
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 

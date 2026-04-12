@@ -27,9 +27,10 @@ class TenantServiceProgramResource extends Resource
 
     protected static ?string $navigationLabel = 'Программы';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Content';
+    /** В «Каталоге» рядом с прежним местом «курсов» (Motorcycle), скрытым для expert_auto. */
+    protected static string|UnitEnum|null $navigationGroup = 'Catalog';
 
-    protected static ?int $navigationSort = 15;
+    protected static ?int $navigationSort = 5;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-academic-cap';
 
@@ -44,7 +45,7 @@ class TenantServiceProgramResource extends Resource
         return $schema
             ->components([
                 Section::make('Основное')
-                    ->description('Оформление главной и других страниц — в разделе «Страницы» (конструктор секций).')
+                    ->description('Данные карточек блока «Программы обучения» на сайте. Состав страниц и порядок секций — в «Страницы» (конструктор).')
                     ->schema([
                         TextInput::make('slug')
                             ->label('Slug')

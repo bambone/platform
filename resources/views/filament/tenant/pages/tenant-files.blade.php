@@ -30,7 +30,7 @@
             </div>
         @endif
         <p class="text-sm text-gray-600 dark:text-gray-400">
-            {{ __('Файлы в зонах site, themes и media текущего клиента. Список разбит на страницы: метаданные (размер и дата) запрашиваются только для текущей порции, чтобы быстрее открывать каталог на облачном диске.') }}
+            {{ __('Файлы в зонах site, themes и media текущего клиента. Одинаковые имена в колонке «Путь» — это разные папки (например обложки программ: expert_auto/programs/…/card-cover-desktop.webp). Список разбит на страницы: метаданные запрашиваются только для текущей порции.') }}
         </p>
         <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div class="min-w-0 flex-1">
@@ -40,7 +40,7 @@
                     type="search"
                     wire:model.live.debounce.400ms="search"
                     class="fi-input block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
-                    placeholder="{{ __('Имя файла…') }}"
+                    placeholder="{{ __('Имя или путь…') }}"
                 />
             </div>
             <div>
@@ -64,7 +64,7 @@
                 <thead class="bg-gray-50 text-xs font-medium text-gray-600 dark:bg-white/5 dark:text-gray-300">
                     <tr>
                         <th class="px-3 py-2">{{ __('Превью') }}</th>
-                        <th class="px-3 py-2">{{ __('Имя') }}</th>
+                        <th class="px-3 py-2">{{ __('Путь') }}</th>
                         <th class="px-3 py-2">{{ __('Зона') }}</th>
                         <th class="px-3 py-2">{{ __('Размер') }}</th>
                         <th class="px-3 py-2">{{ __('Изменён') }}</th>
@@ -81,9 +81,9 @@
                                     <span class="text-gray-400">—</span>
                                 @endif
                             </td>
-                            <td class="max-w-[220px] truncate px-3 py-2 font-mono text-xs" title="{{ $row['path'] }}">{{ $row['name'] }}</td>
+                            <td class="max-w-[min(100%,28rem)] truncate px-3 py-2 font-mono text-xs" title="{{ $row['path'] }}">{{ $row['path_under_zone'] !== '' ? $row['path_under_zone'] : $row['name'] }}</td>
                             <td class="px-3 py-2 text-xs">{{ $row['segment'] }}</td>
-                            <td class="px-3 py-2 text-xs">{{ number_format($row['size'] / 1024, 1, ',', ' ') }} KB</td>
+                            <td class="px-3 py-2 text-xs">{{ \Illuminate\Support\Number::fileSize((int) ($row['size'] ?? 0), precision: 1) }}</td>
                             <td class="px-3 py-2 text-xs">
                                 @if (! empty($row['last_modified']))
                                     {{ \Illuminate\Support\Carbon::createFromTimestamp($row['last_modified'])->format('d.m.Y H:i') }}

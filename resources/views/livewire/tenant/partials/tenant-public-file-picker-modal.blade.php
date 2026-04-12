@@ -36,13 +36,13 @@
             </div>
             <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-end">
                 <div class="min-w-0 flex-1">
-                    <label class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300" for="tfp-search">{{ __('Поиск по имени') }}</label>
+                    <label class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300" for="tfp-search">{{ __('Поиск по имени или пути') }}</label>
                     <input
                         id="tfp-search"
                         type="search"
                         wire:model.live.debounce.300ms="tenantPublicFilePickerSearch"
                         class="fi-input block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
-                        placeholder="{{ __('Имя файла…') }}"
+                        placeholder="{{ __('Имя или путь…') }}"
                     />
                 </div>
                 <div>
@@ -80,7 +80,7 @@
                                         <span class="text-gray-400">—</span>
                                     @endif
                                 </td>
-                                <td class="max-w-[200px] truncate px-4 py-2 font-mono text-[11px]" title="{{ $row['path'] }}">{{ $row['name'] }}</td>
+                                <td class="max-w-[min(100%,24rem)] truncate px-4 py-2 font-mono text-[11px]" title="{{ $row['path'] }}">{{ ($row['path_under_zone'] ?? '') !== '' ? $row['path_under_zone'] : $row['name'] }}</td>
                                 <td class="px-4 py-2">{{ $row['segment'] }}</td>
                                 <td class="px-4 py-2">
                                     <button

@@ -31,6 +31,7 @@ final class TenantFileCatalogService
      * @return list<array{
      *     path: string,
      *     name: string,
+     *     path_under_zone: string,
      *     segment: 'site'|'themes'|'media',
      *     is_image: bool,
      *     public_url: string|null
@@ -69,8 +70,15 @@ final class TenantFileCatalogService
                 }
 
                 $basename = basename($path);
-                if ($searchNorm !== '' && ! str_contains(Str::lower($basename), $searchNorm)) {
-                    continue;
+                $pathUnderZone = '';
+                if ($path !== $rootPrefix && str_starts_with($path, $rootPrefix.'/')) {
+                    $pathUnderZone = substr($path, strlen($rootPrefix) + 1);
+                }
+                if ($searchNorm !== '') {
+                    $hay = Str::lower($basename.' '.$pathUnderZone);
+                    if (! str_contains($hay, $searchNorm)) {
+                        continue;
+                    }
                 }
 
                 $ext = Str::lower((string) pathinfo($path, PATHINFO_EXTENSION));
@@ -96,6 +104,7 @@ final class TenantFileCatalogService
                 $out[] = [
                     'path' => $path,
                     'name' => $basename,
+                    'path_under_zone' => $pathUnderZone,
                     'segment' => $segment,
                     'is_image' => $isImage,
                     'public_url' => $publicUrl,
@@ -103,7 +112,7 @@ final class TenantFileCatalogService
             }
         }
 
-        usort($out, static fn (array $a, array $b): int => strcmp($b['path'], $a['path']));
+        usort($out, static fn (array $a, array $b): int => strcmp($a['path_under_zone'] ?? '', $b['path_under_zone'] ?? ''));
 
         return $out;
     }
@@ -111,10 +120,11 @@ final class TenantFileCatalogService
     /**
      * Дополняет строки из {@see listLightForTenant} размером и датой изменения (по одному запросу к диску на файл).
      *
-     * @param  list<array{path: string, name: string, segment: string, is_image: bool, public_url: string|null}>  $lightRows
+     * @param  list<array{path: string, name: string, path_under_zone?: string, segment: string, is_image: bool, public_url: string|null}>  $lightRows
      * @return list<array{
      *     path: string,
      *     name: string,
+     *     path_under_zone: string,
      *     size: int,
      *     last_modified: int|null,
      *     segment: string,
@@ -134,6 +144,7 @@ final class TenantFileCatalogService
             $out[] = [
                 'path' => $path,
                 'name' => $row['name'],
+                'path_under_zone' => (string) ($row['path_under_zone'] ?? ''),
                 'size' => $size,
                 'last_modified' => $lastModified ?: null,
                 'segment' => $row['segment'],
@@ -149,6 +160,7 @@ final class TenantFileCatalogService
      * @return list<array{
      *     path: string,
      *     name: string,
+     *     path_under_zone: string,
      *     size: int,
      *     last_modified: int|null,
      *     segment: 'site'|'themes'|'media',

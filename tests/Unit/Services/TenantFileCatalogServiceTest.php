@@ -35,6 +35,7 @@ class TenantFileCatalogServiceTest extends TestCase
         $rowsImages = $svc->listForTenant(1, TenantFileCatalogService::FILTER_IMAGES);
         $this->assertCount(1, $rowsImages);
         $this->assertTrue($rowsImages[0]['is_image']);
+        $this->assertSame('page-builder/a.jpg', $rowsImages[0]['path_under_zone']);
     }
 
     public function test_is_allowed_object_key(): void

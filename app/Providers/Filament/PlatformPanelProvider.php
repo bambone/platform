@@ -3,11 +3,11 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Platform\Pages\PlatformDashboard;
+use App\Filament\Platform\Resources\PlatformProductChangelogEntryResource;
 use App\Filament\Platform\Widgets\PlatformActivityWidget;
 use App\Filament\Platform\Widgets\PlatformDashboardIntroWidget;
 use App\Filament\Platform\Widgets\PlatformStatsWidget;
 use App\Http\Middleware\EnsurePlatformAccess;
-use App\Filament\Platform\Resources\PlatformProductChangelogEntryResource;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -47,7 +47,7 @@ class PlatformPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::BODY_START, fn (): string => View::make('components.filament-access-denied-banner')->render())
             ->brandName('RentBase Platform')
             ->brandLogo(fn () => View::make('components.platform-logo', [
-                'attributes' => new ComponentAttributeBag(),
+                'attributes' => new ComponentAttributeBag,
             ]))
             ->favicon(asset('favicon.svg'))
             ->globalSearch(false)
@@ -57,6 +57,12 @@ class PlatformPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn (): string => Blade::render("@vite('resources/css/platform-admin.css')"),
+            )
+            ->renderHook(
+                PanelsRenderHook::SCRIPTS_AFTER,
+                fn (): string => config('app.debug_filament_platform_overlay')
+                    ? Blade::render("@vite('resources/js/platform-admin-overlay-diagnostics.js')")
+                    : '',
             )
             ->navigationGroups([
                 NavigationGroup::make()

@@ -9,6 +9,9 @@ use Filament\Widgets\TableWidget as BaseWidget;
 
 class PlatformActivityWidget extends BaseWidget
 {
+    /** См. PlatformDashboardIntroWidget: синхронный рендер виджета таблицы. */
+    protected static bool $isLazy = false;
+
     protected static ?int $sort = 2;
 
     protected static ?string $heading = 'Недавняя активность (Новые клиенты)';

@@ -10,6 +10,9 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class PlatformStatsWidget extends BaseStatsOverviewWidget
 {
+    /** См. PlatformDashboardIntroWidget: синхронный рендер, без залипшего loading-placeholder. */
+    protected static bool $isLazy = false;
+
     protected static ?int $sort = 1;
 
     protected static ?string $panel = 'platform';

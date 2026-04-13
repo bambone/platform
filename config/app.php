@@ -132,4 +132,10 @@ return [
 
     'platform_host' => env('PLATFORM_HOST', 'platform.rentbase.local'),
 
+    /*
+    | Filament platform panel: лог в Console fullscreen-слоёв, inert, наличие CSS-фикса ghost modal overlay.
+    | Только для локальной отладки; на проде держите false.
+    */
+    'debug_filament_platform_overlay' => (bool) env('DEBUG_FILAMENT_PLATFORM_OVERLAY', false),
+
 ];

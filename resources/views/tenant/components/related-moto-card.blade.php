@@ -1,6 +1,6 @@
 @props(['bike'])
 @php
-    $imageUrl = $bike->cover_url ?? null;
+    $imageUrl = $bike->publicCoverUrl();
     $detailUrl = route('motorcycle.show', $bike->slug);
     $card = $bike->catalogCardForView();
     $oneLine = trim((string) ($bike->short_description ?? ''));

@@ -13,8 +13,8 @@
     <div class="glass mb-6 rounded-2xl p-4 sm:p-6">
         <h2 class="mb-4 text-base font-bold text-white sm:text-lg">Ваше бронирование</h2>
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-4">
-            @if($motorcycle->cover_url)
-                <img src="{{ $motorcycle->cover_url }}" alt="{{ $motorcycle->name }}" class="h-24 w-24 shrink-0 rounded-xl object-cover sm:h-28 sm:w-28">
+            @if($motorcycle->publicCoverUrl())
+                <img src="{{ $motorcycle->publicCoverUrl() }}" alt="{{ $motorcycle->name }}" class="h-24 w-24 shrink-0 rounded-xl object-cover sm:h-28 sm:w-28">
             @endif
             <div class="min-w-0">
                 <h3 class="font-bold text-white">{{ $motorcycle->name }}</h3>

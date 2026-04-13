@@ -71,7 +71,13 @@ final class TenantPublicOgImageResolver
                 return null;
             }
 
-            return $raw;
+            $resolved = TenantPublicAssetResolver::resolve($raw, (int) $tenant->id) ?? $raw;
+            if (preg_match('#^https?://#i', $resolved) === 1) {
+                return $resolved;
+            }
+            $base = rtrim($this->canonicalBase->resolve($tenant), '/');
+
+            return $base.(str_starts_with($resolved, '/') ? $resolved : '/'.$resolved);
         }
 
         if (preg_match('#^tenants/\d+/public/#', $raw) === 1) {

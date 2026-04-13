@@ -8,6 +8,7 @@ use App\Models\Page;
 use App\Models\Tenant;
 use App\Models\TenantSetting;
 use App\Services\Seo\Data\TenantSeoBootstrapData;
+use App\Support\Storage\TenantPublicAssetResolver;
 
 final class TenantSeoBootstrapDataBuilder
 {
@@ -75,8 +76,16 @@ final class TenantSeoBootstrapDataBuilder
 
         if ($m !== null && TenantSeoMerge::isFilled($m->cover_url)) {
             $u = trim((string) $m->cover_url);
+            if (! filter_var($u, FILTER_VALIDATE_URL)) {
+                return null;
+            }
+            $resolved = TenantPublicAssetResolver::resolve($u, (int) $tenant->id) ?? $u;
+            if (preg_match('#^https?://#i', $resolved) === 1) {
+                return $resolved;
+            }
+            $base = rtrim($this->canonicalBase->resolve($tenant), '/');
 
-            return filter_var($u, FILTER_VALIDATE_URL) ? $u : null;
+            return $base.(str_starts_with($resolved, '/') ? $resolved : '/'.$resolved);
         }
 
         return null;

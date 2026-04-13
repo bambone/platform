@@ -5,7 +5,7 @@
     $scenario = $card['scenario'];
     $highlights = $card['highlights'];
     $priceNote = $card['price_note'];
-    $imageUrl = $bike->cover_url ?? null;
+    $imageUrl = $bike->publicCoverUrl();
     $type = $bike->model ?? $bike->type ?? '';
     $engine = $bike->engine_cc ?? $bike->engine ?? 0;
     $detailUrl = route('motorcycle.show', $bike->slug);

@@ -7,6 +7,7 @@ use App\Models\LocationLandingPage;
 use App\Models\Motorcycle;
 use App\Models\SeoLandingPage;
 use App\Models\Tenant;
+use App\Support\Storage\TenantPublicAssetResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
@@ -265,6 +266,7 @@ final class TenantSeoJsonLdFactory
      */
     private function productFromMotorcycle(Tenant $tenant, Motorcycle $m, string $canonicalUrl): array
     {
+        $base = rtrim($this->canonicalBase->resolve($tenant), '/');
         $name = trim((string) $m->name) ?: (string) $m->slug;
         $desc = '';
         if (TenantSeoMerge::isFilled($m->short_description)) {
@@ -285,7 +287,13 @@ final class TenantSeoJsonLdFactory
             $product['description'] = $desc;
         }
         if (TenantSeoMerge::isFilled($m->cover_url)) {
-            $product['image'] = [(string) $m->cover_url];
+            $raw = trim((string) $m->cover_url);
+            $resolved = TenantPublicAssetResolver::resolve($raw, (int) $tenant->id) ?? $raw;
+            if (preg_match('#^https?://#i', $resolved) === 1) {
+                $product['image'] = [$resolved];
+            } else {
+                $product['image'] = [$base.(str_starts_with($resolved, '/') ? $resolved : '/'.$resolved)];
+            }
         }
 
         $brand = trim((string) $m->brand);

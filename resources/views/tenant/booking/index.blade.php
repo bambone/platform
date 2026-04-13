@@ -14,8 +14,8 @@
         @foreach($motorcycles as $m)
             <a href="{{ route('booking.show', $m->slug) }}" class="glass-card group block overflow-hidden rounded-2xl transition-shadow hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber touch-manipulation">
                 <div class="aspect-[4/3] overflow-hidden bg-carbon">
-                    @if($m->cover_url)
-                        <img src="{{ $m->cover_url }}" alt="{{ $m->name }}" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105">
+                    @if($m->publicCoverUrl())
+                        <img src="{{ $m->publicCoverUrl() }}" alt="{{ $m->name }}" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105">
                     @else
                         <div class="flex h-full w-full items-center justify-center text-silver/50">
                             <svg class="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>

@@ -74,10 +74,10 @@ class MotorcycleController extends Controller
 
         $galleryUrls = [];
         if ($motorcycle->cover_url) {
-            $galleryUrls[] = $motorcycle->cover_url;
+            $galleryUrls[] = $motorcycle->publicMediaDisplayUrl($motorcycle->cover_url);
         }
         foreach ($motorcycle->getMedia('gallery') as $media) {
-            $galleryUrls[] = $media->getUrl();
+            $galleryUrls[] = $motorcycle->publicMediaDisplayUrl($media->getUrl());
         }
         $galleryUrls = array_values(array_unique($galleryUrls));
 

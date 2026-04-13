@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\MotorcycleLocationMode;
 use App\Models\Concerns\BelongsToTenant;
 use App\Support\CatalogHighlightNormalizer;
+use App\Support\Storage\TenantPublicAssetResolver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -140,6 +141,30 @@ class Motorcycle extends Model implements HasMedia
         $media = $this->getFirstMedia('cover');
 
         return $media ? $media->getUrl() : null;
+    }
+
+    /**
+     * URL с учётом {@see MediaDeliveryMode::Local} и переписывания CDN → /media/… на каноническом хосте.
+     * Для публичного сайта и бронирования; админка может по-прежнему использовать {@see getCoverUrlAttribute}.
+     *
+     * @param  non-empty-string  $diskUrl
+     * @return non-empty-string
+     */
+    public function publicMediaDisplayUrl(string $diskUrl): string
+    {
+        $trimmed = trim($diskUrl);
+
+        return TenantPublicAssetResolver::resolve($trimmed, (int) $this->tenant_id) ?? $trimmed;
+    }
+
+    public function publicCoverUrl(): ?string
+    {
+        $raw = $this->cover_url;
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+
+        return $this->publicMediaDisplayUrl($raw);
     }
 
     public static function statuses(): array

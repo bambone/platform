@@ -24,8 +24,8 @@
 
     <div class="mb-8 grid grid-cols-1 gap-6 sm:mb-10 md:grid-cols-2 md:gap-8">
         <div class="aspect-[4/3] overflow-hidden rounded-2xl bg-carbon">
-            @if($motorcycle->cover_url)
-                <img src="{{ $motorcycle->cover_url }}" alt="{{ $motorcycle->name }}" class="h-full w-full object-cover">
+            @if($motorcycle->publicCoverUrl())
+                <img src="{{ $motorcycle->publicCoverUrl() }}" alt="{{ $motorcycle->name }}" class="h-full w-full object-cover">
             @endif
         </div>
         <div class="min-w-0">

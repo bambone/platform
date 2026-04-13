@@ -41,6 +41,7 @@ class TenantPublicAssetResolverTest extends TestCase
         config([
             'tenant_storage.public_disk' => $diskName,
             'tenant_storage.public_cdn_base_url' => 'https://cdn.example.com',
+            'tenant_storage.public_url_version' => '',
         ]);
 
         $nonLocal = Mockery::mock(FilesystemAdapter::class);

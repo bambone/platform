@@ -1,5 +1,7 @@
 # Tenant storage: локальный public disk и Cloudflare R2
 
+Локальное зеркало, dual-write и delivery `/media/…`: см. [tenant-media-local-mirror.md](tenant-media-local-mirror.md).
+
 ## Два трека (не смешивать в одном PR)
 
 1. **Dual-disk read/write** — приложение корректно работает с `public` или `r2-public` / `local` или `r2-private` без смены ключей в БД.

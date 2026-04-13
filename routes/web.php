@@ -22,6 +22,7 @@ use App\Http\Controllers\TenantPublicBookingAvailabilityController;
 use App\Http\Controllers\TenantPublicFaqController;
 use App\Http\Controllers\TenantPublicPageController;
 use App\Http\Controllers\TenantPublicReviewsController;
+use App\Http\Controllers\TenantPublicMirrorFileController;
 use App\Http\Controllers\TenantPublicStorageFileController;
 use App\Http\Controllers\ThemePlatformAssetController;
 use App\Http\Middleware\EnsureTenantContext;
@@ -90,6 +91,11 @@ Route::middleware([EnsureTenantContext::class, RememberTenantCatalogLocation::cl
     Route::get('/theme/build/{theme}/{path}', [ThemePlatformAssetController::class, 'show'])
         ->where('path', '.*')
         ->name('theme.platform.asset');
+    if (app()->isLocal()) {
+        Route::get('/media/{path}', [TenantPublicMirrorFileController::class, 'show'])
+            ->where('path', 'tenants/[0-9]+/public/.+')
+            ->name('tenant.public.media');
+    }
     Route::get('/storage/tenants/{tenantId}/public/{path}', [TenantPublicStorageFileController::class, 'show'])
         ->where('tenantId', '[0-9]+')
         ->where('path', '.*')

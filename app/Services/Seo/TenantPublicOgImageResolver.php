@@ -6,6 +6,7 @@ use App\Models\Motorcycle;
 use App\Models\SeoMeta;
 use App\Models\Tenant;
 use App\Models\TenantSetting;
+use App\Support\Storage\TenantPublicAssetResolver;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -71,6 +72,19 @@ final class TenantPublicOgImageResolver
             }
 
             return $raw;
+        }
+
+        if (preg_match('#^tenants/\d+/public/#', $raw) === 1) {
+            $resolved = TenantPublicAssetResolver::resolve($raw, (int) $tenant->id);
+            if ($resolved === null) {
+                return null;
+            }
+            if (preg_match('#^https?://#i', $resolved) === 1) {
+                return $resolved;
+            }
+            $base = rtrim($this->canonicalBase->resolve($tenant), '/');
+
+            return $base.(str_starts_with($resolved, '/') ? $resolved : '/'.$resolved);
         }
 
         if (str_starts_with($raw, '//')) {

@@ -95,4 +95,41 @@ return [
     */
     'stream_public_through_origin' => (bool) env('TENANT_STORAGE_STREAM_PUBLIC_THROUGH_ORIGIN', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Local mirror disk (dual write / local delivery)
+    |--------------------------------------------------------------------------
+    |
+    | Object keys match R2 1:1. See docs/operations/tenant-media-local-mirror.md
+    |
+    */
+    'public_mirror_disk' => env('TENANT_STORAGE_PUBLIC_MIRROR_DISK', 'tenant-public-mirror'),
+
+    /*
+    | R2 replica target for dual write (must match filesystems disk name).
+    |
+    */
+    'replica_public_disk' => env('TENANT_STORAGE_REPLICA_PUBLIC_DISK', 'r2-public'),
+
+    /*
+    | Defaults when platform_settings keys are empty. Tenant columns override per client.
+    |
+    */
+    'media_write_mode_default' => env('TENANT_MEDIA_WRITE_MODE_DEFAULT', 'dual'),
+
+    'media_delivery_mode_default' => env('TENANT_MEDIA_DELIVERY_MODE_DEFAULT', 'r2'),
+
+    /*
+    | First-party URL prefix for delivery=local (leading slash, no trailing slash).
+    |
+    */
+    'media_local_public_base_path' => env('TENANT_MEDIA_LOCAL_PUBLIC_BASE_PATH', '/media'),
+
+    /*
+    | Optional override for public object URLs when delivery=r2 (no trailing slash).
+    | Empty: TenantStorage::publicUrl uses disk url + TENANT_STORAGE_PUBLIC_CDN_URL logic.
+    |
+    */
+    'media_r2_public_base_url' => env('TENANT_MEDIA_R2_PUBLIC_BASE_URL', ''),
+
 ];

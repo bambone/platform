@@ -35,7 +35,7 @@ final class ResolveTenantPublicSeo
             return $next($request);
         }
 
-        if (in_array($name, ['robots', 'sitemap', 'llms', 'theme.platform.asset', 'tenant.public.storage'], true)) {
+        if (in_array($name, ['robots', 'sitemap', 'llms', 'theme.platform.asset', 'tenant.public.storage', 'tenant.public.media'], true)) {
             return $next($request);
         }
 

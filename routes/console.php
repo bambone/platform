@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\ProcessMediaReplicationOutboxJob;
 use App\Jobs\RecalculateAllTenantStorageUsageJob;
 use App\Jobs\ScanCrmRequestSlaNotificationsJob;
 use App\Jobs\SendDailyOperationsDigestJob;
@@ -25,4 +26,8 @@ Schedule::job(new ScanCrmRequestSlaNotificationsJob)
 
 Schedule::job(new SendDailyOperationsDigestJob)
     ->dailyAt('20:00')
+    ->withoutOverlapping();
+
+Schedule::job(new ProcessMediaReplicationOutboxJob)
+    ->everyMinute()
     ->withoutOverlapping();

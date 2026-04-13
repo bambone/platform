@@ -12,12 +12,14 @@ use App\Filament\Tenant\Forms\ManualOperatorBookingForm;
 use App\Filament\Tenant\Resources\BookableServiceResource;
 use App\Filament\Tenant\Resources\CalendarConnectionResource;
 use App\Filament\Tenant\Resources\SchedulingResourceResource;
+use App\Filament\Tenant\Resources\TenantServiceProgramResource;
 use App\Models\Booking;
 use App\Models\Category;
 use App\Models\Motorcycle;
 use App\Models\RentalUnit;
 use App\Terminology\DomainTermKeys;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
@@ -113,14 +115,24 @@ class BookingCalendarPage extends Page
 
     protected function getHeaderActions(): array
     {
-        return [
-            ManualOperatorBookingForm::standaloneBookingCreateAction(
-                fillForm: fn (): array => $this->prefillManualBookingFromCalendar(),
-                afterSubmit: function (): void {
-                    $this->refreshCalendarBrowserEvent();
-                },
-            ),
-        ];
+        $actions = [];
+
+        if (TenantServiceProgramResource::canAccess()) {
+            $actions[] = Action::make('openTenantServicePrograms')
+                ->label('Программы')
+                ->icon('heroicon-o-academic-cap')
+                ->color('gray')
+                ->url(TenantServiceProgramResource::getUrl());
+        }
+
+        $actions[] = ManualOperatorBookingForm::standaloneBookingCreateAction(
+            fillForm: fn (): array => $this->prefillManualBookingFromCalendar(),
+            afterSubmit: function (): void {
+                $this->refreshCalendarBrowserEvent();
+            },
+        );
+
+        return $actions;
     }
 
     /**
@@ -201,22 +213,29 @@ class BookingCalendarPage extends Page
     }
 
     /**
+     * Быстрые ссылки с календаря: программы (expert_auto), затем модуль расписания при наличии прав.
+     *
      * @return list<array{label: string, url: string}>
      */
-    public function schedulingHelpNavLinks(): array
+    public function calendarContextNavLinks(): array
     {
         $tenant = currentTenant();
-        if ($tenant === null || ! $tenant->scheduling_module_enabled || ! Gate::allows('manage_scheduling')) {
+        if ($tenant === null) {
             return [];
         }
 
-        $links = [
-            ['label' => 'Ресурсы расписания', 'url' => SchedulingResourceResource::getUrl()],
-            ['label' => 'Услуги (запись)', 'url' => BookableServiceResource::getUrl()],
-        ];
+        $links = [];
 
-        if ($tenant->calendar_integrations_enabled) {
-            $links[] = ['label' => 'Календари (подключения)', 'url' => CalendarConnectionResource::getUrl()];
+        if (TenantServiceProgramResource::canAccess()) {
+            $links[] = ['label' => 'Программы', 'url' => TenantServiceProgramResource::getUrl()];
+        }
+
+        if ($tenant->scheduling_module_enabled && Gate::allows('manage_scheduling')) {
+            $links[] = ['label' => 'Ресурсы расписания', 'url' => SchedulingResourceResource::getUrl()];
+            $links[] = ['label' => 'Услуги (запись)', 'url' => BookableServiceResource::getUrl()];
+            if ($tenant->calendar_integrations_enabled) {
+                $links[] = ['label' => 'Календари (подключения)', 'url' => CalendarConnectionResource::getUrl()];
+            }
         }
 
         return $links;

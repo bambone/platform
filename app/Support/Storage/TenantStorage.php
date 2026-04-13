@@ -226,7 +226,6 @@ final class TenantStorage
     {
         $fullKey = $this->publicPath($path);
         $disk = $this->publicDisk();
-        $options = self::mergedOptionsForPublicObjectWrite($disk, $options);
         $oldSize = $disk->exists($fullKey) ? (int) $disk->size($fullKey) : 0;
         $newSize = self::measureContentsByteLength($contents);
         $delta = $newSize - $oldSize;
@@ -235,7 +234,7 @@ final class TenantStorage
             app(TenantStorageQuotaService::class)->assertCanStoreBytes($tenant, $delta, 'tenant_storage_public_put');
         }
 
-        $ok = $disk->put($fullKey, $contents, $options);
+        $ok = app(TenantPublicMediaWriter::class)->putPublicObjectKey($this->tenantId, $fullKey, $contents, $options);
         if ($ok && $delta !== 0 && $tenant !== null) {
             app(TenantStorageQuotaService::class)->applyUsageDelta($tenant, $delta);
         }
@@ -324,6 +323,7 @@ final class TenantStorage
 
         $fullPrefix = $this->publicPath('site/'.$pathUnderSite);
         $disk = $this->publicDisk();
+        $writer = app(TenantPublicMediaWriter::class);
         $count = 0;
         try {
             $keys = $disk->allFiles($fullPrefix);
@@ -333,7 +333,7 @@ final class TenantStorage
 
         foreach ($keys as $key) {
             try {
-                if ($disk->delete($key)) {
+                if ($writer->deletePublicObjectKey($this->tenantId, $key)) {
                     $count++;
                 }
             } catch (Throwable) {

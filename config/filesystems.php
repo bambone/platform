@@ -86,6 +86,17 @@ return [
             'report' => false,
         ],
 
+        /*
+        | Local mirror 1:1 with R2 object keys; root outside repo on production (MEDIA_LOCAL_ROOT).
+        | Public URLs are built by resolver (/media/...), not disk url().
+        */
+        'tenant-public-mirror' => [
+            'driver' => 'local',
+            'root' => env('MEDIA_LOCAL_ROOT') ?: storage_path('app/tenant-public-mirror'),
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*

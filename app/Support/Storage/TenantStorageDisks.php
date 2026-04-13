@@ -42,4 +42,24 @@ final class TenantStorageDisks
     {
         return Storage::disk(self::privateDiskName());
     }
+
+    public static function publicMirrorDiskName(): string
+    {
+        return (string) config('tenant_storage.public_mirror_disk', 'tenant-public-mirror');
+    }
+
+    public static function replicaPublicDiskName(): string
+    {
+        return (string) config('tenant_storage.replica_public_disk', 'r2-public');
+    }
+
+    public static function publicMirrorDisk(): Filesystem
+    {
+        return Storage::disk(self::publicMirrorDiskName());
+    }
+
+    public static function replicaPublicDisk(): Filesystem
+    {
+        return Storage::disk(self::replicaPublicDiskName());
+    }
 }

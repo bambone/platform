@@ -8,6 +8,8 @@ use App\ContactChannels\TenantPublicSiteContactsService;
 use App\Filesystem\WindowsSafeFilesystem;
 use App\Http\Controllers\HomeController;
 use App\Jobs\Mail\SendTenantMailableJob;
+use App\Jobs\PurgeSpatieMediaFromR2Job;
+use App\Jobs\SyncSpatieMediaFolderToR2Job;
 use App\Models\Faq;
 use App\Models\Lead;
 use App\Models\Motorcycle;
@@ -119,6 +121,23 @@ class AppServiceProvider extends ServiceProvider
 
         Lead::observe(LeadObserver::class);
         Media::observe(TenantMediaStorageQuotaObserver::class);
+
+        Media::saved(function (Media $media): void {
+            if (! TenantMediaStorageQuotaObserver::shouldApply($media)) {
+                return;
+            }
+            SyncSpatieMediaFolderToR2Job::dispatch((int) $media->getKey())->afterCommit();
+        });
+        Media::deleted(function (Media $media): void {
+            if (! TenantMediaStorageQuotaObserver::shouldApply($media)) {
+                return;
+            }
+            $tid = TenantMediaStorageQuotaObserver::tenantId($media);
+            if ($tid === null) {
+                return;
+            }
+            PurgeSpatieMediaFromR2Job::dispatch($tid, (int) $media->getKey())->afterCommit();
+        });
 
         $forgetTenantHome = static function (int $tenantId): void {
             if ($tenantId > 0) {

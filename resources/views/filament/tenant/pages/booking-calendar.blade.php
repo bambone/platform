@@ -3,7 +3,7 @@
     @vite(['resources/css/booking-calendar.css', 'resources/js/booking-calendar.js'])
 
     <div class="booking-calendar-page space-y-4">
-        @if (count($this->schedulingHelpNavLinks()) > 0)
+        @if (count($this->calendarContextNavLinks()) > 0)
             @php
                 $tenantForTerms = currentTenant();
                 $bookingPluralTerm = $tenantForTerms
@@ -14,10 +14,10 @@
                 <p class="font-semibold text-amber-950 dark:text-amber-100">Доступность и свободное время</p>
                 <p class="mt-1 text-amber-950/90 dark:text-amber-100/90">
                     Здесь — занятость по времени по уже созданным <strong>{{ $bookingPluralTerm }}</strong>.
-                    Свободные слоты и график работы задаются в разделе меню <strong>«Запись и расписание»</strong>:
+                    Карточки <strong>программ</strong> и настройка <strong>слотов / графика</strong> — по ссылкам ниже (в т.ч. раздел меню «Запись и расписание», если модуль включён).
                 </p>
                 <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                    @foreach ($this->schedulingHelpNavLinks() as $link)
+                    @foreach ($this->calendarContextNavLinks() as $link)
                         <li>
                             <a
                                 href="{{ $link['url'] }}"

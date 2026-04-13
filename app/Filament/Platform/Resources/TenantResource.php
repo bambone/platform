@@ -13,6 +13,9 @@ use App\Models\TemplatePreset;
 use App\Models\Tenant;
 use App\Models\TenantStorageQuota;
 use App\Models\User;
+use App\Support\Storage\MediaDeliveryMode;
+use App\Support\Storage\MediaWriteMode;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -153,6 +156,31 @@ class TenantResource extends Resource
                             ->required()
                             ->helperText('Позже может выводиться из тарифа; иначе см. MAIL_TENANT_PER_MINUTE.'),
                     ]),
+
+                Section::make('Медиа (инфраструктура)')
+                    ->description('Переопределение режимов записи и отдачи публичных файлов. Пусто = глобальный дефолт платформы / env.')
+                    ->schema([
+                        Select::make('media_write_mode_override')
+                            ->label('Write mode override')
+                            ->options([
+                                MediaWriteMode::LocalOnly->value => 'local_only',
+                                MediaWriteMode::R2Only->value => 'r2_only',
+                                MediaWriteMode::Dual->value => 'dual',
+                            ])
+                            ->native(true)
+                            ->placeholder('Нет')
+                            ->helperText('dual: зеркало + R2; local_only / r2_only — узкие режимы.'),
+                        Select::make('media_delivery_mode_override')
+                            ->label('Delivery mode override')
+                            ->options([
+                                MediaDeliveryMode::Local->value => 'local (/media/…)',
+                                MediaDeliveryMode::R2->value => 'r2 / CDN',
+                            ])
+                            ->native(true)
+                            ->placeholder('Нет')
+                            ->helperText('local: first-party URL; без скрытого fallback на R2 при 404.'),
+                    ])
+                    ->columns(2),
 
                 Section::make('Регион и валюта')
                     ->description('Влияет на время, формат и отображение цен в кабинете и на сайте.')
@@ -384,6 +412,49 @@ class TenantResource extends Resource
             ])
             ->bulkActions([
                 BulkActionGroup::make([
+                    BulkAction::make('setMediaWriteOverride')
+                        ->label('Override: write mode')
+                        ->form([
+                            Select::make('mode')
+                                ->label('Режим записи')
+                                ->options([
+                                    MediaWriteMode::LocalOnly->value => 'local_only',
+                                    MediaWriteMode::R2Only->value => 'r2_only',
+                                    MediaWriteMode::Dual->value => 'dual',
+                                ])
+                                ->required()
+                                ->native(true),
+                        ])
+                        ->action(function (\Illuminate\Support\Collection $records, array $data): void {
+                            $records->each(fn (Tenant $t) => $t->update(['media_write_mode_override' => $data['mode']]));
+                        })
+                        ->deselectRecordsAfterCompletion(),
+                    BulkAction::make('setMediaDeliveryOverride')
+                        ->label('Override: delivery mode')
+                        ->form([
+                            Select::make('mode')
+                                ->label('Режим отдачи')
+                                ->options([
+                                    MediaDeliveryMode::Local->value => 'local',
+                                    MediaDeliveryMode::R2->value => 'r2',
+                                ])
+                                ->required()
+                                ->native(true),
+                        ])
+                        ->action(function (\Illuminate\Support\Collection $records, array $data): void {
+                            $records->each(fn (Tenant $t) => $t->update(['media_delivery_mode_override' => $data['mode']]));
+                        })
+                        ->deselectRecordsAfterCompletion(),
+                    BulkAction::make('clearMediaOverrides')
+                        ->label('Сбросить override медиа')
+                        ->requiresConfirmation()
+                        ->action(function (\Illuminate\Support\Collection $records): void {
+                            $records->each(fn (Tenant $t) => $t->update([
+                                'media_write_mode_override' => null,
+                                'media_delivery_mode_override' => null,
+                            ]));
+                        })
+                        ->deselectRecordsAfterCompletion(),
                     DeleteBulkAction::make()
                         ->modalHeading('Удалить выбранных клиентов?')
                         ->modalDescription('Действие необратимо: клиенты и связанные данные могут быть удалены из базы. Сайты перестанут открываться. Продолжайте только если это осознанное решение.'),

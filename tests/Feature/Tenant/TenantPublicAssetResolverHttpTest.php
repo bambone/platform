@@ -77,6 +77,7 @@ class TenantPublicAssetResolverHttpTest extends TestCase
         config([
             'tenant_storage.public_disk' => 'r2-resolver-http',
             'tenant_storage.public_cdn_base_url' => 'https://cdn.example.com',
+            'tenant_storage.public_url_version' => '',
         ]);
 
         Route::middleware(['web', EnsureTenantContext::class, RememberTenantCatalogLocation::class, ResolveTenantPublicSeo::class])

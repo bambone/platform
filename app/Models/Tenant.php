@@ -36,6 +36,8 @@ class Tenant extends Model
         'scheduling_integration_error_policy',
         'scheduling_stale_busy_policy',
         'scheduling_default_write_calendar_subscription_id',
+        'media_write_mode_override',
+        'media_delivery_mode_override',
     ];
 
     protected function casts(): array

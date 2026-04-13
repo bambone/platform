@@ -107,8 +107,12 @@ final class TenantPublicAssetResolver
             return null;
         }
 
+        $m = null;
         if (preg_match('#/storage/tenants/(\d+)/public/(.+)$#', $path, $m) !== 1) {
-            return null;
+            // Полный URL на CDN/R2 без сегмента /storage/… (https://media…/tenants/{id}/public/…)
+            if (preg_match('#/tenants/(\d+)/public/(.+)$#', $path, $m) !== 1) {
+                return null;
+            }
         }
         if ((int) $m[1] !== $tenantId) {
             return null;

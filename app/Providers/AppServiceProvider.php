@@ -25,6 +25,8 @@ use App\NotificationCenter\NotificationChannelDriverFactory;
 use App\NotificationCenter\NotificationDedupeService;
 use App\NotificationCenter\NotificationDeliveryPlanner;
 use App\NotificationCenter\NotificationEventRecorder;
+use App\NotificationCenter\NotificationRuleDraftGenerator;
+use App\NotificationCenter\NotificationSubscriptionConditionEvaluator;
 use App\NotificationCenter\NotificationRouter;
 use App\NotificationCenter\NotificationSchedulePolicy;
 use App\Observers\LeadObserver;
@@ -93,6 +95,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(NotificationActionUrlBuilder::class);
         $this->app->singleton(NotificationDedupeService::class);
         $this->app->singleton(NotificationDeliveryPlanner::class);
+        $this->app->singleton(NotificationSubscriptionConditionEvaluator::class);
+        $this->app->singleton(NotificationRuleDraftGenerator::class);
         $this->app->singleton(NotificationRouter::class);
         $this->app->singleton(NotificationEventRecorder::class);
         $this->app->singleton(NotificationChannelDriverFactory::class);

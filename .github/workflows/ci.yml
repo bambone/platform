@@ -251,6 +251,10 @@ jobs:
           SSH_HOST: "${{ vars.SSH_HOST }}"
           DEPLOY_TMP: "${{ vars.DEPLOY_TMP }}"
           DEPLOY_PATH: "${{ vars.DEPLOY_PATH }}"
+          # Опционально: 1 — не запускать tenant-storage:sync-replica при деплое
+          DEPLOY_SKIP_R2_SYNC: "${{ vars.DEPLOY_SKIP_R2_SYNC }}"
+          # Опционально: public | private | both (по умолчанию public)
+          DEPLOY_R2_SYNC_SCOPE: "${{ vars.DEPLOY_R2_SYNC_SCOPE }}"
         run: |
           set -euo pipefail
 
@@ -261,7 +265,7 @@ jobs:
           ssh -p "$SSH_PORT" "$REMOTE" "set -e; mkdir -p '$TMP' '$DEST'; rm -rf '$TMP/release' '$TMP/preserve'; mkdir -p '$TMP/release' '$TMP/preserve'"
           scp -P "$SSH_PORT" deploy.tgz "$REMOTE:$TMP/deploy.tgz"
 
-          ssh -p "$SSH_PORT" "$REMOTE" "DEPLOY_TMP='$TMP' DEPLOY_PATH='$DEST' sh -se" <<'EOF'
+          ssh -p "$SSH_PORT" "$REMOTE" "DEPLOY_TMP='$TMP' DEPLOY_PATH='$DEST' DEPLOY_SKIP_R2_SYNC='${DEPLOY_SKIP_R2_SYNC:-0}' DEPLOY_R2_SYNC_SCOPE='${DEPLOY_R2_SYNC_SCOPE:-public}' sh -se" <<'EOF'
           set -eu
           (set -o pipefail) 2>/dev/null && set -o pipefail || true
 
@@ -330,9 +334,22 @@ jobs:
             sudo chown -R www-data:www-data "$DEST/storage" "$DEST/bootstrap/cache"
             sudo chmod -R 775 "$DEST/storage" "$DEST/bootstrap/cache"
 
+            # Сначала сбрасываем скомпилированные bootstrap-кэши, чтобы migrate/sync
+            # читали актуальные config/*.php и .env сервера, а не старый config cache.
+            php artisan optimize:clear || true
+
             # потом artisan
             php artisan storage:link || true
             php artisan migrate --force
+
+            # Двусторонняя догонка зеркала ↔ R2 без удалений (см. tenant-storage:sync-replica).
+            # Отключить: GitHub vars DEPLOY_SKIP_R2_SYNC=1
+            # Область: GitHub vars DEPLOY_R2_SYNC_SCOPE (public | private | both)
+            if [ "${DEPLOY_SKIP_R2_SYNC:-0}" != "1" ]; then
+              php artisan tenant-storage:sync-replica --no-interaction --scope="${DEPLOY_R2_SYNC_SCOPE:-public}" >> "$DEST/storage/logs/tenant-sync-replica.log" 2>&1
+            fi
+
+            # Оставляем runtime после деплоя в чистом состоянии без старых кэшей.
             php artisan config:clear
             php artisan cache:clear
             php artisan route:clear

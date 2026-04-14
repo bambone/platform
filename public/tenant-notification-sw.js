@@ -19,7 +19,19 @@ self.addEventListener('push', (event) => {
         body: data.body || '',
         data: { url: data.url || '/' },
     };
-    event.waitUntil(self.registration.showNotification(title, options));
+    event.waitUntil(
+        Promise.all([
+            self.registration.showNotification(title, options),
+            self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+                clientList.forEach((client) => {
+                    client.postMessage({
+                        type: 'TENANT_PUSH_RECEIVED',
+                        payload: data,
+                    });
+                });
+            }),
+        ]),
+    );
 });
 
 self.addEventListener('notificationclick', (event) => {

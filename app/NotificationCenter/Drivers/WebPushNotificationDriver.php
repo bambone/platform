@@ -75,6 +75,7 @@ final class WebPushNotificationDriver implements NotificationChannelDriver
             'title' => $payload->title,
             'body' => $payload->body,
             'url' => $payload->actionUrl,
+            'notification_event_id' => (int) $event->id,
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
 
         $subscriptionClass = Subscription::class;

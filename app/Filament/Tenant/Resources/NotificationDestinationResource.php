@@ -19,6 +19,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
@@ -53,7 +54,13 @@ class NotificationDestinationResource extends Resource
             return $query->whereRaw('1 = 0');
         }
 
-        return $query->where('tenant_id', $tenant->id);
+        $query = $query->where('tenant_id', $tenant->id);
+
+        if (! Gate::allows('manage_notifications')) {
+            return $query->where('user_id', Auth::id());
+        }
+
+        return $query;
     }
 
     public static function form(Schema $schema): Schema

@@ -16,6 +16,7 @@ final class NotificationRouter
 {
     public function __construct(
         private readonly NotificationDeliveryPlanner $planner,
+        private readonly NotificationSubscriptionConditionEvaluator $conditionEvaluator,
     ) {}
 
     /**
@@ -45,6 +46,10 @@ final class NotificationRouter
         $blockedDestinationIds = [];
 
         foreach ($subs as $subscription) {
+            if (! $this->conditionEvaluator->matches($subscription, $event)) {
+                continue;
+            }
+
             if (! $this->passesSeverityMin($subscription, $eventSeverity)) {
                 continue;
             }

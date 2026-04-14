@@ -7,6 +7,7 @@ use App\Filament\Tenant\Pages\TenantLogin;
 use App\Filament\Tenant\Pages\TenantProductChangelogPage;
 use App\Filament\Tenant\Widgets\StatsOverviewWidget;
 use App\Http\Controllers\Filament\TenantSpatieMediaStreamController;
+use App\Http\Controllers\Tenant\TenantNotificationBrowserController;
 use App\Http\Controllers\Tenant\TenantNotificationPushSubscriptionController;
 use App\Http\Middleware\EnsureTenantContext;
 use App\Http\Middleware\EnsureTenantMembership;
@@ -164,6 +165,13 @@ class AdminPanelProvider extends PanelProvider
                     ->name('notification-push.subscriptions.store');
                 Route::delete('/notification-push/subscriptions', [TenantNotificationPushSubscriptionController::class, 'destroy'])
                     ->name('notification-push.subscriptions.destroy');
+
+                Route::prefix('notification-browser')->name('notification-browser.')->group(function (): void {
+                    Route::get('vapid-public', [TenantNotificationBrowserController::class, 'vapidPublic'])->name('vapid-public');
+                    Route::get('preferences', [TenantNotificationBrowserController::class, 'loadPreferences'])->name('preferences.show');
+                    Route::put('preferences', [TenantNotificationBrowserController::class, 'savePreferences'])->name('preferences.save');
+                    Route::get('crm-watermark', [TenantNotificationBrowserController::class, 'crmWatermark'])->name('crm-watermark');
+                });
             });
     }
 

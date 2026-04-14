@@ -20,6 +20,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
@@ -54,7 +55,13 @@ class NotificationSubscriptionResource extends Resource
             return $query->whereRaw('1 = 0');
         }
 
-        return $query->where('tenant_id', $tenant->id);
+        $query = $query->where('tenant_id', $tenant->id);
+
+        if (! Gate::allows('manage_notifications')) {
+            return $query->where('user_id', Auth::id());
+        }
+
+        return $query;
     }
 
     public static function form(Schema $schema): Schema
@@ -87,9 +94,13 @@ class NotificationSubscriptionResource extends Resource
                                 return [];
                             }
 
-                            return NotificationDestination::query()
-                                ->where('tenant_id', $tenant->id)
-                                ->orderBy('name')
+                            $q = NotificationDestination::query()
+                                ->where('tenant_id', $tenant->id);
+                            if (! Gate::allows('manage_notifications')) {
+                                $q->where('user_id', Auth::id());
+                            }
+
+                            return $q->orderBy('name')
                                 ->pluck('name', 'id')
                                 ->all();
                         })

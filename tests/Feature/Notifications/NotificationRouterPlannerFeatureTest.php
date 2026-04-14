@@ -7,6 +7,7 @@ use App\Models\NotificationDelivery;
 use App\Models\NotificationSubscription;
 use App\Models\User;
 use App\NotificationCenter\NotificationEventRecorder;
+use App\NotificationCenter\NotificationPayloadDto;
 use App\NotificationCenter\NotificationRoutingContext;
 use App\NotificationCenter\NotificationSeverity;
 use App\NotificationCenter\Presenters\CrmRequestNotificationPresenter;
@@ -114,6 +115,70 @@ class NotificationRouterPlannerFeatureTest extends TestCase
         );
 
         $this->assertSame([], $out['delivery_ids']);
+    }
+
+    public function test_conditions_json_meta_mismatch_skips_subscription(): void
+    {
+        Queue::fake();
+
+        $tenant = $this->createNotificationTenant();
+        $dest = $this->createSharedInAppDestination($tenant);
+        $sub = NotificationSubscription::factory()->create([
+            'tenant_id' => $tenant->id,
+            'event_key' => 'crm_request.created',
+            'conditions_json' => ['meta' => ['source' => 'expected_source']],
+        ]);
+        $this->attachDestinationsToSubscription($sub, $dest);
+
+        $payload = new NotificationPayloadDto(
+            title: 't',
+            body: 'b',
+            actionUrl: null,
+            actionLabel: null,
+            meta: ['source' => 'other_source'],
+        );
+
+        $out = app(NotificationEventRecorder::class)->record(
+            $tenant->id,
+            'crm_request.created',
+            'CrmRequest',
+            1,
+            $payload,
+        );
+
+        $this->assertSame([], $out['delivery_ids']);
+    }
+
+    public function test_conditions_json_meta_match_delivers(): void
+    {
+        Queue::fake();
+
+        $tenant = $this->createNotificationTenant();
+        $dest = $this->createSharedInAppDestination($tenant);
+        $sub = NotificationSubscription::factory()->create([
+            'tenant_id' => $tenant->id,
+            'event_key' => 'crm_request.created',
+            'conditions_json' => ['meta' => ['source' => 'booking_form']],
+        ]);
+        $this->attachDestinationsToSubscription($sub, $dest);
+
+        $payload = new NotificationPayloadDto(
+            title: 't',
+            body: 'b',
+            actionUrl: null,
+            actionLabel: null,
+            meta: ['source' => 'booking_form', 'request_type' => 'tenant_booking'],
+        );
+
+        $out = app(NotificationEventRecorder::class)->record(
+            $tenant->id,
+            'crm_request.created',
+            'CrmRequest',
+            1,
+            $payload,
+        );
+
+        $this->assertCount(1, $out['delivery_ids']);
     }
 
     public function test_severity_min_filters_lower_events(): void

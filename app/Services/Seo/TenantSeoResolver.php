@@ -37,7 +37,12 @@ final class TenantSeoResolver
         $siteName = $this->fallback->siteName($tenant);
         $vars = $this->interpolationVars($tenant, $routeName, $model, $siteName);
 
-        $registryRow = $this->mergeTenantRouteOverrides($tenant, $routeName, $this->registry->get($routeName));
+        $baseRegistryKey = $routeName;
+        if ($routeName === 'about' && $model instanceof Page) {
+            $baseRegistryKey = 'page.show';
+        }
+
+        $registryRow = $this->mergeTenantRouteOverrides($tenant, $routeName, $this->registry->get($baseRegistryKey));
         $registryInterpolated = is_array($registryRow) ? $this->registry->interpolateRow($registryRow, $vars) : [];
 
         if ($routeName === 'page.show' && ($vars['page_name'] ?? '') === '') {

@@ -28,7 +28,7 @@ final class ExpertBrandMediaUrl
         }
 
         $tenant = \currentTenant();
-        if ($tenant === null || $tenant->themeKey() !== 'expert_auto') {
+        if ($tenant === null || ! in_array($tenant->themeKey(), ['expert_auto', 'advocate_editorial'], true)) {
             return $stored;
         }
 

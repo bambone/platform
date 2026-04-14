@@ -44,6 +44,7 @@ use App\Services\Mail\TenantMailer;
 use App\Services\PageBuilder\PageSectionOperationsService;
 use App\Services\PageBuilder\SectionViewResolver;
 use App\Services\Platform\PlatformNotificationSettings;
+use App\Services\Tenancy\TenantAdvocateEditorialFooterData;
 use App\Services\Tenancy\TenantMainMenuPages;
 use App\Services\Tenancy\TenantPagePrimaryHtmlSync;
 use App\Services\Tenancy\TenantViewResolver;
@@ -280,23 +281,41 @@ class AppServiceProvider extends ServiceProvider
                         'primary_color' => TenantSetting::getForTenant($tenant->id, 'branding.primary_color', '#f59e0b'),
                         'favicon' => tenant_branding_favicon_url(),
                         'hero_image' => tenant_branding_hero_url(),
+                        'favicon_16' => tenant_site_brand_optional_public_url('favicon-16.png'),
+                        'favicon_32' => tenant_site_brand_optional_public_url('favicon-32.png'),
+                        'favicon_ico' => tenant_site_brand_optional_public_url('favicon.ico'),
+                        'apple_touch_icon' => tenant_site_brand_optional_public_url('apple-touch-icon.png'),
                     ],
                     'site_name' => TenantSetting::getForTenant($tenant->id, 'general.site_name', $tenant->defaultPublicSiteName()),
                     'tenantMainMenuPages' => app(TenantMainMenuPages::class)->menuItems($tenant),
+                    'tenantAdvocateFooter' => $tenant->themeKey() === 'advocate_editorial'
+                        ? app(TenantAdvocateEditorialFooterData::class)->build($tenant)
+                        : null,
                 ];
             } else {
                 $bundle = [
                     'contacts' => [
                         'phone' => Setting::get('contacts.phone', ''),
                         'phone_alt' => Setting::get('contacts.phone_alt', ''),
+                        'email' => Setting::get('contacts.email', ''),
                         'whatsapp' => preg_replace('/\D/', '', Setting::get('contacts.whatsapp', '')),
                         'telegram' => ltrim((string) Setting::get('contacts.telegram', ''), '@'),
                         'vk_url' => '',
                     ],
                     'floating_messenger_buttons_enabled' => true,
-                    'branding' => ['logo' => '', 'primary_color' => '#f59e0b', 'favicon' => '', 'hero_image' => ''],
+                    'branding' => [
+                        'logo' => '',
+                        'primary_color' => '#f59e0b',
+                        'favicon' => '',
+                        'hero_image' => '',
+                        'favicon_16' => '',
+                        'favicon_32' => '',
+                        'favicon_ico' => '',
+                        'apple_touch_icon' => '',
+                    ],
                     'site_name' => config('app.name'),
                     'tenantMainMenuPages' => collect(),
+                    'tenantAdvocateFooter' => null,
                 ];
             }
 

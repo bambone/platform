@@ -59,7 +59,7 @@ final class ContactChannelRegistry
             ContactChannelType::Phone => 'Позвонить',
             ContactChannelType::Email => 'Написать на почту',
             ContactChannelType::Telegram => 'Написать в Telegram',
-            ContactChannelType::Vk => 'Написать ВКонтакте',
+            ContactChannelType::Vk => 'Написать во ВКонтакте',
             ContactChannelType::SiteForm => 'Оставить заявку',
             ContactChannelType::Whatsapp => 'Написать в WhatsApp',
             ContactChannelType::Viber => 'Написать в Viber',

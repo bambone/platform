@@ -32,7 +32,18 @@ final class TenantPublicAssetResolver
                 return $local;
             }
 
-            return self::rewriteTenantPublicStorageUrlIfCdnConfigured($v, $tenantId) ?? $v;
+            $cdn = self::rewriteTenantPublicStorageUrlIfCdnConfigured($v, $tenantId);
+            if ($cdn !== null) {
+                return $cdn;
+            }
+
+            // Старый полный URL с чужим tenant_id в пути — не отдаём как есть (404), пусть вызывающий
+            // (например ExpertBrandMediaUrl) пересоберёт путь для текущего тенанта по имени файла.
+            if (self::httpUrlTenantPublicPathPointsToOtherTenant($v, $tenantId)) {
+                return null;
+            }
+
+            return $v;
         }
 
         if (preg_match('#^tenants/(\d+)/public/(.+)$#', $v, $m) === 1) {
@@ -91,6 +102,23 @@ final class TenantPublicAssetResolver
     /**
      * @return non-empty-string|null
      */
+    /**
+     * Полный http(s)-URL, указывающий на {@code …/tenants/{id}/public/…}, но с id, отличным от ожидаемого.
+     */
+    private static function httpUrlTenantPublicPathPointsToOtherTenant(string $url, int $tenantId): bool
+    {
+        $path = parse_url($url, PHP_URL_PATH);
+        if (! is_string($path) || $path === '') {
+            return false;
+        }
+
+        if (preg_match('#/(?:media/)?(?:storage/)?tenants/(\d+)/public/#', $path, $m) !== 1) {
+            return false;
+        }
+
+        return (int) $m[1] !== $tenantId;
+    }
+
     private static function rewriteHttpUrlForLocalMediaDelivery(string $url, int $tenantId): ?string
     {
         $tenant = Tenant::query()->find($tenantId);

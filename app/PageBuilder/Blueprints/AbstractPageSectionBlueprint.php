@@ -12,7 +12,7 @@ abstract class AbstractPageSectionBlueprint implements PageSectionBlueprintInter
 {
     public function supportsTheme(string $themeKey): bool
     {
-        return in_array($themeKey, ['default', 'moto'], true);
+        return in_array($themeKey, ['default', 'moto', 'advocate_editorial'], true);
     }
 
     protected function countNestedList(array $data, string $key): int

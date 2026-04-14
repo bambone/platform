@@ -28,6 +28,6 @@ class LogsRelationManager extends RelationManager
                 TextColumn::make('created_at')->dateTime('d.m.Y H:i')->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
-            ->paginated([10, 25, 50]);
+            ->paginated([25, 50, 100]);
     }
 }

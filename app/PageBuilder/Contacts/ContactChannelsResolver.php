@@ -15,13 +15,13 @@ final class ContactChannelsResolver
 
     public function present(array $data): ContactSectionPresentation
     {
-        $title = trim((string) ($data['title'] ?? ''));
+        $title = trim((string) ($data['title'] ?? $data['heading'] ?? ''));
         $description = trim((string) ($data['description'] ?? ''));
         $address = trim((string) ($data['address'] ?? ''));
         $workingHours = trim((string) ($data['working_hours'] ?? ''));
-        $mapEmbed = trim((string) ($data['map_embed'] ?? ''));
-        $mapLink = trim((string) ($data['map_link'] ?? ''));
         $additionalNote = trim((string) ($data['additional_note'] ?? ''));
+
+        $mapBlock = app(ContactMapPublicResolver::class)->resolve($data);
 
         $rows = $this->effectiveChannelRows($data);
         $primary = [];
@@ -43,8 +43,7 @@ final class ContactChannelsResolver
             description: $description,
             address: $address,
             workingHours: $workingHours,
-            mapEmbed: $mapEmbed,
-            mapLink: $mapLink,
+            mapBlock: $mapBlock,
             additionalNote: $additionalNote,
             primaryChannels: $primary,
             secondaryChannels: $secondary,
@@ -55,9 +54,7 @@ final class ContactChannelsResolver
     {
         $address = trim((string) ($data['address'] ?? ''));
         $hours = trim((string) ($data['working_hours'] ?? ''));
-        $mapEmbed = trim((string) ($data['map_embed'] ?? ''));
-        $mapLink = trim((string) ($data['map_link'] ?? ''));
-        $hasMap = $mapEmbed !== '' || $mapLink !== '';
+        $hasMap = ContactMapCanonical::fromDataJson($data)->hasVisibleMap();
 
         $rawRows = $this->normalizeStoredChannels($data['channels'] ?? []);
         $legacyRows = $this->legacySyntheticRows($data);

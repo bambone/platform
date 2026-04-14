@@ -20,6 +20,8 @@
 @source "../../resources/views/livewire/crm";
 @source "../../resources/views/livewire/tenant";
 @source "../../resources/views/components/filament";
+/* Предпросмотр карты в page builder подключает tenant map-block; иначе Tailwind не генерирует утилиты для этого blade. */
+@source "../../resources/views/tenant/components/custom-pages/contacts/map-block.blade.php";
 @source "../../vendor/filament";
 
 /* Layered Surface Architecture for Dark Mode - Product DNA */
@@ -743,6 +745,17 @@ select.psb-select {
 
 .fi-fo-rich-editor-main.tenant-page-section-rich-editor .fi-fo-rich-editor-content {
     min-height: 320px;
+}
+
+/*
+ * Карта в конструкторе: поле вставки ссылки/iframe. В тёмной теме у textarea часто белый фон,
+ * а цвет текста наследуется как светлый — получается «белый блок» без видимого текста.
+ */
+textarea.fi-map-combined-input,
+textarea.fi-map-secondary-combined-input {
+    color: rgb(15 23 42) !important;
+    background-color: rgb(248 250 252) !important;
+    border-color: rgb(203 213 225) !important;
 }
 
 /* --------------------------------------------------------------------------

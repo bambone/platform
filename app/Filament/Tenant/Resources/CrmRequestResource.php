@@ -9,7 +9,7 @@ use App\Filament\Tenant\Resources\CrmRequestResource\Pages;
 use App\Models\CrmRequest;
 use App\Models\User;
 use App\Terminology\DomainTermKeys;
-use Filament\Resources\Resource;
+use App\Filament\Tenant\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;

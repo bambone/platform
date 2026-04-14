@@ -65,10 +65,28 @@ class TenantStorageTest extends TestCase
         $this->assertTrue($ts->putPublic('site/x.txt', 'hello'));
         $this->assertTrue($ts->putPrivate('site/seo/y.txt', 'world'));
 
-        Storage::disk('r2-public')->assertExists('tenants/1/public/site/x.txt');
-        Storage::disk('r2-private')->assertExists('tenants/1/private/site/seo/y.txt');
+        $this->assertTrue(Storage::disk('r2-public')->exists('tenants/1/public/site/x.txt'));
+        $this->assertTrue(Storage::disk('r2-private')->exists('tenants/1/private/site/seo/y.txt'));
         $this->assertSame('hello', $ts->getPublic('site/x.txt'));
         $this->assertSame('world', $ts->getPrivate('site/seo/y.txt'));
+    }
+
+    public function test_exists_public_true_when_object_exists_only_on_public_mirror_disk(): void
+    {
+        Storage::fake('public');
+        Storage::fake('tenant-public-mirror');
+        config([
+            'tenant_storage.enforce_current_tenant_context' => false,
+            'tenant_storage.public_disk' => 'public',
+            'tenant_storage.public_mirror_disk' => 'tenant-public-mirror',
+        ]);
+
+        $key = 'tenants/1/public/site/brand/logo-header.png';
+        Storage::disk('tenant-public-mirror')->put($key, 'x');
+        $this->assertFalse(Storage::disk('public')->exists($key));
+
+        $ts = TenantStorage::forTrusted(1);
+        $this->assertTrue($ts->existsPublic('site/brand/logo-header.png'));
     }
 
     public function test_merged_public_write_options_adds_cache_control_for_cloud_disk(): void

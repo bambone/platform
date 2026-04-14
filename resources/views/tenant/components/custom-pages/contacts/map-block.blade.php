@@ -1,32 +1,69 @@
 @props([
-    'mapEmbedCode' => null,
-    'mapUrl' => null,
+    'view' => null,
+    /** @var 'public'|'admin' Предпросмотр в Filament: светлый фон — заголовок не белым. */
+    'previewVariant' => 'public',
 ])
 
-<div class="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-obsidian shadow-2xl shadow-black/50 ring-1 ring-inset ring-white/5 sm:aspect-[21/9] sm:min-h-[280px]">
-    @if($mapEmbedCode || $mapUrl)
-        @if($mapEmbedCode)
-            <div class="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0 filter invert-[90%] hue-rotate-180 opacity-90 transition-opacity hover:opacity-100">
-                {!! $mapEmbedCode !!}
-            </div>
-        @elseif($mapUrl)
-            <iframe 
-                src="{{ $mapUrl }}" 
-                width="100%" 
-                height="100%" 
-                frameborder="0" 
-                class="w-full h-full absolute inset-0 border-0 filter invert-[90%] hue-rotate-180 opacity-90 transition-opacity hover:opacity-100"
-                loading="lazy">
-            </iframe>
+@php
+    use App\PageBuilder\Contacts\ContactMapResolvedView;
+    use App\PageBuilder\Contacts\MapEffectiveRenderMode;
+
+    $v = $view instanceof ContactMapResolvedView ? $view : null;
+@endphp
+
+@if($v instanceof ContactMapResolvedView && $v->shouldRenderMapBlock())
+    <div class="flex flex-col gap-4">
+        @if(filled($v->mapTitle))
+            <h3 @class([
+                'text-base font-semibold sm:text-lg',
+                'text-gray-900' => $previewVariant === 'admin',
+                'text-white' => $previewVariant !== 'admin',
+            ])>{{ $v->mapTitle }}</h3>
         @endif
-        
-        <!-- Overlay gradient to blend map with dark theme beautifully -->
-        <div class="absolute inset-0 pointer-events-none ring-1 ring-inset ring-white/10 rounded-2xl shadow-[inset_0_0_100px_rgba(0,0,0,0.6)]"></div>
-    @else
-        <!-- Neutral Fallback if no map is provided -->
-        <div class="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-carbon/50">
-            <svg class="w-12 h-12 text-white/10 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
-            <p class="text-silver text-sm">Карта не добавлена</p>
+
+        @if(in_array($v->mapEffectiveRenderMode, [MapEffectiveRenderMode::EmbedOnly, MapEffectiveRenderMode::EmbedAndButton], true) && $v->mapEmbedUrl !== '')
+            <div @class([
+                'aspect-video w-full min-h-[200px] overflow-hidden rounded-lg border',
+                'border-slate-300 bg-slate-100' => $previewVariant === 'admin',
+                'border-white/10 bg-black/20' => $previewVariant !== 'admin',
+            ])>
+                <iframe
+                    src="{{ $v->mapEmbedUrl }}"
+                    class="h-full w-full border-0"
+                    loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade"
+                    allowfullscreen
+                    title="{{ $v->mapTitle ?: 'Карта' }}"
+                ></iframe>
+            </div>
+        @endif
+
+        <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            @if(in_array($v->mapEffectiveRenderMode, [MapEffectiveRenderMode::ButtonOnly, MapEffectiveRenderMode::EmbedAndButton], true) && $v->mapPublicUrl !== '')
+                <a
+                    href="{{ $v->mapPublicUrl }}"
+                    @class([
+                        'inline-flex min-h-11 w-full items-center justify-center rounded-lg px-5 py-2.5 text-center text-sm font-semibold shadow-sm transition focus-visible:outline focus-visible:ring-2 sm:w-auto',
+                        'bg-amber-500 text-slate-950 hover:bg-amber-400 focus-visible:ring-amber-400/60' => $previewVariant === 'admin',
+                        'bg-moto-amber/90 text-[#0c0c0e] hover:bg-moto-amber focus-visible:ring-moto-amber/60' => $previewVariant !== 'admin',
+                    ])
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >{{ $v->mapActionLabel }}</a>
+            @endif
+
+            @if($v->mapWillRenderSecondaryButton && filled($v->mapSecondaryPublicUrl))
+                <a
+                    href="{{ $v->mapSecondaryPublicUrl }}"
+                    @class([
+                        'inline-flex min-h-11 w-full items-center justify-center rounded-lg border-2 px-5 py-2.5 text-center text-sm font-semibold transition focus-visible:outline focus-visible:ring-2 sm:w-auto',
+                        'border-amber-500 bg-transparent text-amber-100 hover:bg-amber-500/10 focus-visible:ring-amber-400/50' => $previewVariant === 'admin',
+                        'border-moto-amber/80 bg-transparent text-white hover:bg-white/5 focus-visible:ring-moto-amber/50' => $previewVariant !== 'admin',
+                    ])
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >{{ $v->mapSecondaryActionLabel }}</a>
+            @endif
         </div>
-    @endif
-</div>
+    </div>
+@endif

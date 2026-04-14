@@ -15,7 +15,7 @@
 
 @section('content')
     @php
-        $pageShell = tenant()?->themeKey() === 'expert_auto'
+        $pageShell = in_array(tenant()?->themeKey(), ['expert_auto', 'advocate_editorial'], true)
             ? 'max-w-[min(72rem,calc(100vw-1.5rem))] md:px-10'
             : 'max-w-4xl md:px-8';
     @endphp

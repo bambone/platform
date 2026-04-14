@@ -1,0 +1,642 @@
+/* Advocate editorial (theme advocate_editorial): светлый фон сайта + корректный контраст поверх базовых expert-секций */
+
+body.advocate-editorial-theme {
+    --color-moto-amber: #9a7b4f;
+}
+
+body.advocate-editorial-theme.premium-bg {
+    background:
+        radial-gradient(ellipse 80% 50% at 15% 0%, rgba(154, 123, 79, 0.08), transparent 55%),
+        linear-gradient(168deg, #fdfcfa 0%, #f4f1eb 42%, #e8e4dc 100%) !important;
+    min-height: 100vh;
+}
+
+/*
+ * Заголовки внутренних страниц (не hero): тёмный текст на светлом фоне.
+ * Не используем «main h1.text-white» без уточнения — это ломало hero (заголовок становился тёмным на тёмном фоне).
+ */
+body.advocate-editorial-theme main > div > h1.text-balance.text-white {
+    color: rgb(28 31 38) !important;
+}
+
+/* Hero: гарантированно светлая типографика на тёмном кадре */
+body.advocate-editorial-theme .expert-hero-cinematic .expert-hero-cinematic__headline {
+    color: #f8fafc !important;
+    text-shadow:
+        0 2px 28px rgba(0, 0, 0, 0.65),
+        0 1px 8px rgba(0, 0, 0, 0.5);
+}
+
+body.advocate-editorial-theme .expert-hero-cinematic .expert-hero-cinematic__lead {
+    color: rgba(248, 250, 252, 0.94) !important;
+    text-shadow: 0 1px 18px rgba(0, 0, 0, 0.55);
+}
+
+body.advocate-editorial-theme .expert-hero-cinematic .expert-hero-cinematic__eyebrow {
+    color: rgba(212, 175, 120, 0.95) !important;
+    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45);
+}
+
+/*
+ * Hero: full-bleed cover — раньше здесь был scale(0.5), из‑за этого фото занимало половину
+ * кадра и выглядело «огрызком» внутри тёмного поля. Держим object-fit:cover на весь блок,
+ * кадрируем портрет через object-position + лёгкий zoom как в expert_auto.
+ */
+body.advocate-editorial-theme .expert-hero-cinematic__photo {
+    object-position: 68% 22%;
+    transform: scale(1.04);
+    transform-origin: 70% 24%;
+}
+
+@media (min-width: 1024px) {
+    body.advocate-editorial-theme .expert-hero-cinematic__photo {
+        object-position: 72% 20%;
+        transform: scale(1.05);
+        transform-origin: 74% 22%;
+    }
+}
+
+@media (max-width: 1023px) {
+    body.advocate-editorial-theme .expert-hero-cinematic--photo .expert-hero-cinematic__photo {
+        object-position: 58% 24%;
+        transform: scale(1.03);
+        transform-origin: 58% 26%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.advocate-editorial-theme .expert-hero-cinematic__photo {
+        transform: none;
+    }
+}
+
+/* Выше кадр на desktop — цельный экран, не «полоска» */
+@media (min-width: 1024px) {
+    body.advocate-editorial-theme .expert-hero-cinematic--photo .expert-hero-cinematic__stage-inner {
+        min-height: min(92vh, 56rem);
+    }
+
+    /* «Окно» в затемнении совпадает с зоной портрета при полном cover */
+    body.advocate-editorial-theme .expert-hero-cinematic--photo .expert-hero-cinematic__overlay-base {
+        -webkit-mask-image: radial-gradient(
+            ellipse 64% 105% at 76% 38%,
+            transparent 0%,
+            transparent 10%,
+            rgba(0, 0, 0, 0.35) 44%,
+            black 78%
+        );
+        mask-image: radial-gradient(
+            ellipse 64% 105% at 76% 38%,
+            transparent 0%,
+            transparent 10%,
+            rgba(0, 0, 0, 0.35) 44%,
+            black 78%
+        );
+    }
+
+    /* Чипы доверия — одна линия под CTA, без «висящего» столбца */
+    body.advocate-editorial-theme .expert-hero-cinematic__copy > ul:not(.expert-hero-cinematic__trust-mobile) {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        column-gap: 1.75rem;
+        row-gap: 0.5rem;
+    }
+}
+
+/* «Подход к защите»: портрет — не обрезать голову (базовый object-[center_15%] узкий по вертикали). */
+body.advocate-editorial-theme .expert-bio-mega figure img {
+    object-position: center 32%;
+}
+
+/* Карточки и типографика прочих секций на светлом фоне */
+body.advocate-editorial-theme .expert-card {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(28, 31, 38, 0.08);
+    color: rgb(40 44 52);
+}
+
+body.advocate-editorial-theme .expert-home-section--faq .expert-faq__q,
+body.advocate-editorial-theme .expert-faq__q {
+    color: rgb(28 31 38);
+}
+
+/* FAQ (expert-faq-mega): тёмный текст и «бумажные» карточки на светлом фоне (главная и внутренние страницы). */
+body.advocate-editorial-theme .expert-faq-mega .expert-section-title {
+    color: rgb(24 27 32) !important;
+    text-shadow: none;
+}
+
+body.advocate-editorial-theme .expert-faq-item {
+    border-color: rgba(28, 31, 38, 0.12) !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    backdrop-filter: none;
+}
+
+body.advocate-editorial-theme .expert-faq-item button span {
+    color: rgb(24 27 32) !important;
+}
+
+body.advocate-editorial-theme .expert-faq-panel .border-t {
+    border-color: rgba(28, 31, 38, 0.1) !important;
+}
+
+body.advocate-editorial-theme .expert-faq-panel .max-w-4xl {
+    color: rgb(82 88 99) !important;
+}
+
+body.advocate-editorial-theme .expert-faq__a,
+body.advocate-editorial-theme .text-silver {
+    color: rgb(82 88 99) !important;
+}
+
+/*
+ * Внутренние страницы (конструктор / rich-text): базовый prose-invert рассчитан на тёмный фон;
+ * на светлом фоне advocate — тёмная типографика и нормальный контраст ссылок.
+ */
+body.advocate-editorial-theme main .prose.prose-invert {
+    color: rgb(82 88 99) !important;
+}
+
+body.advocate-editorial-theme main .prose.prose-invert p,
+body.advocate-editorial-theme main .prose.prose-invert li {
+    color: rgb(82 88 99) !important;
+}
+
+body.advocate-editorial-theme main .prose.prose-invert strong {
+    color: rgb(28 31 38) !important;
+}
+
+body.advocate-editorial-theme main .prose.prose-invert h2 {
+    color: rgb(28 31 38) !important;
+    margin-top: 1.75rem;
+    text-shadow: none;
+}
+
+body.advocate-editorial-theme main .prose.prose-invert a {
+    color: rgb(95 72 42) !important;
+}
+
+body.advocate-editorial-theme main .prose.prose-invert ul > li::marker {
+    color: rgba(95, 72, 42, 0.85);
+}
+
+/*
+ * Направления практики (problem_cards): базовые expert-стили рассчитаны на тёмный фон.
+ * На advocate фон страницы светлый — карточки и подписи в «бумажном» режиме.
+ */
+body.advocate-editorial-theme .expert-home-section--problem_cards .expert-section-title {
+    color: rgb(24 27 32) !important;
+    text-shadow: none;
+}
+
+body.advocate-editorial-theme .expert-home-section--problem_cards .expert-problems-mega > div:first-child p {
+    color: rgb(82 88 99) !important;
+}
+
+body.advocate-editorial-theme .expert-home-section--problem_cards .expert-problem-card {
+    border-color: rgba(28, 31, 38, 0.1) !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 12px 36px -18px rgba(28, 31, 38, 0.16) !important;
+}
+
+body.advocate-editorial-theme .expert-home-section--problem_cards .expert-problem-card[class*='border-moto-amber'] {
+    background: linear-gradient(145deg, rgba(255, 252, 247, 0.98), rgba(250, 246, 238, 0.96)) !important;
+    border-color: rgba(154, 123, 79, 0.3) !important;
+}
+
+body.advocate-editorial-theme .expert-home-section--problem_cards .expert-problem-card h3 {
+    color: rgb(24 27 32) !important;
+}
+
+body.advocate-editorial-theme .expert-home-section--problem_cards .expert-problem-card p {
+    color: rgb(82 88 99) !important;
+}
+
+body.advocate-editorial-theme .expert-home-section--problem_cards .expert-problem-card .border-t {
+    border-color: rgba(28, 31, 38, 0.12) !important;
+}
+
+body.advocate-editorial-theme .expert-home-section--problem_cards .expert-problem-card p[class*='text-moto-amber'] {
+    color: rgb(95 72 42) !important;
+}
+
+body.advocate-editorial-theme .expert-home-section--problem_cards .expert-problems-mega > div:first-child {
+    border-color: rgba(28, 31, 38, 0.08) !important;
+}
+
+body.advocate-editorial-theme .expert-home-section--problem_cards button[class*='border-white'] {
+    border-color: rgba(28, 31, 38, 0.15) !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: rgb(28 31 38) !important;
+}
+
+/*
+ * Как мы работаем (process_steps): базовые expert-стили — белый текст на тёмном;
+ * на advocate фон страницы светлый — шаги и заголовок читаемы как тёмная типографика.
+ */
+body.advocate-editorial-theme .expert-home-section--process_steps .expert-section-title {
+    color: rgb(24 27 32) !important;
+    text-shadow: none;
+}
+
+body.advocate-editorial-theme .expert-home-section--process_steps .expert-process-mega h3 {
+    color: rgb(24 27 32) !important;
+}
+
+body.advocate-editorial-theme .expert-home-section--process_steps .expert-process-mega p,
+body.advocate-editorial-theme .expert-home-section--process_steps .expert-process-mega [class*='text-silver'] {
+    color: rgb(58 64 74) !important;
+}
+
+/*
+ * Профессиональный контекст (editorial_gallery): заголовок и лид на светлом фоне.
+ */
+body.advocate-editorial-theme .expert-home-section--editorial_gallery .expert-section-title {
+    color: rgb(24 27 32) !important;
+    text-shadow: none;
+}
+
+body.advocate-editorial-theme .expert-home-section--editorial_gallery .expert-media-gallery > div:first-child p {
+    color: rgb(82 88 99) !important;
+}
+
+/* Sticky CTA на мобильном */
+@media (max-width: 1023px) {
+    body.advocate-editorial-theme:has([data-expert-hero='1']):not(.expert-auto-past-first-screen) .expert-sticky-cta {
+        opacity: 0 !important;
+        transform: translateY(12px) !important;
+        pointer-events: none !important;
+        transition:
+            opacity 0.32s ease,
+            transform 0.32s ease;
+    }
+}
+
+/*
+ * Блок «Контакты» (contacts_info) на advocate: светлая «бумажная» карточка там,
+ * где используется дефолтный partial. Premium dark — в themes/advocate_editorial/sections/contacts-info
+ * (класс .advocate-contacts-premium-card), без переопределения ниже.
+ */
+body.advocate-editorial-theme section[data-page-section-type='contacts_info']:not(.advocate-contacts-premium-card) {
+    border-color: rgba(28, 31, 38, 0.12) !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 12px 40px -24px rgba(28, 31, 38, 0.18);
+}
+
+body.advocate-editorial-theme section[data-page-section-type='contacts_info']:not(.advocate-contacts-premium-card) h2 {
+    color: rgb(24 27 32) !important;
+}
+
+body.advocate-editorial-theme section[data-page-section-type='contacts_info']:not(.advocate-contacts-premium-card) dt {
+    color: rgba(28, 31, 38, 0.55) !important;
+}
+
+body.advocate-editorial-theme section[data-page-section-type='contacts_info']:not(.advocate-contacts-premium-card) dd,
+body.advocate-editorial-theme section[data-page-section-type='contacts_info']:not(.advocate-contacts-premium-card) dd a {
+    color: rgb(28 31 38) !important;
+}
+
+body.advocate-editorial-theme section[data-page-section-type='contacts_info']:not(.advocate-contacts-premium-card) dd a {
+    text-decoration-color: rgba(95, 72, 42, 0.45);
+}
+
+body.advocate-editorial-theme section[data-page-section-type='contacts_info']:not(.advocate-contacts-premium-card) dd a:hover {
+    color: rgb(95 72 42) !important;
+}
+
+body.advocate-editorial-theme section[data-page-section-type='contacts_info']:not(.advocate-contacts-premium-card) .border-white\/10 {
+    border-color: rgba(28, 31, 38, 0.12) !important;
+}
+
+body.advocate-editorial-theme section[data-page-section-type='contacts_info']:not(.advocate-contacts-premium-card) .bg-white\/\[0\.02\] {
+    background: rgba(248, 246, 242, 0.95) !important;
+}
+
+body.advocate-editorial-theme section[data-page-section-type='contacts_info']:not(.advocate-contacts-premium-card) a.text-primary-300 {
+    color: rgb(95 72 42) !important;
+}
+
+body.advocate-editorial-theme section[data-page-section-type='contacts_info']:not(.advocate-contacts-premium-card) a.text-primary-300:hover {
+    color: rgb(75 58 36) !important;
+}
+
+/* Страница /contacts: контрастные зоны, intro-прос, форма */
+body.advocate-editorial-theme .advocate-contacts-page .advocate-contacts-page__intro-prose .prose-invert p {
+    font-size: 1.0625rem;
+    line-height: 1.65;
+}
+
+body.advocate-editorial-theme .advocate-contacts-page .advocate-contacts-page__intro-prose .prose-invert p + p {
+    margin-top: 1rem;
+}
+
+body.advocate-editorial-theme .advocate-contacts-page .expert-lead-mega__shell {
+    box-shadow:
+        0 36px 88px -32px rgba(28, 31, 38, 0.28),
+        0 12px 32px -18px rgba(28, 31, 38, 0.12);
+}
+
+/* /contacts: светлый editorial hero — лид и кнопки */
+body.advocate-editorial-theme .advocate-contacts-hero .advocate-contacts-hero-prose p {
+    font-size: 1.125rem;
+    line-height: 1.72;
+    color: rgb(55 60 68);
+}
+
+body.advocate-editorial-theme .advocate-contacts-hero .advocate-contacts-hero-prose p + p {
+    margin-top: 1.05rem;
+}
+
+body.advocate-editorial-theme .advocate-contacts-hero__action--primary {
+    background: linear-gradient(180deg, rgb(154 123 79) 0%, rgb(124 98 58) 100%);
+    color: #fffbf5;
+}
+
+body.advocate-editorial-theme .advocate-contacts-hero__action:not(.advocate-contacts-hero__action--primary) {
+    border: 1px solid rgba(154, 123, 79, 0.38);
+    background: rgba(255, 255, 255, 0.72);
+    color: rgb(24 27 32);
+    box-shadow: 0 8px 24px -14px rgba(42, 36, 28, 0.2);
+}
+
+body.advocate-editorial-theme .advocate-contacts-hero__action:not(.advocate-contacts-hero__action--primary):hover {
+    border-color: rgba(154, 123, 79, 0.55);
+    background: rgba(255, 252, 247, 0.95);
+}
+
+/* /contacts: форма — панели групп, без «канцелярии» */
+body.advocate-editorial-theme .advocate-contacts-page .advocate-expert-lead--contacts-page .expert-lead-mega__shell {
+    box-shadow:
+        0 26px 68px -30px rgba(28, 31, 38, 0.18),
+        0 10px 28px -16px rgba(28, 31, 38, 0.08);
+    border-color: rgba(154, 123, 79, 0.18);
+}
+
+body.advocate-editorial-theme .expert-inquiry-form > div.advocate-contacts-form-panel:first-of-type {
+    margin-top: 0;
+}
+
+body.advocate-editorial-theme .advocate-contacts-form-panel {
+    margin-top: 1.15rem;
+    border-radius: 1.25rem;
+    border: 1px solid rgba(154, 123, 79, 0.12);
+    background: rgba(255, 252, 247, 0.55);
+    padding: 1.25rem 1.35rem 1.35rem;
+    box-shadow: 0 10px 36px -22px rgba(28, 31, 38, 0.1);
+}
+
+@media (min-width: 640px) {
+    body.advocate-editorial-theme .advocate-contacts-form-panel {
+        padding: 1.5rem 1.6rem 1.65rem;
+    }
+}
+
+body.advocate-editorial-theme .advocate-contacts-form-group-label {
+    margin: 0 0 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    color: rgb(42 46 54);
+}
+
+/*
+ * Маршрут /faq (resources/views/tenant/pages/faq): заголовок в <section>, не в main>div — задаём тёмный цвет и «бумажные» аккордеоны.
+ */
+body.advocate-editorial-theme main .tenant-page-faq h1.text-balance {
+    color: rgb(28 31 38) !important;
+}
+
+body.advocate-editorial-theme main .tenant-page-faq .tenant-page-faq__lead,
+body.advocate-editorial-theme main .tenant-page-faq .tenant-page-faq__foot {
+    color: rgb(82 88 99) !important;
+}
+
+body.advocate-editorial-theme main .tenant-page-faq .tenant-page-faq__item {
+    border-color: rgba(28, 31, 38, 0.12) !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 12px 36px -18px rgba(28, 31, 38, 0.12);
+    backdrop-filter: none;
+}
+
+body.advocate-editorial-theme main .tenant-page-faq .tenant-page-faq__item[open] {
+    border-color: rgba(154, 123, 79, 0.35) !important;
+    background: rgba(255, 252, 247, 0.98) !important;
+}
+
+body.advocate-editorial-theme main .tenant-page-faq .tenant-page-faq__item summary {
+    color: rgb(24 27 32) !important;
+}
+
+body.advocate-editorial-theme main .tenant-page-faq .tenant-page-faq__answer {
+    border-color: rgba(28, 31, 38, 0.1) !important;
+    color: rgb(82 88 99) !important;
+}
+
+/*
+ * Страница «Об адвокате» (.advocate-about-page): сетка направлений и текст на светлом фоне
+ * (без обёртки expert-home-section--problem_cards).
+ */
+body.advocate-editorial-theme .advocate-about-page .expert-problems-full .expert-section-title {
+    color: rgb(24 27 32) !important;
+    text-shadow: none;
+}
+
+body.advocate-editorial-theme .advocate-about-page .expert-problems-full p {
+    color: rgb(82 88 99) !important;
+}
+
+body.advocate-editorial-theme .advocate-about-page .expert-problem-card {
+    border-color: rgba(28, 31, 38, 0.1) !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 12px 36px -18px rgba(28, 31, 38, 0.16) !important;
+}
+
+body.advocate-editorial-theme .advocate-about-page .expert-problem-card h3 {
+    color: rgb(24 27 32) !important;
+}
+
+body.advocate-editorial-theme .advocate-about-page .expert-problem-card p {
+    color: rgb(82 88 99) !important;
+}
+
+body.advocate-editorial-theme .advocate-about-page .expert-problem-card a {
+    color: rgb(95 72 42) !important;
+}
+
+body.advocate-editorial-theme .advocate-about-page section[data-page-section-type='structured_text'] h2 {
+    color: rgb(24 27 32) !important;
+}
+
+body.advocate-editorial-theme .advocate-about-page section[data-page-section-type='cta'] {
+    border-color: rgba(154, 123, 79, 0.3) !important;
+    background: linear-gradient(145deg, rgba(255, 252, 247, 0.98), rgba(250, 246, 238, 0.96)) !important;
+}
+
+body.advocate-editorial-theme .advocate-about-page section[data-page-section-type='cta'] h2 {
+    color: rgb(24 27 32) !important;
+}
+
+body.advocate-editorial-theme .advocate-about-page section[data-page-section-type='cta'] p {
+    color: rgb(82 88 99) !important;
+}
+
+/*
+ * Страница «Практики» — editorial density: светлые карточки, заметка, финальный CTA.
+ */
+body.advocate-editorial-theme .advocate-practice-areas-page .expert-problems-full .expert-section-title {
+    color: rgb(24 27 32) !important;
+    text-shadow: none;
+}
+
+body.advocate-editorial-theme .advocate-practice-areas-page .expert-problems-full p {
+    color: rgb(82 88 99) !important;
+}
+
+body.advocate-editorial-theme .advocate-practice-areas-page .expert-problem-card {
+    border-color: rgba(28, 31, 38, 0.1) !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 12px 36px -18px rgba(28, 31, 38, 0.16) !important;
+}
+
+body.advocate-editorial-theme .advocate-practice-areas-page .expert-problem-card h3 {
+    color: rgb(24 27 32) !important;
+}
+
+body.advocate-editorial-theme .advocate-practice-areas-page .expert-problem-card p {
+    color: rgb(82 88 99) !important;
+}
+
+body.advocate-editorial-theme .advocate-practice-areas-page .expert-problem-card a {
+    color: rgb(95 72 42) !important;
+}
+
+body.advocate-editorial-theme .advocate-practice-areas-page section[data-page-section-type='structured_text'] h2 {
+    color: rgb(24 27 32) !important;
+}
+
+body.advocate-editorial-theme .advocate-practice-areas-page section[data-page-section-type='notice_box'] {
+    border-color: rgba(28, 31, 38, 0.12) !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+}
+
+body.advocate-editorial-theme .advocate-practice-areas-page section[data-page-section-type='notice_box'] h3 {
+    color: rgb(24 27 32) !important;
+}
+
+body.advocate-editorial-theme .advocate-practice-areas-page section[data-page-section-type='notice_box'] .prose,
+body.advocate-editorial-theme .advocate-practice-areas-page section[data-page-section-type='notice_box'] .prose p {
+    color: rgb(82 88 99) !important;
+}
+
+body.advocate-editorial-theme .advocate-practice-areas-page section[data-page-section-type='notice_box'] .prose a {
+    color: rgb(95 72 42) !important;
+}
+
+body.advocate-editorial-theme .advocate-practice-areas-page section[data-page-section-type='notice_box'] .prose strong {
+    color: rgb(24 27 32) !important;
+}
+
+body.advocate-editorial-theme .advocate-practice-areas-page section[data-page-section-type='cta'] {
+    border-color: rgba(154, 123, 79, 0.3) !important;
+    background: linear-gradient(145deg, rgba(255, 252, 247, 0.98), rgba(250, 246, 238, 0.96)) !important;
+}
+
+body.advocate-editorial-theme .advocate-practice-areas-page section[data-page-section-type='cta'] h2 {
+    color: rgb(24 27 32) !important;
+}
+
+body.advocate-editorial-theme .advocate-practice-areas-page section[data-page-section-type='cta'] p {
+    color: rgb(82 88 99) !important;
+}
+
+/*
+ * Футер: сетка только здесь (plain CSS), чтобы prod-бандл не терял lg:grid-cols-12 / col-span из Tailwind.
+ * Mobile: column flex + order; lg+: 12 колонок minmax(0,1fr) — без узкой полосы и наложений.
+ */
+body.advocate-editorial-theme .advocate-site-footer__grid {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+@media (max-width: 1023px) {
+    body.advocate-editorial-theme .advocate-site-footer__grid {
+        display: flex;
+        flex-direction: column;
+        gap: 2.5rem;
+    }
+
+    body.advocate-editorial-theme .advocate-site-footer__brand {
+        order: 1;
+    }
+    body.advocate-editorial-theme .advocate-site-footer__contacts {
+        order: 2;
+    }
+    body.advocate-editorial-theme .advocate-site-footer__nav {
+        order: 3;
+    }
+    body.advocate-editorial-theme .advocate-site-footer__practices {
+        order: 4;
+    }
+}
+
+@media (min-width: 1024px) {
+    body.advocate-editorial-theme .advocate-site-footer__grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        column-gap: 2rem;
+        row-gap: 2.5rem;
+        align-items: start;
+    }
+
+    body.advocate-editorial-theme .advocate-site-footer__grid > .advocate-site-footer__brand,
+    body.advocate-editorial-theme .advocate-site-footer__grid > .advocate-site-footer__nav,
+    body.advocate-editorial-theme .advocate-site-footer__grid > .advocate-site-footer__practices,
+    body.advocate-editorial-theme .advocate-site-footer__grid > .advocate-site-footer__contacts {
+        order: 0;
+        min-width: 0;
+    }
+
+    body.advocate-editorial-theme .advocate-site-footer__grid--with-practices .advocate-site-footer__brand {
+        grid-column: span 4;
+    }
+    body.advocate-editorial-theme .advocate-site-footer__grid--with-practices .advocate-site-footer__nav {
+        grid-column: span 2;
+    }
+    body.advocate-editorial-theme .advocate-site-footer__grid--with-practices .advocate-site-footer__practices {
+        grid-column: span 3;
+    }
+    body.advocate-editorial-theme .advocate-site-footer__grid--with-practices .advocate-site-footer__contacts {
+        grid-column: span 3;
+    }
+
+    body.advocate-editorial-theme .advocate-site-footer__grid--no-practices .advocate-site-footer__brand {
+        grid-column: span 5;
+    }
+    body.advocate-editorial-theme .advocate-site-footer__grid--no-practices .advocate-site-footer__nav {
+        grid-column: span 2;
+    }
+    body.advocate-editorial-theme .advocate-site-footer__grid--no-practices .advocate-site-footer__contacts {
+        grid-column: span 5;
+    }
+}
+
+/* Публичный футер: спокойный контраст, без «корпоративного мегаблока» */
+body.advocate-editorial-theme .advocate-site-footer .advocate-footer-link:focus-visible {
+    outline: 2px solid rgba(154, 123, 79, 0.75);
+    outline-offset: 3px;
+    border-radius: 0.25rem;
+}
+
+body.advocate-editorial-theme .advocate-site-footer .advocate-footer-cta:focus-visible {
+    outline: 2px solid rgba(154, 123, 79, 0.85);
+    outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.advocate-editorial-theme .advocate-site-footer a {
+        transition: none !important;
+    }
+}

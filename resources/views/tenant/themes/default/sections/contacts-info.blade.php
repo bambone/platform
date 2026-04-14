@@ -1,5 +1,6 @@
 @php
     use App\PageBuilder\Contacts\ContactChannelsResolver;
+
     $presentation = app(ContactChannelsResolver::class)->present(is_array($data ?? null) ? $data : []);
     $allRows = array_merge($presentation->primaryChannels, $presentation->secondaryChannels);
 @endphp
@@ -36,31 +37,13 @@
         </dl>
     @endif
 
-    @if($presentation->hasMap() && filled($presentation->mapLink))
-        <p class="mt-6">
-            <a href="{{ $presentation->mapLink }}" class="text-sm font-medium text-primary-300 underline underline-offset-2 hover:text-primary-200 focus-visible:outline focus-visible:ring-2 focus-visible:ring-primary-400/50 rounded-sm" target="_blank" rel="noopener noreferrer">Открыть на карте</a>
-        </p>
-    @endif
     @if($presentation->hasMap())
-        <div class="mt-6 overflow-hidden rounded-lg border border-white/10">
-            <div class="aspect-video w-full max-h-80 [&_iframe]:h-full [&_iframe]:min-h-[200px] [&_iframe]:w-full">
-                @if(filled($presentation->mapEmbed))
-                    {!! $presentation->mapEmbed !!}
-                @elseif(filled($presentation->mapLink))
-                    <iframe
-                        src="{{ $presentation->mapLink }}"
-                        title="Карта"
-                        width="100%"
-                        height="100%"
-                        class="min-h-[200px] w-full border-0"
-                        loading="lazy"
-                    ></iframe>
-                @endif
-            </div>
+        <div class="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4 sm:p-6">
+            <x-custom-pages.contacts.map-block :view="$presentation->mapBlock" />
         </div>
     @else
         <div class="mt-6 rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-4 py-8 text-center sm:px-6">
-            <p class="text-sm text-silver/80">Карту можно добавить в настройках блока: вставьте код карты (iframe) или ссылку для открытия.</p>
+            <p class="text-sm text-silver/80">Карту можно добавить в настройках блока: выберите провайдер и вставьте ссылку на объект или маршрут.</p>
         </div>
     @endif
 </section>

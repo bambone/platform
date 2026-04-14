@@ -1,4 +1,7 @@
 @php
+    use App\PageBuilder\Contacts\ContactChannelsResolver;
+
+    $presentation = app(ContactChannelsResolver::class)->present(is_array($data ?? null) ? $data : []);
     $heading = $data['heading'] ?? '';
     $desc = $data['description'] ?? '';
     $hasChannel = filled($data['phone'] ?? '')
@@ -7,8 +10,7 @@
         || filled($data['email'] ?? '')
         || filled($data['social_note'] ?? '')
         || filled($data['address'] ?? '')
-        || filled($data['map_url'] ?? '')
-        || filled($data['map_embed_html'] ?? '');
+        || $presentation->hasMap();
     if (! filled($heading) && ! filled($desc) && ! $hasChannel) {
         return;
     }
@@ -26,8 +28,7 @@
             || filled($data['whatsapp'] ?? '')
             || filled($data['telegram'] ?? '')
             || filled($data['social_note'] ?? '')
-            || filled($data['address'] ?? '')
-            || filled($data['map_url'] ?? '');
+            || filled($data['address'] ?? '');
     @endphp
     @if($hasList)
         <ul class="mt-4 space-y-2 text-sm text-silver">
@@ -49,14 +50,11 @@
             @if(filled($data['address'] ?? ''))
                 <li><span class="text-white/80">Адрес:</span> {{ $data['address'] }}</li>
             @endif
-            @if(filled($data['map_url'] ?? ''))
-                <li><a href="{{ e($data['map_url']) }}" class="text-amber-400 underline hover:text-amber-300">Открыть карту</a></li>
-            @endif
         </ul>
     @endif
-    @if(filled($data['map_embed_html'] ?? ''))
-        <div class="mt-4 min-h-[200px] overflow-hidden rounded-xl border border-white/10">
-            {!! $data['map_embed_html'] !!}
+    @if($presentation->hasMap())
+        <div class="mt-6">
+            <x-custom-pages.contacts.map-block :view="$presentation->mapBlock" />
         </div>
     @endif
 </section>

@@ -53,8 +53,8 @@
     @if($showMapBlock)
         <div class="mt-12 border-t border-white/10 pt-12 sm:mt-14 sm:pt-14">
             @if($hasMap)
-                <div class="overflow-hidden rounded-2xl ring-1 ring-white/10 shadow-2xl shadow-black/50">
-                    <x-custom-pages.contacts.map-block :map-embed-code="$presentation->mapEmbed" :map-url="$presentation->mapLink" />
+                <div class="overflow-hidden rounded-2xl ring-1 ring-white/10 shadow-2xl shadow-black/50 p-4 sm:p-6">
+                    <x-custom-pages.contacts.map-block :view="$presentation->mapBlock" />
                 </div>
             @else
                 <div class="rounded-2xl border border-white/10 bg-obsidian/50 p-8 ring-1 ring-inset ring-white/5 sm:p-10">

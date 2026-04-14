@@ -5,6 +5,7 @@ namespace App\Filament\Tenant\PageBuilder;
 use App\Models\Page;
 use App\Models\PageSection;
 use App\PageBuilder\Contacts\ContactChannelsResolver;
+use App\PageBuilder\Contacts\ContactMapCanonical;
 
 /**
  * Слой согласования карточки секции в админке с тем, как блок реально выводится на публичной странице
@@ -232,11 +233,10 @@ final class PageSectionBuilderPresentationEnricher
      */
     private function contactsInfoPresentation(string $themeKey, string $slug, string $pageMode, array $data): array
     {
-        $mapEmbed = trim((string) ($data['map_embed'] ?? ''));
-        $mapLink = trim((string) ($data['map_link'] ?? ''));
         $notes = [];
-        if ($mapEmbed === '' && $mapLink === '') {
-            $notes[] = 'Карта на сайте не покажется, пока не заполнены вставка или ссылка на карту.';
+        $hasMap = ContactMapCanonical::fromDataJson($data)->hasVisibleMap();
+        if (! $hasMap) {
+            $notes[] = 'Карта на сайте не покажется, пока не включена карта и не указана безопасная ссылка (Яндекс / Google / 2ГИС).';
         }
 
         $analysis = app(ContactChannelsResolver::class)->analyze($data);

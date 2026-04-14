@@ -72,3 +72,5 @@ yarn-debug.log
 .yarn-integrity
 
 
+docs/tenants_tz/*
+

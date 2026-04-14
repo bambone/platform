@@ -43,7 +43,7 @@ final class TenantPublicSiteContactsService
     }
 
     /**
-     * @return array{phone: string, phone_alt: string, whatsapp: string, telegram: string, vk_url: string}
+     * @return array{phone: string, phone_alt: string, email: string, whatsapp: string, telegram: string, vk_url: string}
      */
     public function contactsForPublicLayout(Tenant $tenant): array
     {
@@ -56,6 +56,7 @@ final class TenantPublicSiteContactsService
         return [
             'phone' => $phone,
             'phone_alt' => trim((string) TenantSetting::getForTenant($tenantId, 'contacts.phone_alt', '')),
+            'email' => trim((string) TenantSetting::getForTenant($tenantId, 'contacts.email', '')),
             'whatsapp' => $this->resolveWhatsappDigits($state),
             'telegram' => $this->resolveTelegramHandle($state),
             'vk_url' => $this->resolveVkUrl($state),

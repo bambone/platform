@@ -4,7 +4,7 @@ namespace App\Filament\Tenant\Resources;
 
 use App\Filament\Tenant\Resources\NotificationDeliveryResource\Pages;
 use App\Models\NotificationDelivery;
-use Filament\Resources\Resource;
+use App\Filament\Tenant\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;

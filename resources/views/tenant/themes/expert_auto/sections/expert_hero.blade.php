@@ -31,6 +31,10 @@
     }
     $hasVideo = $videoUrl !== '';
     $dialogId = 'expert-hero-video-'.(int) data_get($section ?? [], 'id', 0);
+    $eyebrow = trim((string) ($data['hero_eyebrow'] ?? ''));
+    if ($eyebrow === '') {
+        $eyebrow = 'Инструктор • Челябинск и область';
+    }
     $headingDisplay = RussianTypography::tiePrepositionsToNextWord($heading);
     $subDisplay = $sub !== '' ? RussianTypography::tiePrepositionsToNextWord($sub) : '';
 @endphp
@@ -45,6 +49,35 @@
     data-expert-hero="1"
     @if($hasPhoto && $overlay) style="--ex-hero-vignette: rgba(4,8,18,0.25);" @endif
 >
+    @if($hasPhoto)
+        <style>
+            .expert-hero-cinematic--photo .expert-hero-cinematic__photo {
+                position: absolute;
+                inset: 0;
+                z-index: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                object-position: 76% 10%;
+                transform: scale(1.02);
+            }
+            @media (min-width: 1024px) {
+                .expert-hero-cinematic--photo .expert-hero-cinematic__photo {
+                    transform: scale(1.03);
+                }
+            }
+            @media (max-width: 1023px) {
+                .expert-hero-cinematic--photo .expert-hero-cinematic__photo {
+                    object-position: 82% 18%;
+                    transform: scale(1.02);
+                    transform-origin: 82% 18%;
+                }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .expert-hero-cinematic--photo .expert-hero-cinematic__photo { transform: none; }
+            }
+        </style>
+    @endif
     <div class="expert-hero-cinematic__bleed expert-hero-cinematic__bleed--stage">
         @if($hasPhoto)
             <img
@@ -80,7 +113,7 @@
                 <div class="expert-hero-cinematic__poster-spacer min-h-0 w-full flex-1 basis-0 lg:hidden" aria-hidden="true"></div>
             @endif
             <div class="expert-hero-cinematic__copy relative z-20 flex min-w-0 w-full max-w-[min(100%,32rem)] shrink-0 flex-col justify-center sm:max-w-2xl md:max-w-3xl lg:max-w-[min(48rem,56vw)] lg:flex-1 lg:pr-6 xl:max-w-[min(52rem,54vw)] xl:pr-8">
-                <p class="mb-2 text-[0.6rem] font-bold uppercase tracking-[0.2em] text-moto-amber/90 sm:mb-4 sm:text-xs">Инструктор • Челябинск и область</p>
+                <p class="mb-2 text-[0.6rem] font-bold uppercase tracking-[0.2em] text-moto-amber/90 sm:mb-4 sm:text-xs">{{ $eyebrow }}</p>
                 <h1 class="expert-hero-cinematic__headline text-pretty text-[clamp(1.4rem,4.2vw,2.5rem)] font-extrabold leading-[1.14] tracking-tight text-white sm:text-5xl sm:leading-[1.12] lg:text-[clamp(2.5rem,3.6vw,3.35rem)] lg:leading-[1.1] xl:text-[clamp(2.75rem,3.4vw,3.75rem)] xl:leading-[1.08]">{{ $headingDisplay }}</h1>
                 @if($sub !== '')
                     {{-- Mobile: максимум ~2 строки смысла; полный текст с md. --}}

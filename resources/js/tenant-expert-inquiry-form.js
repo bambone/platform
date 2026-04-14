@@ -143,6 +143,56 @@ function initPreferredChannelSync(form, meta) {
     return sync;
 }
 
+/** Допустимый интервал времени: 07:00–22:00, минуты кратны 5 (как у step=300). */
+const SCHEDULE_MIN = '07:00';
+const SCHEDULE_MAX = '22:00';
+const SCHEDULE_STEP_MIN = 5;
+
+function parseTimeToMinutes(value) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(value).trim());
+    if (!m) {
+        return null;
+    }
+    const h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    if (h > 23 || min > 59) {
+        return null;
+    }
+
+    return h * 60 + min;
+}
+
+function minutesToTimeString(total) {
+    const h = Math.floor(total / 60);
+    const min = total % 60;
+
+    return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+}
+
+/**
+ * Приводит время к [07:00, 22:00] и к шагу 5 минут (ручной ввод и вставка).
+ */
+function clampAndSnapScheduleTime(value) {
+    if (value === '' || value === null || value === undefined) {
+        return '';
+    }
+    const minM = parseTimeToMinutes(SCHEDULE_MIN);
+    const maxM = parseTimeToMinutes(SCHEDULE_MAX);
+    if (minM === null || maxM === null) {
+        return '';
+    }
+    let t = parseTimeToMinutes(value);
+    if (t === null) {
+        return '';
+    }
+    t = Math.min(Math.max(t, minM), maxM);
+    const rel = t - minM;
+    const snapped = minM + Math.round(rel / SCHEDULE_STEP_MIN) * SCHEDULE_STEP_MIN;
+    const clamped = Math.min(Math.max(snapped, minM), maxM);
+
+    return minutesToTimeString(clamped);
+}
+
 function syncPreferredScheduleHidden(form) {
     const from = form.querySelector('#expert-schedule-from');
     const to = form.querySelector('#expert-schedule-to');
@@ -172,11 +222,124 @@ function initPreferredScheduleInterval(form) {
     }
     form.dataset.rbPreferredScheduleBound = '1';
     const sync = () => syncPreferredScheduleHidden(form);
+    const normalize = (el) => {
+        if (!el || el.value === '') {
+            return;
+        }
+        const next = clampAndSnapScheduleTime(el.value);
+        if (next !== el.value) {
+            el.value = next;
+        }
+    };
     from.addEventListener('input', sync);
-    from.addEventListener('change', sync);
+    from.addEventListener('change', () => {
+        normalize(from);
+        sync();
+    });
+    from.addEventListener('blur', () => {
+        normalize(from);
+        sync();
+    });
     to.addEventListener('input', sync);
-    to.addEventListener('change', sync);
+    to.addEventListener('change', () => {
+        normalize(to);
+        sync();
+    });
+    to.addEventListener('blur', () => {
+        normalize(to);
+        sync();
+    });
     sync();
+}
+
+/**
+ * Клик по заголовку/подсказке «Удобное время» и клик по области группы — фокус на поле и нативный выбор времени (showPicker).
+ * Подсветка блока — через focus-within на оболочке в Blade.
+ */
+function initExpertScheduleFocusUx(form) {
+    if (form.dataset.rbExpertScheduleUx === '1') {
+        return;
+    }
+    const from = form.querySelector('#expert-schedule-from');
+    const to = form.querySelector('#expert-schedule-to');
+    if (!from || !to) {
+        return;
+    }
+    form.dataset.rbExpertScheduleUx = '1';
+
+    const pickTarget = () => {
+        if (from.value === '') {
+            return from;
+        }
+        if (to.value === '') {
+            return to;
+        }
+
+        return from;
+    };
+
+    const tryShowPicker = (el) => {
+        if (!el || typeof el.showPicker !== 'function') {
+            return;
+        }
+        try {
+            el.showPicker();
+        } catch (_) {}
+    };
+
+    const openTimePicker = () => {
+        const el = pickTarget();
+        el.focus();
+        tryShowPicker(el);
+    };
+
+    /** Указатель по полю — сразу нативный выбор времени (Chrome/Edge и др.); с клавиатуры по-прежнему можно вводить вручную. */
+    [from, to].forEach((el) => {
+        el.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'mouse' || e.pointerType === 'pen' || e.pointerType === 'touch') {
+                tryShowPicker(el);
+            }
+        });
+    });
+
+    form.querySelectorAll('[data-expert-schedule-activator]').forEach((node) => {
+        node.addEventListener('click', (e) => {
+            e.preventDefault();
+            openTimePicker();
+        });
+        node.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openTimePicker();
+            }
+        });
+    });
+
+    const group = form.querySelector('[data-expert-schedule-time-group]');
+    if (group) {
+        group.addEventListener('click', (e) => {
+            const t = e.target;
+            if (!t || typeof t.closest !== 'function') {
+                return;
+            }
+            if (t.matches('input[type="time"]')) {
+                return;
+            }
+            const lab = t.closest('label');
+            if (lab) {
+                const fid = lab.getAttribute('for');
+                if (fid) {
+                    const linked = document.getElementById(fid);
+                    if (linked && linked.matches('input[type="time"]')) {
+                        linked.focus();
+                        tryShowPicker(linked);
+                    }
+                }
+                return;
+            }
+            openTimePicker();
+        });
+    }
 }
 
 function initPreferredValueAsciiGuard(form) {
@@ -285,6 +448,28 @@ function validateClientSide(form, meta) {
                 'Укажите и время «С», и «До», или оставьте оба поля пустыми.',
             );
             ok = false;
+        } else if (sf !== '' && st !== '') {
+            const minM = parseTimeToMinutes(SCHEDULE_MIN);
+            const maxM = parseTimeToMinutes(SCHEDULE_MAX);
+            const a = parseTimeToMinutes(sf);
+            const b = parseTimeToMinutes(st);
+            if (
+                minM === null ||
+                maxM === null ||
+                a === null ||
+                b === null ||
+                a < minM ||
+                a > maxM ||
+                b < minM ||
+                b > maxM
+            ) {
+                setFieldError(
+                    form,
+                    'preferred_schedule',
+                    `Укажите время с ${SCHEDULE_MIN} до ${SCHEDULE_MAX} с шагом ${SCHEDULE_STEP_MIN} минут.`,
+                );
+                ok = false;
+            }
         }
     }
 
@@ -374,6 +559,7 @@ function bootExpertInquiryForm() {
     }
     initPreferredValueAsciiGuard(form);
     initPreferredScheduleInterval(form);
+    initExpertScheduleFocusUx(form);
 
     const endpoint = form.getAttribute('data-expert-inquiry-endpoint') || '';
     const defaultSuccessMessage = form.getAttribute('data-expert-inquiry-default-success') || '';

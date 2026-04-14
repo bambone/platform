@@ -8,6 +8,6 @@ abstract class ExpertSectionBlueprint extends AbstractPageSectionBlueprint
 {
     public function supportsTheme(string $themeKey): bool
     {
-        return $themeKey === 'expert_auto';
+        return in_array($themeKey, ['expert_auto', 'advocate_editorial'], true);
     }
 }

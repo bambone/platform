@@ -20,7 +20,7 @@ final class CtaBlueprint extends AbstractPageSectionBlueprint
 
     public function description(): string
     {
-        return 'Заголовок, текст и кнопка со ссылкой.';
+        return 'Заголовок, текст и одна или две кнопки со ссылками.';
     }
 
     public function icon(): string
@@ -40,6 +40,8 @@ final class CtaBlueprint extends AbstractPageSectionBlueprint
             'body' => '',
             'button_text' => '',
             'button_url' => '',
+            'secondary_button_text' => '',
+            'secondary_button_url' => '',
         ];
     }
 
@@ -55,11 +57,16 @@ final class CtaBlueprint extends AbstractPageSectionBlueprint
                 ->rows(4)
                 ->columnSpanFull(),
             TextInput::make('data_json.button_text')
-                ->label('Текст кнопки')
+                ->label('Текст основной кнопки')
                 ->maxLength(120),
             TextInput::make('data_json.button_url')
-                ->label('Ссылка')
-                ->url()
+                ->label('Ссылка основной кнопки')
+                ->maxLength(2048),
+            TextInput::make('data_json.secondary_button_text')
+                ->label('Текст второй кнопки (необязательно)')
+                ->maxLength(120),
+            TextInput::make('data_json.secondary_button_url')
+                ->label('Ссылка второй кнопки')
                 ->maxLength(2048),
         ];
     }

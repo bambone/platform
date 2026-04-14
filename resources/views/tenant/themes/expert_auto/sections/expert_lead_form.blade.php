@@ -129,30 +129,31 @@
                 </div>
             @endif
 
-            <div class="grid min-w-0 gap-4 sm:gap-5 md:grid-cols-2">
-                <div data-rb-public-field="preferred_schedule" class="expert-public-field-wrap min-w-0">
-                    <span id="expert-schedule-legend" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">Удобное время</span>
-                    <p id="expert-schedule-desc" class="mb-3 text-[12px] leading-snug text-silver/60 sm:text-[13px]">Интервал, когда вам удобно заниматься (необязательно). На телефоне откроется выбор времени.</p>
-                    <div class="grid min-w-0 gap-3 sm:grid-cols-2 sm:gap-4" role="group" aria-labelledby="expert-schedule-legend" aria-describedby="expert-schedule-desc">
+            <div class="grid min-w-0 grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 md:grid-rows-[auto_auto_auto] md:items-start md:gap-x-5 md:gap-y-3">
+                <div data-rb-public-field="preferred_schedule" class="expert-public-field-wrap min-w-0 md:contents">
+                    <span id="expert-schedule-legend" data-expert-schedule-activator tabindex="0" role="button" class="order-1 mb-2 block cursor-pointer select-none rounded-md text-sm font-semibold tracking-wide text-white/90 underline-offset-2 transition hover:text-moto-amber hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-moto-amber/45 md:order-none md:col-start-1 md:row-start-1 md:mb-0">Удобное время</span>
+                    <p id="expert-schedule-desc" data-expert-schedule-activator tabindex="0" role="button" class="order-2 mb-3 cursor-pointer select-none rounded-md text-[12px] leading-snug text-silver/60 sm:text-[13px] md:order-none md:col-start-1 md:row-start-2 md:mb-0">Интервал, когда вам удобно заниматься (необязательно). На телефоне откроется выбор времени.</p>
+                    <div class="order-3 grid min-w-0 gap-3 rounded-xl border border-white/[0.1] bg-white/[0.03] p-2 shadow-sm transition focus-within:border-moto-amber/45 focus-within:bg-white/[0.05] focus-within:shadow-md focus-within:ring-2 focus-within:ring-moto-amber/25 sm:grid-cols-2 sm:gap-4 sm:p-3 md:order-none md:col-start-1 md:row-start-3" data-expert-schedule-time-group role="group" aria-labelledby="expert-schedule-legend" aria-describedby="expert-schedule-desc">
                         <div class="min-w-0">
                             <label for="expert-schedule-from" class="mb-1.5 block text-[13px] font-medium tracking-wide text-white/80">С</label>
-                            <input id="expert-schedule-from" type="time" step="300" autocomplete="off"
-                                   class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors focus:border-moto-amber/50 focus:bg-white/[0.04] [color-scheme:dark]">
+                            <input id="expert-schedule-from" type="time" min="07:00" max="22:00" step="300" autocomplete="off"
+                                   class="expert-form-input expert-schedule-time-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors focus:border-moto-amber/55 focus:bg-white/[0.06] focus:ring-2 focus:ring-moto-amber/30 [color-scheme:dark]">
                         </div>
                         <div class="min-w-0">
                             <label for="expert-schedule-to" class="mb-1.5 block text-[13px] font-medium tracking-wide text-white/80">До</label>
-                            <input id="expert-schedule-to" type="time" step="300" autocomplete="off"
-                                   class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors focus:border-moto-amber/50 focus:bg-white/[0.04] [color-scheme:dark]">
+                            <input id="expert-schedule-to" type="time" min="07:00" max="22:00" step="300" autocomplete="off"
+                                   class="expert-form-input expert-schedule-time-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors focus:border-moto-amber/55 focus:bg-white/[0.06] focus:ring-2 focus:ring-moto-amber/30 [color-scheme:dark]">
                         </div>
                     </div>
-                    <input type="hidden" name="preferred_schedule" id="expert-schedule-value" value="">
                 </div>
-                <div data-rb-public-field="district" class="expert-public-field-wrap min-w-0">
-                    <label for="expert-district" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">Район</label>
+                <div class="hidden md:block md:col-start-2 md:row-start-2" aria-hidden="true"></div>
+                <div data-rb-public-field="district" class="expert-public-field-wrap min-w-0 md:contents">
+                    <label for="expert-district" class="order-4 mb-2 block text-sm font-semibold tracking-wide text-white/90 md:order-none md:col-start-2 md:row-start-1 md:mb-0">Район</label>
                     <input id="expert-district" name="district" type="text" maxlength="255"
-                           class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors placeholder:text-silver/40 focus:border-moto-amber/50 focus:bg-white/[0.04]">
+                           class="expert-form-input order-5 w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors placeholder:text-silver/40 focus:border-moto-amber/50 focus:bg-white/[0.04] md:order-none md:col-start-2 md:row-start-3 md:self-stretch">
                 </div>
             </div>
+            <input type="hidden" name="preferred_schedule" id="expert-schedule-value" value="">
 
             <div class="grid min-w-0 gap-4 sm:grid-cols-2 md:grid-cols-3 sm:gap-5">
                 <div data-rb-public-field="has_own_car" class="expert-public-field-wrap min-w-0">

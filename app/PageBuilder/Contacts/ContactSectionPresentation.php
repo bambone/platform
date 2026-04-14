@@ -17,8 +17,7 @@ final readonly class ContactSectionPresentation
         public string $description,
         public string $address,
         public string $workingHours,
-        public string $mapEmbed,
-        public string $mapLink,
+        public ContactMapResolvedView $mapBlock,
         public string $additionalNote,
         public array $primaryChannels,
         public array $secondaryChannels,
@@ -46,7 +45,7 @@ final readonly class ContactSectionPresentation
 
     public function hasMap(): bool
     {
-        return $this->mapEmbed !== '' || $this->mapLink !== '';
+        return $this->mapBlock->shouldRenderMapBlock();
     }
 
     public function hasAdditionalNote(): bool

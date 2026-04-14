@@ -21,6 +21,7 @@ final class TenantSeoRequestModelResolver
                 ->where('slug', 'home')
                 ->where('status', 'published')
                 ->first(),
+            'faq' => $this->pageFromSlug('faq'),
             'contacts' => Page::query()
                 ->where('slug', 'contacts')
                 ->where('status', 'published')
@@ -29,6 +30,7 @@ final class TenantSeoRequestModelResolver
                 ->where('slug', 'usloviya-arenda')
                 ->where('status', 'published')
                 ->first(),
+            'about' => $this->pageFromSlug('about'),
             'page.show' => $this->pageFromSlug($this->slugForPageShow($request)),
             'motorcycle.show' => $this->motorcycleFromSlug($request->route('slug'), requireAvailable: true),
             'booking.show' => $this->motorcycleFromSlug($request->route('slug'), requireAvailable: false),

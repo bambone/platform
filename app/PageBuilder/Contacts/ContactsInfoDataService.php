@@ -9,6 +9,7 @@ final class ContactsInfoDataService
 {
     public function __construct(
         private readonly ContactChannelsResolver $resolver,
+        private readonly ContactsMapPersistence $mapPersistence,
     ) {}
 
     /**
@@ -148,6 +149,29 @@ final class ContactsInfoDataService
                 $dataJson[$k] = null;
             }
         }
+
+        return $this->mapPersistence->finalize($dataJson);
+    }
+
+    /**
+     * Editor: show migrated map_* when DB still has legacy keys only.
+     *
+     * @param  array<string, mixed>  $dataJson
+     * @return array<string, mixed>
+     */
+    public function hydrateMapForEditor(array $dataJson): array
+    {
+        $c = ContactMapCanonical::fromDataJson($dataJson);
+        $dataJson['map_enabled'] = $c->mapEnabled;
+        $dataJson['map_provider'] = $c->mapProvider->value;
+        $dataJson['map_public_url'] = $c->mapPublicUrl;
+        $dataJson['map_combined_input'] = $c->mapPublicUrl;
+        $dataJson['map_secondary_combined_input'] = $c->mapSecondaryPublicUrl;
+        if (! isset($dataJson['map_input_mode']) || $dataJson['map_input_mode'] === '') {
+            $dataJson['map_input_mode'] = MapInputMode::Auto->value;
+        }
+        $dataJson['map_display_mode'] = $c->mapDisplayMode->value;
+        unset($dataJson['map_embed_mode']);
 
         return $dataJson;
     }

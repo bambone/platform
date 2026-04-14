@@ -35,7 +35,7 @@ final class PageSectionOperationsService
         $blueprint = $this->registry->get($typeId);
         $key = $this->keyGenerator->next($page, $typeId);
         $dataJson = $this->normalizeDataJson($blueprint->defaultData(), $payload['data_json'] ?? []);
-        if ($typeId === 'contacts_info') {
+        if (in_array($typeId, ['contacts_info', 'contacts'], true)) {
             $dataJson = app(ContactsInfoDataService::class)->finalizeForPersistence($dataJson);
         }
 
@@ -171,7 +171,7 @@ final class PageSectionOperationsService
         $existing = is_array($section->data_json) ? $section->data_json : [];
         $base = ContactsInfoDataService::mergeDataJsonPreservingChannelList($blueprint->defaultData(), $existing);
         $dataJson = $this->normalizeDataJson($base, $payload['data_json'] ?? []);
-        if ($typeId === 'contacts_info') {
+        if (in_array($typeId, ['contacts_info', 'contacts'], true)) {
             $dataJson = app(ContactsInfoDataService::class)->finalizeForPersistence($dataJson);
         }
 

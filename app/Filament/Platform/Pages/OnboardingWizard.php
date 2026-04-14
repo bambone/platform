@@ -23,6 +23,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
+use UnitEnum;
 
 class OnboardingWizard extends Page
 {
@@ -33,6 +34,9 @@ class OnboardingWizard extends Page
     protected static ?string $title = 'Мастер: новый клиент';
 
     protected static ?string $navigationLabel = 'Новый клиент (мастер)';
+
+    /** Рядом со списком «Клиенты» в сайдбаре консоли платформы. */
+    protected static string|UnitEnum|null $navigationGroup = 'Клиенты';
 
     protected static ?string $slug = 'onboarding';
 

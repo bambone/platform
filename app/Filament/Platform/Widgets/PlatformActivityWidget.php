@@ -22,7 +22,7 @@ class PlatformActivityWidget extends BaseWidget
     {
         return $table
             ->query(
-                Tenant::query()->latest()->limit(5)
+                Tenant::query()->latest()->limit(12)
             )
             ->columns([
                 Tables\Columns\TextColumn::make('created_at')

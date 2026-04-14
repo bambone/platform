@@ -45,6 +45,31 @@ final class RussianTypography
         // Только если дальше идёт буква (не цифра/скобка), чтобы не трогать «по 2» и т.п.
         $pattern = '/(?<=^|[\s'.self::NBSP.'])('.$alt.')\s+(?=\p{L})/iu';
 
-        return (string) preg_replace($pattern, '$1'.self::NBSP, $text);
+        $text = (string) preg_replace($pattern, '$1'.self::NBSP, $text);
+
+        // Тире «—» не отрываем от предыдущего слова (перенос строки).
+        $text = preg_replace('/\s+—/u', self::NBSP.'—', $text);
+
+        return $text;
+    }
+
+    /**
+     * То же для текста с переводами строк (например, подписи в настройках).
+     *
+     * @param  non-empty-string  $separator  символ(и) объединения строк после обработки
+     */
+    public static function tiePrepositionsPerLine(string $text, string $separator = "\n"): string
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return $text;
+        }
+        $lines = preg_split('/\R/u', $text) ?: [];
+        $out = [];
+        foreach ($lines as $line) {
+            $out[] = self::tiePrepositionsToNextWord(trim((string) $line));
+        }
+
+        return implode($separator, $out);
     }
 }

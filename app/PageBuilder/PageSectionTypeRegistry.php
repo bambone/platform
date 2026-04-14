@@ -94,6 +94,9 @@ final class PageSectionTypeRegistry
             new ContactsInfoSectionBlueprint,
             new DataTableSectionBlueprint,
             new NoticeBoxSectionBlueprint,
+            new ProblemCardsBlueprint,
+            new ExpertLeadFormBlueprint,
+            new CtaBlueprint,
         ];
     }
 

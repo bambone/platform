@@ -286,7 +286,17 @@ final class TenantStorage
 
     public function existsPublic(string $path): bool
     {
-        return $this->publicDisk()->exists($this->publicPath($path));
+        $fullKey = $this->publicPath($path);
+        if ($this->publicDisk()->exists($fullKey)) {
+            return true;
+        }
+
+        $mirrorName = TenantStorageDisks::publicMirrorDiskName();
+        if ($mirrorName === $this->publicDiskName()) {
+            return false;
+        }
+
+        return TenantStorageDisks::publicMirrorDisk()->exists($fullKey);
     }
 
     public function existsPrivate(string $path): bool

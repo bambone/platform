@@ -13,6 +13,7 @@ use App\Models\TemplatePreset;
 use App\Models\Tenant;
 use App\Models\TenantStorageQuota;
 use App\Models\User;
+use App\Providers\Filament\PlatformPanelProvider;
 use App\Support\Storage\MediaDeliveryMode;
 use App\Support\Storage\MediaWriteMode;
 use Filament\Actions\BulkAction;
@@ -29,9 +30,11 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
+use UnitEnum;
 
 class TenantResource extends Resource
 {
@@ -44,6 +47,9 @@ class TenantResource extends Resource
     protected static ?string $pluralModelLabel = 'Клиенты';
 
     protected static ?string $navigationLabel = 'Клиенты';
+
+    /** Совпадает с {@see PlatformPanelProvider} → группа «Клиенты». */
+    protected static string|UnitEnum|null $navigationGroup = 'Клиенты';
 
     protected static ?string $panel = 'platform';
 
@@ -99,6 +105,7 @@ class TenantResource extends Resource
                                 'default' => 'По умолчанию',
                                 'moto' => 'Мото',
                                 'expert_auto' => 'Инструктор / автошкола (expert_auto)',
+                                'advocate_editorial' => 'Адвокат / персональный бренд (advocate_editorial)',
                             ])
                             ->default('default')
                             ->required()
@@ -425,7 +432,7 @@ class TenantResource extends Resource
                                 ->required()
                                 ->native(true),
                         ])
-                        ->action(function (\Illuminate\Support\Collection $records, array $data): void {
+                        ->action(function (Collection $records, array $data): void {
                             $records->each(fn (Tenant $t) => $t->update(['media_write_mode_override' => $data['mode']]));
                         })
                         ->deselectRecordsAfterCompletion(),
@@ -441,14 +448,14 @@ class TenantResource extends Resource
                                 ->required()
                                 ->native(true),
                         ])
-                        ->action(function (\Illuminate\Support\Collection $records, array $data): void {
+                        ->action(function (Collection $records, array $data): void {
                             $records->each(fn (Tenant $t) => $t->update(['media_delivery_mode_override' => $data['mode']]));
                         })
                         ->deselectRecordsAfterCompletion(),
                     BulkAction::make('clearMediaOverrides')
                         ->label('Сбросить override медиа')
                         ->requiresConfirmation()
-                        ->action(function (\Illuminate\Support\Collection $records): void {
+                        ->action(function (Collection $records): void {
                             $records->each(fn (Tenant $t) => $t->update([
                                 'media_write_mode_override' => null,
                                 'media_delivery_mode_override' => null,

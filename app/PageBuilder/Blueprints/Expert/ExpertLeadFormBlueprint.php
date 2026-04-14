@@ -45,6 +45,44 @@ final class ExpertLeadFormBlueprint extends ExpertSectionBlueprint
         ];
     }
 
+    /**
+     * Приводит `trust_chips` к формату Filament Repeater: список строк `['text' => …]`.
+     * Старые данные могли быть массивом строк; без нормализации кнопка «Добавить» в редакторе может не работать.
+     *
+     * @param  array<string, mixed>  $dataJson
+     * @return array<string, mixed>
+     */
+    public static function normalizeDataJsonForEditor(array $dataJson): array
+    {
+        $dataJson['trust_chips'] = self::normalizeTrustChipsForRepeater($dataJson['trust_chips'] ?? []);
+
+        return $dataJson;
+    }
+
+    /**
+     * @return list<array{text: string}>
+     */
+    private static function normalizeTrustChipsForRepeater(mixed $raw): array
+    {
+        if (! is_array($raw) || $raw === []) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($raw as $row) {
+            if (is_string($row)) {
+                $out[] = ['text' => $row];
+
+                continue;
+            }
+            if (is_array($row)) {
+                $out[] = ['text' => (string) ($row['text'] ?? '')];
+            }
+        }
+
+        return array_values($out);
+    }
+
     public function formComponents(): array
     {
         return [
@@ -64,9 +102,12 @@ final class ExpertLeadFormBlueprint extends ExpertSectionBlueprint
                 ->maxLength(64),
             Repeater::make('data_json.trust_chips')
                 ->label('Мини-маркеры доверия над формой')
+                ->helperText('Короткие подписи над полями формы на сайте (например «Адвокатский статус», «Челябинск»). На странице «Контакты» эта полоса не показывается.')
                 ->schema([
                     TextInput::make('text')->label('Текст')->maxLength(120)->required(),
                 ])
+                ->defaultItems(0)
+                ->addActionLabel('Добавить маркер')
                 ->columnSpanFull(),
         ];
     }

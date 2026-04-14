@@ -41,6 +41,7 @@ final class ProblemCardsBlueprint extends ExpertSectionBlueprint
             'section_heading' => '',
             'footnote' => '',
             'accent_image_url' => '',
+            'full_width_cards' => false,
             'items' => [],
         ];
     }
@@ -55,12 +56,18 @@ final class ProblemCardsBlueprint extends ExpertSectionBlueprint
                 ->maxLength(2048)
                 ->helperText('Опционально: атмосферное фото слева/на фоне.')
                 ->columnSpanFull(),
+            Toggle::make('data_json.full_width_cards')
+                ->label('Сетка на всю ширину (без боковой колонки)')
+                ->helperText('Для страниц-навигаторов: карточки в одной сетке, все видны на мобиле.')
+                ->columnSpanFull(),
             Repeater::make('data_json.items')
                 ->label('Карточки')
                 ->schema([
                     TextInput::make('title')->label('Заголовок')->required()->maxLength(255),
                     Textarea::make('description')->label('Проблема')->rows(2)->columnSpanFull(),
                     Textarea::make('solution')->label('Что меняется / как решаем')->rows(2)->columnSpanFull(),
+                    TextInput::make('link_url')->label('Ссылка «Подробнее»')->maxLength(2048)->columnSpanFull(),
+                    TextInput::make('link_label')->label('Текст ссылки')->maxLength(120),
                     Toggle::make('is_featured')->label('Выделить карточку'),
                 ])
                 ->columnSpanFull(),

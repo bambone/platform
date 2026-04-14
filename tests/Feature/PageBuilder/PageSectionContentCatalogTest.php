@@ -34,6 +34,7 @@ class PageSectionContentCatalogTest extends TestCase
         'contacts_info',
         'data_table',
         'notice_box',
+        'cta',
     ];
 
     private function bindTenantContext(Tenant $tenant): void
@@ -86,6 +87,70 @@ class PageSectionContentCatalogTest extends TestCase
         $this->assertNotContains('expert_hero', $idsDefault);
     }
 
+    public function test_advocate_editorial_home_landing_matches_expert_style_catalog(): void
+    {
+        $reg = app(PageSectionTypeRegistry::class);
+        $tenant = $this->createTenantWithActiveDomain('cat-advocate-ed');
+        $home = $this->makePage($tenant, 'home');
+
+        $ids = array_map(fn ($b) => $b->id(), $reg->forPage($home, 'advocate_editorial'));
+        $this->assertNotContains('motorcycle_catalog', $ids);
+        $this->assertContains('expert_hero', $ids);
+        $this->assertContains('expert_lead_form', $ids);
+        $this->assertContains('pricing_cards', $ids);
+    }
+
+    public function test_advocate_editorial_inner_page_allows_structured_text_and_contacts_info(): void
+    {
+        $reg = app(PageSectionTypeRegistry::class);
+        $tenant = $this->createTenantWithActiveDomain('cat-advocate-inner');
+        $page = $this->makePage($tenant, 'legal');
+
+        $this->assertTrue($reg->typeAllowedOnPage('structured_text', $page, 'advocate_editorial'));
+        $this->assertTrue($reg->typeAllowedOnPage('contacts_info', $page, 'advocate_editorial'));
+        $this->assertTrue($reg->typeAllowedOnPage('content_faq', $page, 'advocate_editorial'));
+        $this->assertTrue($reg->typeAllowedOnPage('problem_cards', $page, 'advocate_editorial'));
+        $this->assertTrue($reg->typeAllowedOnPage('expert_lead_form', $page, 'advocate_editorial'));
+        $this->assertTrue($reg->typeAllowedOnPage('cta', $page, 'advocate_editorial'));
+    }
+
+    public function test_advocate_editorial_content_page_catalog_includes_expert_lead_form(): void
+    {
+        $reg = app(PageSectionTypeRegistry::class);
+        $tenant = $this->createTenantWithActiveDomain('cat-expert-lead', ['theme_key' => 'advocate_editorial']);
+        $page = $this->makePage($tenant, 'contact-like');
+        $ids = array_map(fn ($b) => $b->id(), $reg->forPage($page, 'advocate_editorial'));
+        $this->assertContains('expert_lead_form', $ids);
+    }
+
+    public function test_expert_lead_form_section_resolves_and_renders_on_advocate_theme(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('cat-elf-render', ['theme_key' => 'advocate_editorial']);
+        $this->bindTenantContext($tenant);
+        $page = $this->makePage($tenant, 'p-elf');
+        $reg = app(PageSectionTypeRegistry::class);
+        $resolver = app(SectionViewResolver::class);
+        $section = PageSection::query()->create([
+            'tenant_id' => $tenant->id,
+            'page_id' => $page->id,
+            'section_key' => 'expert_lead_form_t',
+            'section_type' => 'expert_lead_form',
+            'title' => 'Форма',
+            'data_json' => $reg->get('expert_lead_form')->defaultData(),
+            'sort_order' => 10,
+            'is_visible' => true,
+            'status' => 'published',
+        ]);
+        $viewName = $resolver->resolveViewName($section, $tenant);
+        $this->assertNotNull($viewName);
+        $html = View::make($viewName, [
+            'section' => $section,
+            'data' => $section->data_json ?? [],
+        ])->render();
+        $this->assertIsString($html);
+        $this->assertNotSame('', trim($html));
+    }
+
     public function test_non_home_catalog_includes_hero_and_content_blocks(): void
     {
         $reg = app(PageSectionTypeRegistry::class);
@@ -94,7 +159,7 @@ class PageSectionContentCatalogTest extends TestCase
 
         $ids = array_map(fn ($b) => $b->id(), $reg->forPage($rules, 'default'));
         $this->assertContains('hero', $ids);
-        $this->assertNotContains('cta', $ids);
+        $this->assertContains('cta', $ids);
         $this->assertNotContains('gallery', $ids);
         $this->assertNotContains('cards_teaser', $ids);
         $this->assertNotContains('motorcycle_catalog', $ids);
@@ -124,16 +189,11 @@ class PageSectionContentCatalogTest extends TestCase
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Section type is not allowed for this page.');
-        $svc->createTypedSection($page, 'cta', [
+        $svc->createTypedSection($page, 'gallery', [
             'title' => 'X',
             'status' => 'published',
             'is_visible' => true,
-            'data_json' => [
-                'heading' => 'H',
-                'body' => 'B',
-                'button_text' => 'Go',
-                'button_url' => 'https://example.test',
-            ],
+            'data_json' => app(PageSectionTypeRegistry::class)->get('gallery')->defaultData(),
         ], $tenant->id);
     }
 

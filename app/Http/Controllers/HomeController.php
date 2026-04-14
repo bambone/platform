@@ -34,7 +34,7 @@ class HomeController extends Controller
          * Не кэшируем массив для Blade через Cache::remember: внутри Eloquent Collection / Model.
          * После serialize/unserialize из Redis на проде возможен «incomplete object» и 500 на home.blade.php.
          */
-        if ($tenant->themeKey() === 'expert_auto') {
+        if (in_array($tenant->themeKey(), ['expert_auto', 'advocate_editorial'], true)) {
             return tenant_view('pages.home', $this->buildExpertAutoHomeIndexData());
         }
 

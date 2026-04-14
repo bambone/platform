@@ -11,7 +11,7 @@ use App\Models\Booking;
 use App\Support\FilamentMotorcycleThumbnail;
 use App\Terminology\DomainTermKeys;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Resources\Resource;
+use App\Filament\Tenant\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\ImageColumn;

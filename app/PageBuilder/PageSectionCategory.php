@@ -54,8 +54,10 @@ enum PageSectionCategory: string
         return [
             self::Basic,
             self::PageContent,
+            self::Content,
             self::StructureLists,
             self::HelpNotices,
+            self::Conversion,
             self::Contacts,
             self::InfoBlocks,
         ];

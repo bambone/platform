@@ -46,6 +46,7 @@ final class ExpertHeroBlueprint extends ExpertSectionBlueprint
             'secondary_cta_label' => '',
             'secondary_cta_anchor' => '',
             'trust_badges' => [],
+            'hero_eyebrow' => '',
             'hero_image_slot' => null,
             'hero_image_url' => '',
             'hero_image_alt' => '',
@@ -61,6 +62,11 @@ final class ExpertHeroBlueprint extends ExpertSectionBlueprint
         return [
             TextInput::make('data_json.heading')->label('Заголовок')->maxLength(500)->columnSpanFull(),
             Textarea::make('data_json.subheading')->label('Подзаголовок')->rows(2)->columnSpanFull(),
+            TextInput::make('data_json.hero_eyebrow')
+                ->label('Строка над заголовком (eyebrow)')
+                ->maxLength(120)
+                ->helperText('Например: «Адвокат • Челябинск». Пусто — подставится дефолт по теме.')
+                ->columnSpanFull(),
             Textarea::make('data_json.description')->label('Описание')->rows(3)->columnSpanFull(),
             TextInput::make('data_json.primary_cta_label')->label('Текст основной CTA')->maxLength(120),
             TextInput::make('data_json.primary_cta_anchor')->label('Якорь основной CTA (#id)')->maxLength(120),

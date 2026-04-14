@@ -25,6 +25,10 @@ class RussianTypographyTest extends TestCase
                 'КМС по автоспорту',
                 'КМС по'.$nbsp.'автоспорту',
             ],
+            'em dash stays with previous word' => [
+                'Формат работы — сначала созвон',
+                'Формат работы'.$nbsp.'— сначала созвон',
+            ],
         ];
     }
 
@@ -32,5 +36,13 @@ class RussianTypographyTest extends TestCase
     public function test_ties_prepositions(string $input, string $expected): void
     {
         $this->assertSame($expected, RussianTypography::tiePrepositionsToNextWord($input));
+    }
+
+    public function test_tie_prepositions_per_line_preserves_paragraph_breaks(): void
+    {
+        $nbsp = "\u{00A0}";
+        $input = "Первый абзац в городе\n\nВторой по делу";
+        $expected = 'Первый абзац в'.$nbsp.'городе'."\n\n".'Второй по'.$nbsp.'делу';
+        $this->assertSame($expected, RussianTypography::tiePrepositionsPerLine($input));
     }
 }

@@ -131,4 +131,26 @@
     .tenant-btn-secondary:active {
         transform: scale(0.98);
     }
+
+    /**
+     * Tenant public header: stable chrome (no border-width / layout toggles on scroll).
+     * Surfaces use opacity-only transitions in tenant/components/header.blade.php.
+     * Stacking: root is z-50 (above typical hero media z-10–z-30). Inner fills z-0, divider z-1, chrome z-10, mobile panel z-[45] in that subtree.
+     * Avoid transition-all on header descendants; use transition-opacity / transition-colors only where needed.
+     */
+    .tenant-header {
+        isolation: isolate;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        transform: translateZ(0);
+    }
+
+    .tenant-header__fill {
+        transform: translateZ(0);
+    }
+
+    .tenant-header__divider {
+        box-sizing: border-box;
+        transform: translateZ(0);
+    }
 }

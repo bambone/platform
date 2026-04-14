@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AboutPageController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ExpertInquiryController;
 use App\Http\Controllers\HomeController;
@@ -20,9 +21,8 @@ use App\Http\Controllers\Tenant\TenantPublicSchedulingController;
 use App\Http\Controllers\TenantLlmsTxtController;
 use App\Http\Controllers\TenantPublicBookingAvailabilityController;
 use App\Http\Controllers\TenantPublicFaqController;
-use App\Http\Controllers\TenantPublicPageController;
-use App\Http\Controllers\TenantPublicReviewsController;
 use App\Http\Controllers\TenantPublicMirrorFileController;
+use App\Http\Controllers\TenantPublicReviewsController;
 use App\Http\Controllers\TenantPublicStorageFileController;
 use App\Http\Controllers\ThemePlatformAssetController;
 use App\Http\Middleware\EnsureTenantContext;
@@ -122,9 +122,7 @@ Route::middleware([EnsureTenantContext::class, RememberTenantCatalogLocation::cl
         ->middleware('throttle:120,1')
         ->name('api.tenant.reviews');
     Route::get('/faq', TenantPublicFaqController::class)->name('faq');
-    Route::get('/about', [TenantPublicPageController::class, 'show'])
-        ->defaults('logical', 'pages.about')
-        ->name('about');
+    Route::get('/about', [AboutPageController::class, 'show'])->name('about');
     Route::view('/delivery/anapa', 'tenant.pages.delivery.anapa')->name('delivery.anapa');
     Route::view('/delivery/gelendzhik', 'tenant.pages.delivery.gelendzhik')->name('delivery.gelendzhik');
     Route::get('/moto/{slug}', [MotorcycleController::class, 'show'])->name('motorcycle.show');

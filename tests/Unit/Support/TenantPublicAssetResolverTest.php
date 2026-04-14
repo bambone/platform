@@ -36,6 +36,20 @@ class TenantPublicAssetResolverTest extends TestCase
         $this->assertSame($u, TenantPublicAssetResolver::resolve($u, 1));
     }
 
+    public function test_https_tenant_public_url_wrong_tenant_returns_null(): void
+    {
+        $wrong = 'https://media.example.com/tenants/99/public/site/brand/hero.jpg';
+
+        $this->assertNull(TenantPublicAssetResolver::resolve($wrong, 5));
+    }
+
+    public function test_https_storage_tenant_public_url_wrong_tenant_returns_null(): void
+    {
+        $wrong = 'https://tenant.example/storage/tenants/12/public/site/brand/x.jpg';
+
+        $this->assertNull(TenantPublicAssetResolver::resolve($wrong, 5));
+    }
+
     public function test_https_cdn_tenants_public_path_rewrites_for_local_delivery(): void
     {
         $tenant = Tenant::query()->create([

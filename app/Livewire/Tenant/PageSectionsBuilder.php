@@ -8,6 +8,7 @@ use App\Filament\Tenant\Resources\PageResource;
 use App\Livewire\Concerns\InteractsWithTenantPublicFilePicker;
 use App\Models\Page;
 use App\Models\PageSection;
+use App\PageBuilder\Blueprints\Expert\ExpertLeadFormBlueprint;
 use App\PageBuilder\Contacts\ContactsInfoDataService;
 use App\PageBuilder\LegacySectionTypeResolver;
 use App\PageBuilder\PageBuilderPageContext;
@@ -627,6 +628,12 @@ class PageSectionsBuilder extends Component implements HasActions, HasSchemas
         if ($typeId === 'contacts_info') {
             $dataJson = app(ContactsInfoDataService::class)->hydrateForEditor($dataJson);
             $dataJson['channels'] = ContactsInfoDataService::normalizeChannelsForRepeater($dataJson['channels'] ?? []);
+        }
+        if (in_array($typeId, ['contacts_info', 'contacts'], true)) {
+            $dataJson = app(ContactsInfoDataService::class)->hydrateMapForEditor($dataJson);
+        }
+        if ($typeId === 'expert_lead_form') {
+            $dataJson = ExpertLeadFormBlueprint::normalizeDataJsonForEditor($dataJson);
         }
         $this->sectionFormData = [
             'title' => $section->title ?? '',

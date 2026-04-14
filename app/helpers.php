@@ -4,6 +4,7 @@ use App\Models\Tenant;
 use App\Models\TenantDomain;
 use App\Models\TenantSetting;
 use App\Services\Tenancy\TenantViewResolver;
+use App\Support\Storage\TenantPublicAssetResolver;
 use App\Support\Storage\TenantStorage;
 use App\Support\Storage\TenantStorageDisks;
 use App\Tenant\CurrentTenant;
@@ -103,6 +104,31 @@ if (! function_exists('tenant_branding_asset_url')) {
     function tenant_branding_asset_url(?string $relativePath, ?string $legacyUrl): string
     {
         $relativePath = $relativePath !== null ? trim($relativePath) : '';
+        $legacyUrl = $legacyUrl !== null ? trim($legacyUrl) : '';
+
+        $effectiveTenantId = null;
+        $t = tenant();
+        if ($t !== null) {
+            $effectiveTenantId = (int) $t->id;
+        } elseif ($relativePath !== '' && preg_match('#^tenants/(\d+)/public/#', $relativePath, $m) === 1) {
+            $effectiveTenantId = (int) $m[1];
+        }
+
+        if ($effectiveTenantId !== null) {
+            if ($relativePath !== '') {
+                $resolved = TenantPublicAssetResolver::resolve($relativePath, $effectiveTenantId);
+                if ($resolved !== null && $resolved !== '') {
+                    return $resolved;
+                }
+            }
+            if ($relativePath === '' && $legacyUrl !== '') {
+                $resolved = TenantPublicAssetResolver::resolve($legacyUrl, $effectiveTenantId);
+                if ($resolved !== null && $resolved !== '') {
+                    return $resolved;
+                }
+            }
+        }
+
         if ($relativePath !== '') {
             $key = ltrim($relativePath, '/');
             $disk = TenantStorageDisks::publicDisk();
@@ -111,13 +137,16 @@ if (! function_exists('tenant_branding_asset_url')) {
             }
             // R2/S3: exists() is a round-trip per call — avoid on hot paths (view composer ×3).
             if (TenantStorageDisks::usesLocalFlyAdapter($disk) && ! $disk->exists($key)) {
+                if ($legacyUrl !== '') {
+                    return $legacyUrl;
+                }
+
                 return '';
             }
 
             return $disk->url($key);
         }
 
-        $legacyUrl = $legacyUrl !== null ? trim($legacyUrl) : '';
         if ($legacyUrl !== '') {
             return $legacyUrl;
         }
@@ -223,6 +252,31 @@ if (! function_exists('tenant_branding_favicon_url')) {
             TenantSetting::getForTenant($t->id, 'branding.favicon_path', ''),
             TenantSetting::getForTenant($t->id, 'branding.favicon', '')
         );
+    }
+}
+
+if (! function_exists('tenant_site_brand_optional_public_url')) {
+    /**
+     * Публичный URL файла в {@code site/brand/<basename>}, если объект в хранилище тенанта существует; иначе пустая строка.
+     * Для необязательных иконок (favicon-16.png, apple-touch-icon.png) без отдельных ключей в TenantSetting.
+     */
+    function tenant_site_brand_optional_public_url(string $basename): string
+    {
+        $t = tenant();
+        if ($t === null) {
+            return '';
+        }
+        $basename = ltrim(str_replace('\\', '/', $basename), '/');
+        if ($basename === '') {
+            return '';
+        }
+        $rel = 'site/brand/'.$basename;
+        $ts = TenantStorage::for($t);
+        if (! $ts->existsPublic($rel)) {
+            return '';
+        }
+
+        return $ts->publicUrl($rel);
     }
 }
 
@@ -358,7 +412,7 @@ if (! function_exists('filament_tenant_spatie_media_preview_url')) {
             }
 
             return route('filament.admin.spatie-media.show', $params, false);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }

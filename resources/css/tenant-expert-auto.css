@@ -579,8 +579,9 @@ body.expert-auto-theme .tenant-thin-scrollbar::-webkit-scrollbar-thumb:hover {
 /* —— Native video / media dialogs —— */
 .expert-video-dialog {
     margin: auto;
-    max-width: calc(100vw - 2rem);
-    width: min(56rem, 100%);
+    max-width: calc(100vw - 1.5rem);
+    width: min(80vw, calc(100vw - 1.5rem));
+    max-height: min(92vh, calc(100dvh - 1rem));
     border: none;
     padding: 0;
     background: transparent;
@@ -592,6 +593,9 @@ body.expert-auto-theme .tenant-thin-scrollbar::-webkit-scrollbar-thumb:hover {
 }
 
 .expert-video-dialog__panel {
+    display: flex;
+    flex-direction: column;
+    max-height: inherit;
     overflow: hidden;
     border-radius: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -613,18 +617,36 @@ body.expert-auto-theme .tenant-thin-scrollbar::-webkit-scrollbar-thumb:hover {
 }
 
 .expert-video-dialog__body--flush {
+    flex: 1 1 auto;
+    min-height: 0;
     padding: 0;
 }
 
 .expert-video-dialog__video {
     display: block;
     width: 100%;
-    max-height: min(78vh, 900px);
+    height: auto;
+    max-height: min(82vh, calc(100dvh - 5.5rem));
+    aspect-ratio: 16 / 9;
+    object-fit: contain;
+    background: #000;
+}
+
+/* YouTube/VK iframe: без этого блока плеер схлопывается, если утилита Tailwind из разметки не попала в сборку */
+.expert-video-dialog__embed {
+    display: block;
+    width: 100%;
+    height: auto;
+    min-height: 12rem;
+    max-height: min(82vh, calc(100dvh - 5.5rem));
+    aspect-ratio: 16 / 9;
+    border: 0;
     background: #000;
 }
 
 .expert-video-dialog--wide {
-    width: min(72rem, 100%);
+    width: min(80vw, calc(100vw - 1.5rem));
+    max-height: min(92vh, calc(100dvh - 1rem));
 }
 
 /* —— Section rhythm —— */

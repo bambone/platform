@@ -27,12 +27,30 @@ class PublicAssetReferenceTest extends TestCase
             ['x' => [new PublicAssetReference]],
         );
         $this->assertFalse($v->fails());
+
+        $v = Validator::make(
+            ['x' => 'site/brand/gallery-2.jpg'],
+            ['x' => [new PublicAssetReference]],
+        );
+        $this->assertFalse($v->fails());
+
+        $v = Validator::make(
+            ['x' => 'storage/tenants/1/public/site/a.jpg'],
+            ['x' => [new PublicAssetReference]],
+        );
+        $this->assertFalse($v->fails());
     }
 
     public function test_rejects_invalid(): void
     {
         $v = Validator::make(
             ['x' => '/etc/passwd'],
+            ['x' => [new PublicAssetReference]],
+        );
+        $this->assertTrue($v->fails());
+
+        $v = Validator::make(
+            ['x' => 'site/../../../etc/passwd'],
             ['x' => [new PublicAssetReference]],
         );
         $this->assertTrue($v->fails());

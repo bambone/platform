@@ -2,6 +2,8 @@
 
 namespace App\PageBuilder\Blueprints\Expert;
 
+use App\Filament\Forms\Components\TenantPublicEditorialGalleryPoster;
+use App\Filament\Forms\Components\TenantPublicMediaPicker;
 use App\Filament\Tenant\PageBuilder\TeleportedEditorRepeater;
 use App\PageBuilder\PageSectionCategory;
 use App\Rules\EditorialGalleryAssetUrlRule;
@@ -14,9 +16,33 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Utilities\Get;
 
 final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
 {
+    /** Подкаталог под {@code site/} для загрузок из редактора галереи (раздельно по типу медиа). */
+    private const UPLOAD_SUBDIR_IMAGES = 'page-builder/editorial-gallery/images';
+
+    private const UPLOAD_SUBDIR_VIDEOS = 'page-builder/editorial-gallery/videos';
+
+    private const UPLOAD_SUBDIR_POSTERS = 'page-builder/editorial-gallery/posters';
+
+    /** Сообщение валидации {@code embed_share_url} при невозможности разобрать ссылку (зафиксировано для тестов и UI). */
+    public static function embedShareUrlFailureMessage(?string $embedProvider): string
+    {
+        return match ($embedProvider) {
+            'youtube' => 'Для YouTube вставьте обычную ссылку на ролик (страница с видео в браузере).',
+            'vk' => 'Для ВКонтакте вставьте ссылку на ролик (vk.com/video…), video_ext.php или код iframe из «Поделиться».',
+            default => 'Не удалось разобрать ссылку для выбранного провайдера.',
+        };
+    }
+
+    /** Сообщение при VK: короткая ссылка на страницу ролика или {@code video_ext} без {@code hash}. */
+    public static function embedShareUrlVkMissingHashMessage(): string
+    {
+        return 'Для ВКонтакте вставьте URL из «Кода для вставки»: video_ext.php с параметром hash (или целиком iframe). Одной короткой ссылки на страницу ролика недостаточно.';
+    }
+
     public function id(): string
     {
         return 'editorial_gallery';
@@ -91,40 +117,34 @@ final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
                         ])
                         ->default('image')
                         ->live(),
-                    TextInput::make('image_url')
-                        ->label('Изображение (путь или URL)')
+                    TenantPublicMediaPicker::make('image_url')
+                        ->label('Изображение')
+                        ->mediaType(TenantPublicMediaPicker::MEDIA_IMAGE)
                         ->maxLength(2048)
+                        ->allowEmpty(fn ($get): bool => ($get('media_kind') ?? '') !== 'image')
+                        ->uploadPublicSiteSubdirectory(self::UPLOAD_SUBDIR_IMAGES)
                         ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'image')
-                        ->required(fn ($get): bool => ($get('media_kind') ?? '') === 'image')
-                        ->helperText('Путь в хранилище сайта (например site/brand/…) или прямой URL файла изображения. Не вставляйте ссылку на HTML-страницу статьи.')
+                        ->helperText('Выберите файл из хранилища сайта или загрузите новый. Ручной путь или URL — только в редких случаях (кнопка «Указать вручную»).')
                         ->rules([
                             fn ($get): array => ($get('media_kind') ?? '') === 'image'
                                 ? [new EditorialGalleryAssetUrlRule(EditorialGalleryAssetUrlRule::KIND_IMAGE)]
                                 : [],
                         ]),
-                    TextInput::make('video_url')
-                        ->label('Видеофайл (путь или URL)')
+                    TenantPublicMediaPicker::make('video_url')
+                        ->label('Видеофайл')
+                        ->mediaType(TenantPublicMediaPicker::MEDIA_VIDEO)
                         ->maxLength(2048)
+                        ->allowEmpty(fn ($get): bool => ($get('media_kind') ?? '') !== 'video')
+                        ->uploadPublicSiteSubdirectory(self::UPLOAD_SUBDIR_VIDEOS)
                         ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'video')
-                        ->required(fn ($get): bool => ($get('media_kind') ?? '') === 'video')
-                        ->helperText('Путь к файлу в хранилище или прямой URL видеофайла (MP4/WebM). Ссылка на страницу VK/YouTube здесь не работает — выберите тип «Видео (встраивание)».')
+                        ->helperText('Выберите видеофайл MP4 или WebM из хранилища или загрузите новый. Ссылка на страницу VK/YouTube здесь не работает — выберите тип «Видео (встраивание)».')
                         ->rules([
                             fn ($get): array => ($get('media_kind') ?? '') === 'video'
                                 ? [new EditorialGalleryAssetUrlRule(EditorialGalleryAssetUrlRule::KIND_VIDEO_FILE)]
                                 : [],
                         ]),
-                    TextInput::make('poster_url')
-                        ->label('Постер видео (путь или URL)')
-                        ->maxLength(2048)
-                        ->visible(fn ($get): bool => in_array($get('media_kind'), ['video', 'video_embed'], true))
-                        ->helperText('Только изображение-постер. Не HTML, не iframe, не страница новости. Для ровной сетки превью на сайте постер лучше указать.')
-                        ->rules([
-                            fn ($get): array => in_array($get('media_kind'), ['video', 'video_embed'], true)
-                                ? [new EditorialGalleryAssetUrlRule(EditorialGalleryAssetUrlRule::KIND_POSTER)]
-                                : [],
-                        ]),
                     Select::make('embed_provider')
-                        ->label('Площадка встраивания')
+                        ->label('Где размещено видео')
                         ->options([
                             'youtube' => 'YouTube',
                             'vk' => 'ВКонтакте',
@@ -138,31 +158,73 @@ final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
                                 : [],
                         ]),
                     TextInput::make('embed_share_url')
-                        ->label('Ссылка на ролик (страница share)')
+                        ->label('Ссылка на видео')
                         ->maxLength(2048)
+                        ->live(onBlur: true)
+                        ->placeholder(function (Get $get): ?string {
+                            return match ($get('embed_provider')) {
+                                'vk' => 'Лучше: URL из src в «Коде для вставки» (vkvideo.ru/video_ext.php?…&hash=…) или целиком iframe',
+                                default => null,
+                            };
+                        })
                         ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'video_embed')
                         ->required(fn ($get): bool => ($get('media_kind') ?? '') === 'video_embed')
-                        ->helperText(function ($get): string {
+                        ->hintIcon('heroicon-o-information-circle')
+                        ->hintIconTooltip(function (Get $get): string {
                             return match ($get('embed_provider')) {
-                                'vk' => 'Укажите ссылку на ролик ВКонтакте: vk.com/video-…_… или страницу video_ext.php на vk.com. Не вставляйте HTML и не код iframe.',
-                                'youtube' => 'Укажите ссылку на ролик YouTube: youtube.com/watch?v=…, youtu.be/…, а также /shorts/…, /embed/… или /live/…. Не вставляйте HTML и не код iframe.',
-                                default => 'Сначала выберите площадку (YouTube или ВКонтакте) — подсказка обновится.',
+                                'vk' => 'Ссылка вида vk.com/video-… или vkvideo.ru/video-… открывается в браузере, но на стороннем сайте плееру VK обычно нужен адрес video_ext.php с параметром hash (его даёт только «Код для вставки»). Можно вставить целиком iframe — мы возьмём src.',
+                                'youtube' => 'Обычная ссылка на ролик или фрагмент iframe — из него будет взят адрес из src.',
+                                default => 'Сначала выберите площадку — текст подсказки обновится.',
                             };
+                        })
+                        ->helperText(function (Get $get): string {
+                            $vkBase = 'Для стабильного встраивания используйте «Поделиться» → «Код для вставки»: вставьте весь iframe или скопируйте только значение src=… (домен vk.com или vkvideo.ru — не меняйте вручную).';
+                            $vkWarn = ' Сейчас у вас короткая ссылка на страницу ролика без hash — в модалке сайта часто будет «Видеофайл не найден». Замените на ссылку из src=… с hash=… или на iframe.';
+                            return match ($get('embed_provider')) {
+                                'vk' => $vkBase.(VideoEmbedUrlNormalizer::vkEmbedProbablyMissingHash((string) ($get('embed_share_url') ?? '')) ? $vkWarn : ''),
+                                'youtube' => 'Вставьте обычную ссылку на видео.',
+                                default => 'Сначала выберите площадку (YouTube или ВКонтакте) — подсказка под полем обновится.',
+                            };
+                        })
+                        ->dehydrateStateUsing(function (?string $state): ?string {
+                            if ($state === null) {
+                                return null;
+                            }
+
+                            return VideoEmbedUrlNormalizer::normalizeVkShareUrlForStorage($state);
                         })
                         ->rules([
                             fn ($get): array => ($get('media_kind') ?? '') === 'video_embed'
                                 ? [
                                     function (string $attribute, mixed $value, \Closure $fail) use ($get): void {
-                                        $v = trim((string) $value);
+                                        $v = VideoEmbedUrlNormalizer::extractShareUrlFromPaste(trim((string) $value));
                                         if ($v === '') {
                                             return;
                                         }
                                         $p = (string) ($get('embed_provider') ?? '');
+                                        if ($p === 'vk' && VideoEmbedUrlNormalizer::vkEmbedProbablyMissingHash($v)) {
+                                            $fail(self::embedShareUrlVkMissingHashMessage());
+
+                                            return;
+                                        }
                                         if (VideoEmbedUrlNormalizer::toIframeSrc($p, $v) === null) {
-                                            $fail(__('Не удалось разобрать ссылку для выбранного провайдера.'));
+                                            $fail(self::embedShareUrlFailureMessage($p !== '' ? $p : null));
                                         }
                                     },
                                 ]
+                                : [],
+                        ]),
+                    TenantPublicEditorialGalleryPoster::make('poster_url')
+                        ->label('Обложка видео')
+                        ->maxLength(2048)
+                        ->uploadPublicSiteSubdirectory(self::UPLOAD_SUBDIR_POSTERS)
+                        ->visible(fn ($get): bool => in_array($get('media_kind'), ['video', 'video_embed'], true))
+                        ->helperText(fn ($get): ?string => ($get('media_kind') ?? '') === 'video'
+                            ? 'По желанию. Делает превью в сетке ровнее; только изображение, без HTML и iframe.'
+                            : null)
+                        ->rules([
+                            fn ($get): array => in_array($get('media_kind'), ['video', 'video_embed'], true)
+                                ? [new EditorialGalleryAssetUrlRule(EditorialGalleryAssetUrlRule::KIND_POSTER)]
                                 : [],
                         ]),
                     TextInput::make('caption')

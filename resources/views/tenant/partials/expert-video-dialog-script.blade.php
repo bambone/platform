@@ -2,6 +2,16 @@
 @once('expert-video-dialog-script')
     <script>
         (function () {
+            /** Blade {@code e()} кладёт в разметку {@code &amp;}; в части окружений getAttribute отдаёт строку с буквальным {@code &amp;}, и iframe уходит на VK с одним «склеенным» query — «Видеофайл не найден». */
+            function unwrapEmbedUrl(raw) {
+                if (!raw || typeof raw !== 'string') {
+                    return raw;
+                }
+                return raw
+                    .replace(/&amp;/gi, '&')
+                    .replace(/&#0*38;/g, '&')
+                    .replace(/&#[xX]0*26;/g, '&');
+            }
             function playVideoEl(v) {
                 try {
                     v.muted = false;
@@ -18,7 +28,7 @@
             }
             function tryOpenEmbed(iframe) {
                 if (!iframe) return;
-                var es = iframe.getAttribute('data-expert-dialog-embed-src');
+                var es = unwrapEmbedUrl(iframe.getAttribute('data-expert-dialog-embed-src'));
                 if (!es) return;
                 var cur = iframe.getAttribute('src') || '';
                 if (cur === '' || cur === 'about:blank') {
@@ -41,7 +51,7 @@
                         }
                         var v = dlg.querySelector('video');
                         if (!v) return;
-                        var ds = v.getAttribute('data-expert-dialog-src');
+                        var ds = unwrapEmbedUrl(v.getAttribute('data-expert-dialog-src'));
                         if (ds && !v.getAttribute('src')) {
                             v.setAttribute('src', ds);
                             v.removeAttribute('data-expert-dialog-src');

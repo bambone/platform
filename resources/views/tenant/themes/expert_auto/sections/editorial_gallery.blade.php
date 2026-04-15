@@ -144,7 +144,7 @@
                     </div>
                     <div class="expert-video-dialog__body expert-video-dialog__body--flush">
                         @if($item['kind'] === 'embed')
-                            <iframe src="about:blank" data-expert-dialog-embed-src="{{ e($item['iframe_src']) }}" class="expert-video-dialog__embed h-[min(78vh,900px)] w-full border-0" title="{{ e($item['caption'] ?: 'Видео') }}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe>
+                            <iframe src="about:blank" data-expert-dialog-embed-src="{{ e($item['iframe_src']) }}" class="expert-video-dialog__embed w-full border-0" title="{{ e($item['caption'] ?: 'Видео') }}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture; screen-wake-lock"></iframe>
                         @elseif($item['kind'] === 'video')
                             <video class="expert-video-dialog__video" controls playsinline preload="none" @if($item['poster_url'] !== '') poster="{{ e($item['poster_url']) }}" @endif data-expert-dialog-src="{{ e($item['video_url']) }}"></video>
                         @else

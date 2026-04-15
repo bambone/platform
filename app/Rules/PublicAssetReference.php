@@ -6,7 +6,8 @@ use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 
 /**
- * Разрешает пустое значение, legacy http(s) URL или tenant public object key {@code tenants/{id}/public/...}.
+ * Разрешает пустое значение, http(s) URL, полный ключ объекта {@code tenants/{id}/public/…}
+ * и сокращённые пути публичной зоны сайта {@code site/…}, {@code storage/…} (как в JSON секций и каталоге).
  */
 final class PublicAssetReference implements ValidationRule
 {
@@ -31,10 +32,17 @@ final class PublicAssetReference implements ValidationRule
 
             return;
         }
-        if (preg_match('#^tenants/\d+/public/.+#', $v) !== 1) {
+        if (str_contains($v, '..')) {
             $fail(__('Укажите URL или ключ файла в хранилище (tenants/…/public/…).'));
 
             return;
         }
+        if (preg_match('#^tenants/\d+/public/.+#', $v) === 1) {
+            return;
+        }
+        if (preg_match('#^(?:site|storage)/#', $v) === 1) {
+            return;
+        }
+        $fail(__('Укажите URL или ключ файла в хранилище (tenants/…/public/…).'));
     }
 }

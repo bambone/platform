@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 /**
- * Модалка выбора файла из каталога tenant + буфер загрузки изображения в {@code site/page-builder}.
+ * Модалка выбора файла из каталога tenant + буферы загрузки изображения и видео (MP4/WebM) в {@code site/page-builder}.
  *
  * Требует на компоненте {@see WithFileUploads} и {@see currentTenant()}.
  */
@@ -33,6 +33,15 @@ trait InteractsWithTenantPublicFilePicker
     public string $tenantPublicImageUploadTargetPath = '';
 
     public string $tenantPublicImageUploadSubdirectory = 'page-builder';
+
+    public ?TemporaryUploadedFile $tenantPublicVideoUploadBuffer = null;
+
+    public string $tenantPublicVideoUploadTargetPath = '';
+
+    public string $tenantPublicVideoUploadSubdirectory = 'page-builder';
+
+    /** Max video upload size in kilobytes (MVP: MP4/WebM gallery files). */
+    private const TENANT_PUBLIC_VIDEO_UPLOAD_MAX_KB = 102400;
 
     public function openTenantPublicFilePicker(string $absoluteStatePath, string $filter = TenantFileCatalogService::FILTER_ALL): void
     {
@@ -73,6 +82,14 @@ trait InteractsWithTenantPublicFilePicker
 
             return;
         }
+        if ($this->tenantPublicFilePickerFilter === TenantFileCatalogService::FILTER_VIDEOS) {
+            $ext = strtolower(pathinfo($objectKey, PATHINFO_EXTENSION));
+            if (! in_array($ext, TenantFileCatalogService::VIDEO_EXTENSIONS, true)) {
+                $this->closeTenantPublicFilePicker();
+
+                return;
+            }
+        }
         $this->assignToLivewireRootState($this->tenantPublicFilePickerTargetPath, $objectKey);
         $this->closeTenantPublicFilePicker();
     }
@@ -80,6 +97,14 @@ trait InteractsWithTenantPublicFilePicker
     public function clearTenantPublicImageField(string $absoluteStatePath): void
     {
         $this->assignToLivewireRootState($absoluteStatePath, '');
+    }
+
+    /**
+     * Обновление пути/URL в state формы (например сохранение ссылки на обложку из Blade без wire:model на видимом поле).
+     */
+    public function assignTenantPublicLivewireState(string $absoluteStatePath, mixed $value): void
+    {
+        $this->assignToLivewireRootState($absoluteStatePath, $value);
     }
 
     public function updatedTenantPublicImageUploadBuffer(): void
@@ -129,6 +154,60 @@ trait InteractsWithTenantPublicFilePicker
         $this->tenantPublicImageUploadSubdirectory = trim($relativeUnderPublicSite, '/') !== ''
             ? trim($relativeUnderPublicSite, '/')
             : 'page-builder';
+    }
+
+    public function prepareTenantPublicVideoUpload(string $absoluteStatePath, string $relativeUnderPublicSite = 'page-builder'): void
+    {
+        $this->tenantPublicVideoUploadTargetPath = $absoluteStatePath;
+        $this->tenantPublicVideoUploadSubdirectory = trim($relativeUnderPublicSite, '/') !== ''
+            ? trim($relativeUnderPublicSite, '/')
+            : 'page-builder';
+    }
+
+    public function updatedTenantPublicVideoUploadBuffer(): void
+    {
+        if ($this->tenantPublicVideoUploadBuffer === null || $this->tenantPublicVideoUploadTargetPath === '') {
+            return;
+        }
+        $t = \currentTenant();
+        if ($t === null) {
+            $this->tenantPublicVideoUploadBuffer = null;
+
+            return;
+        }
+        $this->validate([
+            'tenantPublicVideoUploadBuffer' => [
+                'required',
+                'file',
+                'mimetypes:video/mp4,video/webm',
+                'max:'.self::TENANT_PUBLIC_VIDEO_UPLOAD_MAX_KB,
+            ],
+        ]);
+        $disk = TenantStorageDisks::publicDiskName();
+        $sub = trim($this->tenantPublicVideoUploadSubdirectory, '/');
+        if ($sub === '') {
+            $sub = 'page-builder';
+        }
+        $dirKey = TenantStorage::for($t)->publicPathInArea(TenantStorageArea::PublicSite, $sub);
+        $ext = strtolower($this->tenantPublicVideoUploadBuffer->getClientOriginalExtension() ?: 'bin');
+        if (! in_array($ext, TenantFileCatalogService::VIDEO_EXTENSIONS, true)) {
+            $this->tenantPublicVideoUploadBuffer = null;
+
+            return;
+        }
+        $name = Str::uuid()->toString().'.'.$ext;
+        $adapter = Storage::disk($disk);
+        $adapter->putFileAs(
+            $dirKey,
+            $this->tenantPublicVideoUploadBuffer,
+            $name,
+            TenantStorage::mergedOptionsForPublicObjectWrite($adapter),
+        );
+        $objectKey = $dirKey.'/'.$name;
+        $this->assignToLivewireRootState($this->tenantPublicVideoUploadTargetPath, $objectKey);
+        $this->tenantPublicVideoUploadBuffer = null;
+        $this->tenantPublicVideoUploadTargetPath = '';
+        $this->tenantPublicVideoUploadSubdirectory = 'page-builder';
     }
 
     protected function refreshTenantPublicFilePickerRows(): void

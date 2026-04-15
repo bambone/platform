@@ -42,7 +42,7 @@ final class EditorialGalleryAssetUrlRule implements ValidationRule
 
         if ($this->kind === self::KIND_VIDEO_FILE) {
             if (! self::looksLikeVideoFile($v)) {
-                $fail(__('Укажите путь к видеофайлу в хранилище или прямой URL с расширением MP4/WebM/OGV.'));
+                $fail(__('Укажите путь к видеофайлу в хранилище или прямой URL с расширением MP4 или WebM.'));
 
                 return;
             }
@@ -71,28 +71,36 @@ final class EditorialGalleryAssetUrlRule implements ValidationRule
     {
         $path = parse_url($v, PHP_URL_PATH);
         $path = is_string($path) && $path !== '' ? $path : $v;
-        if (preg_match('/\.(mp4|webm|ogv)(?:\?.*)?$/i', $path) === 1) {
+        if (preg_match('/\.(mp4|webm)(?:\?.*)?$/i', $path) === 1) {
             return true;
         }
 
-        return preg_match('#^site/.+\.(mp4|webm|ogv)(?:\?|$)#i', $v) === 1
-            || preg_match('#^storage/.+\.(mp4|webm|ogv)(?:\?|$)#i', $v) === 1;
+        return preg_match('#^site/.+\.(mp4|webm)(?:\?|$)#i', $v) === 1
+            || preg_match('#^storage/.+\.(mp4|webm)(?:\?|$)#i', $v) === 1;
     }
 
     private static function looksLikeImageAsset(string $v): bool
     {
-        if (preg_match('#^site/#', $v) === 1 || preg_match('#^storage/#', $v) === 1) {
-            return true;
-        }
-        if (str_starts_with($v, '/') && ! str_starts_with($v, '//')) {
-            return true;
-        }
-        $path = parse_url($v, PHP_URL_PATH);
-        $path = is_string($path) ? $path : $v;
-        if (preg_match('/\.(jpe?g|png|gif|webp|avif|svg)(?:\?.*)?$/i', $path) === 1) {
-            return true;
+        if (str_starts_with($v, '//')) {
+            return false;
         }
 
-        return false;
+        if (preg_match('#^(?:site|storage|tenants)/#', $v) === 1) {
+            return self::hasImageFileExtension($v);
+        }
+
+        if (str_starts_with($v, '/') && ! str_starts_with($v, '//')) {
+            return self::hasImageFileExtension($v);
+        }
+
+        $path = parse_url($v, PHP_URL_PATH);
+        $path = is_string($path) && $path !== '' ? $path : '';
+
+        return $path !== '' && self::hasImageFileExtension($path);
+    }
+
+    private static function hasImageFileExtension(string $pathOrUrl): bool
+    {
+        return preg_match('/\.(jpe?g|png|gif|webp|avif|svg)(?:\?.*)?$/i', $pathOrUrl) === 1;
     }
 }

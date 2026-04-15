@@ -549,11 +549,15 @@
                         </div>
                     </div>
                 </aside>
+                @include('livewire.tenant.partials.tenant-public-file-picker-overlay', ['mount' => 'nested'])
             </div>
         @endteleport
     @endif
 
-    @include('livewire.tenant.partials.tenant-public-file-picker-modal', ['uploadSlotAttribute' => 'data-tenant-public-upload-input'])
+    @include('livewire.tenant.partials.tenant-public-file-picker-inputs', ['uploadSlotAttribute' => 'data-tenant-public-upload-input'])
+    @if (! $showEditor)
+        @include('livewire.tenant.partials.tenant-public-file-picker-overlay', ['mount' => 'teleport'])
+    @endif
 
     <x-filament-actions::modals />
 </div>

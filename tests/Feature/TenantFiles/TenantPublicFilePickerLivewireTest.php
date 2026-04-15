@@ -72,4 +72,20 @@ class TenantPublicFilePickerLivewireTest extends TestCase
         $this->assertStringStartsWith('tenants/'.$tenant->id.'/public/site/page-builder/', $key);
         $this->assertTrue(Storage::disk(TenantStorageDisks::publicDiskName())->exists($key));
     }
+
+    public function test_upload_video_writes_mp4_object_key(): void
+    {
+        Storage::fake(TenantStorageDisks::publicDiskName());
+        $tenant = $this->createTenantWithActiveDomain('tfupvid');
+        $this->bindCurrentTenant($tenant);
+
+        $key = Livewire::test(TenantPublicFilePickerTestHost::class)
+            ->call('prepareTenantPublicVideoUpload', 'sectionFormData.data_json.background_image', 'page-builder')
+            ->set('tenantPublicVideoUploadBuffer', UploadedFile::fake()->create('clip.mp4', 50, 'video/mp4'))
+            ->get('sectionFormData.data_json.background_image');
+
+        $this->assertIsString($key);
+        $this->assertStringEndsWith('.mp4', $key);
+        $this->assertTrue(Storage::disk(TenantStorageDisks::publicDiskName())->exists($key));
+    }
 }

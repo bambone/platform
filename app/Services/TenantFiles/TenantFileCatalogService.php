@@ -22,8 +22,14 @@ final class TenantFileCatalogService
 
     public const FILTER_ALL = 'all';
 
+    /** Видео для галереи / пикера: только MP4 и WebM (MVP). */
+    public const FILTER_VIDEOS = 'videos';
+
     /** @var list<string> */
     private const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif', 'ico'];
+
+    /** @var list<string> */
+    public const VIDEO_EXTENSIONS = ['mp4', 'webm'];
 
     /**
      * Листинг путей без обращений {@code size}/{@code lastModified} к диску (важно для S3/R2).
@@ -83,9 +89,13 @@ final class TenantFileCatalogService
 
                 $ext = Str::lower((string) pathinfo($path, PATHINFO_EXTENSION));
                 $isImage = in_array($ext, self::IMAGE_EXTENSIONS, true);
-                $isDoc = $ext !== '' && ! $isImage;
+                $isVideo = in_array($ext, self::VIDEO_EXTENSIONS, true);
+                $isDoc = $ext !== '' && ! $isImage && ! $isVideo;
 
                 if ($typeFilter === self::FILTER_IMAGES && ! $isImage) {
+                    continue;
+                }
+                if ($typeFilter === self::FILTER_VIDEOS && ! $isVideo) {
                     continue;
                 }
                 if ($typeFilter === self::FILTER_DOCUMENTS && ! $isDoc) {

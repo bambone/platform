@@ -50,4 +50,17 @@ final class EditorialGalleryBlueprintPreviewSummaryTest extends TestCase
         ]);
         $this->assertSame('2 материала: 2 встроенных видео', $summary);
     }
+
+    #[Test]
+    public function preview_summary_counts_external_article(): void
+    {
+        $bp = new EditorialGalleryBlueprint;
+        $summary = $bp->previewSummary([
+            'items' => [
+                ['media_kind' => 'image'],
+                ['media_kind' => 'external_article'],
+            ],
+        ]);
+        $this->assertSame('2 материала: 1 фото, 1 внешний материал', $summary);
+    }
 }

@@ -5,18 +5,23 @@ namespace App\PageBuilder\Blueprints\Expert;
 use App\Filament\Forms\Components\TenantPublicEditorialGalleryPoster;
 use App\Filament\Forms\Components\TenantPublicMediaPicker;
 use App\Filament\Tenant\PageBuilder\TeleportedEditorRepeater;
+use App\PageBuilder\Expert\EditorialGalleryExternalArticlePreviewApplier;
 use App\PageBuilder\PageSectionCategory;
 use App\Rules\EditorialGalleryAssetUrlRule;
 use App\Rules\EditorialGalleryCaptionRule;
 use App\Rules\EditorialGalleryMaterialSourceUrlRule;
+use App\Rules\ExternalArticleUrlRule;
+use App\Services\LinkPreview\ExternalArticlePreviewFetcherInterface;
 use App\Tenant\Expert\VideoEmbedUrlNormalizer;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 
 final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
 {
@@ -114,9 +119,156 @@ final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
                             'image' => 'Фото',
                             'video' => 'Видео (файл MP4/WebM)',
                             'video_embed' => 'Видео (встраивание VK/YouTube)',
+                            'external_article' => 'Внешний материал',
                         ])
                         ->default('image')
-                        ->live(),
+                        ->live()
+                        ->afterStateUpdated(function (Get $_get, Set $set, ?string $_state): void {
+                            self::resetExternalArticleItemState($set);
+                        }),
+                    TextInput::make('article_url')
+                        ->label('Ссылка на материал')
+                        ->maxLength(2048)
+                        ->live(onBlur: true)
+                        ->required(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->helperText('Полный URL статьи или страницы. После ввода подтянется превью (заголовок, описание, обложка).')
+                        ->hintAction(
+                            TeleportedEditorRepeater::withFullLivewireRenderAfter(
+                                Action::make('refreshExternalArticlePreview')
+                                    ->label('Обновить превью')
+                                    ->icon('heroicon-m-arrow-path')
+                                    ->color('gray')
+                                    ->action(function (Get $get, Set $set): void {
+                                        if (($get('media_kind') ?? '') !== 'external_article') {
+                                            return;
+                                        }
+                                        self::runExternalArticleRefreshPreview($get, $set);
+                                    })
+                            )
+                        )
+                        ->afterStateUpdated(function (Get $get, Set $set, ?string $state): void {
+                            if (($get('media_kind') ?? '') !== 'external_article') {
+                                return;
+                            }
+                            self::runExternalArticleAutoFetchAfterUrlBlur($get, $set, (string) $state);
+                        })
+                        ->rules([
+                            fn ($get): array => ($get('media_kind') ?? '') === 'external_article'
+                                ? [new ExternalArticleUrlRule]
+                                : [],
+                        ]),
+                    Toggle::make('open_in_new_tab')
+                        ->label('Открывать материал в новой вкладке')
+                        ->default(true)
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->inline(false),
+                    TextInput::make('article_fetched_title')
+                        ->label('Заголовок (снимок с сайта)')
+                        ->disabled()
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'),
+                    Textarea::make('article_fetched_description')
+                        ->label('Описание (снимок с сайта)')
+                        ->rows(2)
+                        ->disabled()
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'),
+                    TextInput::make('article_fetched_site_name')
+                        ->label('Сайт (снимок)')
+                        ->disabled()
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'),
+                    TextInput::make('article_title')
+                        ->label('Заголовок на карточке')
+                        ->maxLength(500)
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->helperText('Редактируется вручную; «Обновить превью» не перезаписывает это поле.'),
+                    Textarea::make('article_description')
+                        ->label('Описание на карточке')
+                        ->rows(2)
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'),
+                    TextInput::make('article_site_name')
+                        ->label('Подпись сайта на карточке')
+                        ->maxLength(255)
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'),
+                    Select::make('article_image_mode')
+                        ->label('Обложка карточки')
+                        ->options([
+                            EditorialGalleryExternalArticlePreviewApplier::IMAGE_SUGGESTED => 'Как на странице-источнике (внешний URL)',
+                            EditorialGalleryExternalArticlePreviewApplier::IMAGE_TENANT_FILE => 'Файл из хранилища сайта',
+                            EditorialGalleryExternalArticlePreviewApplier::IMAGE_EXTERNAL_URL => 'Свой URL изображения (https)',
+                            EditorialGalleryExternalArticlePreviewApplier::IMAGE_NONE => 'Без изображения',
+                        ])
+                        ->default(EditorialGalleryExternalArticlePreviewApplier::IMAGE_SUGGESTED)
+                        ->live()
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->helperText('Режим «как на источнике» — hotlink к внешнему URL (ограничение MVP).'),
+                    TenantPublicMediaPicker::make('article_image_override_url')
+                        ->label('Обложка (файл или URL)')
+                        ->mediaType(TenantPublicMediaPicker::MEDIA_IMAGE)
+                        ->maxLength(2048)
+                        ->allowEmpty(fn ($get): bool => ($get('article_image_mode') ?? '') !== EditorialGalleryExternalArticlePreviewApplier::IMAGE_TENANT_FILE
+                            && ($get('article_image_mode') ?? '') !== EditorialGalleryExternalArticlePreviewApplier::IMAGE_EXTERNAL_URL)
+                        ->uploadPublicSiteSubdirectory(self::UPLOAD_SUBDIR_IMAGES)
+                        ->helperText(fn ($get): ?string => ($get('article_image_mode') ?? '') === EditorialGalleryExternalArticlePreviewApplier::IMAGE_EXTERNAL_URL
+                            ? 'Нажмите «Указать вручную» и вставьте прямой https:// URL изображения.'
+                            : null)
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'
+                            && in_array($get('article_image_mode') ?? '', [
+                                EditorialGalleryExternalArticlePreviewApplier::IMAGE_TENANT_FILE,
+                                EditorialGalleryExternalArticlePreviewApplier::IMAGE_EXTERNAL_URL,
+                            ], true))
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'
+                            && in_array($get('article_image_mode') ?? '', [
+                                EditorialGalleryExternalArticlePreviewApplier::IMAGE_TENANT_FILE,
+                                EditorialGalleryExternalArticlePreviewApplier::IMAGE_EXTERNAL_URL,
+                            ], true))
+                        ->rules([
+                            fn ($get): array => ($get('media_kind') ?? '') === 'external_article'
+                                && in_array($get('article_image_mode') ?? '', [
+                                    EditorialGalleryExternalArticlePreviewApplier::IMAGE_TENANT_FILE,
+                                    EditorialGalleryExternalArticlePreviewApplier::IMAGE_EXTERNAL_URL,
+                                ], true)
+                                ? [new EditorialGalleryAssetUrlRule(EditorialGalleryAssetUrlRule::KIND_IMAGE)]
+                                : [],
+                        ]),
+                    TextInput::make('article_suggested_image_url')
+                        ->label('Предложенная обложка (с сайта)')
+                        ->disabled()
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'),
+                    TextInput::make('article_fetch_status')
+                        ->label('Статус превью')
+                        ->disabled()
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'),
+                    TextInput::make('article_fetch_error')
+                        ->label('Ошибка загрузки превью')
+                        ->disabled()
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article')
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'
+                            && trim((string) ($get('article_fetch_error') ?? '')) !== ''),
+                    Hidden::make('article_domain')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'),
+                    Hidden::make('article_canonical_url')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'),
+                    Hidden::make('article_suggested_image_width')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'),
+                    Hidden::make('article_suggested_image_height')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'),
+                    Hidden::make('article_fetched_at')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'),
+                    Hidden::make('article_last_fetched_input_url')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'),
+                    Hidden::make('article_last_fetch_canonical_url')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'external_article'),
                     TenantPublicMediaPicker::make('image_url')
                         ->label('Изображение')
                         ->mediaType(TenantPublicMediaPicker::MEDIA_IMAGE)
@@ -124,6 +276,7 @@ final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
                         ->allowEmpty(fn ($get): bool => ($get('media_kind') ?? '') !== 'image')
                         ->uploadPublicSiteSubdirectory(self::UPLOAD_SUBDIR_IMAGES)
                         ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'image')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'image')
                         ->helperText('Выберите файл из хранилища сайта или загрузите новый. Ручной путь или URL — только в редких случаях (кнопка «Указать вручную»).')
                         ->rules([
                             fn ($get): array => ($get('media_kind') ?? '') === 'image'
@@ -137,6 +290,7 @@ final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
                         ->allowEmpty(fn ($get): bool => ($get('media_kind') ?? '') !== 'video')
                         ->uploadPublicSiteSubdirectory(self::UPLOAD_SUBDIR_VIDEOS)
                         ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'video')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'video')
                         ->helperText('Выберите видеофайл MP4 или WebM из хранилища или загрузите новый. Ссылка на страницу VK/YouTube здесь не работает — выберите тип «Видео (встраивание)».')
                         ->rules([
                             fn ($get): array => ($get('media_kind') ?? '') === 'video'
@@ -150,6 +304,7 @@ final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
                             'vk' => 'ВКонтакте',
                         ])
                         ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'video_embed')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'video_embed')
                         ->required(fn ($get): bool => ($get('media_kind') ?? '') === 'video_embed')
                         ->live()
                         ->rules([
@@ -168,6 +323,7 @@ final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
                             };
                         })
                         ->visible(fn ($get): bool => ($get('media_kind') ?? '') === 'video_embed')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') === 'video_embed')
                         ->required(fn ($get): bool => ($get('media_kind') ?? '') === 'video_embed')
                         ->hintIcon('heroicon-o-information-circle')
                         ->hintIconTooltip(function (Get $get): string {
@@ -180,6 +336,7 @@ final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
                         ->helperText(function (Get $get): string {
                             $vkBase = 'Для стабильного встраивания используйте «Поделиться» → «Код для вставки»: вставьте весь iframe или скопируйте только значение src=… (домен vk.com или vkvideo.ru — не меняйте вручную).';
                             $vkWarn = ' Сейчас у вас короткая ссылка на страницу ролика без hash — в модалке сайта часто будет «Видеофайл не найден». Замените на ссылку из src=… с hash=… или на iframe.';
+
                             return match ($get('embed_provider')) {
                                 'vk' => $vkBase.(VideoEmbedUrlNormalizer::vkEmbedProbablyMissingHash((string) ($get('embed_share_url') ?? '')) ? $vkWarn : ''),
                                 'youtube' => 'Вставьте обычную ссылку на видео.',
@@ -219,6 +376,7 @@ final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
                         ->maxLength(2048)
                         ->uploadPublicSiteSubdirectory(self::UPLOAD_SUBDIR_POSTERS)
                         ->visible(fn ($get): bool => in_array($get('media_kind'), ['video', 'video_embed'], true))
+                        ->dehydrated(fn ($get): bool => in_array($get('media_kind'), ['video', 'video_embed'], true))
                         ->helperText(fn ($get): ?string => ($get('media_kind') ?? '') === 'video'
                             ? 'По желанию. Делает превью в сетке ровнее; только изображение, без HTML и iframe.'
                             : null)
@@ -230,24 +388,32 @@ final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
                     TextInput::make('caption')
                         ->label('Подпись')
                         ->maxLength(255)
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') !== 'external_article')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') !== 'external_article')
                         ->helperText('Обычный текст, без HTML и без копипаста из кода страницы.')
                         ->rules([new EditorialGalleryCaptionRule]),
                     TextInput::make('source_url')
                         ->label('Ссылка на материал (источник)')
                         ->maxLength(2048)
                         ->live(onBlur: true)
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') !== 'external_article')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') !== 'external_article')
                         ->helperText('Только полный URL с https:// или http://. Относительные пути, «протокол-relative» (//…), якоря (#…), mailto и tel не используются.')
                         ->rules([new EditorialGalleryMaterialSourceUrlRule]),
                     TextInput::make('source_label')
                         ->label('Текст ссылки на источник')
                         ->maxLength(120)
                         ->placeholder('Читать материал')
-                        ->visible(fn ($get): bool => trim((string) ($get('source_url') ?? '')) !== '')
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') !== 'external_article'
+                            && trim((string) ($get('source_url') ?? '')) !== '')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') !== 'external_article')
                         ->helperText('Например: «Открыть источник», «Читать на сайте ФПА». Пусто — подпись по умолчанию.'),
                     Toggle::make('source_new_tab')
                         ->label('Открывать источник в новой вкладке')
                         ->default(true)
-                        ->visible(fn ($get): bool => trim((string) ($get('source_url') ?? '')) !== '')
+                        ->visible(fn ($get): bool => ($get('media_kind') ?? '') !== 'external_article'
+                            && trim((string) ($get('source_url') ?? '')) !== '')
+                        ->dehydrated(fn ($get): bool => ($get('media_kind') ?? '') !== 'external_article')
                         ->inline(false),
                 ])
                 ->columnSpanFull(),
@@ -265,6 +431,7 @@ final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
         $nImage = 0;
         $nVideo = 0;
         $nEmbed = 0;
+        $nExternal = 0;
         foreach ($items as $row) {
             if (! is_array($row)) {
                 continue;
@@ -276,10 +443,11 @@ final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
             match ($k) {
                 'video_embed' => $nEmbed++,
                 'video' => $nVideo++,
+                'external_article' => $nExternal++,
                 default => $nImage++,
             };
         }
-        $n = $nImage + $nVideo + $nEmbed;
+        $n = $nImage + $nVideo + $nEmbed + $nExternal;
         if ($n === 0) {
             return 'Нет материалов';
         }
@@ -298,8 +466,120 @@ final class EditorialGalleryBlueprint extends ExpertSectionBlueprint
         if ($nEmbed > 0) {
             $parts[] = self::embeddedVideosLabel($nEmbed);
         }
+        if ($nExternal > 0) {
+            $parts[] = self::externalArticlesLabel($nExternal);
+        }
 
         return $n.' '.$word.': '.implode(', ', $parts);
+    }
+
+    private static function resetExternalArticleItemState(Set $set): void
+    {
+        $idle = EditorialGalleryExternalArticlePreviewApplier::FETCH_IDLE;
+        foreach ([
+            'article_url' => '',
+            'open_in_new_tab' => true,
+            'article_fetched_title' => '',
+            'article_fetched_description' => '',
+            'article_fetched_site_name' => '',
+            'article_title' => '',
+            'article_description' => '',
+            'article_site_name' => '',
+            'article_domain' => '',
+            'article_canonical_url' => '',
+            'article_suggested_image_url' => '',
+            'article_suggested_image_width' => null,
+            'article_suggested_image_height' => null,
+            'article_image_mode' => EditorialGalleryExternalArticlePreviewApplier::IMAGE_SUGGESTED,
+            'article_image_override_url' => '',
+            'article_fetch_status' => $idle,
+            'article_fetch_error' => '',
+            'article_fetched_at' => '',
+            'article_last_fetched_input_url' => '',
+            'article_last_fetch_canonical_url' => '',
+        ] as $key => $value) {
+            $set((string) $key, $value);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function snapshotExternalArticleRowFromGet(Get $get): array
+    {
+        $keys = [
+            'article_url',
+            'open_in_new_tab',
+            'article_fetched_title',
+            'article_fetched_description',
+            'article_fetched_site_name',
+            'article_title',
+            'article_description',
+            'article_site_name',
+            'article_image_mode',
+            'article_image_override_url',
+            'article_last_fetched_input_url',
+            'article_last_fetch_canonical_url',
+            'article_fetch_status',
+        ];
+        $out = [];
+        foreach ($keys as $key) {
+            $out[$key] = $get($key);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $patch
+     */
+    private static function applyKeyedPatch(Set $set, array $patch): void
+    {
+        foreach ($patch as $key => $value) {
+            $set((string) $key, $value);
+        }
+    }
+
+    private static function runExternalArticleAutoFetchAfterUrlBlur(Get $get, Set $set, string $rawUrl): void
+    {
+        if (($get('media_kind') ?? '') !== 'external_article') {
+            return;
+        }
+        $normalized = EditorialGalleryExternalArticlePreviewApplier::normalizeArticleUrl($rawUrl);
+        if ($normalized === '') {
+            return;
+        }
+        $item = self::snapshotExternalArticleRowFromGet($get);
+        if (EditorialGalleryExternalArticlePreviewApplier::shouldSkipAutoFetch($normalized, $item)) {
+            return;
+        }
+        self::applyKeyedPatch($set, EditorialGalleryExternalArticlePreviewApplier::applyLoadingState($normalized, $item));
+        $data = app(ExternalArticlePreviewFetcherInterface::class)->fetch($normalized);
+        self::applyKeyedPatch($set, EditorialGalleryExternalArticlePreviewApplier::applyAutoFetchResult($item, $data, $normalized));
+    }
+
+    private static function runExternalArticleRefreshPreview(Get $get, Set $set): void
+    {
+        $normalized = EditorialGalleryExternalArticlePreviewApplier::normalizeArticleUrl((string) ($get('article_url') ?? ''));
+        if ($normalized === '') {
+            return;
+        }
+        $item = self::snapshotExternalArticleRowFromGet($get);
+        self::applyKeyedPatch($set, EditorialGalleryExternalArticlePreviewApplier::applyLoadingState($normalized, $item));
+        $data = app(ExternalArticlePreviewFetcherInterface::class)->fetch($normalized);
+        self::applyKeyedPatch($set, EditorialGalleryExternalArticlePreviewApplier::applyRefreshResult($item, $data, $normalized));
+    }
+
+    private static function externalArticlesLabel(int $n): string
+    {
+        if ($n % 10 === 1 && $n % 100 !== 11) {
+            return $n.' внешний материал';
+        }
+        if (in_array($n % 10, [2, 3, 4], true) && ! in_array($n % 100, [12, 13, 14], true)) {
+            return $n.' внешних материала';
+        }
+
+        return $n.' внешних материалов';
     }
 
     private static function embeddedVideosLabel(int $n): string

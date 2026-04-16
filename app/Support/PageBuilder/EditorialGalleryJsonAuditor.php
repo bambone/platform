@@ -2,6 +2,9 @@
 
 namespace App\Support\PageBuilder;
 
+use App\PageBuilder\Expert\EditorialGalleryExternalArticlePreviewApplier;
+use App\Services\LinkPreview\LinkPreviewHttpUrlValidator;
+
 /**
  * Обнаружение типичных ошибок заполнения Expert: Галерея в data_json (аудит БД / сидеров).
  */
@@ -38,6 +41,11 @@ final class EditorialGalleryJsonAuditor
     public static function rowIssues(array $row): array
     {
         $out = [];
+        $kind = trim((string) ($row['media_kind'] ?? ''));
+        if ($kind === 'external_article') {
+            return self::externalArticleRowIssues($row);
+        }
+
         $imageUrl = trim((string) ($row['image_url'] ?? ''));
         $videoUrl = trim((string) ($row['video_url'] ?? ''));
         $posterUrl = trim((string) ($row['poster_url'] ?? ''));
@@ -58,6 +66,42 @@ final class EditorialGalleryJsonAuditor
         }
         if ($embedUrl !== '' && str_contains($embedUrl, '<')) {
             $out[] = 'embed_share_url содержит HTML — укажите только URL страницы ролика.';
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return list<string>
+     */
+    private static function externalArticleRowIssues(array $row): array
+    {
+        $out = [];
+        $articleUrl = trim((string) ($row['article_url'] ?? ''));
+        $articleOk = LinkPreviewHttpUrlValidator::validateForFetch($articleUrl);
+        if ($articleUrl === '' || ! $articleOk['ok']) {
+            $out[] = 'external_article: укажите полный article_url с http:// или https://.';
+        }
+
+        $titleManual = trim((string) ($row['article_title'] ?? ''));
+        $titleFetched = trim((string) ($row['article_fetched_title'] ?? ''));
+        if ($titleManual === '' && $titleFetched === '') {
+            $out[] = 'external_article: нет заголовка (ни article_title, ни article_fetched_title).';
+        }
+
+        $mode = (string) ($row['article_image_mode'] ?? EditorialGalleryExternalArticlePreviewApplier::IMAGE_SUGGESTED);
+        $override = trim((string) ($row['article_image_override_url'] ?? ''));
+
+        if ($mode === EditorialGalleryExternalArticlePreviewApplier::IMAGE_TENANT_FILE && $override === '') {
+            $out[] = 'external_article: режим tenant_file без article_image_override_url.';
+        }
+
+        if ($mode === EditorialGalleryExternalArticlePreviewApplier::IMAGE_EXTERNAL_URL) {
+            $overrideOk = LinkPreviewHttpUrlValidator::validateForFetch($override);
+            if ($override === '' || ! $overrideOk['ok']) {
+                $out[] = 'external_article: для external_url нужен article_image_override_url с http(s).';
+            }
         }
 
         return $out;

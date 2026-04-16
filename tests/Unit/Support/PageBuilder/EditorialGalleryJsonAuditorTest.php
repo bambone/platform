@@ -37,6 +37,23 @@ final class EditorialGalleryJsonAuditorTest extends TestCase
         $this->assertSame([], $issues);
     }
 
+    public function test_external_article_issues(): void
+    {
+        $issues = EditorialGalleryJsonAuditor::collectIssues([
+            'items' => [
+                [
+                    'media_kind' => 'external_article',
+                    'article_url' => '',
+                    'article_title' => '',
+                    'article_fetched_title' => '',
+                ],
+            ],
+        ]);
+        $messages = array_column($issues, 'message');
+        $this->assertTrue($this->containsSubstring($messages, 'article_url'));
+        $this->assertTrue($this->containsSubstring($messages, 'заголовка'));
+    }
+
     /**
      * @param  list<string>  $haystacks
      */

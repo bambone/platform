@@ -46,6 +46,8 @@ use App\Scheduling\Calendar\GoogleCalendarProviderAdapter;
 use App\Scheduling\Calendar\NullCalendarProviderAdapter;
 use App\Scheduling\LinkedBookableServiceManager;
 use App\Services\CurrentTenantManager;
+use App\Services\LinkPreview\ExternalArticlePreviewFetcher;
+use App\Services\LinkPreview\ExternalArticlePreviewFetcherInterface;
 use App\Services\Mail\TenantMailer;
 use App\Services\PageBuilder\PageSectionOperationsService;
 use App\Services\PageBuilder\SectionViewResolver;
@@ -54,18 +56,18 @@ use App\Services\Tenancy\TenantAdvocateEditorialFooterData;
 use App\Services\Tenancy\TenantMainMenuPages;
 use App\Services\Tenancy\TenantPagePrimaryHtmlSync;
 use App\Services\Tenancy\TenantViewResolver;
-use App\Tenant\Reviews\TenantReviewSubmitConfig;
 use App\Support\TenantPanelMembershipCache;
+use App\Tenant\Reviews\TenantReviewSubmitConfig;
 use App\Tenant\StorageQuota\TenantMediaStorageQuotaObserver;
 use App\Terminology\TenantTerminologyService;
 use App\Themes\ThemeRegistry;
 use Filament\Facades\Filament;
 use Filament\Schemas\Components\Form as SchemaForm;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -81,6 +83,8 @@ class AppServiceProvider extends ServiceProvider
         if (DIRECTORY_SEPARATOR === '\\') {
             $this->app->singleton('files', fn () => new WindowsSafeFilesystem);
         }
+
+        $this->app->singleton(ExternalArticlePreviewFetcherInterface::class, ExternalArticlePreviewFetcher::class);
 
         $this->app->singleton(CurrentTenantManager::class);
         $this->app->singleton(TenantViewResolver::class);

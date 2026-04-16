@@ -1,4 +1,5 @@
 @php
+    use App\Tenant\Expert\EditorialGalleryExternalArticlePresenter;
     use App\Tenant\Expert\ExpertBrandMediaUrl;
     use App\Tenant\Expert\VideoEmbedUrlNormalizer;
     $raw = is_array($data['items'] ?? null) ? $data['items'] : [];
@@ -25,6 +26,25 @@
         $iframeSrc = null;
         if ($mediaKind === 'video_embed' && $embedProvider !== '' && $embedShare !== '') {
             $iframeSrc = VideoEmbedUrlNormalizer::toIframeSrc($embedProvider, $embedShare);
+        }
+
+        if ($mediaKind === 'external_article') {
+            $card = EditorialGalleryExternalArticlePresenter::fromRow($row);
+            if ($card === null) {
+                continue;
+            }
+            $items[] = array_merge([
+                'kind' => 'external_article',
+                'caption' => '',
+                'source_url' => '',
+                'source_label' => '',
+                'source_new_tab' => true,
+                'image_url' => '',
+                'video_url' => '',
+                'poster_url' => '',
+                'iframe_src' => '',
+            ], $card);
+            continue;
         }
 
         if ($mediaKind === 'video_embed') {
@@ -106,7 +126,32 @@
                     x-bind:class="{ 'max-lg:hidden': !galleryMore }"
                 @endif
             >
-                @if($item['kind'] === 'video' || $item['kind'] === 'embed')
+                @if($item['kind'] === 'external_article')
+                    <a
+                        href="{{ e($item['href']) }}"
+                        class="group/ext relative block h-full w-full min-h-[inherit] overflow-hidden text-left no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber/70"
+                        @if(($item['target'] ?? null) === '_blank') target="_blank" rel="{{ e($item['rel']) }}" @endif
+                        aria-label="{{ e($item['title'] !== '' ? $item['title'] : 'Открыть материал') }}"
+                    >
+                        @if(($item['imageUrl'] ?? '') !== '')
+                            <img src="{{ e($item['imageUrl']) }}" alt="" class="h-full w-full object-cover transition-transform duration-[1.5s] group-hover/ext:scale-105" loading="{{ $isHero ? 'eager' : 'lazy' }}" decoding="async" width="800" height="600">
+                        @else
+                            <div class="flex h-full min-h-[inherit] w-full items-center justify-center bg-gradient-to-br from-[#12151f] to-[#070910]"></div>
+                        @endif
+                        <span class="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#050608]/90 via-[#050608]/15 to-transparent transition-opacity duration-300 group-hover/ext:opacity-95"></span>
+                        <div class="pointer-events-none absolute inset-x-0 bottom-0 px-3 pb-3 pt-12 text-left sm:px-5 sm:pb-5 sm:pt-14">
+                            @if(($item['title'] ?? '') !== '')
+                                <p class="text-[12px] font-bold leading-snug tracking-wide text-white/95 text-pretty sm:text-[15px]">{{ $item['title'] }}</p>
+                            @endif
+                            @if(($item['description'] ?? '') !== '')
+                                <p class="mt-1 line-clamp-3 text-[11px] font-normal leading-snug text-white/80 sm:text-[13px]">{{ $item['description'] }}</p>
+                            @endif
+                            @if(($item['siteLabel'] ?? '') !== '')
+                                <p class="mt-2 text-[10px] font-semibold uppercase tracking-wider text-moto-amber/95 sm:text-[11px]">{{ $item['siteLabel'] }}</p>
+                            @endif
+                        </div>
+                    </a>
+                @elseif($item['kind'] === 'video' || $item['kind'] === 'embed')
                     <button type="button" class="relative block h-full w-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber/70" data-expert-video-open="{{ e($dlgId) }}" aria-label="{{ e($item['caption'] ?: 'Воспроизвести видео') }}">
                         @if($item['poster_url'] !== '')
                             <img src="{{ e($item['poster_url']) }}" alt="" class="h-full w-full object-cover transition-transform duration-[1.5s] group-hover:scale-105" loading="{{ $isHero ? 'eager' : 'lazy' }}" decoding="async" width="800" height="600">
@@ -134,6 +179,7 @@
                 @endif
             </figure>
 
+            @if($item['kind'] !== 'external_article')
             <dialog id="{{ e($dlgId) }}" class="expert-video-dialog expert-video-dialog--wide" aria-label="{{ e($item['caption'] ?: 'Медиа') }}">
                 <div class="expert-video-dialog__panel">
                     <div class="expert-video-dialog__head">
@@ -153,6 +199,7 @@
                     </div>
                 </div>
             </dialog>
+            @endif
         @endforeach
         @if(count($items) > 3)
             <div class="col-span-2 flex justify-center pt-2 sm:col-span-4 lg:hidden">

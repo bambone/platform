@@ -3,15 +3,21 @@
 namespace Tests\Feature\PageBuilder;
 
 use App\Livewire\Tenant\PageSectionsBuilder;
-use App\PageBuilder\Blueprints\Expert\EditorialGalleryBlueprint;
 use App\Models\Page;
 use App\Models\PageSection;
 use App\Models\Tenant;
 use App\Models\TenantDomain;
+use App\PageBuilder\Blueprints\Expert\EditorialGalleryBlueprint;
+use App\PageBuilder\Expert\EditorialGalleryExternalArticlePreviewApplier;
+use App\Services\LinkPreview\ExternalArticlePreviewData;
+use App\Services\LinkPreview\ExternalArticlePreviewFetcherInterface;
 use App\Services\TenantFiles\TenantFileCatalogService;
 use App\Support\Storage\TenantStorage;
 use App\Support\Storage\TenantStorageDisks;
 use App\Tenant\CurrentTenant;
+use App\Tenant\Expert\EditorialGalleryExternalArticlePresenter;
+use DateTimeImmutable;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -732,5 +738,209 @@ class EditorialGallerySectionLivewireTest extends TestCase
         $stored = is_array($section->data_json) ? ($section->data_json['items'] ?? []) : [];
         $row = $stored[array_key_first($stored)] ?? [];
         $this->assertSame($embedUrl, $row['embed_share_url'] ?? null);
+    }
+
+    public function test_editor_html_shows_external_article_fields(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('pb-eg-vis-ext', ['theme_key' => 'advocate_editorial']);
+        $this->bindTenantContext($tenant);
+        $page = $this->homePage($tenant);
+
+        $lw = Livewire::test(PageSectionsBuilder::class, ['record' => $page])
+            ->call('startAdd', 'editorial_gallery')
+            ->call('mountAction', 'add', [], ['schemaComponent' => 'sectionEditor.data_json.items']);
+
+        $items = $lw->get('sectionFormData.data_json.items') ?? [];
+        $key = (string) array_key_first($items);
+        $lw->set('sectionFormData.data_json.items.'.$key.'.media_kind', 'external_article');
+
+        $html = $lw->html();
+        $this->assertStringContainsString('Ссылка на материал', $html);
+        $this->assertStringContainsString('Заголовок (снимок с сайта)', $html);
+        $this->assertStringNotContainsString('Выберите файл из хранилища сайта или загрузите новый', $html);
+    }
+
+    public function test_save_succeeds_external_article_with_required_fields(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('pb-eg-save-ext', ['theme_key' => 'advocate_editorial']);
+        $this->bindTenantContext($tenant);
+        $page = $this->homePage($tenant);
+
+        $lw = Livewire::test(PageSectionsBuilder::class, ['record' => $page])
+            ->call('startAdd', 'editorial_gallery')
+            ->call('mountAction', 'add', [], ['schemaComponent' => 'sectionEditor.data_json.items']);
+
+        $items = $lw->get('sectionFormData.data_json.items') ?? [];
+        $key = (string) array_key_first($items);
+        $p = 'sectionFormData.data_json.items.'.$key.'.';
+        $lw->set($p.'media_kind', 'external_article');
+        $lw->set($p.'article_url', 'https://example.com/news/one');
+        $lw->set($p.'article_title', 'Ручной заголовок');
+        $lw->set($p.'article_fetch_status', EditorialGalleryExternalArticlePreviewApplier::FETCH_OK);
+        $lw->set($p.'article_image_mode', EditorialGalleryExternalArticlePreviewApplier::IMAGE_SUGGESTED);
+
+        $lw->call('save')
+            ->assertHasNoErrors();
+    }
+
+    private function externalArticlePreviewData(string $title, string $canonical, string $imageUrl = 'https://ex.test/i.jpg'): ExternalArticlePreviewData
+    {
+        return new ExternalArticlePreviewData(
+            title: $title,
+            description: 'D',
+            siteName: 'S',
+            domain: 'ex.test',
+            canonicalUrl: $canonical,
+            imageUrl: $imageUrl,
+            imageWidth: null,
+            imageHeight: null,
+            fetchedAt: new DateTimeImmutable('2026-01-01T12:00:00+00:00'),
+            ok: true,
+            errorCode: '',
+            errorMessage: '',
+            finalUrl: $canonical,
+        );
+    }
+
+    public function test_external_article_refresh_updates_fetched_snapshot_but_keeps_manual_title(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('pb-eg-ext-refresh-title', ['theme_key' => 'advocate_editorial']);
+        $this->bindTenantContext($tenant);
+        $page = $this->homePage($tenant);
+
+        $n = 0;
+        $mock = $this->mock(ExternalArticlePreviewFetcherInterface::class);
+        $mock->shouldReceive('fetch')->andReturnUsing(function () use (&$n): ExternalArticlePreviewData {
+            $n++;
+
+            return $n === 1
+                ? $this->externalArticlePreviewData('Snap1', 'https://ex.test/a')
+                : $this->externalArticlePreviewData('Snap2', 'https://ex.test/a');
+        });
+
+        $lw = Livewire::test(PageSectionsBuilder::class, ['record' => $page])
+            ->call('startAdd', 'editorial_gallery')
+            ->call('mountAction', 'add', [], ['schemaComponent' => 'sectionEditor.data_json.items']);
+
+        $items = $lw->get('sectionFormData.data_json.items') ?? [];
+        $key = (string) array_key_first($items);
+        $p = 'sectionFormData.data_json.items.'.$key.'.';
+        $lw->set($p.'media_kind', 'external_article');
+        $lw->set($p.'article_url', 'https://ex.test/a');
+
+        $this->assertSame(1, $n, 'initial blur/fetch should call ExternalArticlePreviewFetcherInterface once');
+        $this->assertSame('Snap1', $lw->get($p.'article_fetched_title'));
+
+        $lw->set($p.'article_title', 'ManualTitle');
+        $lw->callAction(TestAction::make('refreshExternalArticlePreview')->schemaComponent('data_json.items.'.$key.'.article_url'));
+
+        $this->assertSame(2, $n, '«Обновить превью» should issue another fetch');
+        $this->assertSame('Snap2', $lw->get($p.'article_fetched_title'));
+        $this->assertSame('ManualTitle', $lw->get($p.'article_title'));
+    }
+
+    public function test_external_article_refresh_keeps_tenant_file_override_and_presenter_uses_it(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('pb-eg-ext-refresh-img', ['theme_key' => 'advocate_editorial']);
+        $this->bindTenantContext($tenant);
+        $page = $this->homePage($tenant);
+
+        $n = 0;
+        $mock = $this->mock(ExternalArticlePreviewFetcherInterface::class);
+        $mock->shouldReceive('fetch')->andReturnUsing(function () use (&$n): ExternalArticlePreviewData {
+            $n++;
+
+            return $n === 1
+                ? $this->externalArticlePreviewData('T1', 'https://ex.test/a', 'https://ex.test/first.jpg')
+                : $this->externalArticlePreviewData('T2', 'https://ex.test/a', 'https://ex.test/second.jpg');
+        });
+
+        $lw = Livewire::test(PageSectionsBuilder::class, ['record' => $page])
+            ->call('startAdd', 'editorial_gallery')
+            ->call('mountAction', 'add', [], ['schemaComponent' => 'sectionEditor.data_json.items']);
+
+        $items = $lw->get('sectionFormData.data_json.items') ?? [];
+        $key = (string) array_key_first($items);
+        $p = 'sectionFormData.data_json.items.'.$key.'.';
+        $lw->set($p.'media_kind', 'external_article');
+        $lw->set($p.'article_url', 'https://ex.test/a');
+        $this->assertSame(1, $n);
+        $override = 'page-builder/editorial-gallery/images/keep-override.jpg';
+        $lw->set($p.'article_image_mode', EditorialGalleryExternalArticlePreviewApplier::IMAGE_TENANT_FILE);
+        $lw->set($p.'article_image_override_url', $override);
+
+        $lw->callAction(TestAction::make('refreshExternalArticlePreview')->schemaComponent('data_json.items.'.$key.'.article_url'));
+
+        $this->assertSame(2, $n);
+        $this->assertSame(EditorialGalleryExternalArticlePreviewApplier::IMAGE_TENANT_FILE, $lw->get($p.'article_image_mode'));
+        $this->assertSame($override, $lw->get($p.'article_image_override_url'));
+        $this->assertSame('https://ex.test/second.jpg', $lw->get($p.'article_suggested_image_url'));
+
+        $row = $lw->get('sectionFormData.data_json.items')[$key] ?? [];
+        $card = EditorialGalleryExternalArticlePresenter::fromRow(is_array($row) ? $row : []);
+        $this->assertIsArray($card);
+        $this->assertFalse($card['imageIsExternalHotlink']);
+        $this->assertNotSame('https://ex.test/second.jpg', $card['imageUrl']);
+        $this->assertNotSame('', $card['imageUrl']);
+    }
+
+    public function test_external_article_second_blur_same_url_normalized_does_not_fetch_again(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('pb-eg-ext-dedupe-same', ['theme_key' => 'advocate_editorial']);
+        $this->bindTenantContext($tenant);
+        $page = $this->homePage($tenant);
+
+        $n = 0;
+        $mock = $this->mock(ExternalArticlePreviewFetcherInterface::class);
+        $mock->shouldReceive('fetch')->andReturnUsing(function () use (&$n): ExternalArticlePreviewData {
+            $n++;
+
+            return $this->externalArticlePreviewData('Once', 'https://ex.test/a');
+        });
+
+        $lw = Livewire::test(PageSectionsBuilder::class, ['record' => $page])
+            ->call('startAdd', 'editorial_gallery')
+            ->call('mountAction', 'add', [], ['schemaComponent' => 'sectionEditor.data_json.items']);
+
+        $items = $lw->get('sectionFormData.data_json.items') ?? [];
+        $key = (string) array_key_first($items);
+        $p = 'sectionFormData.data_json.items.'.$key.'.';
+        $lw->set($p.'media_kind', 'external_article');
+        $lw->set($p.'article_url', 'https://ex.test/a');
+        $this->assertSame(1, $n);
+
+        $lw->set($p.'article_url', '  https://ex.test/a  ');
+        $this->assertSame(1, $n, 'second blur with same normalized URL should not fetch again');
+    }
+
+    public function test_external_article_second_blur_with_utm_variant_does_not_fetch_again(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('pb-eg-ext-dedupe-blur', ['theme_key' => 'advocate_editorial']);
+        $this->bindTenantContext($tenant);
+        $page = $this->homePage($tenant);
+
+        $n = 0;
+        $mock = $this->mock(ExternalArticlePreviewFetcherInterface::class);
+        $mock->shouldReceive('fetch')->andReturnUsing(function () use (&$n): ExternalArticlePreviewData {
+            $n++;
+
+            return $this->externalArticlePreviewData('Once', 'https://ex.test/a');
+        });
+
+        $lw = Livewire::test(PageSectionsBuilder::class, ['record' => $page])
+            ->call('startAdd', 'editorial_gallery')
+            ->call('mountAction', 'add', [], ['schemaComponent' => 'sectionEditor.data_json.items']);
+
+        $items = $lw->get('sectionFormData.data_json.items') ?? [];
+        $key = (string) array_key_first($items);
+        $p = 'sectionFormData.data_json.items.'.$key.'.';
+        $lw->set($p.'media_kind', 'external_article');
+        $lw->set($p.'article_url', 'https://ex.test/a?utm_source=first');
+        $this->assertSame(1, $n);
+        $this->assertSame('https://ex.test/a', $lw->get($p.'article_last_fetch_canonical_url'));
+
+        $lw->set($p.'article_url', 'https://ex.test/a?utm_campaign=second');
+
+        $this->assertSame(1, $n, 'second blur with UTM-only change should not call fetch when canonical matches');
     }
 }

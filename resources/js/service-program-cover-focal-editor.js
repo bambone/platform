@@ -188,12 +188,51 @@ function registerServiceProgramCoverFocalEditor() {
             this._resyncTimers = [];
             this.$nextTick(() => {
                 this.setupResize();
+                this.hydrateNaturalDimensionsFromImages();
                 this.resyncFromWire();
                 [0, 120, 500].forEach((ms) => {
-                    const t = window.setTimeout(() => this.resyncFromWire(), ms);
+                    const t = window.setTimeout(() => {
+                        this.resyncFromWire();
+                        this.hydrateNaturalDimensionsFromImages();
+                    }, ms);
                     this._resyncTimers.push(t);
                 });
             });
+        },
+
+        /**
+         * Кэшированное изображение: load не повторится → x-on:load не сработает.
+         * Без naturalWidth оверлей «Загрузка изображения…» не скрывается.
+         */
+        applyNaturalFromImage(key, img) {
+            if (!img) {
+                return;
+            }
+            const w = img.naturalWidth;
+            const h = img.naturalHeight;
+            if (w > 0 && h > 0) {
+                this.setNatural(key, w, h);
+            }
+        },
+
+        hydrateNaturalDimensionsFromImages() {
+            ['mobile', 'tablet', 'desktop'].forEach((key) => {
+                const frame = this.frameRefs[key];
+                if (!frame) {
+                    return;
+                }
+                const img = frame.querySelector('img.svc-program-focal-img');
+                if (!img) {
+                    return;
+                }
+                const apply = () => this.applyNaturalFromImage(key, img);
+                if (img.complete) {
+                    apply();
+                } else {
+                    img.addEventListener('load', apply, { once: true });
+                }
+            });
+            this.$nextTick(() => this.setupResize());
         },
 
         onConfigUpdate(newConfig) {
@@ -211,6 +250,7 @@ function registerServiceProgramCoverFocalEditor() {
             };
             this.local.desktop = { ...newConfig.desktop };
             this.natural = { mobile: null, tablet: null, desktop: null };
+            this.$nextTick(() => this.hydrateNaturalDimensionsFromImages());
         },
 
         cleanup() {
@@ -567,7 +607,7 @@ function registerServiceProgramCoverFocalEditor() {
 
         onImgLoad(key, ev) {
             const img = ev.target;
-            this.setNatural(key, img.naturalWidth, img.naturalHeight);
+            this.applyNaturalFromImage(key, img);
             this.$nextTick(() => this.setupResize());
         },
 

@@ -289,6 +289,8 @@ jobs:
           DEPLOY_SKIP_R2_SYNC: "${{ vars.DEPLOY_SKIP_R2_SYNC }}"
           # Опционально: public | private | both (по умолчанию public)
           DEPLOY_R2_SYNC_SCOPE: "${{ vars.DEPLOY_R2_SYNC_SCOPE }}"
+          # Опционально: 1 — при ошибке sync не ронять весь деплой (лог на сервере: storage/logs/tenant-sync-replica.log)
+          DEPLOY_R2_SYNC_NON_BLOCKING: "${{ vars.DEPLOY_R2_SYNC_NON_BLOCKING }}"
         run: |
           set -euo pipefail
 
@@ -299,7 +301,7 @@ jobs:
           ssh -p "$SSH_PORT" "$REMOTE" "set -e; mkdir -p '$TMP' '$DEST'; rm -rf '$TMP/release' '$TMP/preserve'; mkdir -p '$TMP/release' '$TMP/preserve'"
           scp -P "$SSH_PORT" deploy.tgz "$REMOTE:$TMP/deploy.tgz"
 
-          ssh -p "$SSH_PORT" "$REMOTE" "DEPLOY_TMP='$TMP' DEPLOY_PATH='$DEST' DEPLOY_SKIP_R2_SYNC='${DEPLOY_SKIP_R2_SYNC:-0}' DEPLOY_R2_SYNC_SCOPE='${DEPLOY_R2_SYNC_SCOPE:-public}' sh -se" <<'EOF'
+          ssh -p "$SSH_PORT" "$REMOTE" "DEPLOY_TMP='$TMP' DEPLOY_PATH='$DEST' DEPLOY_SKIP_R2_SYNC='${DEPLOY_SKIP_R2_SYNC:-0}' DEPLOY_R2_SYNC_SCOPE='${DEPLOY_R2_SYNC_SCOPE:-public}' DEPLOY_R2_SYNC_NON_BLOCKING='${DEPLOY_R2_SYNC_NON_BLOCKING:-0}' sh -se" <<'EOF'
           set -eu
           (set -o pipefail) 2>/dev/null && set -o pipefail || true
 
@@ -379,8 +381,16 @@ jobs:
             # Двусторонняя догонка зеркала ↔ R2 без удалений (см. tenant-storage:sync-replica).
             # Отключить: GitHub vars DEPLOY_SKIP_R2_SYNC=1
             # Область: GitHub vars DEPLOY_R2_SYNC_SCOPE (public | private | both)
+            # Ошибка sync при set -e раньше роняла весь шаг сразу после migrate — обрабатываем явно.
             if [ "${DEPLOY_SKIP_R2_SYNC:-0}" != "1" ]; then
-              php artisan tenant-storage:sync-replica --no-interaction --scope="${DEPLOY_R2_SYNC_SCOPE:-public}" >> "$DEST/storage/logs/tenant-sync-replica.log" 2>&1
+              if ! php artisan tenant-storage:sync-replica --no-interaction --scope="${DEPLOY_R2_SYNC_SCOPE:-public}" >> "$DEST/storage/logs/tenant-sync-replica.log" 2>&1; then
+                echo "Deploy: tenant-storage:sync-replica failed (see ${DEST}/storage/logs/tenant-sync-replica.log on the server)." >&2
+                if [ "${DEPLOY_R2_SYNC_NON_BLOCKING:-0}" = "1" ]; then
+                  echo "Deploy: continuing because DEPLOY_R2_SYNC_NON_BLOCKING=1." >&2
+                else
+                  exit 1
+                fi
+              fi
             fi
 
             # Оставляем runtime после деплоя в чистом состоянии без старых кэшей.

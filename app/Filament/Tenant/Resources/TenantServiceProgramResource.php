@@ -5,15 +5,21 @@ namespace App\Filament\Tenant\Resources;
 use App\Filament\Forms\Components\TenantPublicImagePicker;
 use App\Filament\Tenant\Resources\TenantServiceProgramResource\Pages;
 use App\Filament\Tenant\Support\TenantMoneyForms;
+use App\MediaPresentation\Profiles\ServiceProgramCardPresentationProfile;
+use App\MediaPresentation\PresentationData;
 use App\Models\TenantServiceProgram;
+use App\Support\Storage\TenantPublicAssetResolver;
 use App\Money\MoneyBindingRegistry;
 use App\Tenant\Expert\ServiceProgramType;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ViewField;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -105,39 +111,111 @@ class TenantServiceProgramResource extends Resource
                             ->label('Баннер для компьютера (широкий)')
                             ->uploadPublicSiteSubdirectory(fn (Get $get): string => 'expert_auto/programs/'.trim((string) ($get('slug') ?: 'draft')))
                             ->helperText('Рекомендуемый размер около 1200×640, формат WebP. Файл сохранится в медиатеке вместе с этой программой.')
+                            ->live()
                             ->columnSpanFull(),
                         TenantPublicImagePicker::make('cover_mobile_ref')
                             ->label('Баннер для телефона (портрет, по желанию)')
                             ->uploadPublicSiteSubdirectory(fn (Get $get): string => 'expert_auto/programs/'.trim((string) ($get('slug') ?: 'draft')))
                             ->helperText('Рекомендуемый размер около 720×1040. Если не загрузить — на телефоне используется баннер для компьютера.')
+                            ->live()
                             ->columnSpanFull(),
                         TextInput::make('cover_image_alt')
                             ->label('Alt-текст для изображения')
                             ->maxLength(500)
                             ->columnSpanFull(),
-                        Select::make('cover_object_position_preset')
-                            ->label('Фокус кадра на баннере')
-                            ->helperText('Что показывать, если изображение обрезается по высоте на узком экране. «Авто» подходит в большинстве случаев.')
-                            ->options([
-                                'auto' => 'Авто (рекомендуется)',
-                                'center top' => 'Верх кадра',
-                                'center 22%' => 'Сильно вверх (лица)',
-                                'center 30%' => 'Чуть выше центра',
-                                'center center' => 'Ровно по центру',
-                                'center 72%' => 'Чуть ниже центра',
-                                'center bottom' => 'Низ кадра',
-                                '__other__' => 'Другой вариант…',
+                        Hidden::make('cover_presentation.version')
+                            ->default(PresentationData::CURRENT_VERSION)
+                            ->dehydrated(),
+                        Grid::make(['default' => 1, 'lg' => 2])
+                            ->schema([
+                                Section::make('Фокус (mobile / узкий экран)')
+                                    ->description('До 1023px; при отдельном файле для телефона превью покажет его.')
+                                    ->schema([
+                                        TextInput::make('cover_presentation.viewport_focal_map.mobile.x')
+                                            ->label('X %')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(100)
+                                            ->step(0.1)
+                                            ->required()
+                                            ->live(onBlur: true),
+                                        TextInput::make('cover_presentation.viewport_focal_map.mobile.y')
+                                            ->label('Y %')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(100)
+                                            ->step(0.1)
+                                            ->required()
+                                            ->live(onBlur: true),
+                                    ])->columns(2),
+                                Section::make('Фокус (desktop)')
+                                    ->description('От 1024px')
+                                    ->schema([
+                                        TextInput::make('cover_presentation.viewport_focal_map.desktop.x')
+                                            ->label('X %')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(100)
+                                            ->step(0.1)
+                                            ->required()
+                                            ->live(onBlur: true),
+                                        TextInput::make('cover_presentation.viewport_focal_map.desktop.y')
+                                            ->label('Y %')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(100)
+                                            ->step(0.1)
+                                            ->required()
+                                            ->live(onBlur: true),
+                                    ])->columns(2),
                             ])
-                            ->default('auto')
-                            ->native(false)
-                            ->live()
                             ->columnSpanFull(),
-                        TextInput::make('cover_object_position')
-                            ->label('Точное положение кадра')
-                            ->maxLength(64)
-                            ->placeholder('например: center 18%')
-                            ->visible(fn (Get $get): bool => $get('cover_object_position_preset') === '__other__')
-                            ->required(fn (Get $get): bool => $get('cover_object_position_preset') === '__other__')
+                        ViewField::make('cover_presentation_preview')
+                            ->hiddenLabel()
+                            ->view('filament.forms.components.service-program-cover-preview')
+                            ->viewData(function (Get $get): array {
+                                $t = currentTenant();
+                                $frames = ServiceProgramCardPresentationProfile::previewFrames();
+                                $safeArea = ServiceProgramCardPresentationProfile::safeAreaBottomBand();
+                                $cover = $get('cover_presentation') ?? [];
+                                $map = is_array($cover['viewport_focal_map'] ?? null) ? $cover['viewport_focal_map'] : [];
+                                $mx = (float) ($map['mobile']['x'] ?? 50);
+                                $my = (float) ($map['mobile']['y'] ?? 52);
+                                $dx = (float) ($map['desktop']['x'] ?? 50);
+                                $dy = (float) ($map['desktop']['y'] ?? 48);
+                                $tenantId = $t ? (int) $t->id : 0;
+                                $desktopUrl = $tenantId !== 0
+                                    ? TenantPublicAssetResolver::resolve(trim((string) ($get('cover_image_ref') ?? '')), $tenantId)
+                                    : null;
+                                $mobileUrl = $tenantId !== 0
+                                    ? TenantPublicAssetResolver::resolve(trim((string) ($get('cover_mobile_ref') ?? '')), $tenantId)
+                                    : null;
+                                if (($mobileUrl === null || $mobileUrl === '') && $desktopUrl) {
+                                    $mobileUrl = $desktopUrl;
+                                }
+
+                                $tiles = [];
+                                foreach ($frames as $frame) {
+                                    $key = (string) ($frame['key'] ?? '');
+                                    $isDesktop = $key === 'desktop';
+                                    $fx = $isDesktop ? $dx : $mx;
+                                    $fy = $isDesktop ? $dy : $my;
+                                    $src = $isDesktop ? $desktopUrl : $mobileUrl;
+                                    $tiles[] = [
+                                        'label' => (string) ($frame['label'] ?? $key),
+                                        'width' => (int) ($frame['width'] ?? 200),
+                                        'height' => (int) ($frame['height'] ?? 120),
+                                        'fx' => $fx,
+                                        'fy' => $fy,
+                                        'src' => $src,
+                                    ];
+                                }
+
+                                return [
+                                    'tiles' => $tiles,
+                                    'safeArea' => $safeArea,
+                                ];
+                            })
                             ->columnSpanFull(),
                     ]),
             ]);

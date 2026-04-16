@@ -2,9 +2,14 @@
 
 namespace App\Filament\Tenant\Resources\TenantServiceProgramResource\Concerns;
 
+use App\MediaPresentation\LegacyCoverObjectPositionParser;
+use App\MediaPresentation\PresentationData;
+
 /**
  * Конвертация audience_json / outcomes_json между форматом БД (список строк)
  * и состоянием Repeater в форме ([['text' => '…'], …]).
+ *
+ * Presentation: {@code cover_presentation_json} ↔ поле формы {@code cover_presentation}.
  */
 trait NormalizesProgramListJsonForForm
 {
@@ -18,7 +23,7 @@ trait NormalizesProgramListJsonForForm
             $data[$key] = $this->jsonLinesToRepeaterState($data[$key] ?? null);
         }
 
-        return $this->normalizeCoverObjectPositionForFormFill($data);
+        return $this->normalizeCoverPresentationForFormFill($data);
     }
 
     /**
@@ -31,24 +36,43 @@ trait NormalizesProgramListJsonForForm
             $data[$key] = $this->repeaterStateToJsonLines($data[$key] ?? null);
         }
 
-        return $this->normalizeCoverObjectPositionForSave($data);
+        return $this->normalizeCoverPresentationForSave($data);
     }
 
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    protected function normalizeCoverObjectPositionForFormFill(array $data): array
+    protected function normalizeCoverPresentationForFormFill(array $data): array
     {
-        $raw = trim((string) ($data['cover_object_position'] ?? ''));
-        $known = ['center top', 'center 22%', 'center 30%', 'center center', 'center 72%', 'center bottom'];
-        if ($raw === '') {
-            $data['cover_object_position_preset'] = 'auto';
-        } elseif (in_array($raw, $known, true)) {
-            $data['cover_object_position_preset'] = $raw;
+        $raw = $data['cover_presentation_json'] ?? null;
+        if ($raw instanceof PresentationData) {
+            $data['cover_presentation'] = $raw->toArray();
+        } elseif (is_array($raw)) {
+            $data['cover_presentation'] = PresentationData::fromArray($raw)->toArray();
+        } elseif (is_string($raw) && $raw !== '') {
+            $decoded = json_decode($raw, true);
+            $data['cover_presentation'] = is_array($decoded)
+                ? PresentationData::fromArray($decoded)->toArray()
+                : PresentationData::empty()->toArray();
         } else {
-            $data['cover_object_position_preset'] = '__other__';
+            $data['cover_presentation'] = PresentationData::empty()->toArray();
         }
+
+        $map = $data['cover_presentation']['viewport_focal_map'] ?? [];
+        if (! is_array($map)) {
+            $map = [];
+        }
+        if ($map === [] && ($legacy = LegacyCoverObjectPositionParser::parse($data['cover_object_position'] ?? null))) {
+            $a = $legacy->toArray();
+            $data['cover_presentation']['viewport_focal_map'] = [
+                'default' => $a,
+                'mobile' => $a,
+                'desktop' => $a,
+            ];
+        }
+
+        $this->ensurePresentationShape($data['cover_presentation']);
 
         return $data;
     }
@@ -57,25 +81,40 @@ trait NormalizesProgramListJsonForForm
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    protected function normalizeCoverObjectPositionForSave(array $data): array
+    protected function normalizeCoverPresentationForSave(array $data): array
     {
-        if (! array_key_exists('cover_object_position_preset', $data)) {
-            return $data;
+        if (! isset($data['cover_presentation']) || ! is_array($data['cover_presentation'])) {
+            $data['cover_presentation'] = PresentationData::empty()->toArray();
+        }
+        $this->ensurePresentationShape($data['cover_presentation']);
+
+        $form = $data['cover_presentation'];
+        unset($data['cover_presentation']);
+
+        if (is_array($form)) {
+            $data['cover_presentation_json'] = PresentationData::fromArray([
+                'version' => (int) ($form['version'] ?? PresentationData::CURRENT_VERSION),
+                'viewport_focal_map' => is_array($form['viewport_focal_map'] ?? null) ? $form['viewport_focal_map'] : [],
+            ])->toArray();
         }
 
-        $preset = $data['cover_object_position_preset'];
-        unset($data['cover_object_position_preset']);
-
-        if ($preset === '__other__') {
-            $custom = trim((string) ($data['cover_object_position'] ?? ''));
-            $data['cover_object_position'] = $custom === '' ? null : $custom;
-        } elseif ($preset === 'auto' || $preset === '' || $preset === null) {
-            $data['cover_object_position'] = null;
-        } else {
-            $data['cover_object_position'] = (string) $preset;
-        }
+        $data['cover_object_position'] = null;
 
         return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $presentation
+     */
+    private function ensurePresentationShape(array &$presentation): void
+    {
+        $presentation['version'] = PresentationData::CURRENT_VERSION;
+        if (! isset($presentation['viewport_focal_map']) || ! is_array($presentation['viewport_focal_map'])) {
+            $presentation['viewport_focal_map'] = [];
+        }
+        $m = &$presentation['viewport_focal_map'];
+        $m['mobile'] = $m['mobile'] ?? ['x' => 50.0, 'y' => 52.0];
+        $m['desktop'] = $m['desktop'] ?? ['x' => 50.0, 'y' => 48.0];
     }
 
     /**

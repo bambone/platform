@@ -935,16 +935,16 @@ body.expert-auto-theme .expert-program-card__media-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    /* Сильнее к верху кадра — головы реже обрезаются; в админке можно точнее */
-    object-position: center 18%;
+    /* Фокус задаётся CSS-переменными на article (см. ServiceProgramCardPresentationResolver) */
+    object-position: var(--svc-program-focal-x-mobile, 50%) var(--svc-program-focal-y-mobile, 52%);
     /* Длинное мягкое «растворение» низа фото (много ступеней — без полос от бэндинга) */
     -webkit-mask-image: linear-gradient(
         to bottom,
         #000 0%,
-        #000 52%,
+        #000 var(--svc-program-mask-fade-start-mobile, 52%),
         rgba(0, 0, 0, 0.995) 58%,
         rgba(0, 0, 0, 0.97) 64%,
-        rgba(0, 0, 0, 0.9) 70%,
+        rgba(0, 0, 0, 0.9) var(--svc-program-mask-fade-mid-mobile, 70%),
         rgba(0, 0, 0, 0.78) 76%,
         rgba(0, 0, 0, 0.62) 81%,
         rgba(0, 0, 0, 0.46) 85.5%,
@@ -957,10 +957,10 @@ body.expert-auto-theme .expert-program-card__media-img {
     mask-image: linear-gradient(
         to bottom,
         #000 0%,
-        #000 52%,
+        #000 var(--svc-program-mask-fade-start-mobile, 52%),
         rgba(0, 0, 0, 0.995) 58%,
         rgba(0, 0, 0, 0.97) 64%,
-        rgba(0, 0, 0, 0.9) 70%,
+        rgba(0, 0, 0, 0.9) var(--svc-program-mask-fade-mid-mobile, 70%),
         rgba(0, 0, 0, 0.78) 76%,
         rgba(0, 0, 0, 0.62) 81%,
         rgba(0, 0, 0, 0.46) 85.5%,
@@ -974,6 +974,44 @@ body.expert-auto-theme .expert-program-card__media-img {
     mask-size: 100% 100%;
     -webkit-mask-repeat: no-repeat;
     mask-repeat: no-repeat;
+}
+
+@media (min-width: 1024px) {
+    body.expert-auto-theme .expert-program-card__media-img {
+        object-position: var(--svc-program-focal-x-desktop, 50%) var(--svc-program-focal-y-desktop, 48%);
+        -webkit-mask-image: linear-gradient(
+            to bottom,
+            #000 0%,
+            #000 var(--svc-program-mask-fade-start-desktop, 55%),
+            rgba(0, 0, 0, 0.995) 58%,
+            rgba(0, 0, 0, 0.97) 64%,
+            rgba(0, 0, 0, 0.9) var(--svc-program-mask-fade-mid-desktop, 72%),
+            rgba(0, 0, 0, 0.78) 76%,
+            rgba(0, 0, 0, 0.62) 81%,
+            rgba(0, 0, 0, 0.46) 85.5%,
+            rgba(0, 0, 0, 0.32) 89.5%,
+            rgba(0, 0, 0, 0.2) 93%,
+            rgba(0, 0, 0, 0.1) 95.5%,
+            rgba(0, 0, 0, 0.04) 97.5%,
+            transparent 100%
+        );
+        mask-image: linear-gradient(
+            to bottom,
+            #000 0%,
+            #000 var(--svc-program-mask-fade-start-desktop, 55%),
+            rgba(0, 0, 0, 0.995) 58%,
+            rgba(0, 0, 0, 0.97) 64%,
+            rgba(0, 0, 0, 0.9) var(--svc-program-mask-fade-mid-desktop, 72%),
+            rgba(0, 0, 0, 0.78) 76%,
+            rgba(0, 0, 0, 0.62) 81%,
+            rgba(0, 0, 0, 0.46) 85.5%,
+            rgba(0, 0, 0, 0.32) 89.5%,
+            rgba(0, 0, 0, 0.2) 93%,
+            rgba(0, 0, 0, 0.1) 95.5%,
+            rgba(0, 0, 0, 0.04) 97.5%,
+            transparent 100%
+        );
+    }
 }
 
 /* Один длинный scrim без резких скачков и без inset-линии у нижнего края */

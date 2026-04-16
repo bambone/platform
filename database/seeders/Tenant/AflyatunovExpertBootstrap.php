@@ -19,6 +19,9 @@ final class AflyatunovExpertBootstrap
 {
     public const SLUG = 'aflyatunov';
 
+    /** Текст для блока контактов и {@see TenantSetting} {@code contacts.public_office_address} (футер expert_auto). */
+    private const PUBLIC_OFFICE_ADDRESS = 'Челябинск: встреча и старт занятия согласовываются индивидуально (район, ориентир у метро или удобная точка у дома/работы). Выезд в область — по договорённости.';
+
     /**
      * Короткий кинематографичный hero: один смысл, без лишнего абзаца в data.
      *
@@ -555,7 +558,7 @@ final class AflyatunovExpertBootstrap
             'email' => 'aflyatunov_m@mail.ru',
             'telegram' => 'aflyatunov_driving174',
             'vk_url' => 'https://vk.com/aflyatunov_driving174',
-            'address' => 'Челябинск: встреча и старт занятия согласовываются индивидуально (район, ориентир у метро или удобная точка у дома/работы). Выезд в область — по договорённости.',
+            'address' => self::PUBLIC_OFFICE_ADDRESS,
             'social_note' => '',
         ];
     }
@@ -607,6 +610,7 @@ final class AflyatunovExpertBootstrap
         TenantSetting::setForTenant($tenantId, 'contacts.email', 'aflyatunov_m@mail.ru');
         TenantSetting::setForTenant($tenantId, 'contacts.telegram', 'aflyatunov_driving174');
         TenantSetting::setForTenant($tenantId, 'contacts.vk_url', 'https://vk.com/aflyatunov_driving174');
+        TenantSetting::setForTenant($tenantId, 'contacts.public_office_address', self::PUBLIC_OFFICE_ADDRESS, 'string');
     }
 
     /**

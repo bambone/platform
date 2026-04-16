@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\MediaPresentation\Casts\PresentationDataCast;
 use App\Models\Concerns\BelongsToTenant;
 use App\Money\MoneyBindingRegistry;
 use App\Support\Storage\TenantPublicAssetResolver;
@@ -29,6 +30,7 @@ class TenantServiceProgram extends Model
         'cover_mobile_ref',
         'cover_image_alt',
         'cover_object_position',
+        'cover_presentation_json',
         'duration_label',
         'price_amount',
         'price_prefix',
@@ -44,6 +46,7 @@ class TenantServiceProgram extends Model
         return [
             'audience_json' => 'array',
             'outcomes_json' => 'array',
+            'cover_presentation_json' => PresentationDataCast::class,
             'is_featured' => 'boolean',
             'is_visible' => 'boolean',
         ];

@@ -67,13 +67,14 @@
                     $coverAlt = $program->coverImageAlt();
                     $hasPaneMedia = filled($desktopUrl);
                     $useMobileSource = $hasPaneMedia && $mobileUrl !== $desktopUrl;
-                    $objRaw = trim((string) ($program->cover_object_position ?? ''));
-                    $objPos = ($objRaw === '' || strcasecmp($objRaw, 'auto') === 0) ? '' : $objRaw;
-                    $coverImgStyleAttr = $objPos !== '' ? ' style="object-position: '.e($objPos).';"' : '';
+                    $articleStyle = $hasPaneMedia
+                        ? app(\App\MediaPresentation\ServiceProgramCardPresentationResolver::class)->articleStyleAttribute($program)
+                        : '';
                 @endphp
                 <article
                     class="expert-program-card group/card relative flex min-w-0 flex-col overflow-hidden rounded-[1.35rem] border transition-transform duration-300 sm:rounded-[1.5rem] sm:hover:-translate-y-1 {{ $spanFeatured ? 'expert-program-card--featured border-white/[0.12] shadow-[0_20px_48px_-20px_rgba(0,0,0,0.72)] md:col-span-2' : 'border-white/[0.07] hover:border-white/[0.12]' }}"
                     data-program-slug="{{ e($program->slug) }}"
+                    @if($articleStyle !== '') style="{{ e($articleStyle) }}" @endif
                     @if($pi >= 3)
                         x-bind:class="{ 'max-lg:hidden': !programsMore }"
                     @endif
@@ -95,7 +96,6 @@
                                     loading="{{ $pi < 3 ? 'eager' : 'lazy' }}"
                                     decoding="async"
                                     onerror="var w=this.closest('.expert-program-card__media');if(w)w.remove()"
-                                    {!! $coverImgStyleAttr !!}
                                 />
                             </picture>
                             <div class="expert-program-card__media-scrim" aria-hidden="true"></div>

@@ -53,6 +53,7 @@ use App\Services\PageBuilder\PageSectionOperationsService;
 use App\Services\PageBuilder\SectionViewResolver;
 use App\Services\Platform\PlatformNotificationSettings;
 use App\Services\Tenancy\TenantAdvocateEditorialFooterData;
+use App\Services\Tenancy\TenantExpertAutoFooterData;
 use App\Services\Tenancy\TenantMainMenuPages;
 use App\Services\Tenancy\TenantPagePrimaryHtmlSync;
 use App\Services\Tenancy\TenantViewResolver;
@@ -330,6 +331,9 @@ class AppServiceProvider extends ServiceProvider
                     'tenantAdvocateFooter' => $tenant->themeKey() === 'advocate_editorial'
                         ? app(TenantAdvocateEditorialFooterData::class)->build($tenant)
                         : null,
+                    'tenantExpertAutoFooter' => $tenant->themeKey() === 'expert_auto'
+                        ? app(TenantExpertAutoFooterData::class)->build($tenant)
+                        : null,
                     'tenantReviewSubmitConfig' => TenantReviewSubmitConfig::forTenant((int) $tenant->id),
                 ];
             } else {
@@ -356,6 +360,7 @@ class AppServiceProvider extends ServiceProvider
                     'site_name' => config('app.name'),
                     'tenantMainMenuPages' => collect(),
                     'tenantAdvocateFooter' => null,
+                    'tenantExpertAutoFooter' => null,
                     'tenantReviewSubmitConfig' => null,
                 ];
             }
@@ -424,6 +429,7 @@ class AppServiceProvider extends ServiceProvider
             'site_name' => config('app.name'),
             'tenantMainMenuPages' => collect(),
             'tenantAdvocateFooter' => null,
+            'tenantExpertAutoFooter' => null,
             'tenantReviewSubmitConfig' => null,
         ];
     }

@@ -29,9 +29,20 @@ final class TenantPushCrmRequestRecipientResolver
 
         return match ($scope) {
             TenantPushRecipientScope::OwnerOnly => $this->ownerUserId($tenant),
-            TenantPushRecipientScope::SelectedUsers => $this->filterUserIdsEligibleForTenantPanel($tenant, $pref->selectedUserIds()),
+            TenantPushRecipientScope::SelectedUsers => $this->sanitizeSelectedUserIdsForSave($tenant, $pref->selectedUserIds()),
             TenantPushRecipientScope::AllAdmins => $this->allAdminUserIds($tenant),
         };
+    }
+
+    /**
+     * Фильтрация id для сохранения в {@see TenantPushEventPreference} (активный membership + роли панели).
+     *
+     * @param  list<int>  $candidateUserIds
+     * @return list<int>
+     */
+    public function sanitizeSelectedUserIdsForSave(Tenant $tenant, array $candidateUserIds): array
+    {
+        return $this->filterUserIdsEligibleForTenantPanel($tenant, $candidateUserIds);
     }
 
     /**
@@ -58,6 +69,13 @@ final class TenantPushCrmRequestRecipientResolver
     }
 
     /**
+     * Получатели для {@see TenantPushRecipientScope::OwnerOnly}.
+     *
+     * Сейчас используется {@see Tenant::$owner_user_id} (поле клиента на стороне платформы).
+     * Продуктово это может не совпадать с подписью в UI «Владелец клиента» в кабинете:
+     * при смене модели (например, строго пользователь с ролью tenant_owner в pivot)
+     * нужно менять источник здесь и копирайт, согласованно.
+     *
      * @return list<int>
      */
     private function ownerUserId(Tenant $tenant): array

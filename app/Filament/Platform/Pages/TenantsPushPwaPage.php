@@ -84,6 +84,30 @@ class TenantsPushPwaPage extends Page
             Auth::user(),
         );
 
-        Notification::make()->title('Настройки push (платформа) сохранены')->success()->send();
+        $tenant->refresh();
+        $saved = $gate->findSettings($tenant);
+        $overrideAfter = TenantPushOverride::tryFrom((string) ($saved?->push_override ?? '')) ?? TenantPushOverride::InheritPlan;
+
+        $title = 'Для клиента «'.((string) $tenant->name).'»';
+        $actionLine = match ($action) {
+            'inherit' => 'Установлено: переопределение — как в тарифе.',
+            'force_enable' => 'Установлено: принудительно включено (оверрайд).',
+            'force_disable' => 'Установлено: принудительно выключено (оверрайд).',
+            'commercial_on' => 'Коммерческая активация: включена.',
+            'commercial_off' => 'Коммерческая активация: выключена.',
+            default => 'Настройки обновлены.',
+        };
+        $stateLine = sprintf(
+            'Текущее состояние: оверрайд — %s; коммерция — %s; самообслуживание в кабинете — %s.',
+            $overrideAfter->platformLabel(),
+            ((bool) ($saved?->commercial_service_active ?? false)) ? 'да' : 'нет',
+            ((bool) ($saved?->self_serve_allowed ?? true)) ? 'да' : 'нет',
+        );
+
+        Notification::make()
+            ->title($title)
+            ->body($actionLine.' '.$stateLine)
+            ->success()
+            ->send();
     }
 }

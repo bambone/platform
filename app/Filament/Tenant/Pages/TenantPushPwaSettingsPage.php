@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Auth\AccessRoles;
 use App\Models\TenantDomain;
 use App\Models\TenantPushEventPreference;
 use App\TenantPush\OneSignalExternalUserId;
@@ -105,9 +106,14 @@ class TenantPushPwaSettingsPage extends Page
 
         $userOptions = [];
         if ($tenant !== null) {
-            $tenant->users()->wherePivot('status', 'active')->get()->each(function ($u) use (&$userOptions): void {
-                $userOptions[$u->id] = $u->email ?? ('#'.$u->id);
-            });
+            $tenant->users()
+                ->wherePivot('status', 'active')
+                ->wherePivotIn('role', AccessRoles::tenantMembershipRolesForPanel())
+                ->orderBy('users.id')
+                ->get()
+                ->each(function ($u) use (&$userOptions): void {
+                    $userOptions[$u->id] = $u->email ?? ('#'.$u->id);
+                });
         }
 
         return $schema
@@ -206,6 +212,7 @@ class TenantPushPwaSettingsPage extends Page
     public function save(
         TenantPushFeatureGate $gate,
         TenantPushNotificationBindingSync $bindingSync,
+        TenantPushCrmRequestRecipientResolver $recipientResolver,
     ): void {
         abort_unless(Gate::allows('manage_settings'), 403);
 
@@ -224,22 +231,60 @@ class TenantPushPwaSettingsPage extends Page
         $data = $this->getSchema('form')->getState();
         $settings = $gate->ensureSettings($tenant);
 
-        $host = strtolower(trim((string) ($data['canonical_host'] ?? '')));
+        $activeHostsLower = $tenant->domains()
+            ->where('status', TenantDomain::STATUS_ACTIVE)
+            ->pluck('host')
+            ->map(fn ($h): string => strtolower(trim((string) $h)))
+            ->filter(fn (string $h): bool => $h !== '')
+            ->values();
+        $hasActiveDomains = $activeHostsLower->isNotEmpty();
+
+        $submittedHost = strtolower(trim((string) ($data['canonical_host'] ?? '')));
+
+        if ($hasActiveDomains) {
+            if ($submittedHost === '') {
+                Notification::make()->title('Укажите основной домен из списка активных.')->danger()->send();
+
+                return;
+            }
+            if (! $activeHostsLower->contains($submittedHost)) {
+                Notification::make()->title('Допустимы только активные домены этого клиента.')->danger()->send();
+
+                return;
+            }
+        } else {
+            $submittedHost = '';
+        }
+
+        $host = $submittedHost;
         $origin = $host !== '' ? 'https://'.$host : null;
+
+        $previousAppId = strtolower(trim((string) ($settings->onesignal_app_id ?? '')));
+        $newAppIdTrimmed = trim((string) ($data['onesignal_app_id'] ?? ''));
+        $newAppId = $newAppIdTrimmed !== '' ? $newAppIdTrimmed : null;
+        $newAppIdNorm = $newAppId !== null ? strtolower($newAppId) : '';
+
+        $key = trim((string) ($data['onesignal_app_api_key'] ?? ''));
 
         $settings->fill([
             'canonical_host' => $host !== '' ? $host : null,
             'canonical_origin' => $origin,
-            'onesignal_app_id' => trim((string) ($data['onesignal_app_id'] ?? '')) ?: null,
+            'onesignal_app_id' => $newAppId,
             'is_push_enabled' => (bool) ($data['is_push_enabled'] ?? false),
             'is_pwa_enabled' => (bool) ($data['is_pwa_enabled'] ?? false),
         ]);
 
-        $key = trim((string) ($data['onesignal_app_api_key'] ?? ''));
         if ($key !== '') {
             $settings->onesignal_app_api_key_encrypted = $key;
             $settings->onesignal_key_pending_verification = true;
             $settings->provider_status = TenantPushProviderStatus::Invalid->value;
+            $settings->onesignal_config_verified_at = null;
+            $settings->onesignal_last_verification_error = null;
+        } elseif ($previousAppId !== $newAppIdNorm) {
+            $settings->provider_status = TenantPushProviderStatus::Invalid->value;
+            $settings->onesignal_key_pending_verification = true;
+            $settings->onesignal_config_verified_at = null;
+            $settings->onesignal_last_verification_error = null;
         }
 
         $settings->save();
@@ -253,9 +298,20 @@ class TenantPushPwaSettingsPage extends Page
             ],
         );
 
+        $scope = TenantPushRecipientScope::tryFrom((string) ($data['recipient_scope'] ?? ''))
+            ?? TenantPushRecipientScope::OwnerOnly;
+
         $pref->is_enabled = (bool) ($data['crm_push_enabled'] ?? false);
-        $pref->recipient_scope = (string) ($data['recipient_scope'] ?? TenantPushRecipientScope::OwnerOnly->value);
-        $pref->selected_user_ids_json = array_values(array_map('intval', $data['selected_user_ids'] ?? []));
+        $pref->recipient_scope = $scope->value;
+
+        if ($scope !== TenantPushRecipientScope::SelectedUsers) {
+            $pref->selected_user_ids_json = [];
+        } else {
+            $raw = $data['selected_user_ids'] ?? [];
+            $ids = is_array($raw) ? $raw : [];
+            $pref->selected_user_ids_json = $recipientResolver->sanitizeSelectedUserIdsForSave($tenant, $ids);
+        }
+
         $pref->save();
 
         $bindingSync->syncCrmRequestCreated($tenant);

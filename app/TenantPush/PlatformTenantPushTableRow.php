@@ -22,6 +22,8 @@ final readonly class PlatformTenantPushTableRow
         public bool $entitled,
         public TenantPushAccessDenialCode $denialCode,
         public string $denialLabel,
+        public bool $cabinetCanEdit,
+        public ?string $cabinetEditNote,
         public TenantPushProviderStatus $providerStatus,
         public string $providerLabel,
         public string $providerBadgeColor,

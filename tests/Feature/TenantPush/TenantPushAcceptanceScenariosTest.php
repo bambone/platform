@@ -19,6 +19,7 @@ use App\Product\CRM\Actions\CreateCrmRequestFromPublicForm;
 use App\Product\CRM\DTO\PublicInboundContext;
 use App\Product\CRM\DTO\PublicInboundSubmission;
 use App\Services\CurrentTenantManager;
+use App\TenantPush\TenantPushAccessDenialCode;
 use App\TenantPush\TenantPushDiagnosticCode;
 use App\TenantPush\TenantPushFeatureGate;
 use App\TenantPush\TenantPushOnesignalClient;
@@ -61,7 +62,7 @@ class TenantPushAcceptanceScenariosTest extends TestCase
         $this->assertFalse($g->canEditSettings);
     }
 
-    public function test_2_platform_force_enable_allows_edit_when_self_serve_off(): void
+    public function test_2_platform_force_enable_entitles_but_does_not_allow_edit_when_self_serve_off(): void
     {
         $this->seed(PlanSeeder::class);
         $plan = Plan::query()->where('slug', 'pro')->firstOrFail();
@@ -76,7 +77,9 @@ class TenantPushAcceptanceScenariosTest extends TestCase
 
         $g = $gate->evaluate($tenant);
         $this->assertTrue($g->isFeatureEntitled());
-        $this->assertTrue($g->canEditSettings);
+        $this->assertFalse($g->canEditSettings);
+        $this->assertSame(TenantPushAccessDenialCode::None, $g->entitlementDenialCode());
+        $this->assertSame(TenantPushAccessDenialCode::SelfServeForbidden, $g->editDenialCode());
     }
 
     public function test_3_verified_provider_without_subscriptions_is_not_event_ready(): void

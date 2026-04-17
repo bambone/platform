@@ -75,4 +75,50 @@ class TenantPushTenantSaveDoesNotChangeCommercialTest extends TestCase
         $this->assertFalse($settings->self_serve_allowed);
         $this->assertTrue($settings->is_push_enabled);
     }
+
+    /**
+     * Подменённые в payload поля платформы не участвуют в fill tenant-страницы (как в {@see \App\Filament\Tenant\Pages\TenantPushPwaSettingsPage::save}).
+     */
+    public function test_simulated_save_does_not_apply_smuggled_platform_owned_fields(): void
+    {
+        $this->seed(PlanSeeder::class);
+
+        $user = User::factory()->create();
+        $tenant = $this->createTenantWithActiveDomain('smuggle', [
+            'owner_user_id' => $user->id,
+        ]);
+        $user->tenants()->attach($tenant->id, ['role' => 'tenant_owner', 'status' => 'active']);
+
+        $gate = app(TenantPushFeatureGate::class);
+        $settings = $gate->ensureSettings($tenant);
+        $settings->commercial_service_active = true;
+        $settings->push_override = TenantPushOverride::InheritPlan->value;
+        $settings->self_serve_allowed = true;
+        $settings->save();
+
+        $data = [
+            'commercial_service_active' => false,
+            'push_override' => TenantPushOverride::ForceEnable->value,
+            'self_serve_allowed' => false,
+            'canonical_host' => null,
+            'onesignal_app_id' => null,
+            'is_push_enabled' => true,
+            'is_pwa_enabled' => false,
+        ];
+
+        $settings->refresh();
+        $settings->fill([
+            'canonical_host' => $data['canonical_host'] ? strtolower((string) $data['canonical_host']) : null,
+            'canonical_origin' => null,
+            'onesignal_app_id' => $data['onesignal_app_id'] ?? null,
+            'is_push_enabled' => (bool) ($data['is_push_enabled'] ?? false),
+            'is_pwa_enabled' => (bool) ($data['is_pwa_enabled'] ?? false),
+        ]);
+        $settings->save();
+
+        $settings->refresh();
+        $this->assertTrue($settings->commercial_service_active);
+        $this->assertSame(TenantPushOverride::InheritPlan->value, $settings->push_override);
+        $this->assertTrue($settings->self_serve_allowed);
+    }
 }

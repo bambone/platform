@@ -3,6 +3,7 @@
 namespace App\Filament\Platform\Pages;
 
 use App\Filament\Platform\Pages\Concerns\GrantsPlatformPageAccess;
+use App\Filament\Platform\TenantPlanCreationNotifications;
 use App\Filament\Platform\Resources\TenantResource;
 use App\Filament\Support\FilamentInlineMarkdown;
 use App\Models\DomainLocalizationPreset;
@@ -10,12 +11,8 @@ use App\Models\Plan;
 use App\Models\TemplatePreset;
 use App\Models\Tenant;
 use App\Models\TenantSetting;
-use App\Services\Seo\InitializeTenantSeoDefaults;
-use App\Services\TemplateCloningService;
-use App\Services\Tenancy\TenantDomainService;
+use App\Services\Tenancy\TenantProvisioningService;
 use App\Support\RussianPhone;
-use App\Tenant\StorageQuota\TenantStorageQuotaService;
-use App\TenantPush\TenantPushFeatureGate;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Pages\Page;
@@ -23,6 +20,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use UnitEnum;
 
@@ -192,53 +190,56 @@ class OnboardingWizard extends Page
     {
         $data = $this->getSchema('form')->getState();
 
-        $tenant = Tenant::create([
-            'name' => $data['name'],
-            'slug' => $data['slug'],
-            'brand_name' => $data['brand_name'] ?? null,
-            'status' => 'trial',
-            'plan_id' => Plan::first()?->id,
-            'timezone' => $data['timezone'] ?? 'Europe/Moscow',
-            'locale' => $data['locale'] ?? 'ru',
-            'currency' => $data['currency'] ?? 'RUB',
-            'domain_localization_preset_id' => $data['domain_localization_preset_id']
-                ?? DomainLocalizationPreset::query()->where('slug', 'generic_services')->value('id'),
-        ]);
+        $defaultPlanId = Plan::defaultIdForOnboarding();
+        if ($defaultPlanId === null) {
+            TenantPlanCreationNotifications::noActivePlans()->send();
 
-        app(TenantStorageQuotaService::class)->ensureQuotaRecord($tenant);
-
-        app(TenantPushFeatureGate::class)->ensureSettings($tenant);
-
-        $preset = TemplatePreset::find($data['template_preset_id'] ?? null);
-        if ($preset) {
-            app(TemplateCloningService::class)->cloneToTenant($tenant, $preset);
+            return;
         }
 
-        app(TenantDomainService::class)->createDefaultSubdomain($tenant, $tenant->slug);
+        $templatePresetId = isset($data['template_preset_id']) ? (int) $data['template_preset_id'] : null;
+        $templatePresetId = ($templatePresetId !== null && $templatePresetId > 0) ? $templatePresetId : null;
 
-        if (! empty($data['logo_url'])) {
-            TenantSetting::setForTenant($tenant->id, 'branding.logo', $data['logo_url']);
-        }
-        if (! empty($data['primary_color'])) {
-            TenantSetting::setForTenant($tenant->id, 'branding.primary_color', $data['primary_color']);
-        }
-        if (! empty($data['contact_phone'])) {
-            TenantSetting::setForTenant($tenant->id, 'contacts.phone', $data['contact_phone']);
-        }
-        if (! empty($data['contact_email'])) {
-            TenantSetting::setForTenant($tenant->id, 'contacts.email', $data['contact_email']);
-        }
-        if (! empty($data['contact_telegram'])) {
-            TenantSetting::setForTenant($tenant->id, 'contacts.telegram', $data['contact_telegram']);
-        }
-        if (! empty($data['contact_whatsapp'])) {
-            TenantSetting::setForTenant($tenant->id, 'contacts.whatsapp', $data['contact_whatsapp']);
-        }
-        if (! empty($data['brand_name'])) {
-            TenantSetting::setForTenant($tenant->id, 'general.site_name', $data['brand_name']);
-        }
+        $tenant = DB::transaction(function () use ($data, $templatePresetId, $defaultPlanId) {
+            $tenant = Tenant::create([
+                'name' => $data['name'],
+                'slug' => $data['slug'],
+                'brand_name' => $data['brand_name'] ?? null,
+                'status' => 'trial',
+                'plan_id' => $defaultPlanId,
+                'timezone' => $data['timezone'] ?? 'Europe/Moscow',
+                'locale' => $data['locale'] ?? 'ru',
+                'currency' => $data['currency'] ?? 'RUB',
+                'domain_localization_preset_id' => $data['domain_localization_preset_id']
+                    ?? DomainLocalizationPreset::query()->where('slug', 'generic_services')->value('id'),
+            ]);
 
-        app(InitializeTenantSeoDefaults::class)->execute($tenant, false, false);
+            app(TenantProvisioningService::class)->bootstrapAfterTenantCreated($tenant, $templatePresetId);
+
+            if (! empty($data['logo_url'])) {
+                TenantSetting::setForTenant($tenant->id, 'branding.logo', $data['logo_url']);
+            }
+            if (! empty($data['primary_color'])) {
+                TenantSetting::setForTenant($tenant->id, 'branding.primary_color', $data['primary_color']);
+            }
+            if (! empty($data['contact_phone'])) {
+                TenantSetting::setForTenant($tenant->id, 'contacts.phone', $data['contact_phone']);
+            }
+            if (! empty($data['contact_email'])) {
+                TenantSetting::setForTenant($tenant->id, 'contacts.email', $data['contact_email']);
+            }
+            if (! empty($data['contact_telegram'])) {
+                TenantSetting::setForTenant($tenant->id, 'contacts.telegram', $data['contact_telegram']);
+            }
+            if (! empty($data['contact_whatsapp'])) {
+                TenantSetting::setForTenant($tenant->id, 'contacts.whatsapp', $data['contact_whatsapp']);
+            }
+            if (! empty($data['brand_name'])) {
+                TenantSetting::setForTenant($tenant->id, 'general.site_name', $data['brand_name']);
+            }
+
+            return $tenant;
+        });
 
         $this->redirect(TenantResource::getUrl('edit', ['record' => $tenant]));
     }

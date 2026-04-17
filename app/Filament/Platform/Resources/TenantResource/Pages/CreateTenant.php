@@ -3,13 +3,11 @@
 namespace App\Filament\Platform\Resources\TenantResource\Pages;
 
 use App\Filament\Platform\Resources\TenantResource;
-use App\Models\TemplatePreset;
-use App\TenantPush\TenantPushFeatureGate;
-use App\Services\Seo\InitializeTenantSeoDefaults;
-use App\Services\TemplateCloningService;
-use App\Services\Tenancy\TenantDomainService;
-use App\Tenant\StorageQuota\TenantStorageQuotaService;
+use App\Filament\Platform\TenantPlanCreationNotifications;
+use App\Models\Plan;
+use App\Services\Tenancy\TenantProvisioningService;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Support\Exceptions\Halt;
 use Illuminate\Support\Str;
 
 class CreateTenant extends CreateRecord
@@ -24,26 +22,34 @@ class CreateTenant extends CreateRecord
 
         unset($data['template_preset_id']);
 
+        $planId = isset($data['plan_id']) ? (int) $data['plan_id'] : null;
+        if ($planId === null || $planId === 0) {
+            $planId = Plan::defaultIdForOnboarding();
+        }
+
+        if ($planId === null) {
+            TenantPlanCreationNotifications::noActivePlans()->send();
+
+            throw new Halt;
+        }
+
+        if (! Plan::query()->where('id', $planId)->where('is_active', true)->exists()) {
+            TenantPlanCreationNotifications::selectedPlanInactive()->send();
+
+            throw new Halt;
+        }
+
+        $data['plan_id'] = $planId;
+
         return $data;
     }
 
     protected function afterCreate(): void
     {
         $formState = $this->form->getState();
-        $templateId = $formState['template_preset_id'] ?? null;
-        if ($templateId) {
-            $preset = TemplatePreset::find($templateId);
-            if ($preset) {
-                app(TemplateCloningService::class)->cloneToTenant($this->record, $preset);
-            }
-        }
+        $templateId = isset($formState['template_preset_id']) ? (int) $formState['template_preset_id'] : null;
+        $templateId = ($templateId !== null && $templateId > 0) ? $templateId : null;
 
-        app(TenantDomainService::class)->createDefaultSubdomain($this->record, $this->record->slug);
-
-        app(TenantStorageQuotaService::class)->ensureQuotaRecord($this->record);
-
-        app(TenantPushFeatureGate::class)->ensureSettings($this->record);
-
-        app(InitializeTenantSeoDefaults::class)->execute($this->record, false, false);
+        app(TenantProvisioningService::class)->bootstrapAfterTenantCreated($this->record, $templateId);
     }
 }

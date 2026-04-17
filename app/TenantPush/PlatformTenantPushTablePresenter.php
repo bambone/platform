@@ -34,6 +34,8 @@ final class PlatformTenantPushTablePresenter
         $settings = $pushView->settings;
         $entitled = $gate->isFeatureEntitled();
         $denial = $gate->entitlementDenialCode();
+        $cabinetCanEdit = $gate->canEditSettings;
+        $cabinetEditNote = $entitled && ! $cabinetCanEdit ? $gate->editDenialCode()->label() : null;
         $override = TenantPushOverride::tryFrom((string) $settings->push_override) ?? TenantPushOverride::InheritPlan;
 
         $pushCell = $entitled ? ($settings->is_push_enabled ? 'да' : 'выкл') : '—';
@@ -50,6 +52,8 @@ final class PlatformTenantPushTablePresenter
             entitled: $entitled,
             denialCode: $denial,
             denialLabel: $denial->label(),
+            cabinetCanEdit: $cabinetCanEdit,
+            cabinetEditNote: $cabinetEditNote,
             providerStatus: $settings->providerStatusEnum(),
             providerLabel: $settings->providerStatusEnum()->platformLabel(),
             providerBadgeColor: $settings->providerStatusEnum()->filamentBadgeColor(),

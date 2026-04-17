@@ -11,6 +11,7 @@ use App\Filament\Shared\Lifecycle\AdminFilamentDelete;
 use App\Filament\Shared\TenantAnalyticsFormSchema;
 use App\Filament\Support\TenantPushPlatformFormSchema;
 use App\Models\DomainLocalizationPreset;
+use App\Models\Plan;
 use App\Models\TemplatePreset;
 use App\Models\Tenant;
 use App\Models\TenantStorageQuota;
@@ -128,8 +129,9 @@ class TenantResource extends Resource
                         Select::make('plan_id')
                             ->label('Тариф')
                             ->relationship('plan', 'name')
+                            ->default(fn (): ?int => Plan::defaultIdForOnboarding())
                             ->preload()
-                            ->helperText('Лимиты и функции. Для Push/PWA в тарифе должна быть отмечена функция «OneSignal Web Push…» (Платформа → Тарифы → редактирование).'),
+                            ->helperText('Лимиты и функции. Для Push/PWA в тарифе должна быть отмечена функция «OneSignal Web Push…» (Платформа → Тарифы → редактирование). При создании клиента без выбора подставляется первый доступный активный тариф (как в мастере).'),
                         Select::make('template_preset_id')
                             ->label('Шаблон сайта при создании')
                             ->options(TemplatePreset::where('is_active', true)->pluck('name', 'id'))

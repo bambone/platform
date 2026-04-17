@@ -55,6 +55,22 @@ final readonly class TenantPushGateResult
         return TenantPushAccessDenialCode::Unknown;
     }
 
+    /**
+     * Почему клиент не может **сохранять** настройки OneSignal/PWA (отдельно от entitlement).
+     * При `!isFeatureEntitled()` — {@see TenantPushAccessDenialCode::None} (смотрите {@see self::entitlementDenialCode()}).
+     */
+    public function editDenialCode(): TenantPushAccessDenialCode
+    {
+        if (! $this->isFeatureEntitled()) {
+            return TenantPushAccessDenialCode::None;
+        }
+        if ($this->canEditSettings) {
+            return TenantPushAccessDenialCode::None;
+        }
+
+        return TenantPushAccessDenialCode::SelfServeForbidden;
+    }
+
     public static function fromSettings(
         TenantPushSettings $settings,
         bool $platformChannelEnabled,
@@ -73,7 +89,7 @@ final readonly class TenantPushGateResult
         );
 
         $selfServe = (bool) $settings->self_serve_allowed;
-        $canEdit = $entitled && ($selfServe || $forceEnable);
+        $canEdit = $entitled && $selfServe;
 
         return new self(
             platformChannelEnabled: $platformChannelEnabled,

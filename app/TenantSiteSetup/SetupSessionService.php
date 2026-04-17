@@ -310,6 +310,46 @@ final class SetupSessionService
         return $sorted[0] ?? null;
     }
 
+    /**
+     * Если текущий шаг исчез из очереди (например, данные закрыли пункт без «Дальше»),
+     * сдвигаем указатель или завершаем сессию — иначе overlay теряет консистентность.
+     */
+    private function realignSessionIfCurrentStepNoLongerInJourney(Tenant $tenant, User $user, TenantSetupSession $session): void
+    {
+        $freshKeys = $this->journeyBuilder->visibleStepKeys($tenant, $user);
+        $session->update(['visible_step_keys_json' => $freshKeys]);
+
+        $currentKey = $session->current_item_key;
+        if ($currentKey === null) {
+            return;
+        }
+        if (in_array($currentKey, $freshKeys, true)) {
+            return;
+        }
+
+        if ($freshKeys === []) {
+            $this->completeSession($session);
+
+            return;
+        }
+
+        $nextKey = $this->pickNextGuidedKey($currentKey, $freshKeys);
+        if ($nextKey === null) {
+            $this->completeSession($session);
+
+            return;
+        }
+
+        $defs = SetupItemRegistry::definitions();
+        $def = $defs[$nextKey] ?? null;
+        $idx = array_search($nextKey, $freshKeys, true);
+        $session->update([
+            'current_item_key' => $nextKey,
+            'step_index' => $idx === false ? 0 : (int) $idx,
+            'current_route_name' => $def?->filamentRouteName,
+        ]);
+    }
+
     private function requireActiveSession(Tenant $tenant, User $user): TenantSetupSession
     {
         $session = $this->activeSession($tenant, $user);
@@ -361,6 +401,13 @@ final class SetupSessionService
                 'visible_step_keys_json' => $this->journeyBuilder->visibleStepKeys($tenant, $user),
             ]);
             $session->refresh();
+        }
+
+        $this->realignSessionIfCurrentStepNoLongerInJourney($tenant, $user, $session);
+        $session->refresh();
+
+        if ($session->session_status !== 'active') {
+            return null;
         }
 
         $keys = $session->visible_step_keys_json ?? [];
@@ -422,6 +469,10 @@ final class SetupSessionService
             'settings_section_id' => $def?->settingsSectionId,
             'readiness_tier' => $def?->readinessTier?->value,
             'guided_next_hint' => $def !== null ? $def->guidedNextHint->value : 'save_then_next',
+            'guided_inline_placement' => ($ctx['on_target_route'] ?? false)
+                && ($def?->filamentRouteName ?? '') === 'filament.admin.pages.settings'
+                ? 'floating'
+                : 'inline',
             'settings_tab_active' => $ctx['settings_tab_active'] ?? null,
             'settings_tab_matches' => $ctx['settings_tab_matches'] ?? null,
             'page_edit_relation_tab' => $ctx['page_edit_relation_tab'] ?? null,
@@ -431,7 +482,7 @@ final class SetupSessionService
             'page_builder_auto_open' => $pageBuilderAutoOpen,
         ];
 
-        if (config('app.debug')) {
+        if (config('app.debug') && config('features.tenant_site_setup_guided_debug')) {
             $snap = SetupCapabilitySnapshot::capture($tenant, $user);
             $tracks = app(SetupTracksResolver::class)->resolve(
                 $tenant,

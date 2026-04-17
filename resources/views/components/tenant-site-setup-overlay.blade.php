@@ -85,6 +85,48 @@
             </div>
         </template>
     @endif
+
+    @if($actionUrl)
+        {{-- Один экземпляр на странице (вне <template>, чтобы id не дублировался при клонировании карточки). --}}
+        <dialog
+            id="fi-ts-setup-not-needed-dialog"
+            class="fi-ts-setup-not-needed-dialog"
+            aria-labelledby="fi-ts-setup-not-needed-title"
+        >
+            <div class="fi-ts-setup-not-needed-dialog-panel">
+                <h2 id="fi-ts-setup-not-needed-title" class="fi-ts-setup-not-needed-dialog-title">
+                    Подтвердить «Не требуется»
+                </h2>
+                <p class="fi-ts-setup-not-needed-dialog-lead">
+                    Вы исключаете текущий шаг из обязательного прогресса запуска. Это осознанное решение — ниже кратко, что изменится.
+                </p>
+                <ul class="fi-ts-setup-not-needed-dialog-list">
+                    <li>Пункт будет отмечен как <strong>не требуется</strong> и уйдёт из очереди быстрого запуска.</li>
+                    <li>Контент и настройки на сайте <strong>не удаляются</strong> — фиксируется только статус пункта в чеклисте.</li>
+                    <li>В <strong>обзоре запуска</strong> позже можно вернуть пункт в работу и пройти шаг снова.</li>
+                </ul>
+                <p class="fi-ts-setup-not-needed-dialog-note">
+                    Если шаг ещё важен для вашего проекта, лучше нажать «Позже» или завершить поле и «Сохранить», затем «Дальше».
+                </p>
+                <div class="fi-ts-setup-not-needed-dialog-actions">
+                    <button
+                        type="button"
+                        class="fi-ts-setup-btn fi-ts-setup-btn-secondary"
+                        onclick="document.getElementById('fi-ts-setup-not-needed-dialog')?.close()"
+                    >
+                        <span class="fi-ts-setup-btn-label">Отмена</span>
+                    </button>
+                    <form method="post" action="{{ $actionUrl }}" class="fi-ts-setup-not-needed-dialog-submit-form">
+                        @csrf
+                        <input type="hidden" name="action" value="not_needed" />
+                        <button type="submit" class="fi-ts-setup-btn fi-ts-setup-btn-accent">
+                            <span class="fi-ts-setup-btn-label">Да, исключить пункт</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </dialog>
+    @endif
     <script type="application/json" data-tenant-site-setup="payload">@json($payload)</script>
     </div>
 @endif

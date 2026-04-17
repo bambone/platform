@@ -5,6 +5,7 @@ namespace Tests\Feature\TenantSiteSetup;
 use App\Filament\Tenant\Pages\TenantSiteSetupCenterPage;
 use App\Models\Page;
 use App\Models\PageSection;
+use App\Models\TenantSetting;
 use App\Models\TenantSetupSession;
 use App\Models\User;
 use App\Tenant\CurrentTenant;
@@ -122,6 +123,45 @@ class TenantSiteSetupSessionTest extends TestCase
         $this->assertIsArray($payload['page_builder_auto_open']);
         $this->assertArrayHasKey('enabled', $payload['page_builder_auto_open']);
         $this->assertFalse($payload['page_builder_auto_open']['enabled']);
+    }
+
+    public function test_overlay_payload_realigns_when_current_step_completed_by_data(): void
+    {
+        config(['features.tenant_site_setup_framework' => true]);
+        $tenant = $this->createTenantWithActiveDomain('ts_rl', ['theme_key' => 'expert_auto']);
+        $user = User::factory()->create(['status' => 'active']);
+        $user->tenants()->attach($tenant->id, ['role' => 'tenant_owner', 'status' => 'active']);
+
+        TenantSetting::setForTenant($tenant->id, 'general.site_name', 'Название сайта достаточно длинное');
+        TenantSetting::setForTenant($tenant->id, 'branding.logo', 'https://example.com/logo.png');
+        TenantSetting::setForTenant($tenant->id, 'general.short_description', 'short');
+        SetupProgressCache::forget((int) $tenant->id);
+
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $domain = $tenant->domains()->where('is_primary', true)->first();
+        $this->app->instance(
+            CurrentTenant::class,
+            new CurrentTenant($tenant, $domain, false, $this->tenancyHostForSlug((string) $tenant->slug))
+        );
+        $this->actingAs($user);
+
+        app(SetupSessionService::class)->startOrResume($tenant, $user);
+        TenantSetupSession::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('user_id', $user->id)
+            ->where('session_status', 'active')
+            ->update(['current_item_key' => 'settings.tagline_or_short_description']);
+
+        $p1 = app(SetupSessionService::class)->overlayPayload($tenant, $user, request());
+        $this->assertIsArray($p1);
+        $this->assertSame('settings.tagline_or_short_description', $p1['current_item_key']);
+
+        TenantSetting::setForTenant($tenant->id, 'general.short_description', str_repeat('а', 12));
+        SetupProgressCache::forget((int) $tenant->id);
+
+        $p2 = app(SetupSessionService::class)->overlayPayload($tenant, $user, request());
+        $this->assertIsArray($p2);
+        $this->assertNotSame('settings.tagline_or_short_description', $p2['current_item_key']);
     }
 
     public function test_overlay_payload_auto_open_disabled_for_hero_cta_step(): void

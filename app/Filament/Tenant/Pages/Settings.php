@@ -288,6 +288,8 @@ class Settings extends Page
                     ->persistTabInQueryString('settings_tab')
                     ->tabs([
                         'general' => Tab::make(__('tenant_admin_settings.tabs.general'))
+                            // Стабильные id для persistTabInQueryString('settings_tab') и гида запуска (SetupItemRegistry.settingsTabKey).
+                            ->id('general')
                             ->icon('heroicon-o-home')
                             ->schema([
                                 Section::make(__('tenant_admin_settings.sections.site_identity'))
@@ -323,6 +325,7 @@ class Settings extends Page
                             ]),
 
                         'appearance' => Tab::make(__('tenant_admin_settings.tabs.appearance'))
+                            ->id('appearance')
                             ->icon('heroicon-o-paint-brush')
                             ->visible(fn (): bool => $tenant !== null)
                             ->schema([
@@ -384,6 +387,7 @@ class Settings extends Page
                             ]),
 
                         'enrollment' => Tab::make(__('tenant_admin_settings.tabs.enrollment'))
+                            ->id('enrollment')
                             ->icon('heroicon-o-academic-cap')
                             ->visible(fn (): bool => $tenant !== null && in_array((string) ($tenant->theme_key ?? ''), ['expert_auto', 'advocate_editorial'], true))
                             ->schema([
@@ -416,6 +420,7 @@ class Settings extends Page
                             ]),
 
                         'reviews' => Tab::make(__('tenant_admin_settings.tabs.reviews'))
+                            ->id('reviews')
                             ->icon('heroicon-o-chat-bubble-left-right')
                             ->visible(fn (): bool => $tenant !== null)
                             ->schema([
@@ -446,6 +451,7 @@ class Settings extends Page
                             ]),
 
                         'analytics' => Tab::make(__('tenant_admin_settings.tabs.analytics'))
+                            ->id('analytics')
                             ->icon('heroicon-o-chart-bar')
                             ->visible(fn (): bool => $tenant !== null)
                             ->schema([
@@ -453,6 +459,7 @@ class Settings extends Page
                             ]),
 
                         'advanced' => Tab::make(__('tenant_admin_settings.tabs.advanced'))
+                            ->id('advanced')
                             ->icon('heroicon-o-wrench-screwdriver')
                             ->visible(fn (): bool => $tenant !== null)
                             ->schema($advancedSections),

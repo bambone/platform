@@ -7,6 +7,16 @@
 let activeSetupResolveAbort = null;
 let barResizeObserver = null;
 
+/** @type {string|null} */
+let guidedFormBaseline = null;
+/** @type {Record<string, unknown>|null} */
+let lastGuidedPayloadForDirty = null;
+let guidedSubmitGuardBound = false;
+let guidedBeforeUnloadBound = false;
+/** @type {ReturnType<typeof setTimeout>|null} */
+let morphInitTimer = null;
+let livewireMorphHookRegistered = false;
+
 // ——— lifecycle / reset ———
 
 function abortActiveSetupResolve() {
@@ -590,11 +600,43 @@ function insertSetupCardInSection(sectionEl, node, primaryEl) {
     return true;
 }
 
+/**
+ * Плавающая карточка (стандарт для экрана настроек): не ломает сетку секций Filament.
+ */
+function mountFloatingPrimaryGuidedCard(payload, templateEl) {
+    if (getSetupBarEl(getTenantSiteSetupRoot())) {
+        return;
+    }
+    if (document.querySelector('.fi-ts-setup-inline-mount')) {
+        return;
+    }
+    if (document.querySelector('.fi-ts-setup-inline-card.fi-ts-setup-inline-card-floating')) {
+        return;
+    }
+    const tpl = templateEl ?? document.querySelector('[data-tenant-site-setup="inline-template"]');
+    if (!tpl || !(tpl instanceof HTMLTemplateElement)) {
+        return;
+    }
+    const node = tpl.content.firstElementChild;
+    if (!node || !(node instanceof Element)) {
+        return;
+    }
+    const clone = node.cloneNode(true);
+    clone.classList.add('fi-ts-setup-inline-card-floating');
+    clone.setAttribute('data-setup-floating-primary', '1');
+    document.body.appendChild(clone);
+}
+
 function mountInlineSetupCardIfNeeded(payload, primaryEl, sectionEl, templateEl) {
     if (payload.on_target_route !== true) {
         return;
     }
     if (document.querySelector('.fi-ts-setup-inline-mount')) {
+        return;
+    }
+    const placement = typeof payload.guided_inline_placement === 'string' ? payload.guided_inline_placement : 'inline';
+    if (placement === 'floating') {
+        mountFloatingPrimaryGuidedCard(payload, templateEl);
         return;
     }
     const tpl = templateEl ?? document.querySelector('[data-tenant-site-setup="inline-template"]');
@@ -666,6 +708,146 @@ function mountInlineSetupFallbackFloating(payload, reason, templateEl) {
     clone.appendChild(dismiss);
 
     document.body.appendChild(clone);
+}
+
+// ——— save-then-next: несохранённые изменения формы ———
+
+/**
+ * @returns {HTMLFormElement|null}
+ */
+function getMainTenantForm() {
+    const main = document.querySelector('.fi-main') || document.querySelector('main');
+    if (!main) {
+        return null;
+    }
+    const wired = main.querySelector('form[wire\\:submit]');
+    if (wired instanceof HTMLFormElement) {
+        return wired;
+    }
+    const first = main.querySelector('form');
+    return first instanceof HTMLFormElement ? first : null;
+}
+
+/**
+ * @param {HTMLFormElement} form
+ * @returns {string}
+ */
+function serializeTenantFormState(form) {
+    const fd = new FormData(form);
+    const rows = [];
+    for (const [k, v] of fd.entries()) {
+        if (k.startsWith('_')) {
+            continue;
+        }
+        if (k === 'livewire') {
+            continue;
+        }
+        if (v instanceof File) {
+            rows.push([k, v.name ? `file:${v.name}` : 'file:empty']);
+        } else {
+            rows.push([k, String(v)]);
+        }
+    }
+    rows.sort((a, b) => a[0].localeCompare(b[0]));
+    return JSON.stringify(rows);
+}
+
+function captureGuidedFormBaseline() {
+    const form = getMainTenantForm();
+    if (!form) {
+        guidedFormBaseline = null;
+        return;
+    }
+    guidedFormBaseline = serializeTenantFormState(form);
+}
+
+function isMainTenantFormDirty() {
+    const form = getMainTenantForm();
+    if (!form || guidedFormBaseline === null) {
+        return false;
+    }
+    return serializeTenantFormState(form) !== guidedFormBaseline;
+}
+
+function showSaveRequiredBeforeNextDialog() {
+    let d = document.getElementById('fi-ts-setup-save-required-dialog');
+    if (!d || !(d instanceof HTMLDialogElement)) {
+        d = /** @type {HTMLDialogElement} */ (document.createElement('dialog'));
+        d.id = 'fi-ts-setup-save-required-dialog';
+        d.className = 'fi-ts-setup-save-required-dialog';
+        d.setAttribute('aria-labelledby', 'fi-ts-setup-save-required-title');
+        d.innerHTML = `
+<div class="fi-ts-setup-not-needed-dialog-panel">
+  <h2 id="fi-ts-setup-save-required-title" class="fi-ts-setup-not-needed-dialog-title">Сначала сохраните изменения</h2>
+  <p class="fi-ts-setup-not-needed-dialog-lead">Форма на этой странице изменена. Нажмите «Сохранить» у формы, дождитесь сохранения, затем снова «Дальше» в быстром запуске.</p>
+  <div class="fi-ts-setup-not-needed-dialog-actions">
+    <button type="button" class="fi-ts-setup-btn fi-ts-setup-btn-accent fi-ts-setup-save-required-ok">
+      <span class="fi-ts-setup-btn-label">Понятно</span>
+    </button>
+  </div>
+</div>`;
+        document.body.appendChild(d);
+        const btn = d.querySelector('.fi-ts-setup-save-required-ok');
+        btn?.addEventListener('click', () => d.close());
+    }
+    d.showModal();
+}
+
+/**
+ * @param {SubmitEvent} e
+ */
+function guidedSessionSubmitGuard(e) {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement)) {
+        return;
+    }
+    const actionInput = form.querySelector('input[name="action"]');
+    if (!actionInput || !(actionInput instanceof HTMLInputElement) || actionInput.value !== 'next') {
+        return;
+    }
+    const actionUrl = form.getAttribute('action') || '';
+    if (!actionUrl.includes('tenant-site-setup/session')) {
+        return;
+    }
+    const p = lastGuidedPayloadForDirty;
+    if (!p || typeof p !== 'object') {
+        return;
+    }
+    if (p.guided_next_hint !== 'save_then_next' || p.can_complete_here !== true) {
+        return;
+    }
+    if (!isMainTenantFormDirty()) {
+        return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    showSaveRequiredBeforeNextDialog();
+}
+
+function guidedBeforeUnloadHandler(e) {
+    if (!lastGuidedPayloadForDirty || !document.body.classList.contains('fi-ts-setup-active')) {
+        return;
+    }
+    if (lastGuidedPayloadForDirty.guided_next_hint !== 'save_then_next' || lastGuidedPayloadForDirty.can_complete_here !== true) {
+        return;
+    }
+    if (!isMainTenantFormDirty()) {
+        return;
+    }
+    e.preventDefault();
+    e.returnValue = '';
+}
+
+function bindGuidedSaveGuardsOnce() {
+    if (guidedSubmitGuardBound) {
+        return;
+    }
+    guidedSubmitGuardBound = true;
+    document.addEventListener('submit', guidedSessionSubmitGuard, true);
+    if (!guidedBeforeUnloadBound) {
+        guidedBeforeUnloadBound = true;
+        window.addEventListener('beforeunload', guidedBeforeUnloadHandler);
+    }
 }
 
 // ——— auto-open page builder ———
@@ -1119,6 +1301,12 @@ function initTenantSiteSetup() {
     const bar = getSetupBarEl(root);
     const templateEl = getInlineTemplateEl(root);
 
+    // Сразу резервируем место под fixed-полосу (top + высота), иначе отступ добавлялся только
+    // после resolveTargetWithRetry — контент «прыгал», когда дорисовывались Livewire/цель.
+    if (bar instanceof HTMLElement) {
+        observeSetupBar(bar);
+    }
+
     const cancelResolve = resolveTargetWithRetry(
         payload,
         (rawTarget, via, meta) => {
@@ -1183,6 +1371,12 @@ function initTenantSiteSetup() {
         },
     );
     activeSetupResolveAbort = typeof cancelResolve === 'function' ? cancelResolve : null;
+
+    lastGuidedPayloadForDirty = payload;
+    bindGuidedSaveGuardsOnce();
+    window.setTimeout(() => {
+        captureGuidedFormBaseline();
+    }, 240);
 }
 
 if (document.readyState === 'loading') {
@@ -1192,3 +1386,25 @@ if (document.readyState === 'loading') {
 }
 
 document.addEventListener('livewire:navigated', initTenantSiteSetup);
+
+function registerLivewireMorphGuidedInitHook() {
+    if (livewireMorphHookRegistered) {
+        return;
+    }
+    if (typeof window.Livewire === 'undefined' || typeof window.Livewire.hook !== 'function') {
+        return;
+    }
+    livewireMorphHookRegistered = true;
+    window.Livewire.hook('morph.updated', () => {
+        if (morphInitTimer !== null) {
+            clearTimeout(morphInitTimer);
+        }
+        morphInitTimer = window.setTimeout(() => {
+            morphInitTimer = null;
+            initTenantSiteSetup();
+        }, 220);
+    });
+}
+
+document.addEventListener('livewire:init', registerLivewireMorphGuidedInitHook);
+registerLivewireMorphGuidedInitHook();

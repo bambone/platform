@@ -33,7 +33,7 @@
     @if($actionUrl)
         <div class="fi-ts-setup-actions-tertiary" role="group" aria-label="Дополнительные действия по шагу">
             @if(! $primaryIsSkipStep)
-                <form method="post" action="{{ $actionUrl }}" class="inline">
+                <form method="post" action="{{ $actionUrl }}" class="fi-ts-setup-tertiary-form">
                     @csrf
                     <input type="hidden" name="action" value="snooze" />
                     <button
@@ -46,19 +46,18 @@
                     </button>
                 </form>
             @endif
-            <form method="post" action="{{ $actionUrl }}" class="inline">
-                @csrf
-                <input type="hidden" name="action" value="not_needed" />
-                <button
-                    type="submit"
-                    @disabled(! $canNotNeeded)
-                    class="fi-ts-setup-text-btn {{ $canNotNeeded ? '' : 'fi-ts-setup-text-btn-disabled' }}"
-                    aria-label="Не требуется для проекта"
-                >
-                    Не требуется
-                </button>
-            </form>
-            <form method="post" action="{{ $actionUrl }}" class="inline">
+            <button
+                type="button"
+                @disabled(! $canNotNeeded)
+                class="fi-ts-setup-text-btn {{ $canNotNeeded ? '' : 'fi-ts-setup-text-btn-disabled' }}"
+                aria-label="Не требуется для проекта"
+                aria-haspopup="dialog"
+                aria-controls="fi-ts-setup-not-needed-dialog"
+                onclick="document.getElementById('fi-ts-setup-not-needed-dialog')?.showModal()"
+            >
+                Не требуется
+            </button>
+            <form method="post" action="{{ $actionUrl }}" class="fi-ts-setup-tertiary-form">
                 @csrf
                 <input type="hidden" name="action" value="pause" />
                 <button type="submit" class="fi-ts-setup-text-btn">

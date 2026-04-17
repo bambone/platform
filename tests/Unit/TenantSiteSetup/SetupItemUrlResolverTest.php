@@ -80,4 +80,56 @@ class SetupItemUrlResolverTest extends TestCase
         $this->assertFalse($ctx['page_edit_relation_matches']);
         $this->assertSame('0', $ctx['page_edit_relation_tab']);
     }
+
+    public function test_two_visible_programs_target_context_on_index_create_edit(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('two_vis');
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $domain = $tenant->domains()->where('is_primary', true)->firstOrFail();
+        $this->app->instance(
+            CurrentTenant::class,
+            new CurrentTenant($tenant, $domain, false, $this->tenancyHostForSlug((string) $tenant->slug))
+        );
+
+        $defs = SetupItemRegistry::definitions();
+        $def = $defs['programs.two_visible_programs'];
+
+        foreach ([
+            'http://example.test/admin/tenant-service-programs',
+            'http://example.test/admin/tenant-service-programs/create',
+            'http://example.test/admin/tenant-service-programs/99/edit',
+        ] as $url) {
+            $request = Request::create($url, 'GET');
+            $route = app('router')->getRoutes()->match($request);
+            $request->setRouteResolver(static fn () => $route);
+
+            $ctx = app(SetupTargetContextResolver::class)->resolve($tenant, $def, $request);
+
+            $this->assertTrue($ctx['on_target_route'], 'on_target_route for '.$url);
+            $this->assertTrue($ctx['can_complete_here'], 'can_complete_here for '.$url);
+        }
+    }
+
+    public function test_first_published_program_not_completable_on_index_only(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('first_pub');
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $domain = $tenant->domains()->where('is_primary', true)->firstOrFail();
+        $this->app->instance(
+            CurrentTenant::class,
+            new CurrentTenant($tenant, $domain, false, $this->tenancyHostForSlug((string) $tenant->slug))
+        );
+
+        $defs = SetupItemRegistry::definitions();
+        $def = $defs['programs.first_published_program'];
+
+        $request = Request::create('http://example.test/admin/tenant-service-programs', 'GET');
+        $route = app('router')->getRoutes()->match($request);
+        $request->setRouteResolver(static fn () => $route);
+
+        $ctx = app(SetupTargetContextResolver::class)->resolve($tenant, $def, $request);
+
+        $this->assertTrue($ctx['on_target_route']);
+        $this->assertFalse($ctx['can_complete_here']);
+    }
 }

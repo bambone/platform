@@ -1,7 +1,8 @@
 @props(['payload' => null])
 
 @if($payload)
-    @once
+    {{-- Single root: JS берёт последний [data-tenant-site-setup-root]; payload/bar/template — data-*, без дублирующихся id. --}}
+    <div data-tenant-site-setup-root class="fi-ts-setup-root">
     @php
         $actionUrl = $payload['session_action_url'] ?? null;
         $canSnooze = ! empty($payload['can_snooze']);
@@ -18,7 +19,7 @@
     @endphp
     @if(! $onTarget)
         <div
-            id="tenant-site-setup-bar"
+            data-tenant-site-setup="bar"
             class="fi-ts-setup-bar fi-ts-setup-bar-fixed"
             role="region"
             aria-label="Быстрый запуск сайта"
@@ -46,7 +47,7 @@
         </div>
     @else
         {{-- DOM для локальной карточки: вставляется JS рядом с секцией/полем, см. tenant-admin-site-setup.js --}}
-        <template id="tenant-site-setup-inline-template">
+        <template data-tenant-site-setup="inline-template">
             <div class="fi-ts-setup-inline-mount fi-ts-setup-inline-card">
                 <div class="fi-ts-setup-inline-card-head">
                     <span class="fi-ts-setup-inline-badge">Быстрый запуск</span>
@@ -84,6 +85,6 @@
             </div>
         </template>
     @endif
-    <script type="application/json" id="tenant-site-setup-payload">@json($payload)</script>
-    @endonce
+    <script type="application/json" data-tenant-site-setup="payload">@json($payload)</script>
+    </div>
 @endif

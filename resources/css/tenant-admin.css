@@ -1330,6 +1330,15 @@ html.dark .page-sections-builder-root .psb-input-field:focus {
     display: none !important;
 }
 
+/* Guided setup: единственный источник вертикального отступа под фиксированную полосу — переменная + класс на body. */
+:root {
+    --fi-ts-setup-top-offset: 0px;
+}
+
+body.fi-ts-setup-active.fi-ts-setup-use-top-offset {
+    padding-top: var(--fi-ts-setup-top-offset);
+}
+
 /* Service program cover focal editor (tenant Filament) */
 .svc-program-focal-frame {
     touch-action: none;

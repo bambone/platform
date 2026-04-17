@@ -181,12 +181,8 @@ final class SetupTargetContextResolver
             return false;
         }
 
-        if ($def->key === 'programs.first_published_program') {
-            return in_array($currentName, [
-                'filament.admin.resources.tenant-service-programs.index',
-                'filament.admin.resources.tenant-service-programs.create',
-                'filament.admin.resources.tenant-service-programs.edit',
-            ], true);
+        if ($this->isProgramsListRouteStep($def->key)) {
+            return in_array($currentName, $this->tenantServiceProgramRouteNames(), true);
         }
 
         if ($this->isHomePageBuilderItem($def->key)) {
@@ -222,11 +218,33 @@ final class SetupTargetContextResolver
             ], true);
         }
 
+        if ($def->key === 'programs.two_visible_programs') {
+            return in_array($currentName, $this->tenantServiceProgramRouteNames(), true);
+        }
+
         if ($this->isHomePageBuilderItem($def->key)) {
             return $this->isHomePageRecord($tenant, $request);
         }
 
         return true;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function tenantServiceProgramRouteNames(): array
+    {
+        return [
+            'filament.admin.resources.tenant-service-programs.index',
+            'filament.admin.resources.tenant-service-programs.create',
+            'filament.admin.resources.tenant-service-programs.edit',
+        ];
+    }
+
+    private function isProgramsListRouteStep(string $key): bool
+    {
+        return $key === 'programs.first_published_program'
+            || $key === 'programs.two_visible_programs';
     }
 
     private function isHomePageBuilderItem(string $key): bool

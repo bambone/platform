@@ -164,9 +164,19 @@
                     x-on:end.stop="
                         (() => {
                             const y = window.scrollY;
-                            $wire.reorderSections($event.target.sortable.toArray()).then(() => {
+                            const sortable = $event.target?.sortable;
+                            const ids = sortable && typeof sortable.toArray === 'function' ? sortable.toArray() : null;
+                            if (!ids) {
+                                return;
+                            }
+                            const p = $wire.reorderSections(ids);
+                            if (p && typeof p.then === 'function') {
+                                p.then(() => {
+                                    requestAnimationFrame(() => window.scrollTo(0, y));
+                                }).catch(() => {});
+                            } else {
                                 requestAnimationFrame(() => window.scrollTo(0, y));
-                            });
+                            }
                         })()
                     "
                 @endif
@@ -481,7 +491,12 @@
 
             <div class="mt-4 space-y-4">
                 @foreach($catalog as $group)
-                    <div x-show="(() => { const qq = q.trim().toLowerCase(); if (!qq) return true; const cat = @js(mb_strtolower($group['label'])); if (cat.includes(qq)) return true; return false; })()">
+                    @php
+                        $groupItemBlobsLower = collect($group['items'])->map(
+                            fn (array $item): string => mb_strtolower($item['label'].' '.$item['description'].' '.$group['label'])
+                        )->values()->all();
+                    @endphp
+                    <div x-show="(() => { const qq = q.trim().toLowerCase(); if (!qq) return true; const cat = @js(mb_strtolower($group['label'])); if (cat.includes(qq)) return true; const blobs = @js($groupItemBlobsLower); return blobs.some((b) => b.includes(qq)); })()">
                         <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-wider psb-text-muted">{{ $group['label'] }}</p>
                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                             @foreach($group['items'] as $item)
@@ -545,6 +560,7 @@
                 role="dialog"
                 aria-modal="true"
                 wire:key="page-section-editor-root-{{ $editingSectionId ?? 'new' }}-{{ $activeTypeId ?? 'x' }}"
+                data-setup-editor-section-id="{{ $editingSectionId ?? '' }}"
                 data-psb-livewire-id="{{ $this->getId() }}"
             >
                 <div

@@ -1,9 +1,97 @@
 /**
- * Guided setup: highlight [data-setup-target] / fallbacks for active session (payload in #tenant-site-setup-payload).
+ * Guided setup: подсветка целей guided-сессии (payload в [data-tenant-site-setup=payload]).
+ *
+ * Блоки: lifecycle · DOM context · target resolution · auto-open editor · highlight/scroll/focus · floating · bar offset · debug
  */
 
-/** Отмена предыдущего resolveTargetWithRetry (DOMContentLoaded + livewire:navigated подряд). */
 let activeSetupResolveAbort = null;
+let barResizeObserver = null;
+
+// ——— lifecycle / reset ———
+
+function abortActiveSetupResolve() {
+    if (typeof activeSetupResolveAbort === 'function') {
+        activeSetupResolveAbort();
+        activeSetupResolveAbort = null;
+    }
+}
+
+function clearTenantSiteSetupHighlights() {
+    document.querySelectorAll('[data-setup-highlighted]').forEach((el) => {
+        el.classList.remove('fi-ts-setup-highlight', 'fi-ts-setup-highlight-section');
+        el.removeAttribute('data-setup-highlighted');
+    });
+    document.querySelectorAll('.fi-ts-setup-inline-mount').forEach((el) => {
+        el.remove();
+    });
+    document.querySelectorAll('.fi-ts-setup-inline-card.fi-ts-setup-inline-card-floating').forEach((el) => {
+        el.remove();
+    });
+}
+
+function resetTenantSiteSetupUi() {
+    abortActiveSetupResolve();
+    if (barResizeObserver) {
+        barResizeObserver.disconnect();
+        barResizeObserver = null;
+    }
+    clearTenantSiteSetupHighlights();
+    document.getElementById('tenant-site-setup-dev-debug')?.remove();
+    document.body.classList.remove('fi-ts-setup-active', 'fi-ts-setup-use-top-offset');
+    document.documentElement.style.setProperty('--fi-ts-setup-top-offset', '0px');
+}
+
+// ——— DOM context (single-instance / последний root) ———
+
+/**
+ * @returns {HTMLElement|null}
+ */
+function getTenantSiteSetupRoot() {
+    const list = document.querySelectorAll('[data-tenant-site-setup-root]');
+    if (list.length === 0) {
+        return null;
+    }
+    return list[list.length - 1];
+}
+
+/**
+ * @param {HTMLElement|null} root
+ * @returns {HTMLScriptElement|null}
+ */
+function getPayloadScriptEl(root) {
+    const local = root?.querySelector('[data-tenant-site-setup="payload"]');
+    if (local instanceof HTMLScriptElement) {
+        return local;
+    }
+    const all = document.querySelectorAll('[data-tenant-site-setup="payload"]');
+    return all.length ? all[all.length - 1] : null;
+}
+
+/**
+ * @param {HTMLElement|null} root
+ * @returns {HTMLElement|null}
+ */
+function getSetupBarEl(root) {
+    const local = root?.querySelector('[data-tenant-site-setup="bar"]');
+    if (local instanceof HTMLElement) {
+        return local;
+    }
+    const all = document.querySelectorAll('[data-tenant-site-setup="bar"]');
+    return all.length ? all[all.length - 1] : null;
+}
+
+/**
+ * @param {HTMLElement|null} root
+ * @returns {HTMLTemplateElement|null}
+ */
+function getInlineTemplateEl(root) {
+    const local = root?.querySelector('[data-tenant-site-setup="inline-template"]');
+    if (local instanceof HTMLTemplateElement) {
+        return local;
+    }
+    const all = document.querySelectorAll('[data-tenant-site-setup="inline-template"]');
+    return all.length ? all[all.length - 1] : null;
+}
 
 function isSetupElementVisible(el) {
     if (!el || !(el instanceof Element)) {
@@ -18,11 +106,81 @@ function isSetupElementVisible(el) {
 }
 
 /**
- * @param {string} selector
- * @returns {Element|null}
+ * Первый видимый slide-over редактора (при нескольких узлах в DOM — не опираться на querySelector).
+ *
+ * @returns {HTMLElement|null}
  */
-function firstVisibleMatch(selector) {
-    const list = document.querySelectorAll(selector);
+function getVisiblePageBuilderEditor() {
+    const list = document.querySelectorAll('.page-sections-builder-editor');
+    for (let i = 0; i < list.length; i += 1) {
+        const el = list[i];
+        if (el instanceof HTMLElement && isSetupElementVisible(el)) {
+            return el;
+        }
+    }
+    return null;
+}
+
+/**
+ * Fallback: парсинг wire:key, если нет data-setup-editor-section-id (старая разметка).
+ *
+ * @param {string} wireKey
+ * @returns {number|null}
+ */
+function parseEditorSectionIdFromWireKeyFallback(wireKey) {
+    const m = (wireKey || '').match(/page-section-editor-root-(\d+)-/);
+    if (!m) {
+        return null;
+    }
+    const n = parseInt(m[1], 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * Id секции в открытом slide-over: {@see data-setup-editor-section-id} на корне editor (устойчивый контракт).
+ *
+ * @returns {number|null}
+ */
+function getOpenEditorSectionIdFromDom() {
+    const editor = getVisiblePageBuilderEditor();
+    if (!editor) {
+        return null;
+    }
+    const raw = editor.getAttribute('data-setup-editor-section-id');
+    if (raw !== null && String(raw).trim() !== '') {
+        const n = parseInt(String(raw).trim(), 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+    }
+    return parseEditorSectionIdFromWireKeyFallback(editor.getAttribute('wire:key') || '');
+}
+
+/**
+ * Где искать primary (и settings-section): сначала editor, затем document — чтобы «чужой» editor не скрывал карточки списка.
+ *
+ * @returns {(Document|Element)[]}
+ */
+function getPrimarySearchScopes() {
+    const editor = getVisiblePageBuilderEditor();
+    if (editor) {
+        return [editor, document];
+    }
+    return [document];
+}
+
+/** Fallback по section-type / action — в основном DOM builder (каталог, список), не только внутри slide-over. */
+function getFallbackSearchScope() {
+    return document;
+}
+
+function queryAllInScope(scope, selector) {
+    if (scope === document || scope === document.documentElement) {
+        return document.querySelectorAll(selector);
+    }
+    return scope.querySelectorAll(selector);
+}
+
+function firstVisibleMatchInScope(scope, selector) {
+    const list = queryAllInScope(scope, selector);
     for (let i = 0; i < list.length; i += 1) {
         const el = list[i];
         if (isSetupElementVisible(el)) {
@@ -32,29 +190,43 @@ function firstVisibleMatch(selector) {
     return null;
 }
 
-/**
- * @param {string} attr
- * @param {string} value
- * @returns {Element|null}
- */
-function firstVisibleByDataAttr(attr, value) {
+function firstVisibleByDataAttrInScope(scope, attr, value) {
     const esc =
         typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
             ? CSS.escape(value)
             : value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    return firstVisibleMatch(`[${attr}="${esc}"]`);
+    return firstVisibleMatchInScope(scope, `[${attr}="${esc}"]`);
 }
+
+function cssEscapeAttrValue(value) {
+    return typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? CSS.escape(value)
+        : String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+// ——— target resolution ———
+
+/**
+ * @typedef {{
+ *   phase: 'primary_only' | 'full',
+ *   primaryScopes: (Document|Element)[],
+ *   fallbackScope: Document|Element,
+ * }} ResolveCtx
+ */
 
 /**
  * @param {Record<string, unknown>} payload
+ * @param {ResolveCtx} ctx
  * @returns {{ el: Element|null, via: string }}
  */
-function resolveSetupHighlightTargetWithMeta(payload) {
+function resolveSetupHighlightTargetWithMeta(payload, ctx) {
     const primary = payload.target_key;
     if (!primary || typeof primary !== 'string') {
         return { el: null, via: '' };
     }
 
+    const primaryScopes = ctx.primaryScopes;
+    const fallbackScope = ctx.fallbackScope;
     const sectionId =
         typeof payload.settings_section_id === 'string' && payload.settings_section_id.length > 0
             ? payload.settings_section_id
@@ -63,25 +235,42 @@ function resolveSetupHighlightTargetWithMeta(payload) {
     const fallbackKeys = Array.isArray(payload.target_fallback_keys) ? payload.target_fallback_keys : [];
     const keysToTry = [primary, ...fallbackKeys.filter((k) => typeof k === 'string' && k.length > 0)];
 
-    for (let i = 0; i < keysToTry.length; i += 1) {
-        const key = keysToTry[i];
-        const esc =
-            typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
-                ? CSS.escape(key)
-                : key.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-        const matches = document.querySelectorAll(`[data-setup-target="${esc}"]`);
-        for (let j = 0; j < matches.length; j += 1) {
-            const el = matches[j];
-            if (isSetupElementVisible(el)) {
-                return { el, via: `[data-setup-target="${key}"]` };
+    for (let si = 0; si < primaryScopes.length; si += 1) {
+        const scope = primaryScopes[si];
+        for (let i = 0; i < keysToTry.length; i += 1) {
+            const key = keysToTry[i];
+            const esc =
+                typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+                    ? CSS.escape(key)
+                    : key.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+            const matches = queryAllInScope(scope, `[data-setup-target="${esc}"]`);
+            for (let j = 0; j < matches.length; j += 1) {
+                const el = matches[j];
+                if (isSetupElementVisible(el)) {
+                    return { el, via: `[data-setup-target="${key}"]` };
+                }
             }
         }
     }
 
+    if (ctx.phase === 'primary_only') {
+        if (sectionId !== '') {
+            for (let si = 0; si < primaryScopes.length; si += 1) {
+                const sec = firstVisibleByDataAttrInScope(primaryScopes[si], 'data-setup-section', sectionId);
+                if (sec) {
+                    return { el: sec, via: `[data-setup-section="${sectionId}"]` };
+                }
+            }
+        }
+        return { el: null, via: '' };
+    }
+
     if (sectionId !== '') {
-        const sec = firstVisibleByDataAttr('data-setup-section', sectionId);
-        if (sec) {
-            return { el: sec, via: `[data-setup-section="${sectionId}"]` };
+        for (let si = 0; si < primaryScopes.length; si += 1) {
+            const sec = firstVisibleByDataAttrInScope(primaryScopes[si], 'data-setup-section', sectionId);
+            if (sec) {
+                return { el: sec, via: `[data-setup-section="${sectionId}"]` };
+            }
         }
     }
 
@@ -93,7 +282,7 @@ function resolveSetupHighlightTargetWithMeta(payload) {
         if (typeof id !== 'string' || id === '') {
             continue;
         }
-        const inCatalog = firstVisibleByDataAttr('data-setup-section-type', id);
+        const inCatalog = firstVisibleByDataAttrInScope(fallbackScope, 'data-setup-section-type', id);
         if (inCatalog) {
             return { el: inCatalog, via: `[data-setup-section-type="${id}"]` };
         }
@@ -101,7 +290,7 @@ function resolveSetupHighlightTargetWithMeta(payload) {
 
     const action = payload.fallback_setup_action;
     if (typeof action === 'string' && action !== '') {
-        const byAction = firstVisibleByDataAttr('data-setup-action', action);
+        const byAction = firstVisibleByDataAttrInScope(fallbackScope, 'data-setup-action', action);
         if (byAction) {
             return { el: byAction, via: `[data-setup-action="${action}"]` };
         }
@@ -112,46 +301,82 @@ function resolveSetupHighlightTargetWithMeta(payload) {
 
 /**
  * @param {Record<string, unknown>} payload
- * @returns {Element|null}
+ * @param {ResolveCtx} ctx
  */
-function resolveSetupHighlightTarget(payload) {
-    return resolveSetupHighlightTargetWithMeta(payload).el;
-}
-
-/**
- * Есть ли в DOM узел цели, но он скрыт (условная видимость).
- *
- * @param {Record<string, unknown>} payload
- * @returns {boolean}
- */
-function hasHiddenTargetCandidate(payload) {
+function hasHiddenTargetCandidate(payload, ctx) {
     const primary = payload.target_key;
     if (!primary || typeof primary !== 'string') {
         return false;
     }
+    const primaryScopes = ctx.primaryScopes;
+    const fallbackScope = ctx.fallbackScope;
     const fallbackKeys = Array.isArray(payload.target_fallback_keys) ? payload.target_fallback_keys : [];
     const keysToTry = [primary, ...fallbackKeys.filter((k) => typeof k === 'string' && k.length > 0)];
-    for (let i = 0; i < keysToTry.length; i += 1) {
-        const key = keysToTry[i];
-        const esc =
-            typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
-                ? CSS.escape(key)
-                : key.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-        const matches = document.querySelectorAll(`[data-setup-target="${esc}"]`);
+    for (let si = 0; si < primaryScopes.length; si += 1) {
+        const scope = primaryScopes[si];
+        for (let i = 0; i < keysToTry.length; i += 1) {
+            const key = keysToTry[i];
+            const esc = cssEscapeAttrValue(key);
+            const matches = queryAllInScope(scope, `[data-setup-target="${esc}"]`);
+            for (let j = 0; j < matches.length; j += 1) {
+                if (!isSetupElementVisible(matches[j])) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    const sectionId =
+        typeof payload.settings_section_id === 'string' && payload.settings_section_id.length > 0
+            ? payload.settings_section_id
+            : '';
+    if (sectionId !== '') {
+        const esc = cssEscapeAttrValue(sectionId);
+        for (let si = 0; si < primaryScopes.length; si += 1) {
+            const matches = queryAllInScope(primaryScopes[si], `[data-setup-section="${esc}"]`);
+            for (let j = 0; j < matches.length; j += 1) {
+                if (!isSetupElementVisible(matches[j])) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    if (ctx.phase === 'primary_only') {
+        return false;
+    }
+
+    const sectionTypes = Array.isArray(payload.page_builder_fallback_section_types)
+        ? payload.page_builder_fallback_section_types
+        : [];
+    for (let s = 0; s < sectionTypes.length; s += 1) {
+        const id = sectionTypes[s];
+        if (typeof id !== 'string' || id === '') {
+            continue;
+        }
+        const esc = cssEscapeAttrValue(id);
+        const matches = queryAllInScope(fallbackScope, `[data-setup-section-type="${esc}"]`);
         for (let j = 0; j < matches.length; j += 1) {
             if (!isSetupElementVisible(matches[j])) {
                 return true;
             }
         }
     }
+
+    const action = payload.fallback_setup_action;
+    if (typeof action === 'string' && action !== '') {
+        const esc = cssEscapeAttrValue(action);
+        const matches = queryAllInScope(fallbackScope, `[data-setup-action="${esc}"]`);
+        for (let j = 0; j < matches.length; j += 1) {
+            if (!isSetupElementVisible(matches[j])) {
+                return true;
+            }
+        }
+    }
+
     return false;
 }
 
-/**
- * @param {Record<string, unknown>} payload
- * @param {string} clientReason
- * @returns {string}
- */
 function resolveTargetMissReason(payload, clientReason) {
     if (
         payload.target_context_mismatch === 'wrong_settings_tab' ||
@@ -166,19 +391,13 @@ function resolveTargetMissReason(payload, clientReason) {
     if (clientReason === 'target_missing') {
         return 'target_missing';
     }
+    if (clientReason === '') {
+        return 'resolved';
+    }
     return clientReason || 'target_missing';
 }
 
-/**
- * @param {Record<string, unknown>} payload
- * @param {string} clientReason
- */
-/**
- * @param {Record<string, unknown>} payload
- * @param {string} clientReason
- * @param {string|null} [resolvedVia]
- */
-function updateGuidedDevDebug(payload, clientReason, resolvedVia) {
+function updateGuidedDevDebug(payload, clientReason, resolvedVia, debugExtra) {
     const dbg = payload.guided_dev_debug;
     if (!dbg || typeof dbg !== 'object') {
         return;
@@ -191,8 +410,10 @@ function updateGuidedDevDebug(payload, clientReason, resolvedVia) {
         el.setAttribute('role', 'status');
         document.body.appendChild(el);
     }
+    const extra = debugExtra && typeof debugExtra === 'object' ? debugExtra : {};
     const merged = {
         ...dbg,
+        ...extra,
         client_target_miss_reason: clientReason,
         resolved_reason: resolveTargetMissReason(payload, clientReason),
         target_found: clientReason === '',
@@ -201,12 +422,6 @@ function updateGuidedDevDebug(payload, clientReason, resolvedVia) {
     el.textContent = JSON.stringify(merged, null, 2);
 }
 
-/**
- * Поднять подсветку с input/внутреннего узла к обёртке поля Filament (лейбл + контрол + ошибки).
- *
- * @param {Element} raw
- * @returns {Element|null}
- */
 function primaryHighlightElement(raw) {
     if (!raw || !(raw instanceof Element)) {
         return null;
@@ -222,8 +437,36 @@ function primaryHighlightElement(raw) {
 }
 
 /**
+ * Автофокус только для field-like; для fallback-карточек — нет.
+ *
  * @param {Element} primaryEl
+ * @param {string} via
+ * @param {Record<string, unknown>} payload
  */
+function shouldAutoFocusHighlight(primaryEl, via, payload) {
+    if (payload.focus_allowed === false) {
+        return false;
+    }
+    if (typeof via === 'string') {
+        if (via.includes('data-setup-section-type') || via.includes('data-setup-action')) {
+            return false;
+        }
+        if (via.includes('data-setup-section') && !via.includes('data-setup-target')) {
+            return false;
+        }
+    }
+    if (primaryEl.matches('.fi-fo-field')) {
+        return true;
+    }
+    if (primaryEl.querySelector('[data-setup-focus-target]')) {
+        return true;
+    }
+    if (primaryEl.querySelector('input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])')) {
+        return true;
+    }
+    return false;
+}
+
 function tryFocusFieldControl(primaryEl) {
     if (!primaryEl || !(primaryEl instanceof Element)) {
         return;
@@ -246,7 +489,7 @@ function tryFocusFieldControl(primaryEl) {
         return;
     }
     const focusable = primaryEl.querySelector(
-        'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])',
+        'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])',
     );
     if (focusable && focusable instanceof HTMLElement) {
         try {
@@ -257,12 +500,6 @@ function tryFocusFieldControl(primaryEl) {
     }
 }
 
-/**
- * Мягкий контекст секции (например блок «Контакты» / «Основное»), если поле внутри [data-setup-section].
- *
- * @param {Element} primaryEl
- * @returns {Element|null}
- */
 function sectionContextElement(primaryEl) {
     if (!primaryEl || !(primaryEl instanceof Element)) {
         return null;
@@ -274,13 +511,6 @@ function sectionContextElement(primaryEl) {
     return isSetupElementVisible(sec) ? sec : null;
 }
 
-/**
- * На странице настроек активная вкладка хранится в query (`settings_tab`). Подставляем нужное значение до поиска целей.
- * Не опираемся на `on_target_route`: при неверной вкладке сервер честно ставит `on_target_route = false`, но автопереход всё равно нужен.
- *
- * @param {Record<string, unknown>} payload
- * @returns {boolean} true если будет перезагрузка страницы
- */
 function syncSettingsTabQueryIfNeeded(payload) {
     if (payload.route_name !== 'filament.admin.pages.settings') {
         return false;
@@ -304,13 +534,6 @@ function syncSettingsTabQueryIfNeeded(payload) {
     return true;
 }
 
-/**
- * На редактировании страницы вкладка relation managers в query — `relation` (Filament v5).
- * Подставляем нужное значение до поиска целей (builder на вкладке «Секции страницы»).
- *
- * @param {Record<string, unknown>} payload
- * @returns {boolean} true если будет перезагрузка страницы
- */
 function syncPageEditRelationQueryIfNeeded(payload) {
     const tab = payload.page_edit_relation_tab;
     if (typeof tab !== 'string' || tab === '') {
@@ -334,24 +557,6 @@ function syncPageEditRelationQueryIfNeeded(payload) {
     return true;
 }
 
-function clearTenantSiteSetupHighlights() {
-    document.querySelectorAll('[data-setup-highlighted]').forEach((el) => {
-        el.classList.remove('fi-ts-setup-highlight', 'fi-ts-setup-highlight-section');
-        el.removeAttribute('data-setup-highlighted');
-    });
-    document.querySelectorAll('.fi-ts-setup-inline-mount').forEach((el) => {
-        el.remove();
-    });
-}
-
-/**
- * Вставить карточку после заголовка секции, в слот, либо перед полем.
- *
- * @param {Element} sectionEl
- * @param {Element} node
- * @param {Element} primaryEl
- * @returns {boolean}
- */
 function insertSetupCardInSection(sectionEl, node, primaryEl) {
     const slot = sectionEl.querySelector(':scope [data-setup-inline-slot="top"]');
     if (slot) {
@@ -385,19 +590,14 @@ function insertSetupCardInSection(sectionEl, node, primaryEl) {
     return true;
 }
 
-/**
- * @param {Record<string, unknown>} payload
- * @param {Element} primaryEl
- * @param {Element | null} sectionEl
- */
-function mountInlineSetupCardIfNeeded(payload, primaryEl, sectionEl) {
+function mountInlineSetupCardIfNeeded(payload, primaryEl, sectionEl, templateEl) {
     if (payload.on_target_route !== true) {
         return;
     }
     if (document.querySelector('.fi-ts-setup-inline-mount')) {
         return;
     }
-    const tpl = document.getElementById('tenant-site-setup-inline-template');
+    const tpl = templateEl ?? document.querySelector('[data-tenant-site-setup="inline-template"]');
     if (!tpl || !(tpl instanceof HTMLTemplateElement)) {
         return;
     }
@@ -413,35 +613,32 @@ function mountInlineSetupCardIfNeeded(payload, primaryEl, sectionEl) {
     }
 }
 
-/**
- * @returns {string}
- */
-function floatingFallbackStorageKey() {
-    return `fi-ts-setup-float-dismiss:${window.location.pathname}`;
+function floatingFallbackStorageKey(payload) {
+    const sid = payload.session_id != null ? String(payload.session_id) : 'x';
+    const ik =
+        (typeof payload.current_item_key === 'string' && payload.current_item_key) ||
+        (typeof payload.target_item_key === 'string' && payload.target_item_key) ||
+        '';
+    const tk = typeof payload.target_key === 'string' ? payload.target_key : '';
+    return `fi-ts-setup-float-dismiss:${window.location.pathname}:${sid}:${ik}:${tk}`;
 }
 
-/**
- * Fallback снизу: только если нет верхней полосы; не показывать повторно после «Скрыть» до смены URL.
- *
- * @param {Record<string, unknown>} payload
- * @param {string} reason
- */
-function mountInlineSetupFallbackFloating(payload, reason) {
-    if (document.getElementById('tenant-site-setup-bar')) {
+function mountInlineSetupFallbackFloating(payload, reason, templateEl) {
+    if (getSetupBarEl(getTenantSiteSetupRoot())) {
         return;
     }
     if (document.querySelector('.fi-ts-setup-inline-card.fi-ts-setup-inline-card-floating')) {
         return;
     }
     try {
-        if (sessionStorage.getItem(floatingFallbackStorageKey()) === '1') {
+        if (sessionStorage.getItem(floatingFallbackStorageKey(payload)) === '1') {
             return;
         }
     } catch {
         /* sessionStorage недоступен */
     }
 
-    const tpl = document.getElementById('tenant-site-setup-inline-template');
+    const tpl = templateEl ?? document.querySelector('[data-tenant-site-setup="inline-template"]');
     if (!tpl || !(tpl instanceof HTMLTemplateElement)) {
         return;
     }
@@ -461,7 +658,7 @@ function mountInlineSetupFallbackFloating(payload, reason) {
     dismiss.addEventListener('click', () => {
         clone.remove();
         try {
-            sessionStorage.setItem(floatingFallbackStorageKey(), '1');
+            sessionStorage.setItem(floatingFallbackStorageKey(payload), '1');
         } catch {
             /* ignore */
         }
@@ -471,20 +668,297 @@ function mountInlineSetupFallbackFloating(payload, reason) {
     document.body.appendChild(clone);
 }
 
+// ——— auto-open page builder ———
+
+function getAutoOpenStorageKeys(payload) {
+    const sessionId = payload.session_id != null ? String(payload.session_id) : 'x';
+    const itemKey =
+        (typeof payload.current_item_key === 'string' && payload.current_item_key) ||
+        (typeof payload.target_item_key === 'string' && payload.target_item_key) ||
+        '';
+    const tk = typeof payload.target_key === 'string' ? payload.target_key : '';
+    return {
+        ok: `fi-ts-setup-pb-ok:${sessionId}:${itemKey}:${tk}`,
+        attempts: `fi-ts-setup-pb-at:${sessionId}:${itemKey}:${tk}`,
+        lastStartEditAt: `fi-ts-setup-pb-last:${sessionId}:${itemKey}:${tk}`,
+    };
+}
+
+function isPageBuilderEditorVisible() {
+    return Boolean(getVisiblePageBuilderEditor());
+}
+
+function readLastStartEditAt(payload) {
+    const { lastStartEditAt } = getAutoOpenStorageKeys(payload);
+    try {
+        const v = sessionStorage.getItem(lastStartEditAt);
+        if (v === null || v === '') {
+            return 0;
+        }
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+    } catch {
+        return 0;
+    }
+}
+
+function setLastStartEditAt(payload, ts) {
+    const { lastStartEditAt } = getAutoOpenStorageKeys(payload);
+    try {
+        sessionStorage.setItem(lastStartEditAt, String(ts));
+    } catch {
+        /* ignore */
+    }
+}
+
+/** Минимум между вызовами startEdit, чтобы DOMContentLoaded + livewire:navigated не сожгли attempts. */
+const MIN_MS_BETWEEN_AUTO_OPEN_START_EDIT = 900;
+
+function readAutoOpenAttempts(payload) {
+    const { attempts } = getAutoOpenStorageKeys(payload);
+    try {
+        const v = sessionStorage.getItem(attempts);
+        if (v === null || v === '') {
+            return 0;
+        }
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) && n >= 0 ? n : 0;
+    } catch {
+        return 0;
+    }
+}
+
+function setAutoOpenAttempts(payload, n) {
+    const { attempts } = getAutoOpenStorageKeys(payload);
+    try {
+        sessionStorage.setItem(attempts, String(n));
+    } catch {
+        /* ignore */
+    }
+}
+
+function markAutoOpenSuccess(payload) {
+    const { ok } = getAutoOpenStorageKeys(payload);
+    try {
+        sessionStorage.setItem(ok, '1');
+    } catch {
+        /* ignore */
+    }
+}
+
+function isAutoOpenSuccessMarked(payload) {
+    const { ok } = getAutoOpenStorageKeys(payload);
+    try {
+        return sessionStorage.getItem(ok) === '1';
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Запрос Livewire startEdit для нужной секции. «Чужой» открытый editor не блокирует — вызываем startEdit(id) снова.
+ * Счётчик attempts + lastStartEditAt — с debounce против двойных init подряд.
+ *
+ * @param {Record<string, unknown>} payload
+ * @returns {boolean} true если вызвали startEdit
+ */
+function requestAutoOpenPageBuilderEditor(payload) {
+    const ao = payload.page_builder_auto_open;
+    if (!ao || typeof ao !== 'object' || ao.enabled !== true) {
+        return false;
+    }
+    const sectionIdRaw = ao.section_id;
+    const sectionId = typeof sectionIdRaw === 'number' ? sectionIdRaw : parseInt(String(sectionIdRaw ?? ''), 10);
+    if (!Number.isFinite(sectionId) || sectionId <= 0) {
+        return false;
+    }
+
+    if (isAutoOpenSuccessMarked(payload)) {
+        return false;
+    }
+
+    const max = typeof ao.max_auto_open_attempts === 'number' ? ao.max_auto_open_attempts : 5;
+    const at = readAutoOpenAttempts(payload);
+    if (at >= max) {
+        return false;
+    }
+
+    if (payload.route_name !== 'filament.admin.resources.pages.edit') {
+        return false;
+    }
+    if (payload.on_target_route !== true) {
+        return false;
+    }
+
+    const openSectionId = getOpenEditorSectionIdFromDom();
+    if (openSectionId !== null && openSectionId === sectionId) {
+        return false;
+    }
+
+    if (Date.now() - readLastStartEditAt(payload) < MIN_MS_BETWEEN_AUTO_OPEN_START_EDIT) {
+        return false;
+    }
+
+    const root = document.querySelector('.page-sections-builder-root[wire\\:id]');
+    if (!root) {
+        return false;
+    }
+    const wireId = root.getAttribute('wire:id');
+    if (!wireId || typeof window.Livewire === 'undefined' || typeof window.Livewire.find !== 'function') {
+        return false;
+    }
+    const comp = window.Livewire.find(wireId);
+    if (!comp || typeof comp.call !== 'function') {
+        return false;
+    }
+    try {
+        comp.call('startEdit', sectionId);
+        setLastStartEditAt(payload, Date.now());
+        setAutoOpenAttempts(payload, at + 1);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function resolutionPathLabel(via) {
+    if (!via || typeof via !== 'string') {
+        return 'unknown';
+    }
+    if (via.includes('data-setup-target')) {
+        return 'primary_field';
+    }
+    if (via.includes('data-setup-section') && !via.includes('data-setup-section-type')) {
+        return 'settings_section';
+    }
+    if (via.includes('data-setup-section-type')) {
+        return 'section_type_fallback';
+    }
+    if (via.includes('data-setup-action')) {
+        return 'action_fallback';
+    }
+    return 'other';
+}
+
+// ——— bar offset (только CSS var + класс body) ———
+
+function applyTopOffsetFromBar(bar) {
+    if (bar && document.body.contains(bar)) {
+        const topOffset = parseFloat(getComputedStyle(bar).top) || 0;
+        const barH = bar.offsetHeight || 0;
+        const total = topOffset + barH;
+        document.documentElement.style.setProperty('--fi-ts-setup-top-offset', `${total}px`);
+        document.body.classList.add('fi-ts-setup-use-top-offset');
+    } else {
+        document.documentElement.style.setProperty('--fi-ts-setup-top-offset', '0px');
+        document.body.classList.remove('fi-ts-setup-use-top-offset');
+    }
+}
+
+function observeSetupBar(bar) {
+    if (barResizeObserver) {
+        barResizeObserver.disconnect();
+        barResizeObserver = null;
+    }
+    applyTopOffsetFromBar(bar);
+    if (bar && typeof ResizeObserver !== 'undefined') {
+        barResizeObserver = new ResizeObserver(() => {
+            applyTopOffsetFromBar(bar);
+        });
+        barResizeObserver.observe(bar);
+    }
+}
+
+function scrollPrimaryIntoComfortZone(primaryEl, bar) {
+    const barH = bar && document.body.contains(bar) ? bar.offsetHeight : 0;
+    const topOffset = bar && document.body.contains(bar) ? parseFloat(getComputedStyle(bar).top) || 0 : 0;
+    const margin = 12;
+    const topSafe = topOffset + barH + margin;
+    const rect = primaryEl.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    if (rect.top >= topSafe && rect.bottom <= vh - margin) {
+        return;
+    }
+    const targetTop = rect.top + window.scrollY - topSafe;
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+}
+
+function focusIfAllowed(primaryEl, allowFocus) {
+    if (!allowFocus) {
+        return;
+    }
+    const ae = document.activeElement;
+    if (ae && ae instanceof Element && primaryEl.contains(ae)) {
+        return;
+    }
+    tryFocusFieldControl(primaryEl);
+}
+
+function finalizeHighlight(payload, primaryEl, sectionEl, bar, resolvedVia, allowFocus, templateEl) {
+    primaryEl.classList.add('fi-ts-setup-highlight');
+    primaryEl.setAttribute('data-setup-highlighted', 'primary');
+
+    if (sectionEl) {
+        sectionEl.classList.add('fi-ts-setup-highlight-section');
+        sectionEl.setAttribute('data-setup-highlighted', 'section');
+    }
+
+    mountInlineSetupCardIfNeeded(payload, primaryEl, sectionEl, templateEl);
+
+    observeSetupBar(bar);
+
+    const scheduleScroll = () => {
+        scrollPrimaryIntoComfortZone(primaryEl, bar);
+        focusIfAllowed(primaryEl, allowFocus);
+    };
+    if (payload.on_target_route === true) {
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                scheduleScroll();
+            });
+        });
+    } else {
+        scheduleScroll();
+    }
+}
+
+function logSetup(payload, ...rest) {
+    const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
+    if (!payload.guided_dev_debug && !isDev) {
+        return;
+    }
+    if (window.console && console.info) {
+        console.info('[tenant-site-setup]', ...rest);
+    }
+}
+
+/** Slide-over редактора в teleport на body — один observer на body + wire:key для смены секции. */
+function getMutationObserverRoot() {
+    return document.body;
+}
+
 /**
  * @param {Record<string, unknown>} payload
- * @param {(raw: Element, via: string) => void} onFound
- * @param {(reason: string) => void} onMiss
- * @returns {(() => void) | null} abort — отмена поиска; null если цель обработана синхронно
+ * @param {(raw: Element, via: string, meta: { resolveMs: number, path: string }) => void} onFound
+ * @param {(reason: string, meta: { resolveMs: number }) => void} onMiss
+ * @param {{ resolveStart: number, preferPrimaryUntil: number|null, autoOpenRequested: boolean }} opts
  */
-function resolveTargetWithRetry(payload, onFound, onMiss) {
-    const start = Date.now();
-    const maxMs = 5000;
-    /** Дать Livewire/Filament время смонтировать скрытый контейнер до причины hidden_by_condition */
+function resolveTargetWithRetry(payload, onFound, onMiss, opts) {
+    const resolveStart = opts.resolveStart;
+    const preferPrimaryUntil = opts.preferPrimaryUntil;
     const hiddenGraceMs = 500;
+    const maxMs = 5000;
     let done = false;
     let observer = null;
     let intervalId = null;
+    let rafScheduled = false;
+
+    const getPhase = () => {
+        if (preferPrimaryUntil === null || Date.now() >= preferPrimaryUntil) {
+            return /** @type {'full'} */ ('full');
+        }
+        return /** @type {'primary_only'} */ ('primary_only');
+    };
 
     const cleanup = () => {
         if (observer) {
@@ -495,6 +969,7 @@ function resolveTargetWithRetry(payload, onFound, onMiss) {
             clearInterval(intervalId);
             intervalId = null;
         }
+        rafScheduled = false;
     };
 
     const abort = () => {
@@ -509,12 +984,27 @@ function resolveTargetWithRetry(payload, onFound, onMiss) {
         if (done) {
             return;
         }
-        const elapsed = Date.now() - start;
-        const meta = resolveSetupHighlightTargetWithMeta(payload);
+        const elapsed = Date.now() - resolveStart;
+        const phase = getPhase();
+        const primaryScopes = getPrimarySearchScopes();
+        const fallbackScope = getFallbackSearchScope();
+        const ctx = { phase, primaryScopes, fallbackScope };
+        const meta = resolveSetupHighlightTargetWithMeta(payload, ctx);
+        const resolveMs = Date.now() - resolveStart;
+
+        const debugBase = {
+            auto_open_requested: opts.autoOpenRequested,
+            auto_open_editor_visible: isPageBuilderEditorVisible(),
+            prefer_primary_until_ms: preferPrimaryUntil,
+            resolution_phase: phase,
+            resolve_elapsed_ms: resolveMs,
+        };
+
         if (meta.el) {
             done = true;
             cleanup();
-            onFound(meta.el, meta.via);
+            const path = resolutionPathLabel(meta.via);
+            onFound(meta.el, meta.via, { resolveMs, path });
             return;
         }
         if (
@@ -523,23 +1013,34 @@ function resolveTargetWithRetry(payload, onFound, onMiss) {
         ) {
             done = true;
             cleanup();
-            onMiss('wrong_tab');
+            onMiss('wrong_tab', { resolveMs, debugBase });
             return;
         }
-        if (hasHiddenTargetCandidate(payload)) {
+        if (hasHiddenTargetCandidate(payload, ctx)) {
             if (elapsed < hiddenGraceMs) {
                 return;
             }
             done = true;
             cleanup();
-            onMiss('hidden_by_condition');
+            onMiss('hidden_by_condition', { resolveMs, debugBase });
             return;
         }
         if (elapsed >= maxMs) {
             done = true;
             cleanup();
-            onMiss('target_missing');
+            onMiss('target_missing', { resolveMs, debugBase });
         }
+    };
+
+    const scheduleTick = () => {
+        if (rafScheduled) {
+            return;
+        }
+        rafScheduled = true;
+        requestAnimationFrame(() => {
+            rafScheduled = false;
+            tick();
+        });
     };
 
     tick();
@@ -547,87 +1048,35 @@ function resolveTargetWithRetry(payload, onFound, onMiss) {
         return null;
     }
 
-    /** Быстрый polling только в начале; дальше — в основном MutationObserver (без attributes: меньше шума). */
     const fastPollMs = 1500;
     intervalId = window.setInterval(() => {
         tick();
-        if (intervalId !== null && Date.now() - start >= fastPollMs) {
+        if (intervalId !== null && Date.now() - resolveStart >= fastPollMs) {
             clearInterval(intervalId);
             intervalId = null;
         }
     }, 80);
+
+    const obsRoot = getMutationObserverRoot();
     observer = new MutationObserver(() => {
-        tick();
+        scheduleTick();
     });
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    observer.observe(obsRoot, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'style', 'hidden', 'wire:key'],
+    });
 
     return abort;
 }
 
-/**
- * @param {Record<string, unknown>} payload
- * @param {Element} primaryEl
- * @param {Element | null} bar
- */
-function applyBarPadding(bar) {
-    const topOffset = bar ? parseFloat(getComputedStyle(bar).top) || 0 : 0;
-    const barH = bar ? bar.offsetHeight : 0;
-    if (topOffset + barH > 0) {
-        document.body.style.paddingTop = `${topOffset + barH}px`;
-    }
-}
-
-/**
- * @param {Record<string, unknown>} payload
- * @param {Element} primaryEl
- * @param {Element | null} sectionEl
- * @param {Element | null} bar
- * @param {string} resolvedVia
- */
-function finalizeHighlight(payload, primaryEl, sectionEl, bar, resolvedVia) {
-    primaryEl.classList.add('fi-ts-setup-highlight');
-    primaryEl.setAttribute('data-setup-highlighted', 'primary');
-
-    if (sectionEl) {
-        sectionEl.classList.add('fi-ts-setup-highlight-section');
-        sectionEl.setAttribute('data-setup-highlighted', 'section');
-    }
-
-    mountInlineSetupCardIfNeeded(payload, primaryEl, sectionEl);
-
-    applyBarPadding(bar);
-
-    const barH = bar ? bar.offsetHeight : 0;
-    const topOffset = bar ? parseFloat(getComputedStyle(bar).top) || 0 : 0;
-    const scheduleScroll = () => {
-        const top = primaryEl.getBoundingClientRect().top + window.scrollY - topOffset - barH - 12;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-    };
-    if (payload.on_target_route === true) {
-        window.requestAnimationFrame(() => {
-            window.requestAnimationFrame(() => {
-                scheduleScroll();
-                tryFocusFieldControl(primaryEl);
-            });
-        });
-    } else {
-        scheduleScroll();
-        tryFocusFieldControl(primaryEl);
-    }
-
-    updateGuidedDevDebug(payload, '', resolvedVia);
-}
-
 function initTenantSiteSetup() {
-    const payloadEl = document.getElementById('tenant-site-setup-payload');
+    resetTenantSiteSetupUi();
+
+    const root = getTenantSiteSetupRoot();
+    const payloadEl = getPayloadScriptEl(root);
     if (!payloadEl) {
-        document.body.classList.remove('fi-ts-setup-active');
-        clearTenantSiteSetupHighlights();
-        document.body.style.paddingTop = '';
-        const dbg = document.getElementById('tenant-site-setup-dev-debug');
-        if (dbg) {
-            dbg.remove();
-        }
         return;
     }
 
@@ -640,13 +1089,6 @@ function initTenantSiteSetup() {
 
     document.body.classList.add('fi-ts-setup-active');
 
-    clearTenantSiteSetupHighlights();
-
-    if (typeof activeSetupResolveAbort === 'function') {
-        activeSetupResolveAbort();
-        activeSetupResolveAbort = null;
-    }
-
     if (syncSettingsTabQueryIfNeeded(payload)) {
         return;
     }
@@ -655,36 +1097,89 @@ function initTenantSiteSetup() {
         return;
     }
 
-    const bar = document.getElementById('tenant-site-setup-bar');
+    const resolveStart = Date.now();
+    const ao = payload.page_builder_auto_open;
+    const autoOpenRequested = requestAutoOpenPageBuilderEditor(payload);
+
+    let preferPrimaryUntil = null;
+    if (ao && typeof ao === 'object' && ao.enabled === true) {
+        const ms = typeof ao.prefer_primary_target_ms === 'number' ? ao.prefer_primary_target_ms : 1600;
+        const rawSid = ao.section_id;
+        const expectedSectionId =
+            typeof rawSid === 'number' ? rawSid : parseInt(String(rawSid ?? ''), 10);
+        const correctEditorOpen =
+            Number.isFinite(expectedSectionId) &&
+            expectedSectionId > 0 &&
+            getOpenEditorSectionIdFromDom() === expectedSectionId;
+        if (autoOpenRequested || correctEditorOpen) {
+            preferPrimaryUntil = resolveStart + ms;
+        }
+    }
+
+    const bar = getSetupBarEl(root);
+    const templateEl = getInlineTemplateEl(root);
 
     const cancelResolve = resolveTargetWithRetry(
         payload,
-        (rawTarget, via) => {
+        (rawTarget, via, meta) => {
             const primaryEl = primaryHighlightElement(rawTarget);
             if (!primaryEl) {
-                const reason = hasHiddenTargetCandidate(payload) ? 'hidden_by_condition' : 'target_missing';
-                updateGuidedDevDebug(payload, reason, via || null);
+                const phase = preferPrimaryUntil === null || Date.now() >= preferPrimaryUntil ? 'full' : 'primary_only';
+                const primaryScopes = getPrimarySearchScopes();
+                const fallbackScope = getFallbackSearchScope();
+                const reason = hasHiddenTargetCandidate(payload, { phase, primaryScopes, fallbackScope })
+                    ? 'hidden_by_condition'
+                    : 'target_missing';
+                updateGuidedDevDebug(payload, reason, via || null, {
+                    auto_open_requested: autoOpenRequested,
+                    auto_open_editor_visible: isPageBuilderEditorVisible(),
+                    resolution_path: resolutionPathLabel(via),
+                    resolve_elapsed_ms: meta.resolveMs,
+                    prefer_primary_until_ms: preferPrimaryUntil,
+                });
                 if (payload.on_target_route === true) {
-                    mountInlineSetupFallbackFloating(payload, reason);
+                    mountInlineSetupFallbackFloating(payload, reason, templateEl);
                 }
-                applyBarPadding(bar);
-                if (window.console && console.info) {
-                    console.info('[tenant-site-setup]', reason, payload.target_key, via);
-                }
+                observeSetupBar(bar);
+                logSetup(payload, reason, payload.target_key, via);
                 return;
             }
+
+            const aoInner = payload.page_builder_auto_open;
+            if (aoInner && typeof aoInner === 'object' && aoInner.enabled === true && typeof via === 'string' && via.includes('data-setup-target')) {
+                markAutoOpenSuccess(payload);
+            }
+
+            const allowFocus = shouldAutoFocusHighlight(primaryEl, via, payload);
             const sectionEl = sectionContextElement(primaryEl);
-            finalizeHighlight(payload, primaryEl, sectionEl, bar, via);
+            finalizeHighlight(payload, primaryEl, sectionEl, bar, via, allowFocus, templateEl);
+            updateGuidedDevDebug(payload, '', via, {
+                auto_open_requested: autoOpenRequested,
+                auto_open_editor_visible: isPageBuilderEditorVisible(),
+                resolution_path: meta.path,
+                resolve_elapsed_ms: meta.resolveMs,
+                prefer_primary_until_ms: preferPrimaryUntil,
+            });
         },
-        (reason) => {
-            updateGuidedDevDebug(payload, reason, null);
+        (reason, missMeta) => {
+            const base = missMeta.debugBase && typeof missMeta.debugBase === 'object' ? missMeta.debugBase : {};
+            updateGuidedDevDebug(payload, reason, null, {
+                ...base,
+                auto_open_requested: autoOpenRequested,
+                auto_open_editor_visible: isPageBuilderEditorVisible(),
+                resolve_elapsed_ms: missMeta.resolveMs,
+                prefer_primary_until_ms: preferPrimaryUntil,
+            });
             if (payload.on_target_route === true) {
-                mountInlineSetupFallbackFloating(payload, reason);
+                mountInlineSetupFallbackFloating(payload, reason, templateEl);
             }
-            applyBarPadding(bar);
-            if (window.console && console.info) {
-                console.info('[tenant-site-setup]', reason, payload.target_key);
-            }
+            observeSetupBar(bar);
+            logSetup(payload, reason, payload.target_key);
+        },
+        {
+            resolveStart,
+            preferPrimaryUntil,
+            autoOpenRequested,
         },
     );
     activeSetupResolveAbort = typeof cancelResolve === 'function' ? cancelResolve : null;

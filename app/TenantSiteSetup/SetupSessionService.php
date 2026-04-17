@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\TenantSiteSetup;
 
+use App\Models\Page;
+use App\Models\PageSection;
 use App\Models\Tenant;
 use App\Models\TenantSetupSession;
 use App\Models\User;
@@ -393,6 +395,8 @@ final class SetupSessionService
             && is_string($targetUrl)
             && $targetUrl !== '';
 
+        $pageBuilderAutoOpen = $this->pageBuilderAutoOpenConfig($tenant, $def);
+
         $payload = [
             'session_id' => $session->id,
             'current_item_key' => $currentKey,
@@ -424,6 +428,7 @@ final class SetupSessionService
             'page_edit_relation_active' => $ctx['page_edit_relation_active'] ?? null,
             'page_edit_relation_matches' => $ctx['page_edit_relation_matches'] ?? null,
             'target_context_mismatch' => $ctx['target_context_mismatch'] ?? null,
+            'page_builder_auto_open' => $pageBuilderAutoOpen,
         ];
 
         if (config('app.debug')) {
@@ -436,6 +441,7 @@ final class SetupSessionService
             );
             $payload['guided_dev_debug'] = [
                 'current_item_key' => $currentKey,
+                'page_builder_auto_open' => $pageBuilderAutoOpen,
                 'route_name' => $def?->filamentRouteName,
                 'settings_tab_expected' => $def?->settingsTabKey,
                 'settings_tab_active' => $ctx['settings_tab_active'] ?? null,
@@ -454,6 +460,65 @@ final class SetupSessionService
         }
 
         return $payload;
+    }
+
+    /**
+     * Контракт авто-открытия редактора page builder: только для шага заголовка hero (поле в slide-over).
+     * Шаг CTA/контактов не открывает hero-редактор — см. {@see pageBuilderAutoOpenConfig}.
+     *
+     * @return array{
+     *     enabled: bool,
+     *     section_id: int|null,
+     *     reason: string|null,
+     *     expected_primary_target_kind: string|null,
+     *     prefer_primary_target_ms: int,
+     *     max_auto_open_attempts: int,
+     * }
+     */
+    private function pageBuilderAutoOpenConfig(Tenant $tenant, ?SetupItemDefinition $def): array
+    {
+        $defaults = [
+            'enabled' => false,
+            'section_id' => null,
+            'reason' => null,
+            'expected_primary_target_kind' => null,
+            'prefer_primary_target_ms' => 1600,
+            'max_auto_open_attempts' => 5,
+        ];
+
+        if ($def === null || $def->key !== 'pages.home.hero_title') {
+            return $defaults;
+        }
+
+        $page = Page::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('slug', 'home')
+            ->first();
+
+        if ($page === null) {
+            return $defaults;
+        }
+
+        $section = PageSection::query()
+            ->where('page_id', $page->id)
+            ->where(function ($q): void {
+                $q->where('section_type', 'hero')->orWhere('section_key', 'hero');
+            })
+            ->orderBy('sort_order')
+            ->first();
+
+        if ($section === null) {
+            return $defaults;
+        }
+
+        return [
+            'enabled' => true,
+            'section_id' => (int) $section->id,
+            'reason' => 'hero_editor_for_primary_field',
+            'expected_primary_target_kind' => 'hero_title_field',
+            'prefer_primary_target_ms' => 1600,
+            'max_auto_open_attempts' => 5,
+        ];
     }
 
     /**

@@ -3,6 +3,9 @@
 namespace Tests\Feature\TenantSiteSetup;
 
 use App\Filament\Tenant\Pages\TenantSiteSetupCenterPage;
+use App\Models\Page;
+use App\Models\PageSection;
+use App\Models\TenantSetupSession;
 use App\Models\User;
 use App\Tenant\CurrentTenant;
 use App\TenantSiteSetup\SetupItemRegistry;
@@ -116,6 +119,87 @@ class TenantSiteSetupSessionTest extends TestCase
         $this->assertFalse($payload['on_target_route']);
         $this->assertFalse($payload['can_complete_here']);
         $this->assertNotEmpty($payload['primary_is_target_navigation']);
+        $this->assertIsArray($payload['page_builder_auto_open']);
+        $this->assertArrayHasKey('enabled', $payload['page_builder_auto_open']);
+        $this->assertFalse($payload['page_builder_auto_open']['enabled']);
+    }
+
+    public function test_overlay_payload_auto_open_disabled_for_hero_cta_step(): void
+    {
+        config(['features.tenant_site_setup_framework' => true]);
+        $tenant = $this->createTenantWithActiveDomain('ts_ao_cta', ['theme_key' => 'expert_auto']);
+        $user = User::factory()->create(['status' => 'active']);
+        $user->tenants()->attach($tenant->id, ['role' => 'tenant_owner', 'status' => 'active']);
+
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $domain = $tenant->domains()->where('is_primary', true)->firstOrFail();
+        $this->app->instance(
+            CurrentTenant::class,
+            new CurrentTenant($tenant, $domain, false, $this->tenancyHostForSlug((string) $tenant->slug))
+        );
+        $this->actingAs($user);
+
+        app(SetupSessionService::class)->startOrResume($tenant, $user);
+        TenantSetupSession::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('user_id', $user->id)
+            ->where('session_status', 'active')
+            ->update(['current_item_key' => 'pages.home.hero_cta_or_contact_block']);
+
+        $payload = app(SetupSessionService::class)->overlayPayload($tenant, $user, request());
+        $this->assertIsArray($payload);
+        $this->assertFalse($payload['page_builder_auto_open']['enabled']);
+    }
+
+    public function test_overlay_payload_auto_open_enabled_for_hero_title_when_home_has_hero_section(): void
+    {
+        config(['features.tenant_site_setup_framework' => true]);
+        $tenant = $this->createTenantWithActiveDomain('ts_ao_hero', ['theme_key' => 'expert_auto']);
+        $user = User::factory()->create(['status' => 'active']);
+        $user->tenants()->attach($tenant->id, ['role' => 'tenant_owner', 'status' => 'active']);
+
+        $page = Page::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Главная',
+            'slug' => 'home',
+            'template' => 'default',
+            'status' => 'published',
+            'published_at' => now(),
+            'show_in_main_menu' => false,
+            'main_menu_sort_order' => 0,
+        ]);
+        PageSection::query()->create([
+            'tenant_id' => $tenant->id,
+            'page_id' => $page->id,
+            'section_key' => 'hero',
+            'section_type' => 'hero',
+            'title' => 'Hero',
+            'data_json' => [],
+            'sort_order' => 0,
+            'is_visible' => true,
+            'status' => 'published',
+        ]);
+
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $domain = $tenant->domains()->where('is_primary', true)->firstOrFail();
+        $this->app->instance(
+            CurrentTenant::class,
+            new CurrentTenant($tenant, $domain, false, $this->tenancyHostForSlug((string) $tenant->slug))
+        );
+        $this->actingAs($user);
+
+        app(SetupSessionService::class)->startOrResume($tenant, $user);
+        TenantSetupSession::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('user_id', $user->id)
+            ->where('session_status', 'active')
+            ->update(['current_item_key' => 'pages.home.hero_title']);
+
+        $payload = app(SetupSessionService::class)->overlayPayload($tenant, $user, request());
+        $this->assertIsArray($payload);
+        $this->assertTrue($payload['page_builder_auto_open']['enabled']);
+        $this->assertSame('hero_editor_for_primary_field', $payload['page_builder_auto_open']['reason']);
+        $this->assertSame(1600, $payload['page_builder_auto_open']['prefer_primary_target_ms']);
     }
 
     public function test_start_or_resume_reuses_active_session(): void

@@ -14,6 +14,7 @@ use App\TenantPush\TenantPushProviderStatus;
 use App\TenantPush\TenantPushRecipientScope;
 use App\TenantPush\TenantPushCrmRequestRecipientResolver;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -63,21 +64,27 @@ class TenantPushPwaSettingsPage extends Page
             abort(404);
         }
 
-        $settings = $gate->ensureSettings($tenant);
+        $settings = $gate->resolveSettingsForDisplay($tenant);
         $pref = TenantPushEventPreference::query()
             ->where('tenant_id', $tenant->id)
             ->where('event_key', 'crm_request.created')
             ->first();
 
-        $domainOptions = $tenant->domains()
-            ->where('status', TenantDomain::STATUS_ACTIVE)
-            ->get()
+        $activeDomains = $tenant->domains()->where('status', TenantDomain::STATUS_ACTIVE)->get();
+        $domainOptions = $activeDomains
             ->mapWithKeys(fn (TenantDomain $d) => [strtolower((string) $d->host) => (string) $d->host])
             ->all();
 
+        $canonicalHost = $settings->canonical_host;
+        if (($canonicalHost === null || $canonicalHost === '') && $activeDomains->count() === 1) {
+            $canonicalHost = strtolower((string) $activeDomains->first()->host);
+        } elseif (($canonicalHost === null || $canonicalHost === '') && $domainOptions !== []) {
+            $first = array_key_first($domainOptions);
+            $canonicalHost = $first !== null ? (string) $first : null;
+        }
+
         $this->getSchema('form')->fill([
-            'commercial_service_active' => $settings->commercial_service_active,
-            'canonical_host' => $settings->canonical_host ?? (array_key_first($domainOptions) !== false ? array_key_first($domainOptions) : null),
+            'canonical_host' => $canonicalHost,
             'onesignal_app_id' => $settings->onesignal_app_id,
             'onesignal_app_api_key' => '',
             'has_api_key' => array_key_exists('onesignal_app_api_key_encrypted', $settings->getAttributes())
@@ -106,21 +113,55 @@ class TenantPushPwaSettingsPage extends Page
         return $schema
             ->statePath('data')
             ->components([
-                Section::make('Доступность')
-                    ->description('Платная услуга и тариф. Без активации услуги и соответствующего тарифа push недоступен (кроме принудительного включения платформой).')
+                Section::make('Доступность услуги')
+                    ->description('Коммерческую активацию услуги push настраивает платформа. Здесь только статус.')
                     ->schema([
-                        Toggle::make('commercial_service_active')
-                            ->label('Услуга push активирована (коммерция)')
-                            ->disabled(! $editable),
+                        Placeholder::make('_commercial_status_readonly')
+                            ->label('Услуга push (коммерция)')
+                            ->content(function () use ($tenant): string {
+                                if ($tenant === null) {
+                                    return '—';
+                                }
+                                $tenant->loadMissing('pushSettings');
+                                $active = (bool) ($tenant->pushSettings?->commercial_service_active ?? false);
+
+                                return $active
+                                    ? 'Подключена. Отключить или подключить можно через поддержку платформы.'
+                                    : 'Не подключена. Для подключения обратитесь в поддержку платформы.';
+                            }),
                     ]),
                 Section::make('Канонический домен для push')
                     ->schema([
                         Select::make('canonical_host')
                             ->label('Основной домен (HTTPS)')
                             ->options(fn () => $tenant ? $tenant->domains()->where('status', TenantDomain::STATUS_ACTIVE)->pluck('host', 'host')->all() : [])
-                            ->disabled(! $editable)
+                            ->disabled(fn () => ! $editable || ($tenant !== null && $tenant->domains()->where('status', TenantDomain::STATUS_ACTIVE)->doesntExist()))
                             ->nullable()
-                            ->required(fn () => $tenant !== null && $tenant->domains()->where('status', TenantDomain::STATUS_ACTIVE)->exists()),
+                            ->required(fn () => $tenant !== null && $tenant->domains()->where('status', TenantDomain::STATUS_ACTIVE)->exists())
+                            ->helperText(function ($get) use ($tenant): ?string {
+                                if ($tenant === null) {
+                                    return null;
+                                }
+                                if ($tenant->domains()->where('status', TenantDomain::STATUS_ACTIVE)->doesntExist()) {
+                                    return 'Сначала подключите и активируйте домен в разделе доменов / у платформы.';
+                                }
+                                $h = strtolower(trim((string) ($get('canonical_host') ?? '')));
+                                if ($h === '') {
+                                    return null;
+                                }
+                                $domain = $tenant->domains()
+                                    ->where('status', TenantDomain::STATUS_ACTIVE)
+                                    ->get()
+                                    ->first(fn (TenantDomain $d): bool => strtolower((string) $d->host) === $h);
+                                if ($domain === null) {
+                                    return null;
+                                }
+                                if ($domain->ssl_status === TenantDomain::SSL_ISSUED) {
+                                    return null;
+                                }
+
+                                return 'Для этого домена SSL ещё не в статусе «выпущен» — проверьте сертификат в настройках домена.';
+                            }),
                     ]),
                 Section::make('OneSignal')
                     ->schema([
@@ -187,7 +228,6 @@ class TenantPushPwaSettingsPage extends Page
         $origin = $host !== '' ? 'https://'.$host : null;
 
         $settings->fill([
-            'commercial_service_active' => (bool) ($data['commercial_service_active'] ?? false),
             'canonical_host' => $host !== '' ? $host : null,
             'canonical_origin' => $origin,
             'onesignal_app_id' => trim((string) ($data['onesignal_app_id'] ?? '')) ?: null,

@@ -4,7 +4,14 @@ namespace App\Filament\Platform\Pages;
 
 use App\Filament\Platform\Pages\Concerns\GrantsPlatformPageAccess;
 use App\Models\Tenant;
+use App\Services\TenantPush\TenantPushPlatformOwnedSettingsService;
+use App\TenantPush\PlatformTenantPushTablePresenter;
+use App\TenantPush\TenantPushCrmRequestRecipientResolver;
+use App\TenantPush\TenantPushFeatureGate;
+use App\TenantPush\TenantPushOverride;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class TenantsPushPwaPage extends Page
@@ -26,14 +33,57 @@ class TenantsPushPwaPage extends Page
     protected string $view = 'filament.pages.platform.tenants-push-pwa';
 
     /**
-     * @return \Illuminate\Support\Collection<int, Tenant>
+     * @return list<\App\TenantPush\PlatformTenantPushTableRow>
      */
-    public function getTenantsProperty()
+    public function getTableRowsProperty(): array
     {
-        return Tenant::query()
+        $tenants = Tenant::query()
             ->with(['pushSettings', 'plan'])
             ->orderBy('name')
             ->limit(500)
             ->get();
+
+        return PlatformTenantPushTablePresenter::rowsForTenants(
+            $tenants,
+            app(TenantPushFeatureGate::class),
+            app(TenantPushCrmRequestRecipientResolver::class),
+        );
+    }
+
+    public function platformQuickAction(int $tenantId, string $action): void
+    {
+        abort_unless(static::canAccess(), 403);
+
+        $tenant = Tenant::query()->findOrFail($tenantId);
+        $gate = app(TenantPushFeatureGate::class);
+        $cur = $gate->findSettings($tenant);
+
+        $override = TenantPushOverride::tryFrom((string) ($cur?->push_override ?? '')) ?? TenantPushOverride::InheritPlan;
+        $commercial = (bool) ($cur?->commercial_service_active ?? false);
+        $selfServe = (bool) ($cur?->self_serve_allowed ?? true);
+
+        if ($action === 'inherit') {
+            $override = TenantPushOverride::InheritPlan;
+        } elseif ($action === 'force_enable') {
+            $override = TenantPushOverride::ForceEnable;
+        } elseif ($action === 'force_disable') {
+            $override = TenantPushOverride::ForceDisable;
+        } elseif ($action === 'commercial_on') {
+            $commercial = true;
+        } elseif ($action === 'commercial_off') {
+            $commercial = false;
+        } else {
+            return;
+        }
+
+        app(TenantPushPlatformOwnedSettingsService::class)->applyScalars(
+            $tenant,
+            $override,
+            $commercial,
+            $selfServe,
+            Auth::user(),
+        );
+
+        Notification::make()->title('Настройки push (платформа) сохранены')->success()->send();
     }
 }

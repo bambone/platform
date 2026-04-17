@@ -9,6 +9,7 @@ use App\Jobs\RecalculateTenantStorageUsageJob;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Analytics\AnalyticsSettingsPersistence;
+use App\Services\TenantPush\TenantPushPlatformOwnedSettingsService;
 use App\Support\Analytics\AnalyticsSettingsFormMapper;
 use App\TenantPush\TenantPushFeatureGate;
 use App\TenantPush\TenantPushOverride;
@@ -24,6 +25,7 @@ use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
 use Illuminate\Validation\ValidationException;
@@ -117,6 +119,13 @@ class EditTenant extends EditRecord
             ->icon(Heroicon::OutlinedDocumentCheck)
             ->size(Size::Large)
             ->extraAttributes(['class' => 'fi-btn-tenant-edit-save']);
+    }
+
+    public function save(bool $shouldRedirect = true, bool $shouldSendSavedNotification = true): void
+    {
+        DB::transaction(function () use ($shouldRedirect, $shouldSendSavedNotification): void {
+            parent::save($shouldRedirect, $shouldSendSavedNotification);
+        });
     }
 
     /**
@@ -225,10 +234,10 @@ class EditTenant extends EditRecord
 
         $record = $this->getRecord();
         if ($record instanceof Tenant) {
-            $push = app(TenantPushFeatureGate::class)->ensureSettings($record);
-            $data['platform_push_override'] = $push->push_override;
-            $data['platform_push_commercial_active'] = $push->commercial_service_active;
-            $data['platform_push_self_serve_allowed'] = $push->self_serve_allowed;
+            $push = app(TenantPushFeatureGate::class)->findSettings($record);
+            $data['platform_push_override'] = $push?->push_override ?? TenantPushOverride::InheritPlan->value;
+            $data['platform_push_commercial_active'] = $push?->commercial_service_active ?? false;
+            $data['platform_push_self_serve_allowed'] = $push?->self_serve_allowed ?? true;
         }
 
         if (! $this->canEditTenantAnalytics()) {
@@ -305,11 +314,10 @@ class EditTenant extends EditRecord
             return;
         }
 
-        $settings = app(TenantPushFeatureGate::class)->ensureSettings($tenant);
-        $settings->push_override = TenantPushOverride::tryFrom((string) ($this->pendingPushSettingsForm['platform_push_override'] ?? ''))
-            ?? TenantPushOverride::InheritPlan;
-        $settings->commercial_service_active = (bool) ($this->pendingPushSettingsForm['platform_push_commercial_active'] ?? false);
-        $settings->self_serve_allowed = (bool) ($this->pendingPushSettingsForm['platform_push_self_serve_allowed'] ?? true);
-        $settings->save();
+        app(TenantPushPlatformOwnedSettingsService::class)->applyFromFormData(
+            $tenant,
+            $this->pendingPushSettingsForm,
+            Auth::user(),
+        );
     }
 }

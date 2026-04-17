@@ -31,6 +31,30 @@ final readonly class TenantPushGateResult
         return $this->platformChannelEnabled && $this->planAllowsFeature && $this->commercialActive;
     }
 
+    /**
+     * Если функция недоступна — нормализованная причина (для UI / логов).
+     */
+    public function entitlementDenialCode(): TenantPushAccessDenialCode
+    {
+        if ($this->isFeatureEntitled()) {
+            return TenantPushAccessDenialCode::None;
+        }
+        if (! $this->platformChannelEnabled) {
+            return TenantPushAccessDenialCode::PlatformChannelDisabled;
+        }
+        if ($this->overrideForceDisable) {
+            return TenantPushAccessDenialCode::ForceDisabled;
+        }
+        if (! $this->planAllowsFeature) {
+            return TenantPushAccessDenialCode::PlanFeatureMissing;
+        }
+        if (! $this->commercialActive) {
+            return TenantPushAccessDenialCode::CommercialInactive;
+        }
+
+        return TenantPushAccessDenialCode::Unknown;
+    }
+
     public static function fromSettings(
         TenantPushSettings $settings,
         bool $platformChannelEnabled,

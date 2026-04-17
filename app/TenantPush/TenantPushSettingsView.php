@@ -24,7 +24,7 @@ final readonly class TenantPushSettingsView
     public static function make(Tenant $tenant, TenantPushFeatureGate $featureGate, TenantPushCrmRequestRecipientResolver $recipientResolver): self
     {
         $gate = $featureGate->evaluate($tenant);
-        $settings = $featureGate->ensureSettings($tenant);
+        $settings = $featureGate->resolveSettingsForDisplay($tenant);
 
         $pref = TenantPushEventPreference::query()
             ->where('tenant_id', $tenant->id)

@@ -4,6 +4,7 @@ namespace App\Filament\Platform\Resources\TenantResource\Pages;
 
 use App\Filament\Platform\Resources\TenantResource;
 use App\Models\TemplatePreset;
+use App\TenantPush\TenantPushFeatureGate;
 use App\Services\Seo\InitializeTenantSeoDefaults;
 use App\Services\TemplateCloningService;
 use App\Services\Tenancy\TenantDomainService;
@@ -40,6 +41,8 @@ class CreateTenant extends CreateRecord
         app(TenantDomainService::class)->createDefaultSubdomain($this->record, $this->record->slug);
 
         app(TenantStorageQuotaService::class)->ensureQuotaRecord($this->record);
+
+        app(TenantPushFeatureGate::class)->ensureSettings($this->record);
 
         app(InitializeTenantSeoDefaults::class)->execute($this->record, false, false);
     }

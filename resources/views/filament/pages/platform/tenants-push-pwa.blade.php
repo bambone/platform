@@ -1,8 +1,9 @@
 <x-filament-panels::page>
     <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
         <span class="font-medium">Доступ</span> — можно ли пользоваться разделом по тарифу/оверрайду и каналу OneSignal на платформе.
-        <span class="font-medium">Push</span> и <span class="font-medium">PWA</span> — включены ли переключатели «отправка push» / «динамический manifest» в кабинете клиента (при доступе: да / выкл; без доступа — —).
-        Тариф: <span class="font-medium">Платформа → Тарифы</span>; оверрайд и коммерция: <span class="font-medium">Клиенты → клиент → «Push и PWA (платформа)»</span>.
+        Если «нет», смотрите колонку <span class="font-medium">Причина</span>.
+        <span class="font-medium">Push</span> и <span class="font-medium">PWA</span> — переключатели в кабинете (при доступе: да / выкл).
+        Тариф: <span class="font-medium">Платформа → Тарифы</span>; оверрайд: карточка клиента → «Push и PWA (платформа)» или действия в таблице.
     </p>
     <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
         <table class="w-full divide-y divide-gray-200 text-left text-sm dark:divide-gray-700">
@@ -12,35 +13,73 @@
                     <th class="px-3 py-2 font-medium">План</th>
                     <th class="px-3 py-2 font-medium">Override</th>
                     <th class="px-3 py-2 font-medium">Доступ</th>
+                    <th class="px-3 py-2 font-medium">Причина</th>
                     <th class="px-3 py-2 font-medium">Провайдер</th>
                     <th class="px-3 py-2 font-medium">Подписки (CRM)</th>
                     <th class="px-3 py-2 font-medium">Push</th>
                     <th class="px-3 py-2 font-medium">PWA</th>
+                    <th class="px-3 py-2 font-medium w-48">Действия</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                @foreach ($this->tenants as $tenant)
-                    @php($pushView = \App\TenantPush\TenantPushSettingsView::make($tenant, app(\App\TenantPush\TenantPushFeatureGate::class), app(\App\TenantPush\TenantPushCrmRequestRecipientResolver::class)))
-                    @php
-                        $entitled = $pushView->gate->isFeatureEntitled();
-                        $subAgg = $pushView->subscriptionAggregate->value;
-                        $s = $pushView->settings;
-                        $pushCell = $entitled ? ($s->is_push_enabled ? 'да' : 'выкл') : '—';
-                        $pwaCell = $entitled ? ($s->is_pwa_enabled ? 'да' : 'выкл') : '—';
-                    @endphp
-                    <tr>
+                @foreach ($this->tableRows as $row)
+                    <tr wire:key="tpush-row-{{ $row->tenant->id }}">
                         <td class="px-3 py-2">
-                            <a href="{{ \App\Filament\Platform\Resources\TenantResource::getUrl('edit', ['record' => $tenant]) }}" class="text-primary-600 hover:underline">
-                                {{ $tenant->name }}
+                            <a href="{{ $row->editUrl }}" class="text-primary-600 hover:underline">
+                                {{ $row->tenantName }}
                             </a>
                         </td>
-                        <td class="px-3 py-2">{{ $tenant->plan?->slug ?? '—' }}</td>
-                        <td class="px-3 py-2">{{ $s->push_override ?? '—' }}</td>
-                        <td class="px-3 py-2">{{ $entitled ? 'да' : 'нет' }}</td>
-                        <td class="px-3 py-2">{{ $s->provider_status ?? '—' }}</td>
-                        <td class="px-3 py-2">{{ $subAgg }}</td>
-                        <td class="px-3 py-2">{{ $pushCell }}</td>
-                        <td class="px-3 py-2">{{ $pwaCell }}</td>
+                        <td class="px-3 py-2">{{ $row->planSlug }}</td>
+                        <td class="px-3 py-2">
+                            <x-filament::badge :color="$row->overrideBadgeColor">
+                                {{ $row->overrideLabel }}
+                            </x-filament::badge>
+                        </td>
+                        <td class="px-3 py-2">
+                            @if($row->entitled)
+                                <x-filament::badge color="success">да</x-filament::badge>
+                            @else
+                                <x-filament::badge color="danger">нет</x-filament::badge>
+                            @endif
+                        </td>
+                        <td class="px-3 py-2 max-w-[14rem]">
+                            @if($row->entitled)
+                                <span class="text-gray-400">—</span>
+                            @else
+                                <span class="text-gray-700 dark:text-gray-300" title="{{ $row->denialLabel }}">{{ \Illuminate\Support\Str::limit($row->denialLabel, 42) }}</span>
+                            @endif
+                        </td>
+                        <td class="px-3 py-2">
+                            <x-filament::badge :color="$row->providerBadgeColor">
+                                {{ $row->providerLabel }}
+                            </x-filament::badge>
+                        </td>
+                        <td class="px-3 py-2">
+                            <x-filament::badge :color="$row->subscriptionBadgeColor">
+                                {{ $row->subscriptionLabel }}
+                            </x-filament::badge>
+                        </td>
+                        <td class="px-3 py-2">{{ $row->pushCell }}</td>
+                        <td class="px-3 py-2">{{ $row->pwaCell }}</td>
+                        <td class="px-3 py-2 align-top">
+                            <div class="flex flex-wrap gap-1">
+                                <x-filament::button size="xs" color="gray" wire:click="platformQuickAction({{ $row->tenant->id }}, 'inherit')">
+                                    Как в тарифе
+                                </x-filament::button>
+                                <x-filament::button size="xs" color="success" wire:click="platformQuickAction({{ $row->tenant->id }}, 'force_enable')">
+                                    Вкл
+                                </x-filament::button>
+                                <x-filament::button size="xs" color="danger" wire:click="platformQuickAction({{ $row->tenant->id }}, 'force_disable')">
+                                    Выкл
+                                </x-filament::button>
+                                <x-filament::button size="xs" color="warning" wire:click="platformQuickAction({{ $row->tenant->id }}, 'commercial_on')">
+                                    Комм. да
+                                </x-filament::button>
+                                <x-filament::button size="xs" color="gray" wire:click="platformQuickAction({{ $row->tenant->id }}, 'commercial_off')">
+                                    Комм. нет
+                                </x-filament::button>
+                            </div>
+                        </td>
                     </tr>
                 @endforeach
             </tbody>

@@ -2,10 +2,10 @@
 
 namespace App\Filament\Support;
 
-use App\TenantPush\TenantPushFeature;
-
 /**
  * Известные ключи лимитов и функций тарифа для человекочитаемой формы (данные остаются в JSON в БД).
+ *
+ * Подписи и описания фич: {@see PlanFeatureRegistry}.
  */
 final class PlanUiSchema
 {
@@ -14,15 +14,7 @@ final class PlanUiSchema
      */
     public static function featureOptions(): array
     {
-        return [
-            'cms' => 'Конструктор страниц (CMS)',
-            'catalog' => 'Каталог техники',
-            'leads' => 'Заявки и лиды',
-            'seo' => 'SEO-настройки',
-            'booking_engine' => 'Онлайн-бронирование',
-            'custom_domain' => 'Свой домен',
-            TenantPushFeature::WEB_PUSH_ONESIGNAL => 'OneSignal Web Push и PWA (уведомления, установка на экран)',
-        ];
+        return PlanFeatureRegistry::featureOptions();
     }
 
     /**

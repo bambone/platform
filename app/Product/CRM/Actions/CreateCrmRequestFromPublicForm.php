@@ -118,7 +118,11 @@ final class CreateCrmRequestFromPublicForm
             return null;
         }
 
-        $settings = $this->tenantPushFeatureGate->ensureSettings($tenant);
+        $settings = $this->tenantPushFeatureGate->findSettings($tenant);
+        if ($settings === null) {
+            return null;
+        }
+
         if (! $settings->is_push_enabled) {
             return null;
         }

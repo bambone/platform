@@ -15,6 +15,7 @@ use App\Services\TemplateCloningService;
 use App\Services\Tenancy\TenantDomainService;
 use App\Support\RussianPhone;
 use App\Tenant\StorageQuota\TenantStorageQuotaService;
+use App\TenantPush\TenantPushFeatureGate;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Pages\Page;
@@ -205,6 +206,8 @@ class OnboardingWizard extends Page
         ]);
 
         app(TenantStorageQuotaService::class)->ensureQuotaRecord($tenant);
+
+        app(TenantPushFeatureGate::class)->ensureSettings($tenant);
 
         $preset = TemplatePreset::find($data['template_preset_id'] ?? null);
         if ($preset) {

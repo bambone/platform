@@ -175,6 +175,126 @@ function clearTenantSiteSetupHighlights() {
         el.classList.remove('fi-ts-setup-highlight', 'fi-ts-setup-highlight-section');
         el.removeAttribute('data-setup-highlighted');
     });
+    document.querySelectorAll('.fi-ts-setup-inline-mount').forEach((el) => {
+        el.remove();
+    });
+}
+
+/**
+ * Вставить карточку после заголовка секции, в слот, либо перед полем.
+ *
+ * @param {Element} sectionEl
+ * @param {Element} node
+ * @param {Element} primaryEl
+ * @returns {boolean}
+ */
+function insertSetupCardInSection(sectionEl, node, primaryEl) {
+    const slot = sectionEl.querySelector(':scope [data-setup-inline-slot="top"]');
+    if (slot) {
+        slot.prepend(node);
+        return true;
+    }
+
+    const labelCtn = sectionEl.querySelector(':scope > .fi-sc-section-label-ctn');
+    if (labelCtn) {
+        labelCtn.insertAdjacentElement('afterend', node);
+        return true;
+    }
+
+    const heading = sectionEl.querySelector(':scope h2, :scope h3');
+    if (heading) {
+        const headerBlock = heading.parentElement;
+        if (headerBlock && sectionEl.contains(headerBlock) && headerBlock !== sectionEl) {
+            headerBlock.insertAdjacentElement('afterend', node);
+        } else {
+            heading.insertAdjacentElement('afterend', node);
+        }
+        return true;
+    }
+
+    if (sectionEl.contains(primaryEl)) {
+        primaryEl.parentNode?.insertBefore(node, primaryEl);
+        return true;
+    }
+
+    sectionEl.insertBefore(node, sectionEl.firstChild);
+    return true;
+}
+
+/**
+ * @param {Record<string, unknown>} payload
+ * @param {Element} primaryEl
+ * @param {Element | null} sectionEl
+ */
+function mountInlineSetupCardIfNeeded(payload, primaryEl, sectionEl) {
+    if (payload.on_target_route !== true) {
+        return;
+    }
+    const tpl = document.getElementById('tenant-site-setup-inline-template');
+    if (!tpl || !(tpl instanceof HTMLTemplateElement)) {
+        return;
+    }
+    const frag = tpl.content.cloneNode(true);
+    const node = frag.firstElementChild;
+    if (!node || !(node instanceof Element)) {
+        return;
+    }
+    if (sectionEl && sectionEl instanceof Element) {
+        insertSetupCardInSection(sectionEl, node, primaryEl);
+    } else {
+        primaryEl.parentNode?.insertBefore(node, primaryEl);
+    }
+}
+
+/**
+ * @returns {string}
+ */
+function floatingFallbackStorageKey() {
+    return `fi-ts-setup-float-dismiss:${window.location.pathname}`;
+}
+
+/**
+ * Fallback снизу: только если нет верхней полосы; не показывать повторно после «Скрыть» до смены URL.
+ */
+function mountInlineSetupFallbackFloating() {
+    if (document.getElementById('tenant-site-setup-bar')) {
+        return;
+    }
+    try {
+        if (sessionStorage.getItem(floatingFallbackStorageKey()) === '1') {
+            return;
+        }
+    } catch {
+        /* sessionStorage недоступен */
+    }
+
+    const tpl = document.getElementById('tenant-site-setup-inline-template');
+    if (!tpl || !(tpl instanceof HTMLTemplateElement)) {
+        return;
+    }
+    const node = tpl.content.firstElementChild;
+    if (!node || !(node instanceof Element)) {
+        return;
+    }
+    const clone = node.cloneNode(true);
+    clone.classList.add('fi-ts-setup-inline-card-floating');
+
+    const dismiss = document.createElement('button');
+    dismiss.type = 'button';
+    dismiss.className = 'fi-ts-setup-float-dismiss';
+    dismiss.setAttribute('aria-label', 'Скрыть подсказку быстрого запуска');
+    dismiss.textContent = '×';
+    dismiss.addEventListener('click', () => {
+        clone.remove();
+        try {
+            sessionStorage.setItem(floatingFallbackStorageKey(), '1');
+        } catch {
+            /* ignore */
+        }
+    });
+    clone.appendChild(dismiss);
+
+    document.body.appendChild(clone);
 }
 
 function initTenantSiteSetup() {
@@ -207,6 +327,9 @@ function initTenantSiteSetup() {
         if (key && window.console && console.info) {
             console.info('[tenant-site-setup] target not found', key);
         }
+        if (payload.on_target_route === true) {
+            mountInlineSetupFallbackFloating();
+        }
         const barOnly = document.getElementById('tenant-site-setup-bar');
         const topOffset = barOnly ? parseFloat(getComputedStyle(barOnly).top) || 0 : 0;
         const barH = barOnly ? barOnly.offsetHeight : 0;
@@ -230,14 +353,25 @@ function initTenantSiteSetup() {
         sectionEl.setAttribute('data-setup-highlighted', 'section');
     }
 
+    mountInlineSetupCardIfNeeded(payload, primaryEl, sectionEl);
+
     const bar = document.getElementById('tenant-site-setup-bar');
     const barH = bar ? bar.offsetHeight : 0;
     const topOffset = bar ? parseFloat(getComputedStyle(bar).top) || 0 : 0;
     if (topOffset + barH > 0) {
         document.body.style.paddingTop = `${topOffset + barH}px`;
     }
-    const top = primaryEl.getBoundingClientRect().top + window.scrollY - topOffset - barH - 12;
-    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    const scheduleScroll = () => {
+        const top = primaryEl.getBoundingClientRect().top + window.scrollY - topOffset - barH - 12;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    };
+    if (payload.on_target_route === true) {
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(scheduleScroll);
+        });
+    } else {
+        scheduleScroll();
+    }
 }
 
 if (document.readyState === 'loading') {

@@ -16,6 +16,7 @@ final readonly class SetupItemDefinition
      * @param  string|null  $fallbackSetupAction  {@see data-setup-action} when section tiles are not enough (e.g. open «Блок»)
      * @param  string|null  $settingsTabKey  значение query {@see Tabs::persistTabInQueryString()} (напр. {@see Settings}: `general`, `appearance`)
      * @param  string|null  $settingsSectionId  {@see data-setup-section} на странице настроек для скролла
+     * @param  SetupGuidedNextHint  $guidedNextHint  честный текст про «Дальше» на целевом экране
      */
     public function __construct(
         public string $key,
@@ -42,5 +43,6 @@ final readonly class SetupItemDefinition
         public ?string $settingsTabKey = null,
         public ?string $settingsSectionId = null,
         public SetupReadinessTier $readinessTier = SetupReadinessTier::QuickLaunch,
+        public SetupGuidedNextHint $guidedNextHint = SetupGuidedNextHint::SaveThenNext,
     ) {}
 }

@@ -406,6 +406,7 @@ final class SetupSessionService
             'settings_tab' => $def?->settingsTabKey,
             'settings_section_id' => $def?->settingsSectionId,
             'readiness_tier' => $def?->readinessTier?->value,
+            'guided_next_hint' => $def !== null ? $def->guidedNextHint->value : 'save_then_next',
         ];
     }
 

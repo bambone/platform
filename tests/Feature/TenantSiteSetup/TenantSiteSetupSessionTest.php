@@ -108,6 +108,8 @@ class TenantSiteSetupSessionTest extends TestCase
         $this->assertArrayHasKey('on_target_route', $payload);
         $this->assertArrayHasKey('can_complete_here', $payload);
         $this->assertArrayHasKey('primary_is_target_navigation', $payload);
+        $this->assertArrayHasKey('guided_next_hint', $payload);
+        $this->assertSame('save_then_next', $payload['guided_next_hint']);
         $this->assertFalse($payload['on_target_route']);
         $this->assertFalse($payload['can_complete_here']);
         $this->assertNotEmpty($payload['primary_is_target_navigation']);

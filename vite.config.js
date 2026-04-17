@@ -20,6 +20,8 @@ export default defineConfig({
                 'resources/css/tenant-advocate-editorial.css',
                 'resources/js/tenant-expert-inquiry-form.js',
                 'resources/js/service-program-cover-focal-editor.js',
+                'resources/js/tenant-public-push.js',
+                'resources/js/tenant-admin-onesignal.js',
             ],
             refresh: true,
         }),

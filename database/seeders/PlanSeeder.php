@@ -26,7 +26,7 @@ class PlanSeeder extends Seeder
             'name' => 'Pro',
             'slug' => 'pro',
             'limits_json' => ['max_models' => 50, 'max_leads_per_month' => 500],
-            'features_json' => ['cms', 'catalog', 'leads', 'seo', 'booking_engine', 'custom_domain'],
+            'features_json' => ['cms', 'catalog', 'leads', 'seo', 'booking_engine', 'custom_domain', 'web_push_onesignal'],
             'sort_order' => 2,
             'is_active' => true,
         ]);

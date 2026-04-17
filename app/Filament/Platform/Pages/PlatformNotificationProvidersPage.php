@@ -37,6 +37,7 @@ class PlatformNotificationProvidersPage extends Page
             'channel_telegram_enabled' => $settings->isChannelEnabled('telegram'),
             'channel_webhook_enabled' => $settings->isChannelEnabled('webhook'),
             'channel_web_push_enabled' => $settings->isChannelEnabled('web_push'),
+            'channel_web_push_onesignal_enabled' => $settings->isChannelEnabled('web_push_onesignal'),
             'telegram_bot_token' => '',
             'vapid_public' => $settings->vapidPublicKey() ?? '',
             'vapid_private' => '',
@@ -54,7 +55,8 @@ class PlatformNotificationProvidersPage extends Page
                         Toggle::make('channel_email_enabled')->label('Электронная почта'),
                         Toggle::make('channel_telegram_enabled')->label('Telegram'),
                         Toggle::make('channel_webhook_enabled')->label('Входящий webhook (HTTP)'),
-                        Toggle::make('channel_web_push_enabled')->label('Push в браузере (Web Push)'),
+                        Toggle::make('channel_web_push_enabled')->label('Push в браузере (Web Push, VAPID)'),
+                        Toggle::make('channel_web_push_onesignal_enabled')->label('OneSignal Web Push (тенанты)'),
                     ])->columns(2),
                 Section::make('Telegram')
                     ->schema([
@@ -83,6 +85,7 @@ class PlatformNotificationProvidersPage extends Page
         $settings->setChannelEnabled('telegram', (bool) ($data['channel_telegram_enabled'] ?? false));
         $settings->setChannelEnabled('webhook', (bool) ($data['channel_webhook_enabled'] ?? false));
         $settings->setChannelEnabled('web_push', (bool) ($data['channel_web_push_enabled'] ?? false));
+        $settings->setChannelEnabled('web_push_onesignal', (bool) ($data['channel_web_push_onesignal_enabled'] ?? false));
 
         $token = trim((string) ($data['telegram_bot_token'] ?? ''));
         if ($token !== '') {

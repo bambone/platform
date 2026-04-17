@@ -23,6 +23,8 @@ use App\Http\Controllers\TenantLlmsTxtController;
 use App\Http\Controllers\TenantPublicBookingAvailabilityController;
 use App\Http\Controllers\TenantPublicFaqController;
 use App\Http\Controllers\TenantPublicMirrorFileController;
+use App\Http\Controllers\Tenant\TenantOneSignalWorkerController;
+use App\Http\Controllers\Tenant\TenantPublicPwaManifestController;
 use App\Http\Controllers\TenantPublicReviewsController;
 use App\Http\Controllers\TenantPublicReviewSubmitController;
 use App\Http\Controllers\TenantPublicStorageFileController;
@@ -105,6 +107,11 @@ Route::middleware([EnsureTenantContext::class, RememberTenantCatalogLocation::cl
     Route::get('/robots.txt', RobotsController::class)->name('robots');
     Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
     Route::get('/llms.txt', TenantLlmsTxtController::class)->name('llms');
+    Route::get('/manifest.webmanifest', TenantPublicPwaManifestController::class)->name('tenant.pwa.manifest');
+    Route::get('/push/onesignal/OneSignalSDKWorker.js', [TenantOneSignalWorkerController::class, 'sdkWorker'])
+        ->name('tenant.onesignal.worker');
+    Route::get('/push/onesignal/OneSignalSDKUpdaterWorker.js', [TenantOneSignalWorkerController::class, 'sdkUpdaterWorker'])
+        ->name('tenant.onesignal.updater');
     Route::get('/', [HomeController::class, 'index'])->name('home');
     Route::view('/offline', 'tenant.pages.offline')->name('offline');
     Route::get('/contacts', [PageController::class, 'show'])

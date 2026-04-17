@@ -6,8 +6,13 @@ use App\Models\CrmRequest;
 use App\Models\CrmRequestActivity;
 use App\Models\Lead;
 use App\Models\Tenant;
+use App\Models\TenantPushEventPreference;
 use App\NotificationCenter\NotificationEventRecorder;
+use App\NotificationCenter\NotificationRoutingContext;
 use App\NotificationCenter\Presenters\CrmRequestNotificationPresenter;
+use App\TenantPush\TenantPushCrmRequestRecipientResolver;
+use App\TenantPush\TenantPushFeatureGate;
+use App\TenantPush\TenantPushProviderStatus;
 use App\Product\CRM\CrmRequestCreationResult;
 use App\Product\CRM\DTO\PublicInboundContext;
 use App\Product\CRM\DTO\PublicInboundSubmission;
@@ -25,6 +30,8 @@ final class CreateCrmRequestFromPublicForm
         private readonly ProductMailOrchestrator $mailOrchestrator,
         private readonly NotificationEventRecorder $notificationRecorder,
         private readonly CrmRequestNotificationPresenter $crmNotifications,
+        private readonly TenantPushFeatureGate $tenantPushFeatureGate,
+        private readonly TenantPushCrmRequestRecipientResolver $tenantPushCrmRequestRecipientResolver,
     ) {}
 
     public function handle(PublicInboundContext $context, PublicInboundSubmission $submission): CrmRequestCreationResult
@@ -88,18 +95,53 @@ final class CreateCrmRequestFromPublicForm
                     }
 
                     $payload = $this->crmNotifications->payloadForCreated($tenant, $fresh);
+                    $routing = $this->notificationRoutingContextForTenant($tenant);
                     $this->notificationRecorder->record(
                         $tenantId,
                         'crm_request.created',
                         class_basename(CrmRequest::class),
                         $crmId,
                         $payload,
+                        routingContext: $routing,
                     );
                 });
             }
 
             return new CrmRequestCreationResult(crmRequest: $crm, lead: $lead);
         });
+    }
+
+    private function notificationRoutingContextForTenant(Tenant $tenant): ?NotificationRoutingContext
+    {
+        $gate = $this->tenantPushFeatureGate->evaluate($tenant);
+        if (! $gate->isFeatureEntitled()) {
+            return null;
+        }
+
+        $settings = $this->tenantPushFeatureGate->ensureSettings($tenant);
+        if (! $settings->is_push_enabled) {
+            return null;
+        }
+
+        if ($settings->providerStatusEnum() !== TenantPushProviderStatus::Verified) {
+            return null;
+        }
+
+        $pref = TenantPushEventPreference::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('event_key', 'crm_request.created')
+            ->first();
+
+        if ($pref === null || ! $pref->is_enabled) {
+            return null;
+        }
+
+        $ids = $this->tenantPushCrmRequestRecipientResolver->resolveOnesignalRecipientUserIds($tenant);
+        if ($ids === []) {
+            return null;
+        }
+
+        return NotificationRoutingContext::forUsers($ids);
     }
 
     private function createDownstreamLead(CrmRequest $crm, PublicInboundSubmission $submission): Lead

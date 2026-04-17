@@ -9,6 +9,7 @@ use App\Filament\Tenant\Widgets\StatsOverviewWidget;
 use App\Http\Controllers\Filament\TenantSpatieMediaStreamController;
 use App\Http\Controllers\Tenant\TenantNotificationBrowserController;
 use App\Http\Controllers\Tenant\TenantNotificationPushSubscriptionController;
+use App\Http\Controllers\Tenant\TenantOnesignalIdentityController;
 use App\Http\Middleware\EnsureTenantContext;
 use App\Http\Middleware\EnsureTenantMembership;
 use App\Http\Middleware\FilamentTenantPanelAuthenticate;
@@ -48,8 +49,8 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn (): string => Blade::render(
-                    "@vite(['resources/css/tenant-admin.css', 'resources/js/service-program-cover-focal-editor.js'])",
-                ),
+                    "@vite(['resources/css/tenant-admin.css', 'resources/js/service-program-cover-focal-editor.js', 'resources/js/tenant-admin-onesignal.js'])",
+                ).View::make('components.tenant-admin-onesignal-config')->render(),
             );
 
         return $panel
@@ -167,6 +168,10 @@ class AdminPanelProvider extends PanelProvider
                     ->name('notification-push.subscriptions.store');
                 Route::delete('/notification-push/subscriptions', [TenantNotificationPushSubscriptionController::class, 'destroy'])
                     ->name('notification-push.subscriptions.destroy');
+                Route::post('/notification-push/onesignal/identity', [TenantOnesignalIdentityController::class, 'store'])
+                    ->name('notification-push.onesignal.identity.store');
+                Route::delete('/notification-push/onesignal/identity', [TenantOnesignalIdentityController::class, 'destroy'])
+                    ->name('notification-push.onesignal.identity.destroy');
 
                 Route::prefix('notification-browser')->name('notification-browser.')->group(function (): void {
                     Route::get('vapid-public', [TenantNotificationBrowserController::class, 'vapidPublic'])->name('vapid-public');

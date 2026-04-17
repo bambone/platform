@@ -8,6 +8,7 @@ use App\NotificationCenter\Drivers\InAppNotificationDriver;
 use App\NotificationCenter\Drivers\NullNotificationDriver;
 use App\NotificationCenter\Drivers\TelegramNotificationDriver;
 use App\NotificationCenter\Drivers\WebhookNotificationDriver;
+use App\NotificationCenter\Drivers\OneSignalWebPushDriver;
 use App\NotificationCenter\Drivers\WebPushNotificationDriver;
 use App\Services\Platform\PlatformNotificationSettings;
 use Illuminate\Contracts\Container\Container;
@@ -38,6 +39,9 @@ final class NotificationChannelDriverFactory
             NotificationChannelType::WebPush => $this->platform->isChannelEnabled('web_push')
                 ? $this->container->make(WebPushNotificationDriver::class)
                 : new NullNotificationDriver('Web Push channel disabled by platform'),
+            NotificationChannelType::WebPushOnesignal => $this->platform->isChannelEnabled('web_push_onesignal')
+                ? $this->container->make(OneSignalWebPushDriver::class)
+                : new NullNotificationDriver('OneSignal Web Push channel disabled by platform'),
             default => new NullNotificationDriver('Unknown notification channel: '.$channelType),
         };
     }

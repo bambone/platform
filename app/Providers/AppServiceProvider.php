@@ -59,6 +59,12 @@ use App\Services\Tenancy\TenantPagePrimaryHtmlSync;
 use App\Services\Tenancy\TenantViewResolver;
 use App\Support\TenantPanelMembershipCache;
 use App\Tenant\Reviews\TenantReviewSubmitConfig;
+use App\TenantPush\TenantPushCrmRequestRecipientResolver;
+use App\TenantPush\TenantPushFeatureGate;
+use App\TenantPush\TenantPushNotificationBindingSync;
+use App\TenantPush\TenantPushDiagnosticsService;
+use App\TenantPush\TenantPushIosReadinessResolver;
+use App\TenantPush\TenantPushOnesignalClient;
 use App\Tenant\StorageQuota\TenantMediaStorageQuotaObserver;
 use App\Terminology\TenantTerminologyService;
 use App\Themes\ThemeRegistry;
@@ -104,6 +110,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(SectionViewResolver::class);
 
         $this->app->singleton(PlatformNotificationSettings::class);
+        $this->app->singleton(TenantPushFeatureGate::class);
+        $this->app->singleton(TenantPushCrmRequestRecipientResolver::class);
+        $this->app->singleton(TenantPushNotificationBindingSync::class);
+        $this->app->singleton(TenantPushOnesignalClient::class);
+        $this->app->singleton(TenantPushDiagnosticsService::class);
+        $this->app->singleton(TenantPushIosReadinessResolver::class);
         $this->app->singleton(NotificationSchedulePolicy::class);
         $this->app->singleton(NotificationActionUrlBuilder::class);
         $this->app->singleton(NotificationDedupeService::class);

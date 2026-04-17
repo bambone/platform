@@ -1,0 +1,2678 @@
+﻿
+======== C:\OSPanel\home\rentbase.local\app\Filament\Platform\Pages\PlatformNotificationProvidersPage.php ========
+
+<?php
+
+namespace App\Filament\Platform\Pages;
+
+use App\Filament\Platform\Pages\Concerns\GrantsPlatformPageAccess;
+use App\Services\Platform\PlatformNotificationSettings;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
+use Filament\Pages\Page;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use UnitEnum;
+
+class PlatformNotificationProvidersPage extends Page
+{
+    use GrantsPlatformPageAccess;
+
+    protected static ?string $navigationLabel = 'РЈРІРµРґРѕРјР»РµРЅРёСЏ (РїСЂРѕРІР°Р№РґРµСЂС‹)';
+
+    protected static ?string $title = 'РџСЂРѕРІР°Р№РґРµСЂС‹ СѓРІРµРґРѕРјР»РµРЅРёР№';
+
+    protected static ?string $slug = 'notification-providers';
+
+    protected static ?string $panel = 'platform';
+
+    protected static string|UnitEnum|null $navigationGroup = 'РЎРёСЃС‚РµРјР°';
+
+    protected static ?int $navigationSort = 35;
+
+    protected string $view = 'filament.pages.platform.notification-providers';
+
+    public function mount(PlatformNotificationSettings $settings): void
+    {
+        $this->getSchema('form')->fill([
+            'channel_email_enabled' => $settings->isChannelEnabled('email'),
+            'channel_telegram_enabled' => $settings->isChannelEnabled('telegram'),
+            'channel_webhook_enabled' => $settings->isChannelEnabled('webhook'),
+            'channel_web_push_enabled' => $settings->isChannelEnabled('web_push'),
+            'channel_web_push_onesignal_enabled' => $settings->isChannelEnabled('web_push_onesignal'),
+            'telegram_bot_token' => '',
+            'vapid_public' => $settings->vapidPublicKey() ?? '',
+            'vapid_private' => '',
+        ]);
+    }
+
+    public function form(Schema $schema): Schema
+    {
+        return $schema
+            ->statePath('data')
+            ->components([
+                Section::make('РљР°РЅР°Р»С‹ РґРѕСЃС‚Р°РІРєРё')
+                    ->description('Р‘С‹СЃС‚СЂРѕРµ РѕС‚РєР»СЋС‡РµРЅРёРµ РєР°РЅР°Р»Р° РЅР° РІСЃРµР№ РїР»Р°С‚С„РѕСЂРјРµ. Р’С‹РєР»СЋС‡РµРЅРЅС‹Р№ РєР°РЅР°Р» РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РґР»СЏ РЅРѕРІС‹С… СѓРІРµРґРѕРјР»РµРЅРёР№.')
+                    ->schema([
+                        Toggle::make('channel_email_enabled')->label('Р­Р»РµРєС‚СЂРѕРЅРЅР°СЏ РїРѕС‡С‚Р°'),
+                        Toggle::make('channel_telegram_enabled')->label('Telegram'),
+                        Toggle::make('channel_webhook_enabled')->label('Р’С…РѕРґСЏС‰РёР№ webhook (HTTP)'),
+                        Toggle::make('channel_web_push_enabled')->label('Push РІ Р±СЂР°СѓР·РµСЂРµ (Web Push, VAPID)'),
+                        Toggle::make('channel_web_push_onesignal_enabled')->label('OneSignal Web Push (С‚РµРЅР°РЅС‚С‹)'),
+                    ])->columns(2),
+                Section::make('Telegram')
+                    ->schema([
+                        TextInput::make('telegram_bot_token')
+                            ->label('РўРѕРєРµРЅ Р±РѕС‚Р° Telegram')
+                            ->password()
+                            ->revealable()
+                            ->helperText('Р’С‹РґР°С‘С‚СЃСЏ РІ @BotFather. РћСЃС‚Р°РІСЊС‚Рµ РїСѓСЃС‚С‹Рј, С‡С‚РѕР±С‹ РЅРµ РјРµРЅСЏС‚СЊ СЃРѕС…СЂР°РЅС‘РЅРЅС‹Р№ С‚РѕРєРµРЅ.'),
+                    ]),
+                Section::make('Web Push (VAPID)')
+                    ->schema([
+                        TextInput::make('vapid_public')->label('РџСѓР±Р»РёС‡РЅС‹Р№ РєР»СЋС‡'),
+                        TextInput::make('vapid_private')
+                            ->label('РџСЂРёРІР°С‚РЅС‹Р№ РєР»СЋС‡')
+                            ->password()
+                            ->revealable()
+                            ->helperText('РћСЃС‚Р°РІСЊС‚Рµ РїСѓСЃС‚С‹Рј, С‡С‚РѕР±С‹ РЅРµ РјРµРЅСЏС‚СЊ РїСЂРёРІР°С‚РЅС‹Р№ РєР»СЋС‡.'),
+                    ]),
+            ]);
+    }
+
+    public function save(PlatformNotificationSettings $settings): void
+    {
+        $data = $this->getSchema('form')->getState();
+        $settings->setChannelEnabled('email', (bool) ($data['channel_email_enabled'] ?? false));
+        $settings->setChannelEnabled('telegram', (bool) ($data['channel_telegram_enabled'] ?? false));
+        $settings->setChannelEnabled('webhook', (bool) ($data['channel_webhook_enabled'] ?? false));
+        $settings->setChannelEnabled('web_push', (bool) ($data['channel_web_push_enabled'] ?? false));
+        $settings->setChannelEnabled('web_push_onesignal', (bool) ($data['channel_web_push_onesignal_enabled'] ?? false));
+
+        $token = trim((string) ($data['telegram_bot_token'] ?? ''));
+        if ($token !== '') {
+            $settings->setTelegramBotToken($token);
+        }
+
+        $pub = trim((string) ($data['vapid_public'] ?? ''));
+        $priv = trim((string) ($data['vapid_private'] ?? ''));
+        if ($pub !== '' && $priv !== '') {
+            $settings->setVapidKeypair($pub, $priv);
+        } elseif ($pub !== '' && $settings->vapidPrivateKeyDecrypted() === null) {
+            Notification::make()->title('РЈРєР°Р¶РёС‚Рµ РїСЂРёРІР°С‚РЅС‹Р№ VAPID РєР»СЋС‡ РёР»Рё РѕСЃС‚Р°РІСЊС‚Рµ РѕР±Р° РїРѕР»СЏ РїСѓСЃС‚С‹РјРё.')->danger()->send();
+
+            return;
+        }
+
+        Notification::make()->title('РЎРѕС…СЂР°РЅРµРЅРѕ')->success()->send();
+    }
+}
+
+
+======== C:\OSPanel\home\rentbase.local\app\Models\Tenant.php ========
+
+<?php
+
+namespace App\Models;
+
+use App\Scheduling\Enums\IntegrationErrorPolicy;
+use App\Scheduling\Enums\StaleBusyPolicy;
+use App\Terminology\TenantTerminologyService;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Http\Request;
+
+class Tenant extends Model
+{
+    protected $fillable = [
+        'name',
+        'slug',
+        'theme_key',
+        'legal_name',
+        'brand_name',
+        'status',
+        'timezone',
+        'locale',
+        'country',
+        'currency',
+        'plan_id',
+        'domain_localization_preset_id',
+        'owner_user_id',
+        'support_manager_id',
+        'mail_rate_limit_per_minute',
+        'scheduling_module_enabled',
+        'calendar_integrations_enabled',
+        'scheduling_promo_free_until',
+        'scheduling_integration_error_policy',
+        'scheduling_stale_busy_policy',
+        'scheduling_default_write_calendar_subscription_id',
+        'media_write_mode_override',
+        'media_delivery_mode_override',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'scheduling_module_enabled' => 'boolean',
+            'calendar_integrations_enabled' => 'boolean',
+            'scheduling_promo_free_until' => 'date',
+            'scheduling_integration_error_policy' => IntegrationErrorPolicy::class,
+            'scheduling_stale_busy_policy' => StaleBusyPolicy::class,
+        ];
+    }
+
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class);
+    }
+
+    public function domainLocalizationPreset(): BelongsTo
+    {
+        return $this->belongsTo(DomainLocalizationPreset::class, 'domain_localization_preset_id');
+    }
+
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_user_id');
+    }
+
+    public function supportManager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'support_manager_id');
+    }
+
+    public function domains(): HasMany
+    {
+        return $this->hasMany(TenantDomain::class);
+    }
+
+    public function mailLogs(): HasMany
+    {
+        return $this->hasMany(TenantMailLog::class);
+    }
+
+    public function storageQuota(): HasOne
+    {
+        return $this->hasOne(TenantStorageQuota::class);
+    }
+
+    public function storageQuotaEvents(): HasMany
+    {
+        return $this->hasMany(TenantStorageQuotaEvent::class);
+    }
+
+    public function schedulingResourceTypeLabels(): HasMany
+    {
+        return $this->hasMany(SchedulingResourceTypeLabel::class);
+    }
+
+    public function pushSettings(): HasOne
+    {
+        return $this->hasOne(TenantPushSettings::class);
+    }
+
+    public function pushEventPreferences(): HasMany
+    {
+        return $this->hasMany(TenantPushEventPreference::class);
+    }
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'tenant_user')
+            ->withPivot('role', 'status', 'invited_at')
+            ->withTimestamps();
+    }
+
+    public function primaryDomain(): ?TenantDomain
+    {
+        return $this->domains()->where('is_primary', true)->first()
+            ?? $this->domains()->first();
+    }
+
+    /**
+     * Base URL for the tenant Filament cabinet (`/admin`), for copying from Platform Console.
+     * Prefers an active domain (primary first), then any primary/first domain.
+     */
+    public function cabinetAdminUrl(): ?string
+    {
+        $active = $this->domains()
+            ->where('status', TenantDomain::STATUS_ACTIVE)
+            ->orderByDesc('is_primary')
+            ->first();
+
+        $domain = $active ?? $this->primaryDomain();
+
+        if ($domain === null || $domain->host === null || trim((string) $domain->host) === '') {
+            return null;
+        }
+
+        return 'https://'.strtolower(trim((string) $domain->host)).'/admin';
+    }
+
+    /**
+     * Public site title fallback when tenant_settings.general.site_name is empty (not platform app name).
+     */
+    public function defaultPublicSiteName(): string
+    {
+        $brand = $this->brand_name;
+        if (is_string($brand) && trim($brand) !== '') {
+            return trim($brand);
+        }
+
+        return (string) $this->name;
+    }
+
+    /**
+     * Public site base URL fallback when tenant_settings.general.domain is empty (not marketing APP_URL).
+     * Prefers the active tenant domain that matches the current request host, then primary domain (https).
+     */
+    public function defaultPublicSiteUrl(?Request $request = null): string
+    {
+        $request ??= request();
+        $currentHost = $request ? strtolower((string) $request->getHost()) : '';
+
+        if ($currentHost !== '') {
+            $match = $this->domains()
+                ->where('status', TenantDomain::STATUS_ACTIVE)
+                ->get()
+                ->first(fn (TenantDomain $d): bool => strcasecmp((string) $d->host, $currentHost) === 0);
+            if ($match !== null) {
+                return $request->getScheme().'://'.$match->host;
+            }
+        }
+
+        $primary = $this->primaryDomain();
+        if ($primary !== null && filled($primary->host)) {
+            return 'https://'.(string) $primary->host;
+        }
+
+        if ($request !== null && $currentHost !== '') {
+            return $request->getScheme().'://'.$currentHost;
+        }
+
+        return rtrim((string) config('app.url'), '/');
+    }
+
+    /**
+     * Safe theme directory key for view resolution (not derived from slug).
+     * Invalid or empty DB values normalize to "default".
+     */
+    public function themeKey(): string
+    {
+        $raw = $this->theme_key;
+        if ($raw === null || $raw === '') {
+            return 'default';
+        }
+
+        $raw = strtolower(trim((string) $raw));
+        if ($raw === '') {
+            return 'default';
+        }
+
+        // РџР»РµР№СЃС…РѕР»РґРµСЂ РІ Р°РґРјРёРЅРєРµ РїР»Р°С‚С„РѕСЂРјС‹: РєР°С‚Р°Р»РѕРі tenant/themes/auto Р±РµР· С€Р°Р±Р»РѕРЅРѕРІ вЂ” РЅРµ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РґР»СЏ СЂРµРЅРґРµСЂР°.
+        if ($raw === 'auto') {
+            return 'default';
+        }
+
+        if (! preg_match('/^[a-z0-9][a-z0-9_-]{0,62}$/', $raw)) {
+            return 'default';
+        }
+
+        return $raw;
+    }
+
+    public static function statuses(): array
+    {
+        return [
+            'trial' => 'РџСЂРѕР±РЅС‹Р№',
+            'active' => 'РђРєС‚РёРІРµРЅ',
+            'suspended' => 'РџСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅ',
+            'archived' => 'Р’ Р°СЂС…РёРІРµ',
+        ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(function (Tenant $tenant): void {
+            if ($tenant->wasChanged(['domain_localization_preset_id', 'locale'])) {
+                app(TenantTerminologyService::class)->forgetTenant($tenant->id);
+            }
+        });
+    }
+}
+
+
+======== C:\OSPanel\home\rentbase.local\app\NotificationCenter\NotificationChannelDriverFactory.php ========
+
+<?php
+
+namespace App\NotificationCenter;
+
+use App\NotificationCenter\Contracts\NotificationChannelDriver;
+use App\NotificationCenter\Drivers\EmailNotificationDriver;
+use App\NotificationCenter\Drivers\InAppNotificationDriver;
+use App\NotificationCenter\Drivers\NullNotificationDriver;
+use App\NotificationCenter\Drivers\TelegramNotificationDriver;
+use App\NotificationCenter\Drivers\WebhookNotificationDriver;
+use App\NotificationCenter\Drivers\OneSignalWebPushDriver;
+use App\NotificationCenter\Drivers\WebPushNotificationDriver;
+use App\Services\Platform\PlatformNotificationSettings;
+use Illuminate\Contracts\Container\Container;
+
+final class NotificationChannelDriverFactory
+{
+    public function __construct(
+        private readonly Container $container,
+        private readonly InAppNotificationDriver $inApp,
+        private readonly PlatformNotificationSettings $platform,
+    ) {}
+
+    public function forType(string $channelType): NotificationChannelDriver
+    {
+        $type = NotificationChannelType::tryFrom($channelType);
+
+        return match ($type) {
+            NotificationChannelType::InApp => $this->inApp,
+            NotificationChannelType::Email => $this->platform->isChannelEnabled('email')
+                ? $this->container->make(EmailNotificationDriver::class)
+                : new NullNotificationDriver('Email channel disabled by platform'),
+            NotificationChannelType::Telegram => $this->platform->isChannelEnabled('telegram')
+                ? $this->container->make(TelegramNotificationDriver::class)
+                : new NullNotificationDriver('Telegram channel disabled by platform'),
+            NotificationChannelType::Webhook => $this->platform->isChannelEnabled('webhook')
+                ? $this->container->make(WebhookNotificationDriver::class)
+                : new NullNotificationDriver('Webhook channel disabled by platform'),
+            NotificationChannelType::WebPush => $this->platform->isChannelEnabled('web_push')
+                ? $this->container->make(WebPushNotificationDriver::class)
+                : new NullNotificationDriver('Web Push channel disabled by platform'),
+            NotificationChannelType::WebPushOnesignal => $this->platform->isChannelEnabled('web_push_onesignal')
+                ? $this->container->make(OneSignalWebPushDriver::class)
+                : new NullNotificationDriver('OneSignal Web Push channel disabled by platform'),
+            default => new NullNotificationDriver('Unknown notification channel: '.$channelType),
+        };
+    }
+}
+
+
+======== C:\OSPanel\home\rentbase.local\app\NotificationCenter\NotificationChannelType.php ========
+
+<?php
+
+namespace App\NotificationCenter;
+
+enum NotificationChannelType: string
+{
+    case Email = 'email';
+    case Telegram = 'telegram';
+    case WebPush = 'web_push';
+    case WebPushOnesignal = 'web_push_onesignal';
+    case Webhook = 'webhook';
+    case Sms = 'sms';
+    case Vk = 'vk';
+    case InApp = 'in_app';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::Email => 'Email',
+            self::Telegram => 'Telegram',
+            self::WebPush => 'Web Push',
+            self::WebPushOnesignal => 'OneSignal Web Push',
+            self::Webhook => 'Webhook',
+            self::Sms => 'SMS',
+            self::Vk => 'VK',
+            self::InApp => 'Р’ РєР°Р±РёРЅРµС‚Рµ',
+        };
+    }
+}
+
+
+======== C:\OSPanel\home\rentbase.local\app\NotificationCenter\NotificationDeliveryPlanner.php ========
+
+<?php
+
+namespace App\NotificationCenter;
+
+use App\Jobs\DispatchNotificationDeliveryJob;
+use App\Models\NotificationDelivery;
+use App\Models\NotificationDestination;
+use App\Models\NotificationEvent;
+use App\Models\NotificationSubscription;
+use Illuminate\Support\Carbon;
+
+final class NotificationDeliveryPlanner
+{
+    public function __construct(
+        private readonly NotificationSchedulePolicy $schedulePolicy,
+    ) {}
+
+    /**
+     * Create queued deliveries for matching subscription rows (immediate mode only in core v1).
+     *
+     * @param  list<int>  $blockedDestinationIds  Destination ids already allocated for this event in this route pass (avoid duplicate deliveries).
+     * @return list<NotificationDelivery>
+     */
+    public function planFromSubscription(
+        NotificationEvent $event,
+        NotificationSubscription $subscription,
+        array $blockedDestinationIds = [],
+    ): array {
+        if ((int) $subscription->tenant_id !== (int) $event->tenant_id) {
+            return [];
+        }
+
+        $created = [];
+        $scheduleAllows = $this->schedulePolicy->allowsImmediateDelivery($subscription, $event);
+
+        foreach ($subscription->destinations as $destination) {
+            if ((int) $destination->tenant_id !== (int) $event->tenant_id) {
+                continue;
+            }
+
+            if (in_array((int) $destination->id, $blockedDestinationIds, true)) {
+                continue;
+            }
+
+            if (! $destination->pivot->is_enabled) {
+                continue;
+            }
+
+            $mode = NotificationDeliveryMode::tryFrom((string) $destination->pivot->delivery_mode)
+                ?? NotificationDeliveryMode::Immediate;
+
+            if ($mode !== NotificationDeliveryMode::Immediate) {
+                continue;
+            }
+
+            if (! $scheduleAllows) {
+                continue;
+            }
+
+            if (! $this->destinationEligible($destination)) {
+                continue;
+            }
+
+            $channelType = NotificationChannelType::tryFrom($destination->type);
+            if ($channelType === null) {
+                continue;
+            }
+
+            $delivery = NotificationDelivery::query()->create([
+                'tenant_id' => $event->tenant_id,
+                'event_id' => $event->id,
+                'subscription_id' => $subscription->id,
+                'destination_id' => $destination->id,
+                'channel_type' => $channelType->value,
+                'status' => NotificationDeliveryStatus::Queued->value,
+                'queued_at' => Carbon::now(),
+            ]);
+
+            $created[] = $delivery;
+
+            DispatchNotificationDeliveryJob::dispatch($delivery->id)->afterCommit();
+        }
+
+        return $created;
+    }
+
+    private function destinationEligible(NotificationDestination $destination): bool
+    {
+        if ($destination->disabled_at !== null) {
+            return false;
+        }
+
+        if ($destination->type === NotificationChannelType::InApp->value) {
+            return in_array($destination->status, [
+                NotificationDestinationStatus::Verified->value,
+                NotificationDestinationStatus::Draft->value,
+            ], true);
+        }
+
+        if ($destination->type === NotificationChannelType::WebPushOnesignal->value) {
+            return in_array($destination->status, [
+                NotificationDestinationStatus::Verified->value,
+                NotificationDestinationStatus::PendingVerification->value,
+            ], true);
+        }
+
+        return $destination->status === NotificationDestinationStatus::Verified->value;
+    }
+}
+
+
+======== C:\OSPanel\home\rentbase.local\app\Product\CRM\Actions\CreateCrmRequestFromPublicForm.php ========
+
+<?php
+
+namespace App\Product\CRM\Actions;
+
+use App\Models\CrmRequest;
+use App\Models\CrmRequestActivity;
+use App\Models\Lead;
+use App\Models\Tenant;
+use App\Models\TenantPushEventPreference;
+use App\NotificationCenter\NotificationEventRecorder;
+use App\NotificationCenter\NotificationRoutingContext;
+use App\NotificationCenter\Presenters\CrmRequestNotificationPresenter;
+use App\TenantPush\TenantPushCrmRequestRecipientResolver;
+use App\TenantPush\TenantPushFeatureGate;
+use App\Product\CRM\CrmRequestCreationResult;
+use App\Product\CRM\DTO\PublicInboundContext;
+use App\Product\CRM\DTO\PublicInboundSubmission;
+use App\Product\Mail\ProductMailOrchestrator;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Р•РґРёРЅС‹Р№ РєРѕРЅС‚СЂР°РєС‚ РІС…РѕРґР° СЃ РїСѓР±Р»РёС‡РЅС‹С… С„РѕСЂРј: context + submission в†’ СЃРЅР°С‡Р°Р»Р° {@see CrmRequest}, Р·Р°С‚РµРј optional downstream + РїРѕС‡С‚Р°/activity РІРЅСѓС‚СЂРё СЏРґСЂР°.
+ *
+ * РљРѕРЅС‚СЂРѕР»Р»РµСЂС‹ С„РѕСЂРј РЅРµ РґРѕР»Р¶РЅС‹ РґСѓР±Р»РёСЂРѕРІР°С‚СЊ РїРѕСЂСЏРґРѕРє В«СЃРѕР·РґР°С‚СЊ СЃСѓС‰РЅРѕСЃС‚СЊ в†’ РїРёСЃСЊРјРѕ в†’ Р»РѕРіВ» РІРЅРµ СЌС‚РѕРіРѕ use case.
+ */
+final class CreateCrmRequestFromPublicForm
+{
+    public function __construct(
+        private readonly ProductMailOrchestrator $mailOrchestrator,
+        private readonly NotificationEventRecorder $notificationRecorder,
+        private readonly CrmRequestNotificationPresenter $crmNotifications,
+        private readonly TenantPushFeatureGate $tenantPushFeatureGate,
+        private readonly TenantPushCrmRequestRecipientResolver $tenantPushCrmRequestRecipientResolver,
+    ) {}
+
+    public function handle(PublicInboundContext $context, PublicInboundSubmission $submission): CrmRequestCreationResult
+    {
+        return DB::transaction(function () use ($context, $submission): CrmRequestCreationResult {
+            $crm = CrmRequest::query()->create([
+                'tenant_id' => $context->tenantId,
+                'name' => $submission->name,
+                'phone' => $submission->phone,
+                'preferred_contact_channel' => $submission->preferredContactChannel,
+                'preferred_contact_value' => $submission->preferredContactValue,
+                'visitor_contact_channels_json' => $submission->visitorContactChannelsJson,
+                'email' => $submission->email,
+                'message' => $submission->message ?? '',
+                'request_type' => $submission->requestType,
+                'source' => $submission->source,
+                'channel' => $submission->channel,
+                'pipeline' => 'inbound',
+                'status' => CrmRequest::STATUS_NEW,
+                'priority' => CrmRequest::PRIORITY_NORMAL,
+                'utm_source' => $submission->utmSource,
+                'utm_medium' => $submission->utmMedium,
+                'utm_campaign' => $submission->utmCampaign,
+                'utm_content' => $submission->utmContent,
+                'utm_term' => $submission->utmTerm,
+                'referrer' => $submission->referrer,
+                'landing_page' => $submission->landingPage,
+                'ip' => $submission->ip,
+                'user_agent' => $submission->userAgent,
+                'payload_json' => $submission->payloadJson !== [] ? $submission->payloadJson : null,
+                'last_activity_at' => now(),
+            ]);
+
+            CrmRequestActivity::query()->create([
+                'crm_request_id' => $crm->id,
+                'type' => CrmRequestActivity::TYPE_INBOUND_RECEIVED,
+                'meta' => [
+                    'request_type' => $submission->requestType,
+                    'channel' => $submission->channel,
+                ],
+                'actor_user_id' => null,
+            ]);
+
+            $lead = null;
+            if (! $context->isPlatformScope && $context->tenantId !== null) {
+                $lead = $this->createDownstreamLead($crm, $submission);
+            }
+
+            if ($context->isPlatformScope) {
+                $this->mailOrchestrator->queuePlatformInboundNotification($crm);
+            }
+
+            if (! $context->isPlatformScope && $context->tenantId !== null) {
+                $crmId = (int) $crm->id;
+                $tenantId = (int) $context->tenantId;
+                DB::afterCommit(function () use ($crmId, $tenantId): void {
+                    $fresh = CrmRequest::query()->find($crmId);
+                    $tenant = Tenant::query()->find($tenantId);
+                    if ($fresh === null || $tenant === null) {
+                        return;
+                    }
+
+                    $payload = $this->crmNotifications->payloadForCreated($tenant, $fresh);
+                    $routing = $this->notificationRoutingContextForTenant($tenant);
+                    $this->notificationRecorder->record(
+                        $tenantId,
+                        'crm_request.created',
+                        class_basename(CrmRequest::class),
+                        $crmId,
+                        $payload,
+                        routingContext: $routing,
+                    );
+                });
+            }
+
+            return new CrmRequestCreationResult(crmRequest: $crm, lead: $lead);
+        });
+    }
+
+    private function notificationRoutingContextForTenant(Tenant $tenant): ?NotificationRoutingContext
+    {
+        $gate = $this->tenantPushFeatureGate->evaluate($tenant);
+        if (! $gate->isFeatureEntitled()) {
+            return null;
+        }
+
+        $settings = $this->tenantPushFeatureGate->ensureSettings($tenant);
+        if (! $settings->is_push_enabled) {
+            return null;
+        }
+
+        $pref = TenantPushEventPreference::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('event_key', 'crm_request.created')
+            ->first();
+
+        if ($pref === null || ! $pref->is_enabled) {
+            return null;
+        }
+
+        $ids = $this->tenantPushCrmRequestRecipientResolver->resolveOnesignalRecipientUserIds($tenant);
+        if ($ids === []) {
+            return null;
+        }
+
+        return NotificationRoutingContext::forUsers($ids);
+    }
+
+    private function createDownstreamLead(CrmRequest $crm, PublicInboundSubmission $submission): Lead
+    {
+        $extras = $submission->payloadJson;
+
+        return Lead::query()->create([
+            'tenant_id' => $crm->tenant_id,
+            'crm_request_id' => $crm->id,
+            'name' => $submission->name,
+            'phone' => $submission->phone,
+            'preferred_contact_channel' => $submission->preferredContactChannel,
+            'preferred_contact_value' => $submission->preferredContactValue,
+            'visitor_contact_channels_json' => $submission->visitorContactChannelsJson,
+            'email' => $submission->email,
+            'comment' => $submission->message,
+            'motorcycle_id' => isset($extras['motorcycle_id']) ? (int) $extras['motorcycle_id'] : null,
+            'rental_date_from' => $extras['rental_date_from'] ?? null,
+            'rental_date_to' => $extras['rental_date_to'] ?? null,
+            'source' => $submission->source ?? 'booking_form',
+            'page_url' => $submission->landingPage,
+            'utm_source' => $submission->utmSource,
+            'utm_medium' => $submission->utmMedium,
+            'utm_campaign' => $submission->utmCampaign,
+            'utm_content' => $submission->utmContent,
+            'utm_term' => $submission->utmTerm,
+            'status' => $submission->leadInitialStatus ?? 'new',
+        ]);
+    }
+}
+
+
+======== C:\OSPanel\home\rentbase.local\app\Providers\AppServiceProvider.php ========
+
+<?php
+
+namespace App\Providers;
+
+use App\Auth\AccessRoles;
+use App\Auth\TenantPivotPermissions;
+use App\ContactChannels\TenantPublicSiteContactsService;
+use App\Filesystem\WindowsSafeFilesystem;
+use App\Http\Controllers\HomeController;
+use App\Jobs\Mail\SendTenantMailableJob;
+use App\Jobs\PurgeSpatieMediaFromR2Job;
+use App\Jobs\SyncSpatieMediaFolderToR2Job;
+use App\Models\Faq;
+use App\Models\Lead;
+use App\Models\Motorcycle;
+use App\Models\Page;
+use App\Models\PageSection;
+use App\Models\RentalUnit;
+use App\Models\Review;
+use App\Models\Setting;
+use App\Models\TenantSetting;
+use App\Models\User;
+use App\Money\MoneyAmountConverter;
+use App\Money\MoneyFormatter;
+use App\Money\MoneyParser;
+use App\Money\TenantMoneySettingsResolver;
+use App\NotificationCenter\NotificationActionUrlBuilder;
+use App\NotificationCenter\NotificationChannelDriverFactory;
+use App\NotificationCenter\NotificationDedupeService;
+use App\NotificationCenter\NotificationDeliveryPlanner;
+use App\NotificationCenter\NotificationEventRecorder;
+use App\NotificationCenter\NotificationRouter;
+use App\NotificationCenter\NotificationRuleDraftGenerator;
+use App\NotificationCenter\NotificationSchedulePolicy;
+use App\NotificationCenter\NotificationSubscriptionConditionEvaluator;
+use App\Observers\LeadObserver;
+use App\PageBuilder\LegacySectionTypeResolver;
+use App\PageBuilder\PageSectionKeyGenerator;
+use App\PageBuilder\PageSectionTypeRegistry;
+use App\Product\Mail\ProductMailOrchestrator;
+use App\Product\Settings\MarketingContentResolver;
+use App\Product\Settings\ProductMailSettingsResolver;
+use App\Scheduling\Calendar\CaldavCalendarProviderAdapter;
+use App\Scheduling\Calendar\CalendarAdapterRegistry;
+use App\Scheduling\Calendar\GoogleCalendarProviderAdapter;
+use App\Scheduling\Calendar\NullCalendarProviderAdapter;
+use App\Scheduling\LinkedBookableServiceManager;
+use App\Services\CurrentTenantManager;
+use App\Services\LinkPreview\ExternalArticlePreviewFetcher;
+use App\Services\LinkPreview\ExternalArticlePreviewFetcherInterface;
+use App\Services\Mail\TenantMailer;
+use App\Services\PageBuilder\PageSectionOperationsService;
+use App\Services\PageBuilder\SectionViewResolver;
+use App\Services\Platform\PlatformNotificationSettings;
+use App\Services\Tenancy\TenantAdvocateEditorialFooterData;
+use App\Services\Tenancy\TenantExpertAutoFooterData;
+use App\Services\Tenancy\TenantMainMenuPages;
+use App\Services\Tenancy\TenantPagePrimaryHtmlSync;
+use App\Services\Tenancy\TenantViewResolver;
+use App\Support\TenantPanelMembershipCache;
+use App\Tenant\Reviews\TenantReviewSubmitConfig;
+use App\TenantPush\TenantPushCrmRequestRecipientResolver;
+use App\TenantPush\TenantPushFeatureGate;
+use App\TenantPush\TenantPushNotificationBindingSync;
+use App\TenantPush\TenantPushDiagnosticsService;
+use App\TenantPush\TenantPushIosReadinessResolver;
+use App\TenantPush\TenantPushOnesignalClient;
+use App\Tenant\StorageQuota\TenantMediaStorageQuotaObserver;
+use App\Terminology\TenantTerminologyService;
+use App\Themes\ThemeRegistry;
+use Filament\Facades\Filament;
+use Filament\Schemas\Components\Form as SchemaForm;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
+
+class AppServiceProvider extends ServiceProvider
+{
+    /**
+     * Register any application services.
+     */
+    public function register(): void
+    {
+        /* Р”Рѕ boot(): РёРЅР°С‡Рµ blade.compiler РјРѕР¶РµС‚ РїРѕР»СѓС‡РёС‚СЊ СЃС‚Р°РЅРґР°СЂС‚РЅС‹Р№ Filesystem РґРѕ РїРѕРґРјРµРЅС‹. */
+        if (DIRECTORY_SEPARATOR === '\\') {
+            $this->app->singleton('files', fn () => new WindowsSafeFilesystem);
+        }
+
+        $this->app->singleton(ExternalArticlePreviewFetcherInterface::class, ExternalArticlePreviewFetcher::class);
+
+        $this->app->singleton(CurrentTenantManager::class);
+        $this->app->singleton(TenantViewResolver::class);
+        $this->app->singleton(TenantMailer::class);
+        $this->app->singleton(MarketingContentResolver::class);
+        $this->app->singleton(ProductMailSettingsResolver::class);
+        $this->app->singleton(ProductMailOrchestrator::class);
+        $this->app->singleton(TenantTerminologyService::class);
+        $this->app->singleton(ThemeRegistry::class);
+        $this->app->singleton(TenantMainMenuPages::class);
+        $this->app->singleton(TenantPagePrimaryHtmlSync::class);
+        $this->app->singleton(PageSectionTypeRegistry::class);
+        $this->app->singleton(LegacySectionTypeResolver::class);
+        $this->app->singleton(PageSectionKeyGenerator::class);
+        $this->app->singleton(PageSectionOperationsService::class);
+        $this->app->singleton(SectionViewResolver::class);
+
+        $this->app->singleton(PlatformNotificationSettings::class);
+        $this->app->singleton(TenantPushFeatureGate::class);
+        $this->app->singleton(TenantPushCrmRequestRecipientResolver::class);
+        $this->app->singleton(TenantPushNotificationBindingSync::class);
+        $this->app->singleton(TenantPushOnesignalClient::class);
+        $this->app->singleton(TenantPushDiagnosticsService::class);
+        $this->app->singleton(TenantPushIosReadinessResolver::class);
+        $this->app->singleton(NotificationSchedulePolicy::class);
+        $this->app->singleton(NotificationActionUrlBuilder::class);
+        $this->app->singleton(NotificationDedupeService::class);
+        $this->app->singleton(NotificationDeliveryPlanner::class);
+        $this->app->singleton(NotificationSubscriptionConditionEvaluator::class);
+        $this->app->singleton(NotificationRuleDraftGenerator::class);
+        $this->app->singleton(NotificationRouter::class);
+        $this->app->singleton(NotificationEventRecorder::class);
+        $this->app->singleton(NotificationChannelDriverFactory::class);
+
+        $this->app->singleton(CalendarAdapterRegistry::class, function ($app) {
+            return new CalendarAdapterRegistry([
+                $app->make(GoogleCalendarProviderAdapter::class),
+                $app->make(CaldavCalendarProviderAdapter::class),
+            ], $app->make(NullCalendarProviderAdapter::class));
+        });
+
+        $this->app->singleton(LinkedBookableServiceManager::class);
+
+        $this->app->singleton(MoneyAmountConverter::class);
+        $this->app->singleton(TenantMoneySettingsResolver::class);
+        $this->app->singleton(MoneyFormatter::class, fn ($app) => new MoneyFormatter(
+            $app->make(MoneyAmountConverter::class),
+            $app->make(TenantMoneySettingsResolver::class),
+        ));
+        $this->app->singleton(MoneyParser::class, fn ($app) => new MoneyParser(
+            $app->make(MoneyAmountConverter::class),
+            $app->make(TenantMoneySettingsResolver::class),
+        ));
+    }
+
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
+    {
+        SchemaForm::configureUsing(
+            fn (SchemaForm $form) => $form->extraAttributes(['novalidate' => true], merge: true),
+        );
+
+        // Filament FileUpload: РґРѕР»СЊС€Рµ Р¶РґС‘Рј Р·Р°РІРµСЂС€РµРЅРёСЏ РІСЂРµРјРµРЅРЅРѕР№ Р·Р°РіСЂСѓР·РєРё Livewire (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ 5 РјРёРЅ).
+        config([
+            'livewire.temporary_file_upload.max_upload_time' => max(
+                (int) config('livewire.temporary_file_upload.max_upload_time', 5),
+                15
+            ),
+        ]);
+
+        Lead::observe(LeadObserver::class);
+        Media::observe(TenantMediaStorageQuotaObserver::class);
+
+        Media::saved(function (Media $media): void {
+            if (! TenantMediaStorageQuotaObserver::shouldApply($media)) {
+                return;
+            }
+            SyncSpatieMediaFolderToR2Job::dispatch((int) $media->getKey())->afterCommit();
+        });
+        Media::deleted(function (Media $media): void {
+            if (! TenantMediaStorageQuotaObserver::shouldApply($media)) {
+                return;
+            }
+            $tid = TenantMediaStorageQuotaObserver::tenantId($media);
+            if ($tid === null) {
+                return;
+            }
+            PurgeSpatieMediaFromR2Job::dispatch($tid, (int) $media->getKey())->afterCommit();
+        });
+
+        $forgetTenantHome = static function (int $tenantId): void {
+            if ($tenantId > 0) {
+                HomeController::forgetCachedPayloadForTenant($tenantId);
+            }
+        };
+
+        Page::saved(static function (Page $page) use ($forgetTenantHome): void {
+            if ($page->slug === 'home' && $page->tenant_id) {
+                $forgetTenantHome((int) $page->tenant_id);
+            }
+        });
+        Page::deleted(static function (Page $page) use ($forgetTenantHome): void {
+            if ($page->slug === 'home' && $page->tenant_id) {
+                $forgetTenantHome((int) $page->tenant_id);
+            }
+        });
+
+        $forgetIfHomeSection = static function (PageSection $section) use ($forgetTenantHome): void {
+            if (! $section->tenant_id) {
+                return;
+            }
+            $section->loadMissing('page');
+            if ($section->page && $section->page->slug === 'home') {
+                $forgetTenantHome((int) $section->tenant_id);
+            }
+        };
+        PageSection::saved($forgetIfHomeSection);
+        PageSection::deleted($forgetIfHomeSection);
+
+        Motorcycle::saved(static function (Motorcycle $m) use ($forgetTenantHome): void {
+            if ($m->tenant_id) {
+                $forgetTenantHome((int) $m->tenant_id);
+            }
+        });
+        Motorcycle::deleted(static function (Motorcycle $m) use ($forgetTenantHome): void {
+            if ($m->tenant_id) {
+                $forgetTenantHome((int) $m->tenant_id);
+            }
+        });
+
+        Motorcycle::saved(static function (Motorcycle $m): void {
+            app(LinkedBookableServiceManager::class)->syncLinkedBookableFromMotorcycle($m);
+        });
+
+        RentalUnit::saved(static function (RentalUnit $unit): void {
+            app(LinkedBookableServiceManager::class)->syncLinkedBookableFromRentalUnit($unit);
+        });
+
+        Faq::saved(static function (Faq $faq) use ($forgetTenantHome): void {
+            if ($faq->tenant_id) {
+                $forgetTenantHome((int) $faq->tenant_id);
+            }
+        });
+
+        Review::saved(static function (Review $review) use ($forgetTenantHome): void {
+            if ($review->tenant_id) {
+                $forgetTenantHome((int) $review->tenant_id);
+            }
+        });
+
+        $forgetHomeIfMotorcycleMedia = static function (Media $media) use ($forgetTenantHome): void {
+            if ($media->model_type !== Motorcycle::class || $media->model_id === null || $media->model_id === '') {
+                return;
+            }
+            $tid = Motorcycle::query()->whereKey((int) $media->model_id)->value('tenant_id');
+            if ($tid) {
+                $forgetTenantHome((int) $tid);
+            }
+        };
+        Media::saved($forgetHomeIfMotorcycleMedia);
+        Media::deleted($forgetHomeIfMotorcycleMedia);
+
+        RateLimiter::for('tenant-mails', function (mixed $job) {
+            if (! $job instanceof SendTenantMailableJob) {
+                return Limit::none();
+            }
+
+            $min = (int) config('mail_limits.min_per_minute', 1);
+            $max = (int) config('mail_limits.max_per_minute', 1000);
+            $n = max($min, min($max, $job->mailRateLimitPerMinute));
+
+            return Limit::perMinute($n)->by('tenant-mail:'.$job->tenantId);
+        });
+
+        Blade::anonymousComponentPath(resource_path('views/tenant/components'));
+
+        Gate::before(function (?User $user, string $ability) {
+            if ($user === null) {
+                return null;
+            }
+
+            $panel = Filament::getCurrentPanel();
+            if ($panel === null || $panel->getId() !== 'admin') {
+                return null;
+            }
+
+            if (! str_starts_with($ability, 'manage_') && ! in_array($ability, ['export_leads', 'view_notification_history'], true)) {
+                return null;
+            }
+
+            $tenant = currentTenant();
+            if ($tenant === null) {
+                return null;
+            }
+
+            $membership = TenantPanelMembershipCache::membershipFor(request(), $user, $tenant);
+            if ($membership === null || $membership->pivot->status !== 'active') {
+                return false;
+            }
+
+            $role = $membership->pivot->role;
+            if (! in_array($role, AccessRoles::tenantMembershipRolesForPanel(), true)) {
+                return false;
+            }
+
+            return TenantPivotPermissions::pivotRoleAllows($role, $ability) ? true : false;
+        });
+
+        // Composer on '*' runs for every Blade view (layout, @include, anonymous components).
+        // Build shared vars once per request: avoids repeated TenantSetting/cache + disk->exists on branding paths.
+        View::composer('*', function ($view) {
+            $request = request();
+            $attrKey = '_tenant_public_layout_vars';
+            if ($request->attributes->has($attrKey)) {
+                $view->with($request->attributes->get($attrKey));
+
+                return;
+            }
+
+            if (self::shouldSkipTenantPublicLayoutBundle($request)) {
+                $bundle = self::tenantPublicLayoutPlaceholderBundle();
+                $request->attributes->set($attrKey, $bundle);
+                $view->with($bundle);
+
+                return;
+            }
+
+            $tenant = currentTenant();
+            if ($tenant) {
+                $publicContactsService = app(TenantPublicSiteContactsService::class);
+                $publicContacts = $publicContactsService->contactsForPublicLayout($tenant);
+                $bundle = [
+                    'contacts' => $publicContacts,
+                    'floating_messenger_buttons_enabled' => $publicContactsService->floatingMessengerButtonsEnabled((int) $tenant->id),
+                    'branding' => [
+                        'logo' => tenant_branding_logo_url(),
+                        'primary_color' => TenantSetting::getForTenant($tenant->id, 'branding.primary_color', '#f59e0b'),
+                        'favicon' => tenant_branding_favicon_url(),
+                        'hero_image' => tenant_branding_hero_url(),
+                        'favicon_16' => tenant_site_brand_optional_public_url('favicon-16.png'),
+                        'favicon_32' => tenant_site_brand_optional_public_url('favicon-32.png'),
+                        'favicon_ico' => tenant_site_brand_optional_public_url('favicon.ico'),
+                        'apple_touch_icon' => tenant_site_brand_optional_public_url('apple-touch-icon.png'),
+                    ],
+                    'site_name' => TenantSetting::getForTenant($tenant->id, 'general.site_name', $tenant->defaultPublicSiteName()),
+                    'tenantMainMenuPages' => app(TenantMainMenuPages::class)->menuItems($tenant),
+                    'tenantAdvocateFooter' => $tenant->themeKey() === 'advocate_editorial'
+                        ? app(TenantAdvocateEditorialFooterData::class)->build($tenant)
+                        : null,
+                    'tenantExpertAutoFooter' => $tenant->themeKey() === 'expert_auto'
+                        ? app(TenantExpertAutoFooterData::class)->build($tenant)
+                        : null,
+                    'tenantReviewSubmitConfig' => TenantReviewSubmitConfig::forTenant((int) $tenant->id),
+                ];
+            } else {
+                $bundle = [
+                    'contacts' => [
+                        'phone' => Setting::get('contacts.phone', ''),
+                        'phone_alt' => Setting::get('contacts.phone_alt', ''),
+                        'email' => Setting::get('contacts.email', ''),
+                        'whatsapp' => preg_replace('/\D/', '', Setting::get('contacts.whatsapp', '')),
+                        'telegram' => ltrim((string) Setting::get('contacts.telegram', ''), '@'),
+                        'vk_url' => '',
+                    ],
+                    'floating_messenger_buttons_enabled' => true,
+                    'branding' => [
+                        'logo' => '',
+                        'primary_color' => '#f59e0b',
+                        'favicon' => '',
+                        'hero_image' => '',
+                        'favicon_16' => '',
+                        'favicon_32' => '',
+                        'favicon_ico' => '',
+                        'apple_touch_icon' => '',
+                    ],
+                    'site_name' => config('app.name'),
+                    'tenantMainMenuPages' => collect(),
+                    'tenantAdvocateFooter' => null,
+                    'tenantExpertAutoFooter' => null,
+                    'tenantReviewSubmitConfig' => null,
+                ];
+            }
+
+            $request->attributes->set($attrKey, $bundle);
+            $view->with($bundle);
+        });
+    }
+
+    /**
+     * РљР°Р±РёРЅРµС‚ Filament / Livewire: РЅРµ СЃРѕР±РёСЂР°РµРј Р±Р°РЅРґР» РїСѓР±Р»РёС‡РЅРѕРіРѕ Р»РµР№Р°СѓС‚Р° (РјРµРЅСЋ СЃР°Р№С‚Р°, С„СѓС‚РµСЂ, РєРѕРЅС‚Р°РєС‚С‹, РѕР±Р·РѕСЂС‹).
+     */
+    private static function shouldSkipTenantPublicLayoutBundle(Request $request): bool
+    {
+        $routeName = $request->route()?->getName();
+        if (is_string($routeName) && str_starts_with($routeName, 'filament.')) {
+            return true;
+        }
+
+        $host = strtolower($request->getHost());
+        $platform = strtolower(trim((string) config('app.platform_host', '')));
+        if ($platform !== '' && $host === $platform) {
+            return true;
+        }
+
+        $path = trim($request->path(), '/');
+        if ($path === 'admin' || str_starts_with($path, 'admin/')) {
+            return true;
+        }
+
+        if ($request->is('livewire/*')) {
+            $referer = $request->headers->get('referer');
+            if (is_string($referer) && preg_match('#/admin(?:/|$|\?)#', $referer) === 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function tenantPublicLayoutPlaceholderBundle(): array
+    {
+        return [
+            'contacts' => [
+                'phone' => '',
+                'phone_alt' => '',
+                'email' => '',
+                'whatsapp' => '',
+                'telegram' => '',
+                'vk_url' => '',
+            ],
+            'floating_messenger_buttons_enabled' => false,
+            'branding' => [
+                'logo' => '',
+                'primary_color' => '#f59e0b',
+                'favicon' => '',
+                'hero_image' => '',
+                'favicon_16' => '',
+                'favicon_32' => '',
+                'favicon_ico' => '',
+                'apple_touch_icon' => '',
+            ],
+            'site_name' => config('app.name'),
+            'tenantMainMenuPages' => collect(),
+            'tenantAdvocateFooter' => null,
+            'tenantExpertAutoFooter' => null,
+            'tenantReviewSubmitConfig' => null,
+        ];
+    }
+}
+
+
+======== C:\OSPanel\home\rentbase.local\app\Providers\Filament\AdminPanelProvider.php ========
+
+<?php
+
+namespace App\Providers\Filament;
+
+use App\Filament\Tenant\Pages\TenantDashboard;
+use App\Filament\Tenant\Pages\TenantLogin;
+use App\Filament\Tenant\Pages\TenantProductChangelogPage;
+use App\Filament\Tenant\Widgets\StatsOverviewWidget;
+use App\Http\Controllers\Filament\TenantSpatieMediaStreamController;
+use App\Http\Controllers\Tenant\TenantNotificationBrowserController;
+use App\Http\Controllers\Tenant\TenantNotificationPushSubscriptionController;
+use App\Http\Controllers\Tenant\TenantOnesignalIdentityController;
+use App\Http\Middleware\EnsureTenantContext;
+use App\Http\Middleware\EnsureTenantMembership;
+use App\Http\Middleware\FilamentTenantPanelAuthenticate;
+use App\Http\Middleware\ResolveTenantFromDomain;
+use App\Http\Middleware\SetFilamentLocale;
+use App\Models\TenantSetting;
+use App\Terminology\DomainTermKeys;
+use App\Terminology\TenantTerminologyService;
+use Closure;
+use Filament\Actions\Action;
+use Filament\Facades\Filament;
+use Filament\Http\Middleware\DisableBladeIconComponents;
+use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
+use Filament\Panel;
+use Filament\PanelProvider;
+use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Session\Middleware\AuthenticateSession;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\View;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+
+class AdminPanelProvider extends PanelProvider
+{
+    public function panel(Panel $panel): Panel
+    {
+        $panel
+            ->renderHook(PanelsRenderHook::BODY_START, fn (): string => View::make('components.filament-access-denied-banner')->render())
+            ->renderHook(PanelsRenderHook::BODY_START, fn (): string => View::make('components.scheduling-calendar-gating-banner')->render())
+            ->renderHook(PanelsRenderHook::BODY_START, fn (): string => View::make('components.filament-tenant-storage-quota-banner')->render())
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => Blade::render(
+                    "@vite(['resources/css/tenant-admin.css', 'resources/js/service-program-cover-focal-editor.js', 'resources/js/tenant-admin-onesignal.js'])",
+                ).View::make('components.tenant-admin-onesignal-config')->render(),
+            );
+
+        return $panel
+            ->default()
+            ->id('admin')
+            ->path('admin')
+            ->profile()
+            ->userMenuItems([
+                Action::make('profile')
+                    ->label('РџСЂРѕС„РёР»СЊ')
+                    ->icon('heroicon-o-user-circle')
+                    ->url(fn (): string => Filament::getProfileUrl() ?? TenantDashboard::getUrl())
+                    ->sort(-1),
+                Action::make('whats_new')
+                    ->label('Р§С‚Рѕ РЅРѕРІРѕРіРѕ')
+                    ->icon('heroicon-o-newspaper')
+                    ->url(fn (): string => TenantProductChangelogPage::getUrl())
+                    ->sort(0),
+            ])
+            ->brandName(function (): string {
+                $tenant = currentTenant();
+                if ($tenant === null) {
+                    return (string) config('app.name');
+                }
+
+                $name = trim((string) TenantSetting::getForTenant($tenant->id, 'general.site_name', ''));
+
+                return $name !== '' ? $name : $tenant->defaultPublicSiteName();
+            })
+            ->homeUrl(function (): ?string {
+                $tenant = currentTenant();
+                if ($tenant === null) {
+                    return null;
+                }
+
+                $stored = trim((string) TenantSetting::getForTenant($tenant->id, 'general.domain', ''));
+                if ($stored !== '' && filter_var($stored, FILTER_VALIDATE_URL)) {
+                    return $stored;
+                }
+
+                $fallback = $tenant->defaultPublicSiteUrl();
+                if (filter_var($fallback, FILTER_VALIDATE_URL)) {
+                    return $fallback;
+                }
+
+                return null;
+            })
+            ->login(TenantLogin::class)
+            ->favicon(asset('favicon.svg'))
+            ->globalSearch(false)
+            ->font('Inter')
+            ->sidebarCollapsibleOnDesktop()
+            ->maxContentWidth('full')
+            ->colors([
+                'primary' => Color::Amber,
+            ])
+            ->navigationGroups([
+                'Operations' => NavigationGroup::make()
+                    ->label(self::tenantNavigationGroupLabel(DomainTermKeys::NAV_OPERATIONS, 'РћРїРµСЂР°С†РёРё'))
+                    ->icon('heroicon-o-presentation-chart-line'),
+                'Catalog' => NavigationGroup::make()
+                    ->label(self::tenantNavigationGroupLabel(DomainTermKeys::NAV_CATALOG, 'РљР°С‚Р°Р»РѕРі'))
+                    ->icon('heroicon-o-shopping-bag'),
+                'Content' => NavigationGroup::make()
+                    ->label(self::tenantNavigationGroupLabel(DomainTermKeys::NAV_CONTENT, 'РљРѕРЅС‚РµРЅС‚'))
+                    ->icon('heroicon-o-document-text'),
+                'Marketing' => NavigationGroup::make()
+                    ->label(self::tenantNavigationGroupLabel(DomainTermKeys::NAV_MARKETING, 'РњР°СЂРєРµС‚РёРЅРі'))
+                    ->icon('heroicon-o-megaphone'),
+                'Infrastructure' => NavigationGroup::make()
+                    ->label(self::tenantNavigationGroupLabel(DomainTermKeys::NAV_INFRASTRUCTURE, 'РРЅС„СЂР°СЃС‚СЂСѓРєС‚СѓСЂР°'))
+                    ->icon('heroicon-o-server-stack'),
+                'Settings' => NavigationGroup::make()
+                    ->label(self::tenantNavigationGroupLabel(DomainTermKeys::NAV_SETTINGS, 'РќР°СЃС‚СЂРѕР№РєРё'))
+                    ->icon('heroicon-o-cog-8-tooth'),
+                'Scheduling' => NavigationGroup::make()
+                    ->label('Р—Р°РїРёСЃСЊ Рё СЂР°СЃРїРёСЃР°РЅРёРµ')
+                    ->icon('heroicon-o-calendar-days'),
+            ])
+            ->discoverResources(in: app_path('Filament/Tenant/Resources'), for: 'App\\Filament\\Tenant\\Resources')
+            ->discoverPages(in: app_path('Filament/Tenant/Pages'), for: 'App\\Filament\\Tenant\\Pages')
+            ->pages([
+                TenantDashboard::class,
+            ])
+            ->discoverWidgets(in: app_path('Filament/Tenant/Widgets'), for: 'App\\Filament\\Tenant\\Widgets')
+            ->widgets([
+                StatsOverviewWidget::class,
+            ])
+            ->middleware([
+                ResolveTenantFromDomain::class,
+                EncryptCookies::class,
+                AddQueuedCookiesToResponse::class,
+                StartSession::class,
+                SetFilamentLocale::class,
+                ShareErrorsFromSession::class,
+                AuthenticateSession::class,
+                SubstituteBindings::class,
+                DisableBladeIconComponents::class,
+                DispatchServingFilamentEvent::class,
+                EnsureTenantContext::class,
+                EnsureTenantMembership::class,
+            ])
+            ->authMiddleware([
+                FilamentTenantPanelAuthenticate::class,
+            ])
+            /*
+             * SPA (wire:navigate) РѕС‚РєР»СЋС‡С‘РЅ: РїРѕСЃР»Рµ Р»РѕРіРёРЅР° Рё РЅР° РїРµСЂРІРѕРј Р·Р°С…РѕРґРµ РІ РїР°РЅРµР»СЊ Сѓ С‡Р°СЃС‚Рё Р±СЂР°СѓР·РµСЂРѕРІ
+             * РёРЅС‚РµСЂС„РµР№СЃ РѕСЃС‚Р°РІР°Р»СЃСЏ В«РјС‘СЂС‚РІС‹РјВ» РґРѕ РїРѕР»РЅРѕР№ РїРµСЂРµР·Р°РіСЂСѓР·РєРё (РґСѓР±Р»РёРєР°С‚ РІРєР»Р°РґРєРё). РЎРј. РѕР±СЃСѓР¶РґРµРЅРёСЏ
+             * filamentphp/filament РІРѕРєСЂСѓРі SPA + Livewire navigate. РќР°РІРёРіР°С†РёСЏ вЂ” РїРѕР»РЅС‹РјРё РїРµСЂРµР·Р°РіСЂСѓР·РєР°РјРё.
+             */
+            ->authenticatedRoutes(function (): void {
+                Route::get('/spatie-media/{media}', [TenantSpatieMediaStreamController::class, 'show'])
+                    ->name('spatie-media.show');
+                Route::post('/notification-push/subscriptions', [TenantNotificationPushSubscriptionController::class, 'store'])
+                    ->name('notification-push.subscriptions.store');
+                Route::delete('/notification-push/subscriptions', [TenantNotificationPushSubscriptionController::class, 'destroy'])
+                    ->name('notification-push.subscriptions.destroy');
+                Route::post('/notification-push/onesignal/identity', [TenantOnesignalIdentityController::class, 'store'])
+                    ->name('notification-push.onesignal.identity.store');
+                Route::delete('/notification-push/onesignal/identity', [TenantOnesignalIdentityController::class, 'destroy'])
+                    ->name('notification-push.onesignal.identity.destroy');
+
+                Route::prefix('notification-browser')->name('notification-browser.')->group(function (): void {
+                    Route::get('vapid-public', [TenantNotificationBrowserController::class, 'vapidPublic'])->name('vapid-public');
+                    Route::get('preferences', [TenantNotificationBrowserController::class, 'loadPreferences'])->name('preferences.show');
+                    Route::put('preferences', [TenantNotificationBrowserController::class, 'savePreferences'])->name('preferences.save');
+                    Route::get('crm-watermark', [TenantNotificationBrowserController::class, 'crmWatermark'])->name('crm-watermark');
+                });
+            });
+    }
+
+    /**
+     * @return Closure(): string
+     */
+    private static function tenantNavigationGroupLabel(string $termKey, string $fallback): Closure
+    {
+        return function () use ($termKey, $fallback): string {
+            $tenant = currentTenant();
+            if ($tenant === null) {
+                return $fallback;
+            }
+
+            return app(TenantTerminologyService::class)->label($tenant, $termKey);
+        };
+    }
+}
+
+
+======== C:\OSPanel\home\rentbase.local\database\seeders\PlanSeeder.php ========
+
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Plan;
+use Illuminate\Database\Seeder;
+
+class PlanSeeder extends Seeder
+{
+    public function run(): void
+    {
+        if (Plan::exists()) {
+            return;
+        }
+
+        Plan::create([
+            'name' => 'Lite',
+            'slug' => 'lite',
+            'limits_json' => ['max_models' => 10, 'max_leads_per_month' => 100],
+            'features_json' => ['cms', 'catalog', 'leads', 'seo'],
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+
+        Plan::create([
+            'name' => 'Pro',
+            'slug' => 'pro',
+            'limits_json' => ['max_models' => 50, 'max_leads_per_month' => 500],
+            'features_json' => ['cms', 'catalog', 'leads', 'seo', 'booking_engine', 'custom_domain', 'web_push_onesignal'],
+            'sort_order' => 2,
+            'is_active' => true,
+        ]);
+    }
+}
+
+
+======== C:\OSPanel\home\rentbase.local\resources\views\tenant\layouts\app.blade.php ========
+
+<!DOCTYPE html>
+<html lang="{{ \App\Services\Seo\TenantPublicHtmlLang::attribute(tenant()) }}" class="dark scroll-smooth overflow-x-clip">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    @php
+        $__stripTenantServiceWorker = ! app()->isProduction() || str_ends_with(request()->getHost(), '.local') || in_array(request()->getHost(), ['localhost', '127.0.0.1'], true);
+    @endphp
+    @if ($__stripTenantServiceWorker)
+        {{-- РЎС‚Р°СЂС‹Р№ SW РёР· РїСЂРѕС€Р»С‹С… РґРµРїР»РѕРµРІ РїСЂРѕРґРѕР»Р¶Р°РµС‚ РїРµСЂРµС…РІР°С‚С‹РІР°С‚СЊ РЅР°РІРёРіР°С†РёСЋ Рё РѕС‚РґР°С‘С‚ offline РїСЂРё РјРµРґР»РµРЅРЅРѕРј РѕС‚РІРµС‚Рµ; РЅР° *.local / dev СЃРЅРёРјР°РµРј СЂРµРіРёСЃС‚СЂР°С†РёСЋ Рё С‡РёСЃС‚РёРј Cache Storage. --}}
+        <script>
+            (function () {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function (regs) {
+                        regs.forEach(function (r) { r.unregister(); });
+                    });
+                }
+                if ('caches' in window) {
+                    caches.keys().then(function (keys) {
+                        keys.forEach(function (key) { caches.delete(key); });
+                    });
+                }
+            })();
+        </script>
+    @endif
+
+    @php
+        use App\Themes\ThemeRegistry;
+        $tenantFavicon = trim($branding['favicon'] ?? '');
+        // expert-brand-favicon.svg Р»РµР¶РёС‚ РІ bundled-С‚РµРјРµ expert_auto; Сѓ advocate_editorial СЃРІРѕРµРіРѕ С„Р°Р№Р»Р° РЅРµС‚ вЂ” Р±РµСЂС‘Рј URL СЏРІРЅРѕ РёР· expert_auto.
+        if ($tenantFavicon === '' && in_array(tenant()?->themeKey(), ['expert_auto', 'advocate_editorial'], true)) {
+            $tenantFavicon = app(ThemeRegistry::class)->assetUrl('expert_auto', 'expert-brand-favicon.svg', tenant());
+        }
+        $tenantFaviconMime = 'image/png';
+        if ($tenantFavicon !== '') {
+            $lower = strtolower($tenantFavicon);
+            if (str_ends_with($lower, '.svg') || str_contains($lower, '.svg?')) {
+                $tenantFaviconMime = 'image/svg+xml';
+            } elseif (str_ends_with($lower, '.ico') || str_contains($lower, '.ico?')) {
+                $tenantFaviconMime = 'image/x-icon';
+            }
+        }
+        $appleTouchIcon = app(ThemeRegistry::class)->assetUrl('moto', 'icons/icon-192.png', tenant());
+        $brandApple = trim((string) ($branding['apple_touch_icon'] ?? ''));
+        if ($brandApple !== '') {
+            $appleTouchIcon = $brandApple;
+        } else {
+            $tenantFaviconTrim = trim($branding['favicon'] ?? '');
+            if ($tenantFaviconTrim !== '') {
+                $appleTouchIcon = $tenantFaviconTrim;
+            }
+        }
+        $brandFavicon16 = trim((string) ($branding['favicon_16'] ?? ''));
+        $brandFavicon32 = trim((string) ($branding['favicon_32'] ?? ''));
+        $brandFaviconIco = trim((string) ($branding['favicon_ico'] ?? ''));
+    @endphp
+    @php
+        $__hasBrandIconPack = $brandFavicon16 !== '' || $brandFavicon32 !== '';
+        $__tenantFaviconDup = $tenantFavicon !== '' && ($tenantFavicon === $brandFavicon32 || $tenantFavicon === $brandFavicon16);
+    @endphp
+    @if($brandFavicon16 !== '')
+        <link rel="icon" type="image/png" sizes="16x16" href="{{ $brandFavicon16 }}">
+    @endif
+    @if($brandFavicon32 !== '')
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ $brandFavicon32 }}">
+    @endif
+    @if($brandFaviconIco !== '')
+        <link rel="icon" href="{{ $brandFaviconIco }}" sizes="any">
+    @endif
+    @if($tenantFavicon !== '' && (! $__hasBrandIconPack || ! $__tenantFaviconDup))
+        <link rel="icon" href="{{ $tenantFavicon }}" type="{{ $tenantFaviconMime }}">
+    @endif
+
+    @php
+        $__t = tenant();
+        $__push = $__t ? $__t->pushSettings : null;
+        $__manifestHref = ($__push && $__push->is_pwa_enabled) ? route('tenant.pwa.manifest') : asset('manifest.json');
+    @endphp
+    <link rel="manifest" href="{{ $__manifestHref }}">
+    <meta name="theme-color" content="{{ tenant() && tenant()->themeKey() === 'advocate_editorial' ? '#f4f1eb' : '#0c0c0e' }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="{{ $appleTouchIcon }}">
+
+    <x-seo-meta />
+
+    @php
+        $__tenantCdnBase = rtrim((string) config('tenant_storage.public_cdn_base_url', ''), '/');
+        $__tenantCdnConnect = '';
+        if ($__tenantCdnBase !== '' && preg_match('#^https?://#i', $__tenantCdnBase) === 1) {
+            $__pu = parse_url($__tenantCdnBase);
+            if (is_array($__pu) && ! empty($__pu['host'])) {
+                $__tenantCdnConnect = ($__pu['scheme'] ?? 'https').'://'.$__pu['host'];
+                if (isset($__pu['port'])) {
+                    $__tenantCdnConnect .= ':'.$__pu['port'];
+                }
+            }
+        }
+    @endphp
+    @if ($__tenantCdnConnect !== '')
+        <link rel="dns-prefetch" href="{{ $__tenantCdnConnect }}">
+        <link rel="preconnect" href="{{ $__tenantCdnConnect }}" crossorigin>
+    @endif
+
+    @stack('tenant-jsonld')
+
+    @stack('tenant-preload')
+
+    @include('tenant.partials.analytics-head')
+
+    @php
+        $bunnyInterCss = 'https://fonts.bunny.net/css?family=inter:400,500,600,700,800&display=swap';
+    @endphp
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link rel="preload" href="{{ $bunnyInterCss }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="{{ $bunnyInterCss }}" rel="stylesheet"></noscript>
+
+    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @php
+            $__tk = tenant()?->themeKey();
+            $__tenantExpertFamily = in_array($__tk, ['expert_auto', 'advocate_editorial'], true);
+        @endphp
+        @if ($__tenantExpertFamily)
+            @php
+                $__expertFamilyViteOk = file_exists(public_path('hot'));
+                if (! $__expertFamilyViteOk) {
+                    $__manifestPath = public_path('build/manifest.json');
+                    if (is_file($__manifestPath) && is_readable($__manifestPath)) {
+                        $__manifest = json_decode((string) file_get_contents($__manifestPath), true) ?: [];
+                        $__needExpertCss = isset($__manifest['resources/css/tenant-expert-auto.css']);
+                        $__needAdvocateCss = ($__tk === 'advocate_editorial')
+                            && isset($__manifest['resources/css/tenant-advocate-editorial.css']);
+                        $__expertFamilyViteOk = isset($__manifest['resources/js/tenant-expert-inquiry-form.js'])
+                            && $__needExpertCss
+                            && ($__tk === 'expert_auto' || $__needAdvocateCss);
+                    }
+                }
+            @endphp
+            @if ($__expertFamilyViteOk)
+                @vite(array_values(array_filter([
+                    'resources/css/tenant-expert-auto.css',
+                    $__tk === 'advocate_editorial' ? 'resources/css/tenant-advocate-editorial.css' : null,
+                    'resources/js/tenant-expert-inquiry-form.js',
+                ])))
+            @endif
+        @endif
+    @else
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = { theme: { extend: {
+                colors: {
+                    obsidian: '#0A0A0C', carbon: '#141417', silver: '#A1A1A6', 'moto-amber': '#E85D04',
+                    'cc-wa': '#25D366', 'cc-tg': '#2AABEE', 'cc-vk': '#0077FF', 'cc-ig': '#E4405F',
+                    'cc-msg': '#0084FF', 'cc-viber': '#7360f2', 'cc-max': '#7C3AED',
+                }
+            }}};
+        </script>
+    @endif
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+
+    @if (tenant())
+        <script id="rb-tenant-money-config" type="application/json">{!! json_encode(tenant_money_public_config(tenant()), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) !!}</script>
+        <script>
+            window.__tenantMoneyConfig = JSON.parse(document.getElementById('rb-tenant-money-config').textContent);
+        </script>
+    @endif
+
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.3/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+    <script>
+        document.addEventListener('alpine:init', () => {
+            if (window.__tenantBookingStoreRegistered) {
+                return;
+            }
+            window.__tenantBookingStoreRegistered = true;
+
+            const STORAGE_KEY = 'tenant_rental_period_v1';
+
+            Alpine.store('tenantBooking', {
+                filters: { start_date: '', end_date: '', location: '' },
+                isSearching: false,
+                catalogAvailability: null,
+                _persistTimer: null,
+
+                loadFromStorage() {
+                    try {
+                        const raw = localStorage.getItem(STORAGE_KEY);
+                        if (! raw) {
+                            return;
+                        }
+                        const o = JSON.parse(raw);
+                        if (typeof o.start_date === 'string') {
+                            this.filters.start_date = o.start_date;
+                        }
+                        if (typeof o.end_date === 'string') {
+                            this.filters.end_date = o.end_date;
+                        }
+                        if (typeof o.location === 'string') {
+                            this.filters.location = o.location;
+                        }
+                    } catch (e) {}
+                    this.sanitizeRentalPeriodFilters();
+                },
+
+                /**
+                 * РЈР±РёСЂР°РµРј В«РІРёСЃСЏС‰СѓСЋВ» РґР°С‚Сѓ В«РїРѕВ» Р±РµР· В«СЃВ», РїРµСЂРµРІС‘СЂРЅСѓС‚С‹Р№ РґРёР°РїР°Р·РѕРЅ Рё РїСЂРѕСЃСЂРѕС‡РµРЅРЅС‹Рµ РґР°С‚С‹ вЂ” РёРЅР°С‡Рµ Flatpickr РїРѕРєР°Р·С‹РІР°РµС‚ С‚РѕР»СЊРєРѕ РєРѕРЅРµС† РїРµСЂРёРѕРґР°.
+                 */
+                sanitizeRentalPeriodFilters() {
+                    const iso = /^\d{4}-\d{2}-\d{2}$/;
+                    let s = (this.filters.start_date || '').trim();
+                    let e = (this.filters.end_date || '').trim();
+                    let changed = false;
+                    if (s !== '' && ! iso.test(s)) {
+                        s = '';
+                        changed = true;
+                    }
+                    if (e !== '' && ! iso.test(e)) {
+                        e = '';
+                        changed = true;
+                    }
+                    const today = new Date().toISOString().slice(0, 10);
+                    if (s !== '' && s < today) {
+                        s = '';
+                        e = '';
+                        changed = true;
+                    }
+                    if (e !== '' && e < today) {
+                        e = '';
+                        changed = true;
+                    }
+                    if (e !== '' && s === '') {
+                        e = '';
+                        changed = true;
+                    }
+                    if (s !== '' && e !== '' && e < s) {
+                        e = '';
+                        changed = true;
+                    }
+                    this.filters.start_date = s;
+                    this.filters.end_date = e;
+                    if (changed) {
+                        this.persist();
+                    }
+                },
+
+                persist() {
+                    try {
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                            start_date: this.filters.start_date,
+                            end_date: this.filters.end_date,
+                            location: this.filters.location,
+                        }));
+                    } catch (e) {}
+                },
+
+                schedulePersist() {
+                    clearTimeout(this._persistTimer);
+                    this._persistTimer = setTimeout(() => this.persist(), 40);
+                },
+
+                onLocationChange() {
+                    this.schedulePersist();
+                },
+
+                async applyCatalogSearch(options) {
+                    const opts = options && typeof options === 'object' ? options : {};
+                    const scrollToCatalog = opts.scrollToCatalog !== false;
+                    if (! this.filters.start_date || ! this.filters.end_date) {
+                        this.catalogAvailability = null;
+                        if (typeof window.TenantDatePickers?.openBarStart === 'function') {
+                            window.TenantDatePickers.openBarStart();
+                        } else {
+                            document.getElementById('start_date')?.focus();
+                        }
+
+                        return;
+                    }
+                    this.persist();
+                    this.isSearching = true;
+                    this.catalogAvailability = null;
+                    let allowScroll = scrollToCatalog;
+                    try {
+                        const today = new Date().toISOString().slice(0, 10);
+                        if (
+                            this.filters.start_date < today ||
+                            this.filters.end_date < this.filters.start_date
+                        ) {
+                            this.catalogAvailability = null;
+                            allowScroll = false;
+
+                            return;
+                        }
+                        const bikeIdsEl = document.querySelector('[data-bike-ids]');
+                        let motorcycleIds = [];
+                        if (bikeIdsEl) {
+                            try {
+                                motorcycleIds = JSON.parse(bikeIdsEl.getAttribute('data-bike-ids') || '[]');
+                            } catch (e) {
+                                motorcycleIds = [];
+                            }
+                        }
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                        if (csrf && Array.isArray(motorcycleIds) && motorcycleIds.length > 0) {
+                            const res = await fetch('/api/tenant/booking/catalog-availability', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': csrf,
+                                    Accept: 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    start_date: this.filters.start_date,
+                                    end_date: this.filters.end_date,
+                                    motorcycle_ids: motorcycleIds,
+                                }),
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (res.ok && data.availability && typeof data.availability === 'object') {
+                                this.catalogAvailability = data.availability;
+                            }
+                        }
+                    } catch (e) {
+                        this.catalogAvailability = null;
+                    } finally {
+                        this.isSearching = false;
+                        if (allowScroll) {
+                            setTimeout(() => {
+                                document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
+                            }, 50);
+                        }
+                    }
+                },
+
+                rentalDayCount() {
+                    const f = this.filters;
+                    if (! f.start_date || ! f.end_date) {
+                        return 0;
+                    }
+                    const start = new Date(f.start_date);
+                    const end = new Date(f.end_date);
+                    if (end < start) {
+                        return 0;
+                    }
+                    const MS_PER_DAY = 1000 * 60 * 60 * 24;
+                    const utc1 = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+                    const utc2 = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+
+                    return Math.floor((utc2 - utc1) / MS_PER_DAY) + 1;
+                },
+
+                calculateCardTotalPrice(pricePerDay) {
+                    const days = this.rentalDayCount();
+
+                    return days > 0 ? days * Number(pricePerDay) : 0;
+                },
+
+                formatPrice(amount, bindingKey = 'booking.total_price') {
+                    if (window.TenantMoneyFormat && bindingKey) {
+                        return window.TenantMoneyFormat.formatStorage(amount, bindingKey);
+                    }
+
+                    return new Intl.NumberFormat('ru-RU').format(amount);
+                },
+            });
+
+            Alpine.store('tenantBooking').loadFromStorage();
+        });
+    </script>
+
+    <style>
+        [x-cloak] { display: none !important; }
+        body { font-family: 'Inter', sans-serif; }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.2s !important; transition-duration: 0.2s !important; }
+        }
+        .premium-bg { background: radial-gradient(circle at 50% -20%, #1a1a1a 0%, #050505 70%); min-height: 100vh; }
+        /* expert_auto: СѓСЃРёР»РµРЅРЅС‹Р№ С„РѕРЅ РІ tenant-expert-auto.css (.expert-auto-theme.premium-bg) */
+        .glass { background: rgba(25, 25, 25, 0.6); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .glass-card { background: rgba(30, 30, 30, 0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease; }
+        .glass-card:hover { transform: translateY(-4px); background: rgba(40, 40, 40, 0.6); border-color: rgba(255, 255, 255, 0.15); }
+        .bg-accent-gradient { background: linear-gradient(135deg, #FF6B00 0%, #FF3D00 100%); }
+        .text-accent-gradient { background: linear-gradient(135deg, #FF8C00 0%, #FF3D00 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        /* Duplicate tenant button system for CDN (sync with resources/css/app.css) */
+        .tenant-btn-primary {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+            min-height: 2.75rem; padding: 0.625rem 1rem; border-radius: 0.75rem;
+            font-size: 0.875rem; line-height: 1.25rem; font-weight: 700;
+            background-color: #e85d04; color: #0c0c0c;
+            box-shadow: 0 4px 14px -3px rgba(232, 93, 4, 0.35);
+            transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .tenant-btn-primary:hover { background-color: #f97316; color: #0a0a0a; }
+        .tenant-btn-primary:focus-visible { outline: 2px solid #fb923c; outline-offset: 2px; }
+        .tenant-btn-primary:active:not(:disabled) { transform: scale(0.98); }
+        .tenant-btn-primary:disabled { cursor: not-allowed; opacity: 0.5; }
+        .tenant-btn-primary svg { flex-shrink: 0; color: inherit; }
+        .tenant-btn-secondary {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+            min-height: 2.75rem; padding: 0.625rem 1rem; border-radius: 0.75rem;
+            font-size: 0.875rem; line-height: 1.25rem; font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background-color: rgba(255, 255, 255, 0.06);
+            color: #e4e4e7;
+            transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .tenant-btn-secondary:hover {
+            border-color: rgba(255, 255, 255, 0.28);
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fafafa;
+        }
+        .tenant-btn-secondary:focus-visible { outline: 2px solid #e85d04; outline-offset: 2px; }
+        .tenant-btn-secondary:active { transform: scale(0.98); }
+
+        /* Flatpickr вЂ” С‚С‘РјРЅР°СЏ С‚РµРјР° РїРѕРґ РјРѕС‚РѕС€Р°РїРєСѓ / РјРѕРґР°Р»РєСѓ */
+        .flatpickr-calendar.tenant-fp {
+            z-index: 200 !important;
+            background: #141417;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 1rem;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(232, 93, 4, 0.12);
+            color: #e4e4e7;
+            font-family: inherit;
+        }
+        .flatpickr-calendar.tenant-fp .flatpickr-months {
+            padding: 0.5rem 0.35rem 0.25rem;
+        }
+        .flatpickr-calendar.tenant-fp .flatpickr-month {
+            color: #fafafa;
+        }
+        .flatpickr-calendar.tenant-fp .flatpickr-current-month {
+            font-weight: 700;
+        }
+        .flatpickr-calendar.tenant-fp .flatpickr-weekdays {
+            background: transparent;
+        }
+        .flatpickr-calendar.tenant-fp span.flatpickr-weekday {
+            color: #a1a1aa;
+            font-weight: 600;
+        }
+        .flatpickr-calendar.tenant-fp .flatpickr-day {
+            border-radius: 0.5rem;
+            color: #e4e4e7;
+            border-color: transparent;
+        }
+        .flatpickr-calendar.tenant-fp .flatpickr-day:hover,
+        .flatpickr-calendar.tenant-fp .flatpickr-day:focus {
+            background: rgba(232, 93, 4, 0.2);
+            border-color: rgba(232, 93, 4, 0.45);
+            color: #fff;
+        }
+        .flatpickr-calendar.tenant-fp .flatpickr-day.selected,
+        .flatpickr-calendar.tenant-fp .flatpickr-day.startRange,
+        .flatpickr-calendar.tenant-fp .flatpickr-day.endRange {
+            background: #e85d04;
+            border-color: #e85d04;
+            color: #0c0c0c;
+            font-weight: 700;
+        }
+        .flatpickr-calendar.tenant-fp .flatpickr-day.today {
+            border-color: rgba(232, 93, 4, 0.55);
+        }
+        /* Р—Р°СЏРІРєРё Lead (РЅРѕРІР°СЏ / РІ СЂР°Р±РѕС‚Рµ) вЂ” РґРµРЅСЊ РІС‹Р±РёСЂР°РµС‚СЃСЏ, РЅРѕ РІРёРґРЅРѕ В«СѓР¶Рµ РєС‚Рѕ-С‚Рѕ Р·Р°РїСЂРѕСЃРёР»В» */
+        .flatpickr-calendar.tenant-fp .flatpickr-day.tenant-fp-day-pending-request:not(.flatpickr-disabled) {
+            box-shadow: inset 0 0 0 2px rgba(232, 93, 4, 0.65);
+            background: rgba(232, 93, 4, 0.12);
+            font-weight: 600;
+        }
+        .flatpickr-calendar.tenant-fp .flatpickr-day.flatpickr-disabled,
+        .flatpickr-calendar.tenant-fp .flatpickr-day.prevMonthDay,
+        .flatpickr-calendar.tenant-fp .flatpickr-day.nextMonthDay {
+            color: #52525b;
+        }
+        .flatpickr-calendar.tenant-fp .flatpickr-prev-month,
+        .flatpickr-calendar.tenant-fp .flatpickr-next-month {
+            fill: #fafafa;
+        }
+        .flatpickr-calendar.tenant-fp .flatpickr-prev-month:hover svg,
+        .flatpickr-calendar.tenant-fp .flatpickr-next-month:hover svg {
+            fill: #e85d04;
+        }
+        input.tenant-fp-alt {
+            width: 100%;
+            min-height: 2.75rem;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            padding: 0.625rem 1rem;
+            color: #fff;
+            font-size: 0.875rem;
+            outline: none;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            cursor: pointer;
+        }
+        input.tenant-fp-alt--sm {
+            min-height: 2.5rem;
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+            font-size: 0.8125rem;
+        }
+        .tenant-fp-alt:focus {
+            border-color: rgba(232, 93, 4, 0.55);
+            box-shadow: 0 0 0 1px rgba(232, 93, 4, 0.35);
+        }
+        .tenant-thin-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(232, 93, 4, 0.35) rgba(255, 255, 255, 0.06);
+        }
+        /* РњРѕРґР°Р»РєР° Р±СЂРѕРЅРёСЂРѕРІР°РЅРёСЏ: С„РёРєСЃРёСЂРѕРІР°РЅРЅР°СЏ РІС‹СЃРѕС‚Р° (vh), Р·Р°С‚РµРј svh РіРґРµ РµСЃС‚СЊ РїРѕРґРґРµСЂР¶РєР° вЂ” РёРЅР°С‡Рµ min(...svh...) С†РµР»РёРєРѕРј РјРѕР¶РµС‚ Р±С‹С‚СЊ РЅРµРІР°Р»РёРґРµРЅ Рё height СЃС‚Р°РЅРµС‚ auto */
+        .tenant-booking-modal-panel {
+            height: min(92vh, calc(100vh - 1rem));
+            max-height: min(92vh, calc(100vh - 1rem));
+        }
+        @media (min-width: 640px) {
+            .tenant-booking-modal-panel {
+                height: min(90vh, calc(100vh - 2rem));
+                max-height: min(90vh, calc(100vh - 2rem));
+            }
+        }
+        @supports (height: 1svh) {
+            .tenant-booking-modal-panel {
+                height: min(92svh, calc(100vh - 1rem));
+                max-height: min(92svh, calc(100vh - 1rem));
+            }
+        }
+        @media (min-width: 640px) {
+            @supports (height: 1svh) {
+                .tenant-booking-modal-panel {
+                    height: min(90svh, calc(100vh - 2rem));
+                    max-height: min(90svh, calc(100vh - 2rem));
+                }
+            }
+        }
+        /* РџРѕР»РѕСЃР° РїСЂРѕРєСЂСѓС‚РєРё Сѓ РѕР±Р»Р°СЃС‚Рё С„РѕСЂРјС‹; РєРѕРЅС‚РµРЅС‚ РЅРµ РѕР±СЂРµР·Р°РµС‚СЃСЏ Р±РµР· РїСЂРѕРєСЂСѓС‚РєРё */
+        .tenant-booking-modal-scroll {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tenant-thin-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .tenant-thin-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 999px;
+        }
+        .tenant-thin-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(232, 93, 4, 0.35);
+            border-radius: 999px;
+        }
+        .tenant-thin-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(232, 93, 4, 0.5);
+        }
+        /* РџРѕРґСЃРІРµС‚РєР° РѕС€РёР±РѕРє РїСѓР±Р»РёС‡РЅС‹С… С„РѕСЂРј: resources/css/shared/public-form-field-feedback.css (rb-public-field-error-flash) */
+    </style>
+</head>
+@php
+    $__tkBody = tenant()?->themeKey();
+    $__tenantExpertAuto = $__tkBody === 'expert_auto';
+    $__tenantAdvocateEditorial = $__tkBody === 'advocate_editorial';
+    $__tenantExpertFamilyBody = $__tenantExpertAuto || $__tenantAdvocateEditorial;
+@endphp
+<body @class([
+    'antialiased premium-bg overflow-x-clip pb-32 sm:pb-0',
+    'text-silver' => ! $__tenantAdvocateEditorial,
+    'text-stone-800' => $__tenantAdvocateEditorial,
+    {{-- expert_auto + advocate_editorial: РѕР±С‰РёРµ СЃРµРєС†РёРё (program cards Рё РґСЂ.) СЃС‚РёР»РёР·РѕРІР°РЅС‹ РїРѕРґ body.expert-auto-theme РІ tenant-expert-auto.css; СЃРІРµС‚Р»С‹Р№ С„РѕРЅ advocate Р·Р°РґР°С‘С‚СЃСЏ Р±РѕР»РµРµ СЃРїРµС†РёС„РёС‡РЅС‹Рј .advocate-editorial-theme.premium-bg РЅРёР¶Рµ РїРѕ РєР°СЃРєР°РґСѓ. --}}
+    'expert-auto-theme' => $__tenantExpertFamilyBody,
+    'advocate-editorial-theme' => $__tenantAdvocateEditorial,
+    'selection:bg-moto-amber selection:text-[#0c0c0c]' => true,
+])>
+    @include('partials.analytics-yandex-noscript-body')
+
+    {{-- WCAG 2.4.1: РїРµСЂРІС‹Р№ С‚Р°Р± вЂ” РїРµСЂРµС…РѕРґ Рє РѕСЃРЅРѕРІРЅРѕРјСѓ СЃРѕРґРµСЂР¶РёРјРѕРјСѓ (G1 skip link). --}}
+    <a
+        href="#tenant-main-content"
+        class="rb-skip-link"
+        onclick="event.preventDefault(); const m=document.getElementById('tenant-main-content'); if(!m){return;} m.scrollIntoView({behavior:'smooth',block:'start'}); try { m.focus({preventScroll:true}); } catch (e) { m.focus(); }"
+    >РџРµСЂРµР№С‚Рё Рє РѕСЃРЅРѕРІРЅРѕРјСѓ СЃРѕРґРµСЂР¶РёРјРѕРјСѓ</a>
+
+    @if($__tenantExpertFamilyBody)
+        {{-- Sticky footer: РїСЂРё РєРѕСЂРѕС‚РєРѕРј РєРѕРЅС‚РµРЅС‚Рµ С„СѓС‚РµСЂ Сѓ РЅРёР¶РЅРµРіРѕ РєСЂР°СЏ viewport, Р±РµР· В«РїРѕР»РѕСЃС‹В» РїРѕРґ Р±Р»РѕРєРѕРј С„СѓС‚РµСЂР°. --}}
+        <div class="flex min-h-dvh flex-col">
+    @endif
+    <x-header />
+
+    {{-- РљРѕСЂРЅРµРІРѕР№ x-data: Р±РµР· РЅРµРіРѕ Alpine РЅРµ РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚ @click/$dispatch РЅР° СЃС‚СЂР°РЅРёС†Р°С… РІРЅРµ РѕР±С‘СЂС‚РєРё (РЅР°РїСЂРёРјРµСЂ РєР°СЂС‚РѕС‡РєР° РјРѕС‚РѕС†РёРєР»Р°). --}}
+    <main id="tenant-main-content" tabindex="-1" @class([
+        'w-full min-w-0 scroll-mt-[5.5rem] outline-none md:scroll-mt-[6rem]',
+        $__tenantExpertFamilyBody ? 'pb-40 sm:pb-0' : 'pb-32 sm:pb-0',
+        'flex-1' => $__tenantExpertFamilyBody,
+    ]) x-data="{}">
+        @include('tenant.components.public-breadcrumbs')
+        @yield('content')
+    </main>
+
+    @include('tenant.components.footer')
+    @if($__tenantExpertFamilyBody)
+        </div>
+    @endif
+
+    @if($__tenantExpertFamilyBody)
+        @include('tenant.partials.program-enrollment-modal')
+    @endif
+
+    @php
+        $__fabEnabled = $floating_messenger_buttons_enabled ?? true;
+        $__fabWa = filled($contacts['whatsapp'] ?? null);
+        $__fabTg = filled($contacts['telegram'] ?? null);
+        $__fabVk = filled($contacts['vk_url'] ?? null);
+    @endphp
+    @if($__fabEnabled && ($__fabWa || $__fabTg || $__fabVk))
+    <div class="tenant-floating-chats fixed z-[35] flex flex-col gap-2 sm:hidden {{ $__tenantExpertFamilyBody ? 'expert-auto-floating-chats right-3' : 'right-4 bottom-[calc(88px+env(safe-area-inset-bottom))]' }}">
+        @if($__fabWa)
+        <a href="https://wa.me/{{ $contacts['whatsapp'] }}" target="_blank" rel="noopener noreferrer" class="{{ $__tenantExpertFamilyBody ? 'h-10 w-10 shadow-md' : 'w-12 h-12 shadow-lg' }} bg-[#25D366] text-white flex items-center justify-center rounded-full active:scale-[0.98] transition-transform" aria-label="РќР°РїРёСЃР°С‚СЊ РІ WhatsApp">
+            <svg class="{{ $__tenantExpertFamilyBody ? 'w-5 h-5' : 'w-6 h-6' }}" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+        </a>
+        @endif
+        @if($__fabTg)
+        <a href="https://t.me/{{ $contacts['telegram'] }}" target="_blank" rel="noopener noreferrer" class="{{ $__tenantExpertFamilyBody ? 'h-10 w-10 shadow-md' : 'w-12 h-12 shadow-lg' }} bg-[#0088cc] text-white flex items-center justify-center rounded-full active:scale-[0.98] transition-transform" aria-label="РќР°РїРёСЃР°С‚СЊ РІ Telegram">
+            <svg class="{{ $__tenantExpertFamilyBody ? 'w-5 h-5' : 'w-6 h-6' }}" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+        </a>
+        @endif
+        @if($__fabVk)
+        <a href="{{ $contacts['vk_url'] }}" target="_blank" rel="noopener noreferrer" class="{{ $__tenantExpertFamilyBody ? 'h-10 w-10 shadow-md' : 'w-12 h-12 shadow-lg' }} bg-[#0077FF] text-white flex items-center justify-center rounded-full active:scale-[0.98] transition-transform" aria-label="РћС‚РєСЂС‹С‚СЊ Р’РљРѕРЅС‚Р°РєС‚Рµ">
+            <svg class="{{ $__tenantExpertFamilyBody ? 'w-5 h-5' : 'w-6 h-6' }}" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.408 0 15.684 0zm2.07 16.538h-1.558c-.59 0-.77-.47-1.83-1.54-.92-.89-1.33-1.01-1.56-1.01-.32 0-.41.09-.41.53v1.41c0 .38-.12.6-1.12.6-1.65 0-3.48-1-4.76-2.86-1.22-1.8-1.77-3.84-1.77-4.25 0-.23.09-.44.53-.44h1.56c.39 0 .54.18.69.6.77 2.22 2.06 4.18 2.59 4.18.2 0 .29-.09.29-.59v-2.37c-.06-1.06-.62-1.15-.62-1.52 0-.18.15-.36.39-.36h2.45c.33 0 .45.18.45.57v3.1c0 .33.15.45.24.45.2 0 .36-.12.73-.48 1.12-1.25 1.91-3.17 1.91-3.17.14-.29.33-.44.73-.44h1.56c.47 0 .58.24.47.57-.2.91-2.1 3.08-2.1 3.08-.18.24-.24.35 0 .62.18.24.79.91 1.21 1.59.38.59.73 1.21.48 1.88z"/></svg>
+        </a>
+        @endif
+    </div>
+    @endif
+
+    @if(! $__tenantExpertFamilyBody)
+        <div class="fixed bottom-0 left-0 w-full z-50 bg-white/5 backdrop-blur-xl border-t border-white/10 p-4 sm:hidden pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <button type="button" onclick="document.getElementById('catalog')?.scrollIntoView({behavior: 'smooth'})" class="tenant-btn-primary w-full min-h-12 text-base">
+                Р’ Р°РІС‚РѕРїР°СЂРє
+            </button>
+        </div>
+    @else
+        {{-- Mobile + hero: РЅРёР¶РЅСЏСЏ CTA Рё WA/TG СЃРєСЂС‹С‚С‹ РЅР° РїРµСЂРІРѕРј СЌРєСЂР°РЅРµ (РєР»Р°СЃСЃС‹ body expert-auto-past-first-screen РЅРёР¶Рµ). --}}
+        {{-- Р•СЃР»Рё РЅР° СЃС‚СЂР°РЅРёС†Рµ РЅРµС‚ СЃРµРєС†РёРё С„РѕСЂРјС‹ (РЅРµС‚ #expert-sticky-cta), РїРѕРєР°Р·С‹РІР°РµРј СЃСЃС‹Р»РєСѓ РЅР° Р·Р°СЏРІРєСѓ СЃ РіР»Р°РІРЅРѕР№ --}}
+        <div id="expert-sticky-cta-fallback" class="expert-sticky-cta hidden" hidden>
+            <div class="expert-sticky-cta__inner">
+                <a href="{{ route('home') }}#expert-inquiry" class="expert-sticky-cta__btn tenant-btn-primary flex w-full justify-center rounded-xl py-3 text-[15px] font-bold shadow-md shadow-black/30">{{ $__tenantAdvocateEditorial ? 'РЎРІСЏР·Р°С‚СЊСЃСЏ' : 'Р—Р°РїРёСЃР°С‚СЊСЃСЏ' }}</a>
+            </div>
+        </div>
+        <script>
+            (function () {
+                if (document.getElementById('expert-sticky-cta')) return;
+                var fb = document.getElementById('expert-sticky-cta-fallback');
+                if (!fb) return;
+                fb.classList.remove('hidden');
+                fb.removeAttribute('hidden');
+            })();
+        </script>
+    @endif
+
+    @if ($__tenantExpertFamilyBody)
+        <script>
+            (function () {
+                if (!document.querySelector('[data-expert-hero="1"]')) {
+                    return;
+                }
+                var mq = window.matchMedia('(max-width: 1023px)');
+
+                /** Р”Р»СЏ РїРѕСЂРѕРіР° В«РїСЂРѕС€Р»Рё РїРµСЂРІС‹Р№ СЌРєСЂР°РЅВ» вЂ” innerHeight, Р±РµР· visualViewport: РёРЅР°С‡Рµ РЅР° iOS/Android РїСЂРё СЃРєСЂРѕР»Р»Рµ РґС‘СЂРіР°РµС‚СЃСЏ РІС‹СЃРѕС‚Р° Рё РєР»Р°СЃСЃ body, РІРёР·СѓР°Р»СЊРЅРѕ С‚СЏРЅРµС‚ С„РѕРЅ РіРµСЂРѕСЏ. */
+                function viewportHeightStable() {
+                    return window.innerHeight || 640;
+                }
+
+                function sync() {
+                    if (!mq.matches) {
+                        document.body.classList.add('expert-auto-past-first-screen');
+                        return;
+                    }
+                    var past = window.scrollY > Math.max(32, viewportHeightStable() * 0.88);
+                    document.body.classList.toggle('expert-auto-past-first-screen', past);
+                }
+
+                mq.addEventListener('change', sync);
+                window.addEventListener('scroll', sync, { passive: true });
+                window.addEventListener('resize', sync);
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', sync);
+                } else {
+                    sync();
+                }
+            })();
+        </script>
+    @endif
+
+    @if(($floating_messenger_buttons_enabled ?? true) && (filled($contacts['whatsapp'] ?? null) || filled($contacts['telegram'] ?? null) || filled($contacts['vk_url'] ?? null)))
+    <div class="hidden sm:block">
+        <x-contact-cta />
+    </div>
+    @endif
+
+    <x-pwa-install-prompt />
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ru.js"></script>
+    @include('tenant.partials.intl-phone')
+    <script>
+        (function () {
+            window.TenantDatePickers = {
+                _barStart: null,
+                _barEnd: null,
+                _modalStart: null,
+                _modalEnd: null,
+                _modalVm: null,
+                _modalPendingRequestDates: new Set(),
+                /** РљСЌС€ ISO-РґР°С‚ Р·Р°РЅСЏС‚РѕСЃС‚Рё СЃ API вЂ” РїРµСЂРµ-РїСЂРёРјРµРЅСЏРµРј Рє РѕР±РѕРёРј РєР°Р»РµРЅРґР°СЂСЏРј РїРѕСЃР»Рµ minDate / open */
+                _modalDisabledDatesIsoSet: new Set(),
+
+                _locale() {
+                    return (typeof flatpickr !== 'undefined' && flatpickr.l10ns && flatpickr.l10ns.ru)
+                        ? flatpickr.l10ns.ru
+                        : {};
+                },
+
+                /**
+                 * Flatpickr keeps the real value on a hidden input; altInput is what the user sees.
+                 * Move id + autocomplete to the visible field so label[for] and DevTools form audits match the focused control.
+                 */
+                _bindFlatpickrAltSurface(inst) {
+                    const real = inst.input;
+                    const alt = inst.altInput;
+                    if (! real || ! alt) {
+                        return;
+                    }
+                    const fid = real.getAttribute('id');
+                    if (fid) {
+                        alt.id = fid;
+                        real.removeAttribute('id');
+                    }
+                    const ac = real.getAttribute('autocomplete');
+                    alt.setAttribute('autocomplete', ac !== null ? ac : 'off');
+                    if (real.hasAttribute('required')) {
+                        alt.setAttribute('aria-required', 'true');
+                    }
+                    real.setAttribute('tabindex', '-1');
+                    real.setAttribute('aria-hidden', 'true');
+                },
+
+                _baseOpts(altInputClass) {
+                    const self = this;
+
+                    return {
+                        locale: this._locale(),
+                        dateFormat: 'Y-m-d',
+                        altInput: true,
+                        altFormat: 'd.m.Y',
+                        altInputClass: altInputClass,
+                        allowInput: false,
+                        disableMobile: true,
+                        onReady(_d, _s, inst) {
+                            inst.calendarContainer.classList.add('tenant-fp');
+                            self._bindFlatpickrAltSurface(inst);
+                        },
+                    };
+                },
+
+                destroyBar() {
+                    if (this._barStart) {
+                        this._barStart.destroy();
+                        this._barStart = null;
+                    }
+                    if (this._barEnd) {
+                        this._barEnd.destroy();
+                        this._barEnd = null;
+                    }
+                },
+
+                initBar() {
+                    if (typeof flatpickr === 'undefined' || typeof Alpine === 'undefined') {
+                        return;
+                    }
+                    const startEl = document.querySelector('input[data-fp-anchor="tenant-bar-start"]');
+                    const endEl = document.querySelector('input[data-fp-anchor="tenant-bar-end"]');
+                    if (! startEl || ! endEl) {
+                        return;
+                    }
+                    if (startEl._flatpickr) {
+                        return;
+                    }
+
+                    this.destroyBar();
+
+                    const store = Alpine.store('tenantBooking');
+                    const minStr = startEl.getAttribute('data-fp-min') || 'today';
+                    const baseBar = this._baseOpts('tenant-fp-alt');
+
+                    this._barEnd = flatpickr(endEl, {
+                        ...baseBar,
+                        minDate: store.filters.start_date || minStr,
+                        defaultDate: (store.filters.start_date && store.filters.end_date) ? store.filters.end_date : undefined,
+                        onChange: (selectedDates) => {
+                            if (selectedDates[0]) {
+                                store.filters.end_date = this._barEnd.formatDate(selectedDates[0], 'Y-m-d');
+                                store.schedulePersist();
+                            }
+                        },
+                    });
+
+                    this._barStart = flatpickr(startEl, {
+                        ...baseBar,
+                        minDate: minStr,
+                        defaultDate: store.filters.start_date || undefined,
+                        onChange: (selectedDates) => {
+                            if (selectedDates[0]) {
+                                store.filters.start_date = this._barStart.formatDate(selectedDates[0], 'Y-m-d');
+                                store.schedulePersist();
+                                this._barEnd.set('minDate', selectedDates[0]);
+                                const endSel = this._barEnd.selectedDates[0];
+                                if (endSel && endSel < selectedDates[0]) {
+                                    this._barEnd.setDate(selectedDates[0]);
+                                }
+                                requestAnimationFrame(() => this._barEnd.open());
+                            }
+                        },
+                    });
+                },
+
+                openBarEnd() {
+                    this._barEnd?.open();
+                },
+
+                openBarStart() {
+                    this._barStart?.open();
+                },
+
+                clearBar() {
+                    this._barStart?.clear();
+                    this._barEnd?.clear();
+                },
+
+
+                _modalFpSetDisable(picker, disableVal) {
+                    if (picker && typeof picker.set === 'function') {
+                        picker.set('disable', disableVal);
+                    }
+                },
+
+                _modalFpRedraw(picker) {
+                    if (picker && typeof picker.redraw === 'function') {
+                        picker.redraw();
+                    }
+                },
+
+                /** РџРѕРІС‚РѕСЂРЅРѕ РІС‹СЃС‚Р°РІРёС‚СЊ disable + РїРµСЂРµСЂРёСЃРѕРІР°С‚СЊ РѕР±Р° РјРѕРґР°Р»СЊРЅС‹С… РєР°Р»РµРЅРґР°СЂСЏ (СЃРµСЂС‹Рµ РґРЅРё Рё РѕСЂР°РЅР¶. Р·Р°СЏРІРєРё). */
+                _modalRefreshDecorations() {
+                    const set = this._modalDisabledDatesIsoSet instanceof Set ? this._modalDisabledDatesIsoSet : new Set();
+                    const fn = (d) => set.has(this._calendarYmd(d));
+                    this._modalFpSetDisable(this._modalStart, [fn]);
+                    this._modalFpSetDisable(this._modalEnd, [fn]);
+                    this._modalFpRedraw(this._modalStart);
+                    this._modalFpRedraw(this._modalEnd);
+                },
+
+                setModalDisableDates(isoDates) {
+                    this._modalDisabledDatesIsoSet = new Set(isoDates || []);
+                    this._modalRefreshDecorations();
+                },
+
+                setModalPendingRequestHighlights(isoDates) {
+                    this._modalPendingRequestDates = new Set(isoDates || []);
+                    this._modalRefreshDecorations();
+                },
+
+                clearModalDisableDates() {
+                    this._modalDisabledDatesIsoSet = new Set();
+                    this._modalFpSetDisable(this._modalStart, []);
+                    this._modalFpSetDisable(this._modalEnd, []);
+                    this.clearModalPendingRequestHighlights();
+                },
+
+                clearModalPendingRequestHighlights() {
+                    this._modalPendingRequestDates.clear();
+                    this._modalFpRedraw(this._modalStart);
+                    this._modalFpRedraw(this._modalEnd);
+                },
+
+                /** @param {Date} d */
+                _calendarYmd(d) {
+                    if (! d || typeof d.getFullYear !== 'function') {
+                        return '';
+                    }
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+
+                    return `${y}-${m}-${day}`;
+                },
+
+                destroyModal() {
+                    this._modalPendingRequestDates.clear();
+                    this._modalDisabledDatesIsoSet = new Set();
+                    this._modalFpSetDisable(this._modalStart, []);
+                    this._modalFpSetDisable(this._modalEnd, []);
+                    if (this._modalStart && typeof this._modalStart.destroy === 'function') {
+                        this._modalStart.destroy();
+                    }
+                    this._modalStart = null;
+                    if (this._modalEnd && typeof this._modalEnd.destroy === 'function') {
+                        this._modalEnd.destroy();
+                    }
+                    this._modalEnd = null;
+                    this._modalVm = null;
+                },
+
+                initModal(vm) {
+                    if (typeof flatpickr === 'undefined') {
+                        return;
+                    }
+                    this.destroyModal();
+                    this._modalVm = vm;
+
+                    const startEl = document.querySelector('input[data-fp-anchor="tenant-modal-start"]');
+                    const endEl = document.querySelector('input[data-fp-anchor="tenant-modal-end"]');
+                    if (! startEl || ! endEl) {
+                        return;
+                    }
+
+                    const minStr = startEl.getAttribute('data-fp-min') || 'today';
+                    const baseEnd = this._baseOpts('tenant-fp-alt tenant-fp-alt--sm');
+                    const baseStart = this._baseOpts('tenant-fp-alt tenant-fp-alt--sm');
+                    const self = this;
+                    /* Flatpickr 4.6: onDayCreate(selectedDates, dateStr, instance, dayElem) вЂ” РґР°С‚Р° РІ dayElem.dateObj */
+                    const onDayCreatePending = (_selectedDates, _dateStr, _fp, dayElem) => {
+                        const dateObj = dayElem && dayElem.dateObj;
+                        if (! dateObj || self._modalPendingRequestDates.size === 0) {
+                            return;
+                        }
+                        const ymd = self._calendarYmd(dateObj);
+                        if (ymd && self._modalPendingRequestDates.has(ymd)) {
+                            dayElem.classList.add('tenant-fp-day-pending-request');
+                            dayElem.setAttribute('title', 'РЈР¶Рµ РµСЃС‚СЊ Р·Р°СЏРІРєР° РЅР° СЌС‚Сѓ РґР°С‚Сѓ (РѕР¶РёРґР°РµС‚ РѕР±СЂР°Р±РѕС‚РєРё РѕРїРµСЂР°С‚РѕСЂРѕРј)');
+                        }
+                    };
+                    const onModalOpen = () => {
+                        self._modalRefreshDecorations();
+                    };
+
+                    this._modalEnd = flatpickr(endEl, {
+                        ...baseEnd,
+                        onDayCreate: onDayCreatePending,
+                        onOpen: onModalOpen,
+                        minDate: vm.form.start_date || minStr,
+                        defaultDate: (vm.form.start_date && vm.form.end_date) ? vm.form.end_date : undefined,
+                        onChange: (selectedDates) => {
+                            if (selectedDates[0] && this._modalVm) {
+                                this._modalVm.form.end_date = this._modalEnd.formatDate(selectedDates[0], 'Y-m-d');
+                                this._modalVm.calculatePrice();
+                                if (typeof this._modalVm.scheduleHintsFetch === 'function') {
+                                    this._modalVm.scheduleHintsFetch();
+                                }
+                            }
+                        },
+                    });
+
+                    this._modalStart = flatpickr(startEl, {
+                        ...baseStart,
+                        onDayCreate: onDayCreatePending,
+                        onOpen: onModalOpen,
+                        minDate: minStr,
+                        defaultDate: vm.form.start_date || undefined,
+                        onChange: (selectedDates) => {
+                            if (selectedDates[0] && this._modalVm) {
+                                this._modalVm.form.start_date = this._modalStart.formatDate(selectedDates[0], 'Y-m-d');
+                                this._modalVm.calculatePrice();
+                                if (typeof this._modalVm.scheduleHintsFetch === 'function') {
+                                    this._modalVm.scheduleHintsFetch();
+                                }
+                                if (this._modalEnd && typeof this._modalEnd.set === 'function') {
+                                    this._modalEnd.set('minDate', selectedDates[0]);
+                                    self._modalRefreshDecorations();
+                                }
+                                const endSel = this._modalEnd.selectedDates[0];
+                                if (endSel && endSel < selectedDates[0]) {
+                                    this._modalEnd.setDate(selectedDates[0]);
+                                }
+                            }
+                        },
+                    });
+                    if (typeof vm.scheduleHintsFetch === 'function') {
+                        vm.scheduleHintsFetch();
+                    }
+                },
+            };
+        })();
+    </script>
+
+    @if (! request()->routeIs('offline') && app()->isProduction() && ! $__stripTenantServiceWorker)
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register("{{ asset('sw.js') }}").catch(err => {
+                    console.warn('SW registration failed:', err);
+                });
+            });
+        }
+    </script>
+    @endif
+
+    @php
+        $__pushT = tenant();
+        $__pushPs = $__pushT ? $__pushT->pushSettings : null;
+        $__pushCanon = $__pushPs && $__pushPs->canonical_host
+            ? strtolower(trim((string) $__pushPs->canonical_host))
+            : '';
+        $__pushHost = strtolower(trim(request()->getHost()));
+        $__pushCanonOk = $__pushCanon !== '' && $__pushHost === $__pushCanon;
+        $__tenantPushBootstrap =
+            $__pushPs
+            && $__pushPs->is_push_enabled
+            && $__pushCanonOk
+            && request()->secure()
+            && trim((string) $__pushPs->onesignal_app_id) !== '';
+    @endphp
+    @if ($__tenantPushBootstrap)
+        <div id="rb-tenant-push-boot" hidden data-config="{{ e(json_encode(['appId' => $__pushPs->onesignal_app_id])) }}"></div>
+        <script>
+            (function () {
+                var el = document.getElementById('rb-tenant-push-boot');
+                if (!el || !el.dataset.config) {
+                    return;
+                }
+                try {
+                    window.__tenantPush = JSON.parse(el.dataset.config);
+                } catch (err) {}
+            })();
+        </script>
+        @vite(['resources/js/tenant-public-push.js'])
+    @endif
+
+    @stack('tenant-scripts')
+</body>
+</html>
+
+
+======== C:\OSPanel\home\rentbase.local\routes\web.php ========
+
+<?php
+
+use App\Http\Controllers\AboutPageController;
+use App\Http\Controllers\BookingController;
+use App\Http\Controllers\ContactInquiryController;
+use App\Http\Controllers\ExpertInquiryController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\LeadController;
+use App\Http\Controllers\LocationLandingController;
+use App\Http\Controllers\MotorcycleController;
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\PlatformLlmsTxtController;
+use App\Http\Controllers\PlatformMarketingContactController;
+use App\Http\Controllers\PlatformMarketingRobotsController;
+use App\Http\Controllers\PlatformMarketingSitemapController;
+use App\Http\Controllers\PublicBookingController;
+use App\Http\Controllers\RobotsController;
+use App\Http\Controllers\Scheduling\GoogleCalendarOAuthController;
+use App\Http\Controllers\SeoLandingPageController;
+use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\Tenant\TenantPublicSchedulingController;
+use App\Http\Controllers\TenantLlmsTxtController;
+use App\Http\Controllers\TenantPublicBookingAvailabilityController;
+use App\Http\Controllers\TenantPublicFaqController;
+use App\Http\Controllers\TenantPublicMirrorFileController;
+use App\Http\Controllers\Tenant\TenantOneSignalWorkerController;
+use App\Http\Controllers\Tenant\TenantPublicPwaManifestController;
+use App\Http\Controllers\TenantPublicReviewsController;
+use App\Http\Controllers\TenantPublicReviewSubmitController;
+use App\Http\Controllers\TenantPublicStorageFileController;
+use App\Http\Controllers\ThemePlatformAssetController;
+use App\Http\Middleware\EnsureTenantContext;
+use App\Http\Middleware\RememberTenantCatalogLocation;
+use App\Http\Middleware\ResolveTenantPublicSeo;
+use App\Models\TenantDomain;
+use Illuminate\Support\Facades\Route;
+
+$marketingHosts = [];
+foreach (config('tenancy.central_domains', []) as $h) {
+    $normalized = TenantDomain::normalizeHost((string) $h);
+    if ($normalized !== '' && ! in_array($normalized, $marketingHosts, true)) {
+        $marketingHosts[] = $normalized;
+    }
+}
+
+// РљРѕСЂРµРЅСЊ PLATFORM_HOST РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚ Filament (РіРѕСЃС‚СЊ в†’ /login, РїРѕСЃР»Рµ РІС…РѕРґР° вЂ” РґРѕРјР°С€РЅСЏСЏ СЃС‚СЂР°РЅРёС†Р° РїР°РЅРµР»Рё).
+
+Route::middleware('web')->group(function () {
+    Route::get('/scheduling/oauth/google', [GoogleCalendarOAuthController::class, 'redirect'])
+        ->name('scheduling.oauth.google.redirect');
+    Route::get('/scheduling/oauth/google/callback', [GoogleCalendarOAuthController::class, 'callback'])
+        ->name('scheduling.oauth.google.callback');
+});
+
+if ($marketingHosts !== []) {
+    foreach ($marketingHosts as $index => $domain) {
+        Route::domain($domain)->group(function () use ($index) {
+            $named = $index === 0;
+
+            if ($named) {
+                Route::get('/robots.txt', PlatformMarketingRobotsController::class)->name('platform.marketing.robots');
+                Route::get('/sitemap.xml', PlatformMarketingSitemapController::class)->name('platform.marketing.sitemap');
+                Route::get('/llms.txt', PlatformLlmsTxtController::class)->name('platform.marketing.llms');
+                Route::view('/', 'platform.marketing.home')->name('platform.home');
+                Route::view('/features', 'platform.marketing.features')->name('platform.features');
+                Route::view('/pricing', 'platform.marketing.pricing')->name('platform.pricing');
+                Route::get('/for-moto-rental', fn () => view('platform.marketing.segment-landing', ['segmentKey' => 'moto']))->name('platform.for-moto-rental');
+                Route::get('/for-car-rental', fn () => view('platform.marketing.segment-landing', ['segmentKey' => 'car']))->name('platform.for-car-rental');
+                Route::get('/for-services', fn () => view('platform.marketing.segment-landing', ['segmentKey' => 'services']))->name('platform.for-services');
+                Route::view('/faq', 'platform.marketing.faq')->name('platform.faq');
+                Route::view('/contact', 'platform.marketing.contact')->name('platform.contact');
+                Route::post('/contact', [PlatformMarketingContactController::class, 'store'])
+                    ->middleware('throttle:15,1')
+                    ->name('platform.contact.store');
+            } else {
+                Route::get('/robots.txt', PlatformMarketingRobotsController::class);
+                Route::get('/sitemap.xml', PlatformMarketingSitemapController::class);
+                Route::get('/llms.txt', PlatformLlmsTxtController::class);
+                Route::view('/', 'platform.marketing.home');
+                Route::view('/features', 'platform.marketing.features');
+                Route::view('/pricing', 'platform.marketing.pricing');
+                Route::get('/for-moto-rental', fn () => view('platform.marketing.segment-landing', ['segmentKey' => 'moto']));
+                Route::get('/for-car-rental', fn () => view('platform.marketing.segment-landing', ['segmentKey' => 'car']));
+                Route::get('/for-services', fn () => view('platform.marketing.segment-landing', ['segmentKey' => 'services']));
+                Route::view('/faq', 'platform.marketing.faq');
+                Route::view('/contact', 'platform.marketing.contact');
+                Route::post('/contact', [PlatformMarketingContactController::class, 'store'])
+                    ->middleware('throttle:15,1');
+            }
+        });
+    }
+}
+
+Route::middleware([EnsureTenantContext::class, RememberTenantCatalogLocation::class, ResolveTenantPublicSeo::class])->group(function () {
+    Route::get('/theme/build/{theme}/{path}', [ThemePlatformAssetController::class, 'show'])
+        ->where('path', '.*')
+        ->name('theme.platform.asset');
+    if (app()->isLocal()) {
+        Route::get('/media/{path}', [TenantPublicMirrorFileController::class, 'show'])
+            ->where('path', 'tenants/[0-9]+/public/.+')
+            ->name('tenant.public.media');
+    }
+    Route::get('/storage/tenants/{tenantId}/public/{path}', [TenantPublicStorageFileController::class, 'show'])
+        ->where('tenantId', '[0-9]+')
+        ->where('path', '.*')
+        ->name('tenant.public.storage');
+    Route::get('/robots.txt', RobotsController::class)->name('robots');
+    Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
+    Route::get('/llms.txt', TenantLlmsTxtController::class)->name('llms');
+    Route::get('/manifest.webmanifest', TenantPublicPwaManifestController::class)->name('tenant.pwa.manifest');
+    Route::get('/push/onesignal/OneSignalSDKWorker.js', [TenantOneSignalWorkerController::class, 'sdkWorker'])
+        ->name('tenant.onesignal.worker');
+    Route::get('/push/onesignal/OneSignalSDKUpdaterWorker.js', [TenantOneSignalWorkerController::class, 'sdkUpdaterWorker'])
+        ->name('tenant.onesignal.updater');
+    Route::get('/', [HomeController::class, 'index'])->name('home');
+    Route::view('/offline', 'tenant.pages.offline')->name('offline');
+    Route::get('/contacts', [PageController::class, 'show'])
+        ->defaults('slug', 'contacts')
+        ->name('contacts');
+    Route::permanentRedirect('/kontakty', '/contacts');
+    Route::get('/usloviya-arenda', [PageController::class, 'show'])
+        ->defaults('slug', 'usloviya-arenda')
+        ->name('terms');
+    Route::get('/motorcycles', [MotorcycleController::class, 'catalogIndex'])->name('motorcycles.index');
+    Route::get('/locations/{slug}', [LocationLandingController::class, 'show'])->name('location.show');
+    Route::get('/landings/{slug}', [SeoLandingPageController::class, 'show'])->name('seo_landing.show');
+    Route::view('/prices', 'tenant.pages.prices')->name('prices');
+    Route::view('/order', 'tenant.pages.order')->name('order');
+    Route::get('/reviews', [TenantPublicReviewsController::class, 'show'])->name('reviews');
+    Route::get('/api/tenant/reviews', [TenantPublicReviewsController::class, 'apiIndex'])
+        ->middleware('throttle:120,1')
+        ->name('api.tenant.reviews');
+    Route::post('/api/tenant/reviews/submit', [TenantPublicReviewSubmitController::class, 'store'])
+        ->middleware('throttle:60,1')
+        ->name('api.tenant.reviews.submit');
+    Route::get('/faq', TenantPublicFaqController::class)->name('faq');
+    Route::get('/about', [AboutPageController::class, 'show'])->name('about');
+    Route::view('/delivery/anapa', 'tenant.pages.delivery.anapa')->name('delivery.anapa');
+    Route::view('/delivery/gelendzhik', 'tenant.pages.delivery.gelendzhik')->name('delivery.gelendzhik');
+    Route::get('/moto/{slug}', [MotorcycleController::class, 'show'])->name('motorcycle.show');
+
+    // Public booking flow
+    Route::get('/booking', [PublicBookingController::class, 'index'])->name('booking.index');
+    Route::get('/booking/moto/{slug}', [PublicBookingController::class, 'show'])->name('booking.show');
+    Route::post('/booking/calculate', [PublicBookingController::class, 'calculate'])->name('booking.calculate');
+    Route::post('/booking/draft', [PublicBookingController::class, 'storeDraft'])->name('booking.store-draft');
+    Route::get('/checkout', [PublicBookingController::class, 'checkout'])->name('booking.checkout');
+    Route::post('/checkout', [PublicBookingController::class, 'storeCheckout'])->name('booking.store-checkout');
+    Route::get('/thank-you/{booking?}', [PublicBookingController::class, 'thankYou'])->name('booking.thank-you');
+    Route::view('/articles', 'tenant.pages.articles.index')->name('articles.index');
+    Route::post('/api/tenant/booking/catalog-availability', [TenantPublicBookingAvailabilityController::class, 'catalogAvailability'])
+        ->middleware('throttle:120,1')
+        ->name('api.tenant.booking.catalog-availability');
+    Route::post('/api/tenant/booking/motorcycle-calendar-hints', [TenantPublicBookingAvailabilityController::class, 'motorcycleCalendarHints'])
+        ->middleware('throttle:120,1')
+        ->name('api.tenant.booking.motorcycle-calendar-hints');
+    Route::post('/api/bookings', [BookingController::class, 'store'])->name('api.bookings.store');
+    Route::post('/api/leads', [LeadController::class, 'store'])->name('api.leads.store');
+    Route::post('/api/tenant/expert-inquiry', [ExpertInquiryController::class, 'store'])
+        ->name('api.tenant.expert-inquiry.store');
+    Route::post('/api/tenant/contact-inquiry', [ContactInquiryController::class, 'store'])
+        ->middleware('throttle:30,1')
+        ->name('api.tenant.contact-inquiry.store');
+    Route::get('/api/tenant/scheduling/bookable-services', [TenantPublicSchedulingController::class, 'bookableServices'])
+        ->middleware('throttle:60,1')
+        ->name('api.tenant.scheduling.bookable-services');
+    Route::get('/api/tenant/scheduling/bookable-services/{id}/slots', [TenantPublicSchedulingController::class, 'slots'])
+        ->whereNumber('id')
+        ->middleware('throttle:120,1')
+        ->name('api.tenant.scheduling.slots');
+    Route::post('/api/tenant/scheduling/holds', [TenantPublicSchedulingController::class, 'hold'])
+        ->middleware('throttle:30,1')
+        ->name('api.tenant.scheduling.holds');
+    Route::post('/api/tenant/scheduling/submit', [TenantPublicSchedulingController::class, 'submit'])
+        ->middleware('throttle:30,1')
+        ->name('api.tenant.scheduling.submit');
+    Route::get('/{slug}', [PageController::class, 'show'])->where('slug', '[a-z0-9\-]+')->name('page.show');
+});
+
+
+======== C:\OSPanel\home\rentbase.local\vite.config.js ========
+
+import { defineConfig } from 'vite';
+import laravel from 'laravel-vite-plugin';
+import tailwindcss from '@tailwindcss/vite';
+
+export default defineConfig({
+    plugins: [
+        laravel({
+            input: [
+                'resources/css/app.css',
+                'resources/js/app.js',
+                'resources/css/platform-marketing.css',
+                'resources/js/platform-marketing.js',
+                'resources/css/platform-admin.css',
+                'resources/js/platform-admin-overlay-diagnostics.js',
+                'resources/css/tenant-admin.css',
+                'resources/js/tenant-admin-notifications.js',
+                'resources/css/booking-calendar.css',
+                'resources/js/booking-calendar.js',
+                'resources/css/tenant-expert-auto.css',
+                'resources/css/tenant-advocate-editorial.css',
+                'resources/js/tenant-expert-inquiry-form.js',
+                'resources/js/service-program-cover-focal-editor.js',
+                'resources/js/tenant-public-push.js',
+                'resources/js/tenant-admin-onesignal.js',
+            ],
+            refresh: true,
+        }),
+        tailwindcss(),
+    ],
+    server: {
+        watch: {
+            ignored: ['**/storage/framework/views/**'],
+        },
+    },
+});
+

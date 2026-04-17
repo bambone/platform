@@ -7,6 +7,8 @@ use App\Models\NotificationDelivery;
 use App\Models\NotificationDestination;
 use App\Models\NotificationEvent;
 use App\Models\NotificationSubscription;
+use App\Models\TenantPushSettings;
+use App\TenantPush\TenantPushProviderStatus;
 use Illuminate\Support\Carbon;
 
 final class NotificationDeliveryPlanner
@@ -33,6 +35,9 @@ final class NotificationDeliveryPlanner
         $created = [];
         $scheduleAllows = $this->schedulePolicy->allowsImmediateDelivery($subscription, $event);
 
+        /** @var array<int, bool> Memoized only for this invocation (safe under Octane / persistent queue workers). */
+        $tenantOnesignalProviderVerified = [];
+
         foreach ($subscription->destinations as $destination) {
             if ((int) $destination->tenant_id !== (int) $event->tenant_id) {
                 continue;
@@ -57,7 +62,7 @@ final class NotificationDeliveryPlanner
                 continue;
             }
 
-            if (! $this->destinationEligible($destination)) {
+            if (! $this->destinationEligible($destination, $tenantOnesignalProviderVerified)) {
                 continue;
             }
 
@@ -84,7 +89,10 @@ final class NotificationDeliveryPlanner
         return $created;
     }
 
-    private function destinationEligible(NotificationDestination $destination): bool
+    /**
+     * @param  array<int, bool>  $tenantOnesignalProviderVerified
+     */
+    private function destinationEligible(NotificationDestination $destination, array &$tenantOnesignalProviderVerified): bool
     {
         if ($destination->disabled_at !== null) {
             return false;
@@ -97,6 +105,30 @@ final class NotificationDeliveryPlanner
             ], true);
         }
 
+        // OneSignal: queue only when tenant keys are verified and the destination row is Verified
+        // (not PendingVerification — avoids noisy delivery attempts before subscription is ready).
+        if ($destination->type === NotificationChannelType::WebPushOnesignal->value) {
+            if (! $this->isTenantOnesignalProviderVerified((int) $destination->tenant_id, $tenantOnesignalProviderVerified)) {
+                return false;
+            }
+
+            return $destination->status === NotificationDestinationStatus::Verified->value;
+        }
+
         return $destination->status === NotificationDestinationStatus::Verified->value;
+    }
+
+    /**
+     * @param  array<int, bool>  $cache
+     */
+    private function isTenantOnesignalProviderVerified(int $tenantId, array &$cache): bool
+    {
+        if (! array_key_exists($tenantId, $cache)) {
+            $settings = TenantPushSettings::query()->where('tenant_id', $tenantId)->first();
+            $cache[$tenantId] = $settings !== null
+                && $settings->providerStatusEnum() === TenantPushProviderStatus::Verified;
+        }
+
+        return $cache[$tenantId];
     }
 }

@@ -73,7 +73,12 @@
         <link rel="icon" href="{{ $tenantFavicon }}" type="{{ $tenantFaviconMime }}">
     @endif
 
-    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    @php
+        $__t = tenant();
+        $__push = $__t ? $__t->pushSettings : null;
+        $__manifestHref = ($__push && $__push->is_pwa_enabled) ? route('tenant.pwa.manifest') : asset('manifest.json');
+    @endphp
+    <link rel="manifest" href="{{ $__manifestHref }}">
     <meta name="theme-color" content="{{ tenant() && tenant()->themeKey() === 'advocate_editorial' ? '#f4f1eb' : '#0c0c0e' }}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -999,6 +1004,37 @@
             });
         }
     </script>
+    @endif
+
+    @php
+        $__pushT = tenant();
+        $__pushPs = $__pushT ? $__pushT->pushSettings : null;
+        $__pushCanon = $__pushPs && $__pushPs->canonical_host
+            ? strtolower(trim((string) $__pushPs->canonical_host))
+            : '';
+        $__pushHost = strtolower(trim(request()->getHost()));
+        $__pushCanonOk = $__pushCanon !== '' && $__pushHost === $__pushCanon;
+        $__tenantPushBootstrap =
+            $__pushPs
+            && $__pushPs->is_push_enabled
+            && $__pushCanonOk
+            && request()->secure()
+            && trim((string) $__pushPs->onesignal_app_id) !== '';
+    @endphp
+    @if ($__tenantPushBootstrap)
+        <div id="rb-tenant-push-boot" hidden data-config="{{ e(json_encode(['appId' => $__pushPs->onesignal_app_id])) }}"></div>
+        <script>
+            (function () {
+                var el = document.getElementById('rb-tenant-push-boot');
+                if (!el || !el.dataset.config) {
+                    return;
+                }
+                try {
+                    window.__tenantPush = JSON.parse(el.dataset.config);
+                } catch (err) {}
+            })();
+        </script>
+        @vite(['resources/js/tenant-public-push.js'])
     @endif
 
     @stack('tenant-scripts')

@@ -96,6 +96,16 @@ class Tenant extends Model
         return $this->hasMany(SchedulingResourceTypeLabel::class);
     }
 
+    public function pushSettings(): HasOne
+    {
+        return $this->hasOne(TenantPushSettings::class);
+    }
+
+    public function pushEventPreferences(): HasMany
+    {
+        return $this->hasMany(TenantPushEventPreference::class);
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'tenant_user')

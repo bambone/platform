@@ -470,7 +470,14 @@ final class SetupSessionService
             'readiness_tier' => $def?->readinessTier?->value,
             'guided_next_hint' => $def !== null ? $def->guidedNextHint->value : 'save_then_next',
             'guided_inline_placement' => ($ctx['on_target_route'] ?? false)
-                && ($def?->filamentRouteName ?? '') === 'filament.admin.pages.settings'
+                && in_array(
+                    (string) ($def?->filamentRouteName ?? ''),
+                    [
+                        'filament.admin.pages.settings',
+                        'filament.admin.pages.site-setup-booking-notifications',
+                    ],
+                    true,
+                )
                 ? 'floating'
                 : 'inline',
             'settings_tab_active' => $ctx['settings_tab_active'] ?? null,

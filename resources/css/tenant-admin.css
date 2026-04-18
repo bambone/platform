@@ -1830,6 +1830,13 @@ body.fi-ts-setup-active.fi-ts-setup-use-top-offset {
     color: rgb(255 255 255);
 }
 
+/* Гид «Запись и уведомления»: цель в конце длинной формы — фиксированная карточка + якорь с ненулевым боксом */
+.fi-ts-setup-booking-brief-guided-anchor {
+    min-height: 4px;
+    width: 100%;
+    pointer-events: none;
+}
+
 /* Guided: фокус после подсветки */
 .fi-ts-setup-highlight:focus-within {
     outline: 2px solid rgb(217 119 6 / 0.55);

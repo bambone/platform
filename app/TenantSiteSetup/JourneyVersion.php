@@ -24,6 +24,7 @@ final class JourneyVersion
             'cv' => self::CATEGORY_REGISTRY_VERSION,
             'pv' => $profiles->schemaVersion(),
             'profile' => json_encode($profile),
+            'desired_branch' => trim((string) ($profile['desired_branch'] ?? '')),
             'theme' => (string) $tenant->theme_key,
             'sched' => (bool) $tenant->scheduling_module_enabled,
         ];

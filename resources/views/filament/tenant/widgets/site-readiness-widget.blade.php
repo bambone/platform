@@ -82,6 +82,7 @@
                     {{ $launchCtx['primary_goal_label'] }}
                 </p>
             @endif
+            @include('filament.tenant.forms.onboarding-branch-alert', ['resolution' => $this->branchResolution])
             @if(! empty($launchCtx['suppressed_line']))
                 <p class="text-xs text-amber-900/90 dark:text-amber-100/85">{{ $launchCtx['suppressed_line'] }}</p>
             @endif

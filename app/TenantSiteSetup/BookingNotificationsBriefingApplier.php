@@ -25,6 +25,8 @@ final class BookingNotificationsBriefingApplier
     public function __construct(
         private readonly BookingNotificationsQuestionnaireRepository $questionnaire,
         private readonly BookableServiceSettingsMapper $mapper,
+        private readonly SetupProfileRepository $setupProfile,
+        private readonly TenantOnboardingBranchResolver $branchResolver,
     ) {}
 
     /**
@@ -42,7 +44,15 @@ final class BookingNotificationsBriefingApplier
         $destinationIds = [];
 
         DB::transaction(function () use ($tenant, $user, $data, &$destCount, &$subCount, &$presetId, &$destinationIds): void {
-            if (Gate::forUser($user)->allows('manage_scheduling') && $tenant->scheduling_module_enabled) {
+            $branchResolution = $this->branchResolver->resolve(
+                $tenant,
+                $user,
+                $this->setupProfile->getMerged((int) $tenant->id),
+            );
+
+            if (! $branchResolution->shouldSuppressBookingAutomation()
+                && Gate::forUser($user)->allows('manage_scheduling')
+                && $tenant->scheduling_module_enabled) {
                 $presetId = $this->upsertPreset($tenant, $data);
             }
 
@@ -69,6 +79,12 @@ final class BookingNotificationsBriefingApplier
                     $events = [];
                 }
                 $events = array_values(array_filter(array_map('strval', $events)));
+                if ($branchResolution->shouldFilterBookingNotificationEvents()) {
+                    $events = array_values(array_filter(
+                        $events,
+                        static fn (string $key): bool => ! str_starts_with($key, 'booking.'),
+                    ));
+                }
                 foreach ($events as $eventKey) {
                     if (! NotificationEventRegistry::has($eventKey)) {
                         continue;

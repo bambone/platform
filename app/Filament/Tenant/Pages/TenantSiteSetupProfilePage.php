@@ -2,10 +2,13 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Tenant\Concerns\ResolvesTenantOnboardingBranch;
 use App\TenantSiteSetup\SetupProfileRepository;
+use App\TenantSiteSetup\TenantOnboardingBranchId;
 use App\TenantSiteSetup\TenantSiteSetupFeature;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\ViewField;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
@@ -15,6 +18,8 @@ use UnitEnum;
 
 class TenantSiteSetupProfilePage extends Page
 {
+    use ResolvesTenantOnboardingBranch;
+
     protected static string|UnitEnum|null $navigationGroup = 'SiteLaunch';
 
     protected static ?int $navigationSort = 2;
@@ -61,6 +66,24 @@ class TenantSiteSetupProfilePage extends Page
                         .'На публичный сайт, тексты страниц и контакты эти поля не выводятся и их не видят посетители.'
                     )
                     ->schema([
+                        ViewField::make('onboarding_branch_alert')
+                            ->hiddenLabel()
+                            ->view('filament.tenant.forms.onboarding-branch-alert')
+                            ->viewData(fn (): array => [
+                                'resolution' => $this->branchResolution,
+                            ]),
+                        Select::make('desired_branch')
+                            ->label('Сценарий онбординга (ветка)')
+                            ->helperText(
+                                'MVP: заявки и CRM, запись по слотам или оба сценария. Пустое значение — как в поле «Главная цель» (цель «Запись» → ветка записи). '
+                                .'Если выбрана запись, но модуль расписания не включён для аккаунта, покажем предупреждение и фактически ведём сценарий без автоматизации слотов.'
+                            )
+                            ->native(true)
+                            ->nullable()
+                            ->placeholder('— как в главной цели —')
+                            ->options(collect(TenantOnboardingBranchId::cases())->mapWithKeys(
+                                fn (TenantOnboardingBranchId $b) => [$b->value => $b->label()],
+                            )->all()),
                         Select::make('business_focus')
                             ->label('Фокус бизнеса')
                             ->helperText('Опционально: тип деятельности для справки в кабинете. На порядок шагов и на содержимое сайта сейчас не влияет.')

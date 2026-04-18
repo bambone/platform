@@ -12,12 +12,16 @@ use App\Models\User;
  */
 final class SetupTracksResolver
 {
+    public function __construct(
+        private readonly TenantOnboardingBranchResolver $branchResolver,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $mergedProfile  {@see SetupProfileRepository::getMerged}
      */
     public function resolve(Tenant $tenant, ?User $user, array $mergedProfile, SetupCapabilitySnapshot $snapshot): ResolvedSetupTracks
     {
-        unset($tenant, $mergedProfile);
+        unset($tenant, $user);
 
         $active = [
             SetupOnboardingTrack::Base->value,
@@ -57,6 +61,23 @@ final class SetupTracksResolver
             $suppressed[SetupOnboardingTrack::Push->value] = 'feature_or_plan';
         } else {
             $active[] = SetupOnboardingTrack::Push->value;
+        }
+
+        $desiredId = $this->branchResolver->parseDesiredBranchId($mergedProfile);
+        $branchResolution = $this->branchResolver->resolveBranches(
+            $desiredId,
+            $snapshot->schedulingModuleEnabled,
+            $snapshot->userCanManageScheduling,
+        );
+        if ($branchResolution->effectiveBranchId === TenantOnboardingBranchId::CrmOnly->value) {
+            $schedKey = SetupOnboardingTrack::Scheduling->value;
+            $active = array_values(array_filter(
+                $active,
+                static fn (string $t): bool => $t !== $schedKey,
+            ));
+            if (! array_key_exists($schedKey, $suppressed)) {
+                $suppressed[$schedKey] = 'onboarding_branch_crm_only';
+            }
         }
 
         $layers = [

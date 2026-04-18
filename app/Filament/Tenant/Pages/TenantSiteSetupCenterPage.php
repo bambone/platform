@@ -253,7 +253,7 @@ class TenantSiteSetupCenterPage extends Page
         }
 
         foreach ($defs as $key => $def) {
-            if ($applicability->evaluateItem($tenant, $def) !== 'applicable') {
+            if ($applicability->evaluateItem($tenant, $def, Auth::user()) !== 'applicable') {
                 continue;
             }
 

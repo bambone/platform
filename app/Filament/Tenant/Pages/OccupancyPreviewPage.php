@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Tenant\Resources\SchedulingResourceResource;
 use App\Models\SchedulingResource;
 use App\Models\SchedulingTarget;
 use App\Scheduling\Enums\SchedulingScope;
@@ -9,6 +10,8 @@ use App\Scheduling\Occupancy\SchedulingOccupancyPreviewService;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Pages\Page;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use UnitEnum;
@@ -41,6 +44,48 @@ class OccupancyPreviewPage extends Page
     {
         $this->range_from = now()->format('Y-m-d');
         $this->range_to = now()->addDay()->format('Y-m-d');
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return 'Диагностический экран: что считается занятым у выбранного ресурса — внутренние интервалы (заявки, holds, ручные блоки) и внешний busy из кэша синхронизации календарей. Даты задаются в UTC. Сначала нужен хотя бы один ресурс расписания, затем выберите его ниже.';
+    }
+
+    public function schedulingResourcesIndexUrl(): string
+    {
+        return SchedulingResourceResource::getUrl();
+    }
+
+    /** @return Collection<int, SchedulingResource> */
+    #[Computed]
+    public function tenantSchedulingResources(): Collection
+    {
+        $tenant = currentTenant();
+        if ($tenant === null) {
+            return collect();
+        }
+
+        return SchedulingResource::query()
+            ->where('scheduling_scope', SchedulingScope::Tenant)
+            ->where('tenant_id', $tenant->id)
+            ->orderBy('label')
+            ->get();
+    }
+
+    /** @return Collection<int, SchedulingTarget> */
+    #[Computed]
+    public function tenantSchedulingTargets(): Collection
+    {
+        $tenant = currentTenant();
+        if ($tenant === null) {
+            return collect();
+        }
+
+        return SchedulingTarget::query()
+            ->where('scheduling_scope', SchedulingScope::Tenant)
+            ->where('tenant_id', $tenant->id)
+            ->orderBy('label')
+            ->get();
     }
 
     public static function canAccess(): bool

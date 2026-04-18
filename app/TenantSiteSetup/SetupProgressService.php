@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\TenantSiteSetup;
 
 use App\Models\Tenant;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 
 final class SetupProgressService
@@ -18,20 +20,36 @@ final class SetupProgressService
     ) {}
 
     /**
+     * Сводка прогресса по чеклисту запуска.
+     *
+     * Кеш осознанно привязан к пользователю: состав applicable-пунктов зависит от прав
+     * ({@see SetupApplicabilityEvaluator}), поэтому ключ включает user id (см. {@see SetupProgressCache::key}).
+     *
+     * @param  ?User  $user  для чьих прав считать; по умолчанию текущий {@see Auth::user()} (HTTP).
      * @return array<string, mixed>
      */
-    public function summary(Tenant $tenant): array
+    public function summary(Tenant $tenant, ?User $user = null): array
     {
-        return Cache::remember(SetupProgressCache::key((int) $tenant->id), 120, function () use ($tenant) {
-            return $this->computeSummary($tenant);
+        $actor = $user ?? Auth::user();
+        $userId = $actor instanceof User ? $actor->getKey() : null;
+        $cacheKey = SetupProgressCache::key((int) $tenant->id, $userId);
+
+        return Cache::remember($cacheKey, 120, function () use ($tenant, $actor) {
+            return $this->computeSummary($tenant, $actor instanceof User ? $actor : null);
         });
     }
 
     /**
+     * Без кеша; для явного пользователя см. {@see summary()} ($user).
+     *
+     * @param  ?User  $user  по умолчанию {@see Auth::user()}.
      * @return array<string, mixed>
      */
-    public function computeSummary(Tenant $tenant): array
+    public function computeSummary(Tenant $tenant, ?User $user = null): array
     {
+        $actor = $user ?? Auth::user();
+        $evalUser = $actor instanceof User ? $actor : null;
+
         $definitions = SetupItemRegistry::definitions();
         $denominator = 0;
         $completedNumerator = 0;
@@ -48,7 +66,7 @@ final class SetupProgressService
         $categorySummaries = [];
 
         foreach ($definitions as $key => $def) {
-            if ($this->applicability->evaluateItem($tenant, $def) !== 'applicable') {
+            if ($this->applicability->evaluateItem($tenant, $def, $evalUser) !== 'applicable') {
                 continue;
             }
 

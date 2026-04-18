@@ -25,7 +25,7 @@ final class SetupLaunchContextPresenter
         $profile = $this->profiles->getMerged((int) $tenant->id);
         $snapshot = SetupCapabilitySnapshot::capture($tenant, $user);
         $resolved = $this->tracksResolver->resolve($tenant, $user, $profile, $snapshot);
-        $metricsByTrack = $this->applicabilitySummary->summarize($tenant);
+        $metricsByTrack = $this->applicabilitySummary->summarize($tenant, $user);
         $goal = $this->primaryGoalPresenter->present((int) $tenant->id);
 
         $activeSet = array_flip($resolved->activeTracks);

@@ -34,7 +34,7 @@ final class SetupJourneyBuilder
         $activeTrackSet = array_flip($tracks->activeTracks);
 
         foreach ($definitions as $key => $def) {
-            if ($this->applicability->evaluateItem($tenant, $def) !== 'applicable') {
+            if ($this->applicability->evaluateItem($tenant, $def, $user) !== 'applicable') {
                 continue;
             }
             $track = $def->resolvedOnboardingTrack()->value;
@@ -58,6 +58,6 @@ final class SetupJourneyBuilder
             $keys[] = $key;
         }
 
-        return $this->journeyOrdering->applyProfileOrdering($tenant, $keys);
+        return $this->journeyOrdering->applyProfileOrdering($tenant, $keys, $user);
     }
 }

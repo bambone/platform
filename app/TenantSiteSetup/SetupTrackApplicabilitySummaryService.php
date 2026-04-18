@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\TenantSiteSetup;
 
 use App\Models\Tenant;
+use App\Models\User;
 
 /**
  * Считает по каждому треку: пункты реестра, N/A по системе, знаменатель чеклиста и завершённые.
@@ -20,7 +21,7 @@ final class SetupTrackApplicabilitySummaryService
     /**
      * @return array<string, SetupTrackApplicabilityMetrics> keyed by SetupOnboardingTrack::value
      */
-    public function summarize(Tenant $tenant): array
+    public function summarize(Tenant $tenant, ?User $user = null): array
     {
         $definitions = SetupItemRegistry::definitions();
         $byTrack = [];
@@ -42,7 +43,7 @@ final class SetupTrackApplicabilitySummaryService
 
             $byTrack[$trackValue]['total']++;
 
-            if ($this->applicability->evaluateItem($tenant, $def) !== 'applicable') {
+            if ($this->applicability->evaluateItem($tenant, $def, $user) !== 'applicable') {
                 $byTrack[$trackValue]['not_applicable']++;
 
                 continue;

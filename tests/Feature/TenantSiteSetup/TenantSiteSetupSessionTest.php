@@ -292,7 +292,8 @@ class TenantSiteSetupSessionTest extends TestCase
         $merged = app(SetupProfileRepository::class)->getMerged($tenant->id);
         $this->assertArrayHasKey('business_focus', $merged);
         $this->assertArrayHasKey('primary_goal', $merged);
-        $this->assertSame(1, $merged['schema_version']);
+        $this->assertSame(2, $merged['schema_version']);
+        $this->assertArrayHasKey('desired_branch', $merged);
     }
 
     public function test_next_completing_guided_queue_redirects_to_overview_with_flash(): void

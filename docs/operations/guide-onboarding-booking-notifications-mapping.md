@@ -2,6 +2,8 @@
 
 Краткая связка **slug / раздел анкеты** с действиями в tenant-панели (`/admin`). Полная анкета: [guide-onboarding-booking-notifications-questionnaire.md](guide-onboarding-booking-notifications-questionnaire.md).
 
+Слои «анкета / UI брифа / автоприменение»: [guide-brief-vs-ui-vs-applier.md](guide-brief-vs-ui-vs-applier.md). Модель кабинета и гида: [../architecture/tenant-cabinet-guide-brief-model.md](../architecture/tenant-cabinet-guide-brief-model.md). Ветки онбординга (`crm_only` / `slot_booking` / `mixed`): профиль `/admin/site-setup-profile`, код `TenantOnboardingBranchResolver`.
+
 ## Где в кабинете
 
 | Зона меню | Что настраивается |

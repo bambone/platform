@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Widgets;
 
+use App\Filament\Tenant\Concerns\ResolvesTenantOnboardingBranch;
 use App\Filament\Tenant\Pages\TenantSiteSetupCenterPage;
 use App\TenantSiteSetup\SetupLaunchContextPresenter;
 use App\TenantSiteSetup\SetupLaunchCtaSpec;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Gate;
 
 class SiteReadinessWidget extends Widget
 {
+    use ResolvesTenantOnboardingBranch;
+
     protected static bool $isLazy = false;
 
     protected static ?int $sort = 1;

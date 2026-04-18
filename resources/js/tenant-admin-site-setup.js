@@ -386,6 +386,72 @@ function hasHiddenTargetCandidate(payload, ctx) {
     return false;
 }
 
+/**
+ * Есть ли в DOM узлы, по которым потенциально сработает подсветка (включая скрытые).
+ * Если ни одного селектора нет — не ждём maxMs перед fallback-карточкой (после морфа Livewire).
+ *
+ * @param {Record<string, unknown>} payload
+ * @param {ResolveCtx} ctx
+ */
+function hasAnyTargetKeyMatchInDom(payload, ctx) {
+    const primary = payload.target_key;
+    if (!primary || typeof primary !== 'string') {
+        return false;
+    }
+    const primaryScopes = ctx.primaryScopes;
+    const fallbackScope = ctx.fallbackScope;
+    const sectionId =
+        typeof payload.settings_section_id === 'string' && payload.settings_section_id.length > 0
+            ? payload.settings_section_id
+            : '';
+    const fallbackKeys = Array.isArray(payload.target_fallback_keys) ? payload.target_fallback_keys : [];
+    const keysToTry = [primary, ...fallbackKeys.filter((k) => typeof k === 'string' && k.length > 0)];
+
+    for (let si = 0; si < primaryScopes.length; si += 1) {
+        const scope = primaryScopes[si];
+        for (let i = 0; i < keysToTry.length; i += 1) {
+            const key = keysToTry[i];
+            const esc = cssEscapeAttrValue(key);
+            if (queryAllInScope(scope, `[data-setup-target="${esc}"]`).length > 0) {
+                return true;
+            }
+        }
+    }
+
+    if (sectionId !== '') {
+        const esc = cssEscapeAttrValue(sectionId);
+        for (let si = 0; si < primaryScopes.length; si += 1) {
+            if (queryAllInScope(primaryScopes[si], `[data-setup-section="${esc}"]`).length > 0) {
+                return true;
+            }
+        }
+    }
+
+    const sectionTypes = Array.isArray(payload.page_builder_fallback_section_types)
+        ? payload.page_builder_fallback_section_types
+        : [];
+    for (let s = 0; s < sectionTypes.length; s += 1) {
+        const id = sectionTypes[s];
+        if (typeof id !== 'string' || id === '') {
+            continue;
+        }
+        const esc = cssEscapeAttrValue(id);
+        if (queryAllInScope(fallbackScope, `[data-setup-section-type="${esc}"]`).length > 0) {
+            return true;
+        }
+    }
+
+    const action = payload.fallback_setup_action;
+    if (typeof action === 'string' && action !== '') {
+        const esc = cssEscapeAttrValue(action);
+        if (queryAllInScope(fallbackScope, `[data-setup-action="${esc}"]`).length > 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function resolveTargetMissReason(payload, clientReason) {
     if (
         payload.target_context_mismatch === 'wrong_settings_tab' ||
@@ -1347,6 +1413,17 @@ function resolveTargetWithRetry(payload, onFound, onMiss, opts) {
             done = true;
             cleanup();
             onMiss('wrong_tab', { resolveMs, debugBase });
+            return;
+        }
+        const noDomCandidateGraceMs = 220;
+        if (
+            phase === 'full' &&
+            !hasAnyTargetKeyMatchInDom(payload, ctx) &&
+            elapsed >= noDomCandidateGraceMs
+        ) {
+            done = true;
+            cleanup();
+            onMiss('target_missing', { resolveMs, debugBase });
             return;
         }
         if (hasHiddenTargetCandidate(payload, ctx)) {

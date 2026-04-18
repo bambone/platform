@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\TenantSiteSetup;
 
 use App\Models\Tenant;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * P1.5: динамический приоритет шагов по {@see SetupProfileRepository} (primary_goal) поверх sortOrder.
@@ -13,19 +15,30 @@ final class SetupJourneyOrdering
 {
     public function __construct(
         private readonly SetupProfileRepository $profiles,
+        private readonly TenantOnboardingBranchResolver $branchResolver,
     ) {}
 
     /**
      * @param  list<string>  $keys  уже отфильтрованные и в базовом порядке по sortOrder
      * @return list<string>
      */
-    public function applyProfileOrdering(Tenant $tenant, array $keys): array
+    public function applyProfileOrdering(Tenant $tenant, array $keys, ?User $user = null): array
     {
         if ($keys === []) {
             return [];
         }
 
-        $goal = (string) ($this->profiles->getMerged((int) $tenant->id)['primary_goal'] ?? '');
+        $merged = $this->profiles->getMerged((int) $tenant->id);
+        $goal = (string) ($merged['primary_goal'] ?? '');
+        $actor = $user ?? Auth::user();
+        $branchResolution = $this->branchResolver->resolve(
+            $tenant,
+            $actor instanceof User ? $actor : null,
+            $merged,
+        );
+        if ($branchResolution->shouldSuppressBookingAutomation() && $goal === 'booking') {
+            $goal = 'leads';
+        }
         $defs = SetupItemRegistry::definitions();
         $indexed = array_values($keys);
         usort(

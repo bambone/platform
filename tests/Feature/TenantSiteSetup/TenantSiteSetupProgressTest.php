@@ -13,6 +13,7 @@ use App\TenantSiteSetup\TenantSiteSetupFeature;
 use Database\Seeders\RolePermissionSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\Support\CreatesTenantsWithDomains;
 use Tests\TestCase;
@@ -90,6 +91,32 @@ class TenantSiteSetupProgressTest extends TestCase
     {
         config(['features.tenant_site_setup_framework' => false]);
         $this->assertFalse(TenantSiteSetupFeature::enabled());
+    }
+
+    public function test_progress_summary_cache_key_includes_user_id(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('ts_cache_key', ['theme_key' => 'expert_auto']);
+        $u1 = User::factory()->create(['status' => 'active']);
+        $u1->tenants()->attach($tenant->id, ['role' => 'tenant_owner', 'status' => 'active']);
+        $u2 = User::factory()->create(['status' => 'active']);
+        $u2->tenants()->attach($tenant->id, ['role' => 'tenant_owner', 'status' => 'active']);
+
+        $this->actingAs($u1);
+        $k1 = SetupProgressCache::key((int) $tenant->id, Auth::id());
+        $this->actingAs($u2);
+        $k2 = SetupProgressCache::key((int) $tenant->id, Auth::id());
+
+        $this->assertNotSame($k1, $k2);
+    }
+
+    public function test_progress_cache_forget_bumps_revision_invalidating_prior_keys(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('ts_cache_rev', ['theme_key' => 'expert_auto']);
+        $before = SetupProgressCache::key((int) $tenant->id, 99);
+        SetupProgressCache::forget((int) $tenant->id);
+        $after = SetupProgressCache::key((int) $tenant->id, 99);
+
+        $this->assertNotSame($before, $after);
     }
 
     private function actingAsTenant(Tenant $tenant): void

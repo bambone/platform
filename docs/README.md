@@ -9,6 +9,8 @@
 | [setup-access-deploy.md](operations/setup-access-deploy.md) | URL админок (platform vs tenant), домены, установка, hosts/OSPanel, деплой, права на `storage`, типовые ошибки БД/миграций, кастомные домены; **команда клиента** и **матрица прав кабинета** (только Platform Console); **чейнджлог продукта** только в кабинете клиента (`/admin/.../whats-new`), данные в central БД, правки в Platform Console |
 | [guide-onboarding-booking-notifications-questionnaire.md](operations/guide-onboarding-booking-notifications-questionnaire.md) | Анкета для гида: бриф клиента по **записи/расписанию** и **уведомлениям** (slug `rentbase-appointment-notifications-v1`, приложения A–C) |
 | [guide-onboarding-booking-notifications-mapping.md](operations/guide-onboarding-booking-notifications-mapping.md) | Шпаргалка: ответы анкеты → разделы кабинета и сущности; UI: `/admin/site-setup-booking-notifications` (бриф + автоприменение) |
+| [guide-brief-vs-ui-vs-applier.md](operations/guide-brief-vs-ui-vs-applier.md) | Полная анкета гида vs поля брифа в кабинете vs `BookingNotificationsBriefingApplier` |
+| [master-questionnaire-spec.md](operations/master-questionnaire-spec.md) | Master-questionnaire: 10 блоков, связь с брифом и автоприменением |
 | [security-and-golive.md](operations/security-and-golive.md) | Роли, зоны доступа, матрица, чеклист перед релизом |
 
 ## Архитектура
@@ -19,6 +21,10 @@
 | [seo-ai-discoverability.md](architecture/seo-ai-discoverability.md) | SEO / AI: central marketing + tenant public, canonical/robots/sitemap, JSON-LD по типам страниц, crawlers, `llms.txt`, webmaster checklist, антипаттерны |
 | [adr.md](architecture/adr.md) | Зафиксированные архитектурные решения (shared DB, `tenant_user`, панели и т.д.) |
 | [data-model.md](architecture/data-model.md) | Сводка таблиц и связей (не полная схема каждой колонки) |
+| [tenant-cabinet-guide-brief-model.md](architecture/tenant-cabinet-guide-brief-model.md) | Три уровня: полный кабинет / онбординг / автоприменение; ссылки на ветвление и реестры |
+| [tenant-onboarding-branching.md](architecture/tenant-onboarding-branching.md) | `desired_branch` vs `effective_branch`, статусы согласованности, MVP-ветки |
+| [tenant-admin-field-registry.md](architecture/tenant-admin-field-registry.md) | Стартовый реестр полей кабинета по зонам меню |
+| [tenant-onboarding-question-mapping.md](architecture/tenant-onboarding-question-mapping.md) | Маппинг вопросов: apply_class, ветки, `branch_decision_role` |
 
 ## Справочники
 

@@ -22,6 +22,8 @@ final class SetupProfileRepository
             'schema_version' => $this->schemaVersion(),
             'business_focus' => '',
             'primary_goal' => '',
+            /** MVP: crm_only | slot_booking | mixed — см. TenantOnboardingBranchId */
+            'desired_branch' => '',
             'additional_notes' => '',
         ];
     }
@@ -56,6 +58,6 @@ final class SetupProfileRepository
 
     public function schemaVersion(): int
     {
-        return 1;
+        return 2;
     }
 }

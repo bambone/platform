@@ -20,9 +20,9 @@ class SlotDebugPage extends Page
 
     protected static ?string $slug = 'scheduling/slot-debug';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Scheduling';
+    protected static string|UnitEnum|null $navigationGroup = 'SchedulingTools';
 
-    protected static ?int $navigationSort = 90;
+    protected static ?int $navigationSort = 41;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-bug-ant';
 

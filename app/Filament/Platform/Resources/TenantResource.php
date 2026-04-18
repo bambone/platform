@@ -19,6 +19,8 @@ use App\Models\TenantStorageQuota;
 use App\Models\User;
 use App\Providers\Filament\PlatformPanelProvider;
 use App\Scheduling\SchedulingTimezoneOptions;
+use App\Support\TenantRegionalContract;
+use App\Support\TenantSlug;
 use App\Support\Storage\MediaDeliveryMode;
 use App\Support\Storage\MediaWriteMode;
 use Filament\Actions\BulkAction;
@@ -81,8 +83,17 @@ class TenantResource extends Resource
                         TextInput::make('slug')
                             ->label('URL-идентификатор')
                             ->required()
-                            ->unique(ignoreRecord: true)
                             ->maxLength(255)
+                            ->rules([
+                                function () {
+                                    return function (string $attribute, mixed $value, \Closure $fail): void {
+                                        $n = TenantSlug::normalize((string) $value);
+                                        if (! TenantSlug::isValidProductSlug($n)) {
+                                            $fail('Идентификатор: латиница, цифры и одиночные дефисы между фрагментами (без дефиса в начале или конце).');
+                                        }
+                                    };
+                                },
+                            ])
                             ->helperText('Технический поддомен и ссылки: латиница, цифры, дефис.'),
                         Select::make('status')
                             ->label('Статус клиента')
@@ -201,9 +212,10 @@ class TenantResource extends Resource
                             ->default(SchedulingTimezoneOptions::DEFAULT_IDENTIFIER),
                         TextInput::make('locale')
                             ->label('Локаль')
+                            ->required()
                             ->default('ru')
                             ->maxLength(10)
-                            ->helperText('Язык интерфейса кабинета и сайта, если поддерживается темой.'),
+                            ->helperText('Обязательно: код локали (например ru или en-US). Пустое значение сохранить нельзя.'),
                         TextInput::make('country')
                             ->label('Страна (код)')
                             ->maxLength(2)
@@ -211,10 +223,11 @@ class TenantResource extends Resource
                             ->helperText('Двухбуквенный код ISO, если нужен для настроек.'),
                         TextInput::make('currency')
                             ->label('Валюта')
+                            ->required()
                             ->default('RUB')
                             ->maxLength(3)
                             ->placeholder('RUB')
-                            ->helperText('Трёхбуквенный код для цен и отчётов.'),
+                            ->helperText('Обязательно: трёхбуквенный код ISO 4217 (например RUB). Пустое значение сохранить нельзя.'),
                     ])->columns(2),
 
                 TenantPushPlatformFormSchema::section(),

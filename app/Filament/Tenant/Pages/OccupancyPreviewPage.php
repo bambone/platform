@@ -21,9 +21,9 @@ class OccupancyPreviewPage extends Page
 
     protected static ?string $slug = 'scheduling/occupancy-preview';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Scheduling';
+    protected static string|UnitEnum|null $navigationGroup = 'SchedulingTools';
 
-    protected static ?int $navigationSort = 85;
+    protected static ?int $navigationSort = 40;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-eye';
 

@@ -13,6 +13,8 @@ use App\Services\TenantPush\TenantPushPlatformOwnedSettingsService;
 use App\Support\Analytics\AnalyticsSettingsFormMapper;
 use App\TenantPush\TenantPushFeatureGate;
 use App\TenantPush\TenantPushOverride;
+use App\Support\TenantRegionalContract;
+use App\Support\TenantSlug;
 use App\Tenant\StorageQuota\TenantStorageQuotaService;
 use Filament\Actions;
 use Filament\Actions\Action;
@@ -26,9 +28,9 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
-use Illuminate\Validation\ValidationException;
 
 class EditTenant extends EditRecord
 {
@@ -258,6 +260,41 @@ class EditTenant extends EditRecord
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        if (isset($data['slug']) && is_string($data['slug'])) {
+            $data['slug'] = TenantSlug::normalize($data['slug']);
+            if (TenantSlug::isNormalizedSlugTaken($data['slug'], (int) $this->record->getKey())) {
+                throw ValidationException::withMessages([
+                    'slug' => 'Такой URL-идентификатор уже занят (после нормализации он совпадает с существующим клиентом).',
+                ]);
+            }
+        }
+        if (isset($data['locale']) && is_string($data['locale'])) {
+            $loc = TenantRegionalContract::normalizeLocale($data['locale']);
+            if ($loc === null || ! TenantRegionalContract::isValidLocale($loc)) {
+                throw ValidationException::withMessages([
+                    'locale' => 'Укажите корректную локаль (например ru или en-US).',
+                ]);
+            }
+            $data['locale'] = $loc;
+        }
+        if (isset($data['currency']) && is_string($data['currency'])) {
+            $cur = TenantRegionalContract::normalizeCurrency($data['currency']);
+            if ($cur === null || ! TenantRegionalContract::isValidCurrency($cur)) {
+                throw ValidationException::withMessages([
+                    'currency' => 'Укажите трёхбуквенный код валюты ISO 4217 (например RUB).',
+                ]);
+            }
+            $data['currency'] = $cur;
+        }
+        if (isset($data['country']) && is_string($data['country'])) {
+            $data['country'] = TenantRegionalContract::normalizeCountry($data['country']);
+            if (! TenantRegionalContract::isValidCountryOrEmpty($data['country'])) {
+                throw ValidationException::withMessages([
+                    'country' => 'Страна: двухбуквенный код ISO 3166-1 (например RU) или оставьте пустым.',
+                ]);
+            }
+        }
+
         $this->pendingPushSettingsForm = [];
         foreach (TenantPushPlatformFormSchema::formFieldKeys() as $key) {
             if (array_key_exists($key, $data)) {

@@ -19,9 +19,9 @@ class CalendarSyncHealthPage extends Page
 
     protected static ?string $slug = 'scheduling/calendar-sync-health';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Scheduling';
+    protected static string|UnitEnum|null $navigationGroup = 'SchedulingCalendars';
 
-    protected static ?int $navigationSort = 80;
+    protected static ?int $navigationSort = 32;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-signal';
 

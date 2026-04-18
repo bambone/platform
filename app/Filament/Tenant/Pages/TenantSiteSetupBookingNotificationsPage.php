@@ -63,7 +63,7 @@ class TenantSiteSetupBookingNotificationsPage extends Page
 
     public function mount(): void
     {
-        abort_unless(Gate::allows('manage_settings'), 403);
+        abort_unless(static::canAccess(), 403);
         $tenant = currentTenant();
         abort_if($tenant === null, 404);
 
@@ -163,6 +163,7 @@ class TenantSiteSetupBookingNotificationsPage extends Page
 
     public function saveDraft(): void
     {
+        abort_unless(static::canAccess(), 403);
         $tenant = currentTenant();
         if ($tenant === null) {
             return;
@@ -179,6 +180,7 @@ class TenantSiteSetupBookingNotificationsPage extends Page
 
     public function applyNow(): void
     {
+        abort_unless(static::canAccess(), 403);
         $tenant = currentTenant();
         $user = Auth::user();
         if ($tenant === null || $user === null) {

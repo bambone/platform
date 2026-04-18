@@ -16,6 +16,8 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CalendarSubscriptionsRelationManager extends RelationManager
 {
@@ -57,13 +59,51 @@ class CalendarSubscriptionsRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->using(function (array $data): Model {
-                        $data['calendar_connection_id'] = (int) $this->getOwnerRecord()->getKey();
+                        return DB::transaction(function () use ($data): Model {
+                            $connectionId = (int) $this->getOwnerRecord()->getKey();
+                            $data['calendar_connection_id'] = $connectionId;
 
-                        return CalendarSubscription::query()->create($data);
+                            $external = CalendarSubscription::canonicalizeExternalCalendarId($data['external_calendar_id'] ?? '');
+                            $data['external_calendar_id'] = $external;
+
+                            if (CalendarSubscription::query()
+                                ->where('calendar_connection_id', $connectionId)
+                                ->where('external_calendar_id', $external)
+                                ->exists()) {
+                                throw ValidationException::withMessages([
+                                    'external_calendar_id' => 'Календарь с таким внешним ID уже привязан к этому подключению.',
+                                ]);
+                            }
+
+                            return CalendarSubscription::query()->create($data);
+                        });
                     }),
             ])
             ->actions([
-                EditAction::make(),
+                EditAction::make()
+                    ->using(function (CalendarSubscription $record, array $data): CalendarSubscription {
+                        return DB::transaction(function () use ($record, $data): CalendarSubscription {
+                            $connectionId = (int) $this->getOwnerRecord()->getKey();
+                            $external = CalendarSubscription::canonicalizeExternalCalendarId(
+                                (string) ($data['external_calendar_id'] ?? $record->external_calendar_id)
+                            );
+                            $data['external_calendar_id'] = $external;
+
+                            if (CalendarSubscription::query()
+                                ->where('calendar_connection_id', $connectionId)
+                                ->where('external_calendar_id', $external)
+                                ->whereKeyNot($record->getKey())
+                                ->exists()) {
+                                throw ValidationException::withMessages([
+                                    'external_calendar_id' => 'Календарь с таким внешним ID уже привязан к этому подключению.',
+                                ]);
+                            }
+
+                            $record->update($data);
+
+                            return $record->refresh();
+                        });
+                    }),
                 DeleteAction::make(),
             ]);
     }

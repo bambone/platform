@@ -151,9 +151,18 @@ class AdminPanelProvider extends PanelProvider
                 'Settings' => NavigationGroup::make()
                     ->label(self::tenantNavigationGroupLabel(DomainTermKeys::NAV_SETTINGS, 'Настройки'))
                     ->icon('heroicon-o-cog-8-tooth'),
-                'Scheduling' => NavigationGroup::make()
-                    ->label('Запись и расписание')
+                'SchedulingCore' => NavigationGroup::make()
+                    ->label('Запись: основа')
+                    ->icon('heroicon-o-rectangle-stack'),
+                'SchedulingAvailability' => NavigationGroup::make()
+                    ->label('Запись: доступность')
+                    ->icon('heroicon-o-clock'),
+                'SchedulingCalendars' => NavigationGroup::make()
+                    ->label('Запись: календари')
                     ->icon('heroicon-o-calendar-days'),
+                'SchedulingTools' => NavigationGroup::make()
+                    ->label('Запись: инструменты')
+                    ->icon('heroicon-o-wrench-screwdriver'),
             ])
             ->discoverResources(in: app_path('Filament/Tenant/Resources'), for: 'App\\Filament\\Tenant\\Resources')
             ->discoverPages(in: app_path('Filament/Tenant/Pages'), for: 'App\\Filament\\Tenant\\Pages')

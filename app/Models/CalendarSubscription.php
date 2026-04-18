@@ -13,6 +13,11 @@ class CalendarSubscription extends Model
 {
     protected $table = 'calendar_subscriptions';
 
+    public static function canonicalizeExternalCalendarId(?string $value): string
+    {
+        return trim((string) $value);
+    }
+
     protected $fillable = [
         'calendar_connection_id',
         'external_calendar_id',
@@ -60,5 +65,23 @@ class CalendarSubscription extends Model
     public function occupancyMappings(): HasMany
     {
         return $this->hasMany(CalendarOccupancyMapping::class, 'calendar_subscription_id');
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (CalendarSubscription $model): void {
+            $model->external_calendar_id = self::canonicalizeExternalCalendarId($model->external_calendar_id);
+        });
+
+        static::saved(function (CalendarSubscription $model): void {
+            if (! $model->use_for_write) {
+                return;
+            }
+
+            static::query()
+                ->where('calendar_connection_id', $model->calendar_connection_id)
+                ->whereKeyNot($model->getKey())
+                ->update(['use_for_write' => false]);
+        });
     }
 }

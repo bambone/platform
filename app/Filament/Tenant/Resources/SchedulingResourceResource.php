@@ -23,6 +23,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -38,9 +39,9 @@ class SchedulingResourceResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Ресурсы';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Scheduling';
+    protected static string|UnitEnum|null $navigationGroup = 'SchedulingCore';
 
-    protected static ?int $navigationSort = 20;
+    protected static ?int $navigationSort = 13;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
 
@@ -55,9 +56,11 @@ class SchedulingResourceResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
+        $table = (new SchedulingResource)->getTable();
+
         return parent::getEloquentQuery()
-            ->where('scheduling_scope', SchedulingScope::Tenant)
-            ->where('tenant_id', currentTenant()?->id);
+            ->where($table.'.scheduling_scope', SchedulingScope::Tenant)
+            ->where($table.'.tenant_id', currentTenant()?->id);
     }
 
     /**
@@ -95,7 +98,7 @@ class SchedulingResourceResource extends Resource
         return $builtIns + $custom;
     }
 
-    public static function formatResourceTypeLabelForTable(?string $state, ?int $tenantId): string
+    public static function formatResourceTypeLabelForTable(?string $state, ?int $tenantId, ?SchedulingResource $record = null): string
     {
         if ($state === null || $state === '') {
             return '—';
@@ -104,6 +107,13 @@ class SchedulingResourceResource extends Resource
         $builtIns = self::builtInResourceTypeLabelMap();
         if (isset($builtIns[$state])) {
             return $builtIns[$state];
+        }
+
+        if ($record !== null) {
+            $attrs = $record->getAttributes();
+            if (array_key_exists('resource_type_custom_label', $attrs) && $attrs['resource_type_custom_label'] !== null && $attrs['resource_type_custom_label'] !== '') {
+                return (string) $attrs['resource_type_custom_label'];
+            }
         }
 
         if ($tenantId !== null) {
@@ -281,14 +291,35 @@ class SchedulingResourceResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                return $query
+                    ->leftJoin('scheduling_resource_type_labels as srtl', function ($join): void {
+                        $join->on('srtl.tenant_id', '=', 'scheduling_resources.tenant_id')
+                            ->on('srtl.slug', '=', 'scheduling_resources.resource_type');
+                    })
+                    ->select('scheduling_resources.*')
+                    ->addSelect(DB::raw('srtl.label as resource_type_custom_label'));
+            })
             ->columns([
-                TextColumn::make('label')->label('Название')->searchable(),
+                TextColumn::make('label')
+                    ->label('Название')
+                    ->searchable(query: function (Builder $query, string $search): void {
+                        $base = (new SchedulingResource)->getTable();
+                        $term = '%'.$search.'%';
+                        $query->where(function (Builder $q) use ($base, $term): void {
+                            $q->where($base.'.label', 'like', $term)
+                                ->orWhere('srtl.label', 'like', $term);
+                        });
+                    }),
                 TextColumn::make('resource_type')
                     ->label('Тип')
-                    ->formatStateUsing(fn (?string $state): string => self::formatResourceTypeLabelForTable(
-                        $state,
-                        currentTenant()?->id,
-                    )),
+                    ->formatStateUsing(function (?string $state, SchedulingResource $record): string {
+                        return self::formatResourceTypeLabelForTable(
+                            $state,
+                            currentTenant()?->id,
+                            $record,
+                        );
+                    }),
                 TextColumn::make('timezone')->label('Часовой пояс'),
             ])
             ->actions([EditAction::make()])

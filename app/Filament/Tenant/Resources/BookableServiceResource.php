@@ -45,7 +45,7 @@ class BookableServiceResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Услуги';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Scheduling';
+    protected static string|UnitEnum|null $navigationGroup = 'SchedulingCore';
 
     protected static ?int $navigationSort = 10;
 

@@ -56,6 +56,26 @@ class BookingNotificationsQuestionnairePrefillTest extends TestCase
         $this->assertSame('Своё из анкеты', $merged['meta_brand_name']);
     }
 
+    public function test_meta_brand_name_stays_empty_when_user_saved_explicit_empty(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('bn_prefill_empty_brand');
+        TenantSetting::setForTenant($tenant->id, 'general.site_name', 'Из настроек', 'string');
+
+        TenantSetting::setForTenant($tenant->id, BookingNotificationsQuestionnaireRepository::SETTING_KEY, [
+            'schema_version' => 1,
+            'meta_brand_name' => '',
+            'questionnaire_intent' => [
+                'explicit_empty' => ['meta_brand_name'],
+                'sched_customized' => false,
+                'events_customized' => false,
+            ],
+        ], 'json');
+
+        $merged = app(BookingNotificationsQuestionnaireRepository::class)->getMerged($tenant->id);
+
+        $this->assertSame('', $merged['meta_brand_name']);
+    }
+
     public function test_meta_timezone_prefills_from_tenant_when_questionnaire_empty(): void
     {
         $tenant = $this->createTenantWithActiveDomain('bn_prefill_tz', ['timezone' => 'Europe/Moscow']);
@@ -65,14 +85,14 @@ class BookingNotificationsQuestionnairePrefillTest extends TestCase
         $this->assertSame('Europe/Moscow', $merged['meta_timezone']);
     }
 
-    public function test_dest_email_prefills_from_existing_notification_destination(): void
+    public function test_dest_email_prefills_from_wizard_notification_destination(): void
     {
         $tenant = $this->createTenantWithActiveDomain('bn_prefill_email');
 
         NotificationDestination::query()->create([
             'tenant_id' => $tenant->id,
             'user_id' => null,
-            'name' => 'Основной email',
+            'name' => BookingNotificationsBriefingWizardMarkers::DEST_EMAIL_NAME,
             'type' => NotificationChannelType::Email->value,
             'status' => NotificationDestinationStatus::Verified->value,
             'is_shared' => true,
@@ -109,7 +129,7 @@ class BookingNotificationsQuestionnairePrefillTest extends TestCase
 
         BookingSettingsPreset::query()->create([
             'tenant_id' => $tenant->id,
-            'name' => 'Рабочий пресет',
+            'name' => BookingNotificationsBriefingWizardMarkers::PRESET_NAME,
             'description' => null,
             'payload' => [
                 'duration_minutes' => 90,
@@ -142,6 +162,66 @@ class BookingNotificationsQuestionnairePrefillTest extends TestCase
         $merged = app(BookingNotificationsQuestionnaireRepository::class)->getMerged($tenant->id);
 
         $this->assertSame(['crm_request.created'], $merged['events_enabled']);
+    }
+
+    public function test_save_draft_does_not_flag_events_customized_when_scheduling_off_and_effective_default(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('bn_intent_events_sched_off', [
+            'scheduling_module_enabled' => false,
+        ]);
+
+        $merged = app(BookingNotificationsQuestionnaireRepository::class)->getMerged($tenant->id);
+        $this->assertSame(['crm_request.created'], $merged['events_enabled']);
+
+        app(BookingNotificationsQuestionnaireRepository::class)->save($tenant->id, $merged);
+
+        $raw = TenantSetting::getForTenant($tenant->id, BookingNotificationsQuestionnaireRepository::SETTING_KEY, []);
+        $intent = is_array($raw) ? ($raw['questionnaire_intent'] ?? []) : [];
+        $this->assertFalse((bool) ($intent['events_customized'] ?? false));
+    }
+
+    /**
+     * Список в черновике совпадает с tenant-effective default (без booking.* при выключенном scheduling),
+     * intent: не кастомизировал события. Подписки мастера дают дополнительный lead.* — getMerged() должен
+     * брать ключи из подписок, а не отбрасывать их из‑за сравнения с глобальным default анкеты.
+     */
+    public function test_getMerged_prefers_wizard_event_keys_when_list_matches_tenant_effective_default(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('bn_merge_wizard_effective', [
+            'scheduling_module_enabled' => false,
+        ]);
+
+        TenantSetting::setForTenant($tenant->id, BookingNotificationsQuestionnaireRepository::SETTING_KEY, [
+            'schema_version' => 1,
+            'events_enabled' => ['crm_request.created'],
+            'questionnaire_intent' => [
+                'explicit_empty' => [],
+                'sched_customized' => false,
+                'events_customized' => false,
+            ],
+        ], 'json');
+
+        $marker = BookingNotificationsBriefingWizardMarkers::SUBSCRIPTION_NAME_MARKER;
+        foreach (['crm_request.created', 'lead.created'] as $eventKey) {
+            NotificationSubscription::query()->create([
+                'tenant_id' => $tenant->id,
+                'user_id' => null,
+                'name' => 'Подписка ('.$marker.') '.$eventKey,
+                'event_key' => $eventKey,
+                'enabled' => true,
+                'conditions_json' => null,
+                'schedule_json' => null,
+                'severity_min' => null,
+                'created_by_user_id' => null,
+            ]);
+        }
+
+        $merged = app(BookingNotificationsQuestionnaireRepository::class)->getMerged($tenant->id);
+
+        $this->assertEqualsCanonicalizing(
+            ['crm_request.created', 'lead.created'],
+            $merged['events_enabled']
+        );
     }
 
     public function test_events_enabled_prefills_from_wizard_subscriptions_when_still_default_list(): void

@@ -15,11 +15,16 @@ class SchedulingTimezoneOptionsTest extends TestCase
         $this->assertSame('UTC', SchedulingTimezoneOptions::normalizeToKnown('UTC'));
     }
 
-    public function test_normalize_to_known_falls_back_for_garbage(): void
+    public function test_normalize_to_known_preserves_unknown_non_empty(): void
     {
         $this->assertSame(
-            SchedulingTimezoneOptions::DEFAULT_IDENTIFIER,
+            'Not/A/Zone',
             SchedulingTimezoneOptions::normalizeToKnown('Not/A/Zone')
         );
+    }
+
+    public function test_try_resolve_returns_null_for_garbage(): void
+    {
+        $this->assertNull(SchedulingTimezoneOptions::tryResolveToKnownIdentifier('Not/A/Zone'));
     }
 }

@@ -35,9 +35,9 @@ class SchedulingTargetResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Цели';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Scheduling';
+    protected static string|UnitEnum|null $navigationGroup = 'SchedulingCore';
 
-    protected static ?int $navigationSort = 30;
+    protected static ?int $navigationSort = 12;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-map-pin';
 

@@ -36,9 +36,9 @@ class CalendarOccupancyMappingResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Сопоставления';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Scheduling';
+    protected static string|UnitEnum|null $navigationGroup = 'SchedulingCalendars';
 
-    protected static ?int $navigationSort = 65;
+    protected static ?int $navigationSort = 31;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrows-right-left';
 

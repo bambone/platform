@@ -13,9 +13,13 @@ use App\Models\TemplatePreset;
 use App\Models\Tenant;
 use App\Models\TenantSetting;
 use App\Services\Tenancy\TenantProvisioningService;
+use App\Rules\OptionalRussianPhone;
 use App\Scheduling\SchedulingTimezoneOptions;
 use App\Support\RussianPhone;
+use App\Support\TenantRegionalContract;
+use App\Support\TenantSlug;
 use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
 use Filament\Forms\Components\TextInput;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
@@ -23,6 +27,8 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use UnitEnum;
 
@@ -75,23 +81,34 @@ class OnboardingWizard extends Page
                                             ->label('Название компании или проекта')
                                             ->required()
                                             ->live(onBlur: true)
-                                            ->afterStateUpdated(fn ($state, callable $set) => $set('slug', Str::slug($state)))
+                                            ->afterStateUpdated(fn ($state, callable $set) => $set('slug', TenantSlug::normalize(Str::slug((string) $state))))
                                             ->placeholder('Например: MotoRent Сочи'),
                                         TextInput::make('slug')
                                             ->label('URL-идентификатор')
                                             ->required()
-                                            ->unique('tenants', 'slug')
+                                            ->rules([
+                                                function () {
+                                                    return function (string $attribute, mixed $value, \Closure $fail): void {
+                                                        $n = TenantSlug::normalize((string) $value);
+                                                        if (! TenantSlug::isValidProductSlug($n)) {
+                                                            $fail('Идентификатор: латиница, цифры и одиночные дефисы между фрагментами (без дефиса в начале или конце).');
+                                                        }
+                                                    };
+                                                },
+                                            ])
                                             ->helperText('Используется в адресе технического поддомена. Латиница, цифры и дефис.'),
                                         TimezoneSelect::make('timezone')
                                             ->default(SchedulingTimezoneOptions::DEFAULT_IDENTIFIER),
                                         TextInput::make('locale')
                                             ->label('Локаль')
+                                            ->required()
                                             ->default('ru')
-                                            ->helperText('Например: ru, en.'),
+                                            ->helperText('Обязательно: код локали (например ru или en-US).'),
                                         TextInput::make('currency')
                                             ->label('Валюта')
+                                            ->required()
                                             ->default('RUB')
-                                            ->helperText('Трёхбуквенный код, например RUB.'),
+                                            ->helperText('Обязательно: трёхбуквенный код ISO 4217 (например RUB).'),
                                         Select::make('domain_localization_preset_id')
                                             ->label('Тематика терминологии')
                                             ->options(
@@ -153,7 +170,8 @@ class OnboardingWizard extends Page
                                         TextInput::make('contact_phone')
                                             ->label('Телефон')
                                             ->tel()
-                                            ->telRegex(RussianPhone::filamentTelDisplayRegex()),
+                                            ->telRegex(RussianPhone::filamentTelDisplayRegex())
+                                            ->rules([new OptionalRussianPhone]),
                                         TextInput::make('contact_email')
                                             ->label('Email')
                                             ->email(),
@@ -200,21 +218,72 @@ class OnboardingWizard extends Page
         $templatePresetId = isset($data['template_preset_id']) ? (int) $data['template_preset_id'] : null;
         $templatePresetId = ($templatePresetId !== null && $templatePresetId > 0) ? $templatePresetId : null;
 
-        $tenant = DB::transaction(function () use ($data, $templatePresetId, $defaultPlanId) {
+        $slug = TenantSlug::normalize((string) ($data['slug'] ?? ''));
+        if (! TenantSlug::isValidProductSlug($slug)) {
+            Notification::make()
+                ->title('Проверьте URL-идентификатор')
+                ->body('Допустимы латиница, цифры и одиночные дефисы между фрагментами.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        if (TenantSlug::isNormalizedSlugTaken($slug)) {
+            Notification::make()
+                ->title('Такой URL-идентификатор уже занят')
+                ->body('Выберите другой идентификатор (после приведения к нижнему регистру он должен быть уникален).')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $validator = Validator::make($data, [
+            'contact_phone' => ['nullable', new OptionalRussianPhone],
+        ]);
+        if ($validator->fails()) {
+            foreach ($validator->errors()->all() as $message) {
+                Notification::make()->title($message)->danger()->send();
+            }
+
+            return;
+        }
+
+        $locale = TenantRegionalContract::normalizeLocale($data['locale'] ?? null);
+        $currency = TenantRegionalContract::normalizeCurrency($data['currency'] ?? null);
+        if ($locale === null || ! TenantRegionalContract::isValidLocale($locale)) {
+            Notification::make()
+                ->title('Проверьте локаль')
+                ->body('Например: ru, en, en-US.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+        if ($currency === null || ! TenantRegionalContract::isValidCurrency($currency)) {
+            Notification::make()
+                ->title('Проверьте валюту')
+                ->body('Нужен трёхбуквенный код ISO 4217, например RUB.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $tenant = DB::transaction(function () use ($data, $defaultPlanId, $slug, $locale, $currency) {
             $tenant = Tenant::create([
                 'name' => $data['name'],
-                'slug' => $data['slug'],
+                'slug' => $slug,
                 'brand_name' => $data['brand_name'] ?? null,
                 'status' => 'trial',
                 'plan_id' => $defaultPlanId,
                 'timezone' => $data['timezone'] ?? SchedulingTimezoneOptions::DEFAULT_IDENTIFIER,
-                'locale' => $data['locale'] ?? 'ru',
-                'currency' => $data['currency'] ?? 'RUB',
+                'locale' => $locale,
+                'currency' => $currency,
                 'domain_localization_preset_id' => $data['domain_localization_preset_id']
                     ?? DomainLocalizationPreset::query()->where('slug', 'generic_services')->value('id'),
             ]);
-
-            app(TenantProvisioningService::class)->bootstrapAfterTenantCreated($tenant, $templatePresetId);
 
             if (! empty($data['logo_url'])) {
                 TenantSetting::setForTenant($tenant->id, 'branding.logo', $data['logo_url']);
@@ -222,8 +291,9 @@ class OnboardingWizard extends Page
             if (! empty($data['primary_color'])) {
                 TenantSetting::setForTenant($tenant->id, 'branding.primary_color', $data['primary_color']);
             }
-            if (! empty($data['contact_phone'])) {
-                TenantSetting::setForTenant($tenant->id, 'contacts.phone', $data['contact_phone']);
+            $phoneNormalized = RussianPhone::normalize($data['contact_phone'] ?? null);
+            if ($phoneNormalized !== null && $phoneNormalized !== '') {
+                TenantSetting::setForTenant($tenant->id, 'contacts.phone', $phoneNormalized);
             }
             if (! empty($data['contact_email'])) {
                 TenantSetting::setForTenant($tenant->id, 'contacts.email', $data['contact_email']);
@@ -239,6 +309,18 @@ class OnboardingWizard extends Page
             }
 
             return $tenant;
+        });
+
+        DB::afterCommit(function () use ($tenant, $templatePresetId): void {
+            try {
+                app(TenantProvisioningService::class)->bootstrapAfterTenantCreated($tenant, $templatePresetId);
+            } catch (\Throwable $e) {
+                Log::error('tenant_provisioning_failed_after_onboarding', [
+                    'tenant_id' => $tenant->id,
+                    'exception' => $e,
+                ]);
+                throw $e;
+            }
         });
 
         $this->redirect(TenantResource::getUrl('edit', ['record' => $tenant]));

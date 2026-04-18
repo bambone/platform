@@ -12,31 +12,57 @@ use DateTimeZone;
  */
 final class SchedulingTimezoneOptions
 {
-    /** Дефолт для форм и нормализации неизвестного значения (как у ресурсов расписания). */
+    /** Продуктовый дефолт для новых форм (явная норма для пустого выбора). */
     public const DEFAULT_IDENTIFIER = 'Europe/Moscow';
 
     private static ?array $cache = null;
 
+    public static function defaultForNewForm(): string
+    {
+        return self::DEFAULT_IDENTIFIER;
+    }
+
     /**
-     * Приводит строку к известному идентификатору из {@see self::all()} (регистр игнорируется).
-     * Пустое или нераспознанное значение → {@see DEFAULT_IDENTIFIER}.
+     * Возвращает канонический IANA-идентификатор из {@see self::all()} или null, если строка не распознана.
+     * Пустая строка → null.
      */
-    public static function normalizeToKnown(?string $candidate): string
+    public static function tryResolveToKnownIdentifier(?string $candidate): ?string
     {
         $all = self::all();
         $trim = trim((string) $candidate);
-        if ($trim !== '' && isset($all[$trim])) {
+        if ($trim === '') {
+            return null;
+        }
+        if (isset($all[$trim])) {
             return $trim;
         }
-        if ($trim !== '') {
-            foreach ($all as $id => $_) {
-                if (strcasecmp($id, $trim) === 0) {
-                    return $id;
-                }
+        foreach ($all as $id => $_) {
+            if (strcasecmp($id, $trim) === 0) {
+                return $id;
             }
         }
 
-        return self::DEFAULT_IDENTIFIER;
+        return null;
+    }
+
+    /**
+     * Приводит строку к известному идентификатору из {@see self::all()} (регистр игнорируется).
+     * Пустое значение → {@see defaultForNewForm()}.
+     * Непустое нераспознанное значение возвращается как есть (без тихой подмены на Москву).
+     */
+    public static function normalizeToKnown(?string $candidate): string
+    {
+        $resolved = self::tryResolveToKnownIdentifier($candidate);
+        if ($resolved !== null) {
+            return $resolved;
+        }
+
+        $trim = trim((string) $candidate);
+        if ($trim === '') {
+            return self::defaultForNewForm();
+        }
+
+        return $trim;
     }
 
     /**

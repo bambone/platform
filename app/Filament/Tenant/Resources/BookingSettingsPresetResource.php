@@ -32,9 +32,9 @@ class BookingSettingsPresetResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Группы настроек записи';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Scheduling';
+    protected static string|UnitEnum|null $navigationGroup = 'SchedulingCore';
 
-    protected static ?int $navigationSort = 12;
+    protected static ?int $navigationSort = 11;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-list';
 

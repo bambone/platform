@@ -33,9 +33,9 @@ class AvailabilityExceptionResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Исключения';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Scheduling';
+    protected static string|UnitEnum|null $navigationGroup = 'SchedulingAvailability';
 
-    protected static ?int $navigationSort = 45;
+    protected static ?int $navigationSort = 21;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-exclamation-triangle';
 

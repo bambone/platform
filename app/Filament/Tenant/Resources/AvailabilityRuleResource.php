@@ -36,9 +36,9 @@ class AvailabilityRuleResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Правила доступности';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Scheduling';
+    protected static string|UnitEnum|null $navigationGroup = 'SchedulingAvailability';
 
-    protected static ?int $navigationSort = 40;
+    protected static ?int $navigationSort = 20;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-clock';
 

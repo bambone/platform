@@ -32,9 +32,9 @@ class ManualBusyBlockResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Блокировки';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Scheduling';
+    protected static string|UnitEnum|null $navigationGroup = 'SchedulingAvailability';
 
-    protected static ?int $navigationSort = 50;
+    protected static ?int $navigationSort = 22;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-no-symbol';
 

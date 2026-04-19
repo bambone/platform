@@ -5,6 +5,7 @@ namespace App\Filament\Tenant\Resources\LeadResource\Pages;
 use App\Filament\Exports\LeadExporter;
 use App\Filament\Tenant\Forms\ManualOperatorBookingForm;
 use App\Filament\Tenant\Resources\LeadResource;
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\Models\Booking;
 use App\Models\Lead;
 use App\Product\CRM\DTO\ManualLeadCreateData;
@@ -16,7 +17,6 @@ use Filament\Resources\Pages\ListRecords;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -26,20 +26,22 @@ class ListLeads extends ListRecords
 
     public function getTitle(): string|Htmlable
     {
-        return new HtmlString(
-            '<div>'
-            .'<span class="text-xl font-semibold tracking-tight">'.e(LeadResource::getPluralModelLabel()).'</span>'
-            .'<p class="mt-2 max-w-3xl text-sm font-normal text-gray-600 dark:text-gray-400">'
-            .'Входящие обращения с сайта: потенциальные клиенты и запросы на аренду. Обрабатывайте новые заявки в первую очередь — '
-            .'статус и ответственный видны только вашей команде.'
-            .'</p>'
-            .'</div>'
-        );
+        return LeadResource::getPluralModelLabel();
     }
 
     protected function getHeaderActions(): array
     {
         return [
+            TenantPanelHintHeaderAction::makeLines(
+                'leadsWhatIs',
+                [
+                    'Входящие обращения с сайта: потенциальные клиенты и запросы.',
+                    'Новые заявки обрабатывайте в первую очередь.',
+                    '',
+                    'Статус и ответственный видны только вашей команде.',
+                ],
+                'Справка по лидам',
+            ),
             Action::make('create_manual_lead')
                 ->label('Добавить обращение')
                 ->icon('heroicon-o-plus')

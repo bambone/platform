@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\Models\Tenant;
 use App\Models\TenantSeoFile;
 use App\Models\TenantSeoFileGeneration;
@@ -177,10 +178,7 @@ class SeoFiles extends Page
 
     public function saveSettings(): void
     {
-        abort_unless(
-            Gate::allows('manage_seo_files') || Gate::allows('manage_settings'),
-            403
-        );
+        abort_unless(static::canAccess(), 403);
 
         $tenant = currentTenant();
         abort_if($tenant === null, 403);
@@ -258,6 +256,16 @@ class SeoFiles extends Page
         $base = app(TenantCanonicalPublicBaseUrl::class)->resolve($tenant);
 
         return [
+            TenantPanelHintHeaderAction::makeLines(
+                'seoFilesWhatIs',
+                [
+                    'Публикация robots.txt, sitemap.xml и llms.txt на публичный домен.',
+                    '',
+                    'Кнопки в шапке: предпросмотр, открыть URL, сгенерировать или перезаписать снимок.',
+                    'Тексты и автогенерация — в форме страницы.',
+                ],
+                'Справка по SEO-файлам',
+            ),
             ActionGroup::make([
                 Action::make('previewRobots')
                     ->label('Предпросмотр robots')
@@ -278,7 +286,7 @@ class SeoFiles extends Page
                 Action::make('generateRobotsFirst')
                     ->label('Сгенерировать robots.txt')
                     ->icon('heroicon-o-document-plus')
-                    ->visible(fn (): bool => Gate::allows('manage_seo_files') && ! $this->robotsSnapshotValid())
+                    ->visible(fn (): bool => $this->canPublishTenantSeoSnapshots() && ! $this->robotsSnapshotValid())
                     ->requiresConfirmation()
                     ->modalHeading('Сгенерировать robots.txt?')
                     ->modalDescription('Будет создан снимок файла для публичного URL.')
@@ -290,7 +298,7 @@ class SeoFiles extends Page
                     ->label('Перезаписать robots.txt')
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
-                    ->visible(fn (): bool => Gate::allows('manage_seo_files') && $this->robotsSnapshotValid())
+                    ->visible(fn (): bool => $this->canPublishTenantSeoSnapshots() && $this->robotsSnapshotValid())
                     ->form([
                         Toggle::make('create_backup')
                             ->label('Создать резервную копию перед перезаписью')
@@ -306,7 +314,7 @@ class SeoFiles extends Page
                 Action::make('downloadRobotsBackup')
                     ->label('Скачать backup robots')
                     ->icon('heroicon-m-arrow-down-tray')
-                    ->visible(fn (): bool => Gate::allows('manage_seo_files') && filled($this->robotsRow()?->backup_storage_path))
+                    ->visible(fn (): bool => $this->canPublishTenantSeoSnapshots() && filled($this->robotsRow()?->backup_storage_path))
                     ->action(function () use ($tenant): mixed {
                         return $this->streamBackupDownload($tenant, $this->robotsRow()?->backup_storage_path);
                     }),
@@ -339,7 +347,7 @@ class SeoFiles extends Page
                 Action::make('generateSitemapFirst')
                     ->label('Сгенерировать sitemap')
                     ->icon('heroicon-o-map')
-                    ->visible(fn (): bool => Gate::allows('manage_seo_files') && ! $this->sitemapSnapshotValid())
+                    ->visible(fn (): bool => $this->canPublishTenantSeoSnapshots() && ! $this->sitemapSnapshotValid())
                     ->requiresConfirmation()
                     ->modalHeading('Сгенерировать sitemap.xml?')
                     ->action(function () use ($tenant): void {
@@ -350,7 +358,7 @@ class SeoFiles extends Page
                     ->label('Пересобрать sitemap')
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
-                    ->visible(fn (): bool => Gate::allows('manage_seo_files') && $this->sitemapSnapshotValid())
+                    ->visible(fn (): bool => $this->canPublishTenantSeoSnapshots() && $this->sitemapSnapshotValid())
                     ->form([
                         Toggle::make('create_backup')
                             ->label('Создать резервную копию перед перезаписью')
@@ -364,7 +372,7 @@ class SeoFiles extends Page
                 Action::make('downloadSitemapBackup')
                     ->label('Скачать backup sitemap')
                     ->icon('heroicon-m-arrow-down-tray')
-                    ->visible(fn (): bool => Gate::allows('manage_seo_files') && filled($this->sitemapRow()?->backup_storage_path))
+                    ->visible(fn (): bool => $this->canPublishTenantSeoSnapshots() && filled($this->sitemapRow()?->backup_storage_path))
                     ->action(function () use ($tenant): mixed {
                         return $this->streamBackupDownload($tenant, $this->sitemapRow()?->backup_storage_path);
                     }),
@@ -379,12 +387,12 @@ class SeoFiles extends Page
                 Action::make('seoAutopilotBootstrap')
                     ->label('SEO autopilot: значения по умолчанию')
                     ->icon('heroicon-o-sparkles')
-                    ->visible(fn (): bool => Gate::allows('manage_seo_files') || Gate::allows('manage_settings'))
+                    ->visible(fn (): bool => $this->canUseTenantSeoUtilities())
                     ->requiresConfirmation()
                     ->modalHeading('Сгенерировать SEO по умолчанию?')
                     ->modalDescription('Заполняет llms.txt, переопределения маршрутов и при необходимости мету главной. Уже заполненные поля не перезаписываются.')
                     ->action(function () use ($tenant): void {
-                        abort_unless(Gate::allows('manage_seo_files') || Gate::allows('manage_settings'), 403);
+                        abort_unless($this->canUseTenantSeoUtilities(), 403);
                         $result = app(InitializeTenantSeoDefaults::class)->execute($tenant, false, false);
                         $this->data = $this->loadFormState();
                         $body = $result->messages !== [] ? implode("\n", $result->messages) : 'Изменений нет (поля уже заполнены).';
@@ -394,12 +402,12 @@ class SeoFiles extends Page
                 Action::make('seoAutopilotRefreshLlms')
                     ->label('Обновить llms из данных сайта')
                     ->icon('heroicon-o-arrow-path')
-                    ->visible(fn (): bool => Gate::allows('manage_seo_files') || Gate::allows('manage_settings'))
+                    ->visible(fn (): bool => $this->canUseTenantSeoUtilities())
                     ->requiresConfirmation()
                     ->modalHeading('Перезаписать llms.txt в настройках?')
                     ->modalDescription('Обновляет только поля введения и списка ссылок для /llms.txt.')
                     ->action(function () use ($tenant): void {
-                        abort_unless(Gate::allows('manage_seo_files') || Gate::allows('manage_settings'), 403);
+                        abort_unless($this->canUseTenantSeoUtilities(), 403);
                         app(TenantSeoAutopilotService::class)->refreshLlmsOnly($tenant, false);
                         $this->data = $this->loadFormState();
                         Notification::make()->title('llms обновлён')->success()->send();
@@ -408,11 +416,11 @@ class SeoFiles extends Page
                 Action::make('seoAutopilotLint')
                     ->label('Проверка SEO (lint)')
                     ->icon('heroicon-o-shield-check')
-                    ->visible(fn (): bool => Gate::allows('manage_seo_files') || Gate::allows('manage_settings'))
+                    ->visible(fn (): bool => $this->canUseTenantSeoUtilities())
                     ->modalHeading('Результат проверки SEO')
                     ->modalWidth(Width::TwoExtraLarge)
                     ->modalContent(function () use ($tenant): View {
-                        abort_unless(Gate::allows('manage_seo_files') || Gate::allows('manage_settings'), 403);
+                        abort_unless($this->canUseTenantSeoUtilities(), 403);
                         $lint = app(TenantSeoLintService::class)->lint($tenant, false);
 
                         return view('filament.partials.seo-lint-result', [
@@ -431,7 +439,7 @@ class SeoFiles extends Page
 
     private function runPublishRobots(Tenant $tenant, bool $overwriteConfirmed, bool $createBackup): void
     {
-        Gate::authorize('manage_seo_files');
+        abort_unless($this->canPublishTenantSeoSnapshots(), 403);
         try {
             app(TenantSeoFilePublisher::class)->publishRobots(
                 $tenant,
@@ -449,7 +457,7 @@ class SeoFiles extends Page
 
     private function runPublishSitemap(Tenant $tenant, bool $createBackup): void
     {
-        Gate::authorize('manage_seo_files');
+        abort_unless($this->canPublishTenantSeoSnapshots(), 403);
         try {
             app(TenantSeoFilePublisher::class)->publishSitemap(
                 $tenant,
@@ -466,7 +474,7 @@ class SeoFiles extends Page
 
     private function streamBackupDownload(Tenant $tenant, ?string $relativePath): mixed
     {
-        Gate::authorize('manage_seo_files');
+        abort_unless($this->canPublishTenantSeoSnapshots(), 403);
         if ($relativePath === null || $relativePath === '') {
             Notification::make()->title('Нет файла')->danger()->send();
 
@@ -490,6 +498,24 @@ class SeoFiles extends Page
         }, basename($relativePath), [
             'Content-Type' => 'application/octet-stream',
         ]);
+    }
+
+    /**
+     * Публикация/пересборка снимков robots.txt и sitemap.xml и скачивание их backup.
+     */
+    private function canPublishTenantSeoSnapshots(): bool
+    {
+        return Gate::allows('manage_seo_files') || Gate::allows('manage_seo');
+    }
+
+    /**
+     * Autopilot, lint и прочие утилиты страницы.
+     */
+    private function canUseTenantSeoUtilities(): bool
+    {
+        return Gate::allows('manage_seo_files')
+            || Gate::allows('manage_seo')
+            || Gate::allows('manage_settings');
     }
 
     private function loadFormState(): array
@@ -551,9 +577,21 @@ class SeoFiles extends Page
             return false;
         }
         if ($routes !== '') {
-            $decoded = json_decode($routes, true);
-            if (! is_array($decoded)) {
-                Notification::make()->title('Переопределения SEO маршрутов: ожидается JSON-объект {...}')->danger()->send();
+            try {
+                $decodedRoutes = json_decode($routes, false, 512, JSON_THROW_ON_ERROR);
+            } catch (JsonException $e) {
+                Notification::make()
+                    ->title('Переопределения SEO маршрутов: невалидный JSON — '.$e->getMessage())
+                    ->danger()
+                    ->send();
+
+                return false;
+            }
+            if (! is_object($decodedRoutes)) {
+                Notification::make()
+                    ->title('Переопределения SEO маршрутов: ожидается JSON-объект {...}, не массив [...]')
+                    ->danger()
+                    ->send();
 
                 return false;
             }
@@ -587,8 +625,8 @@ class SeoFiles extends Page
             return [];
         }
         $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-        if (! is_array($decoded)) {
-            throw new JsonException($label.': ожидался JSON-массив.');
+        if (! is_array($decoded) || ! array_is_list($decoded)) {
+            throw new JsonException($label.': ожидался JSON-массив списка строк [...], не объект {...}.');
         }
         $out = [];
         foreach ($decoded as $item) {

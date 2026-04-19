@@ -2,6 +2,8 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Tenant\Support\SchedulingAdminNavigationPrerequisites;
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\Models\CalendarConnection;
 use App\Scheduling\Enums\SchedulingScope;
 use BackedEnum;
@@ -34,6 +36,33 @@ class CalendarSyncHealthPage extends Page
         return $tenant !== null
             && $tenant->scheduling_module_enabled
             && Gate::allows('manage_scheduling');
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        if (! static::$shouldRegisterNavigation) {
+            return false;
+        }
+
+        $tenant = currentTenant();
+
+        return SchedulingAdminNavigationPrerequisites::calendarIntegrationsEnabledForTenant($tenant)
+            && SchedulingAdminNavigationPrerequisites::tenantHasCalendarConnections($tenant);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            TenantPanelHintHeaderAction::makeLines(
+                'calendarSyncHealthWhatIs',
+                [
+                    'Сводка по подключённым календарям: последний успешный sync и ошибки.',
+                    '',
+                    'Детали подписки и действие «Синхр. busy» — в карточке подключения.',
+                ],
+                'Справка по синхронизации календарей',
+            ),
+        ];
     }
 
     /**

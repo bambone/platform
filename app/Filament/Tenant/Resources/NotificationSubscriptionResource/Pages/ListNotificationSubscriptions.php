@@ -3,6 +3,7 @@
 namespace App\Filament\Tenant\Resources\NotificationSubscriptionResource\Pages;
 
 use App\Filament\Tenant\Resources\NotificationSubscriptionResource;
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\NotificationCenter\NotificationRuleDraftGenerator;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -16,6 +17,15 @@ class ListNotificationSubscriptions extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            TenantPanelHintHeaderAction::makeLines(
+                'notificationSubscriptionsWhatIs',
+                [
+                    'Правила: при каком событии и на какого получателя отправить уведомление.',
+                    '',
+                    'Черновики по парам источник/тип из CRM можно сгенерировать кнопкой ниже — потом включите нужные правила.',
+                ],
+                'Справка по правилам уведомлений',
+            ),
             Action::make('generateDraftRules')
                 ->label('Сгенерировать черновики правил')
                 ->icon('heroicon-o-sparkles')

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Tenant\Resources;
 
 use App\Filament\Shared\Lifecycle\AdminFilamentDelete;
+use App\Filament\Support\FilamentInlineMarkdown;
 use App\Filament\Tenant\Resources\BookingSettingsPresetResource\Pages;
 use App\Models\BookingSettingsPreset;
 use App\Scheduling\BookableServiceSettingsMapper;
@@ -58,6 +59,10 @@ class BookingSettingsPresetResource extends Resource
         return $schema
             ->components([
                 Section::make('О группе')
+                    ->description(FilamentInlineMarkdown::toHtml(
+                        '**Шаблон** параметров записи (слоты, горизонт, подтверждение и т.д.) для услуг и массового применения с каталога. '
+                        .'Первая группа часто приходит из анкеты запуска — это пресет, не отдельная услуга. Пояснение — значок «?» в списке групп.'
+                    ))
                     ->schema([
                         TextInput::make('name')
                             ->label('Название')

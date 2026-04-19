@@ -3,6 +3,7 @@
 namespace App\Filament\Tenant\Pages;
 
 use App\Filament\Tenant\Concerns\ResolvesTenantOnboardingBranch;
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\TenantSiteSetup\SetupProfileRepository;
 use App\TenantSiteSetup\TenantOnboardingBranchId;
 use App\TenantSiteSetup\TenantSiteSetupFeature;
@@ -43,6 +44,21 @@ class TenantSiteSetupProfilePage extends Page
         }
 
         return Gate::allows('manage_settings') && currentTenant() !== null;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            TenantPanelHintHeaderAction::makeLines(
+                'siteSetupProfileWhatIs',
+                [
+                    'Профиль запуска задаёт приоритеты чеклиста и подсказок «Быстрого запуска».',
+                    '',
+                    'На публичный сайт и тексты страниц эти поля не выводятся.',
+                ],
+                'Справка по профилю сайта',
+            ),
+        ];
     }
 
     public function mount(): void
@@ -120,10 +136,9 @@ class TenantSiteSetupProfilePage extends Page
 
     public function save(): void
     {
+        abort_unless(Gate::allows('manage_settings'), 403);
         $tenant = currentTenant();
-        if ($tenant === null) {
-            return;
-        }
+        abort_if($tenant === null, 404);
 
         $state = $this->getSchema('form')->getState();
         $repo = app(SetupProfileRepository::class);

@@ -4,6 +4,7 @@ namespace App\Filament\Tenant\Resources;
 
 use App\Filament\Shared\Lifecycle\AdminFilamentDelete;
 use App\Filament\Tenant\Resources\AvailabilityExceptionResource\Pages;
+use App\Filament\Tenant\Support\SchedulingAdminNavigationPrerequisites;
 use App\Models\AvailabilityException;
 use App\Models\BookableService;
 use App\Models\SchedulingResource;
@@ -46,6 +47,15 @@ class AvailabilityExceptionResource extends Resource
         return $tenant !== null
             && $tenant->scheduling_module_enabled
             && Gate::allows('manage_scheduling');
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        if (! static::$shouldRegisterNavigation) {
+            return false;
+        }
+
+        return SchedulingAdminNavigationPrerequisites::tenantHasSchedulingResources(currentTenant());
     }
 
     public static function getEloquentQuery(): Builder

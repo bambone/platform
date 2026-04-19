@@ -72,6 +72,34 @@ class NotificationFilamentAccessTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_operator_can_open_notification_browser_settings_page(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('nfob');
+        $host = $this->tenancyHostForSlug('nfob');
+        $user = User::factory()->create(['status' => 'active']);
+        $user->tenants()->attach($tenant->id, ['role' => 'operator', 'status' => 'active']);
+
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+        $this->actingAs($user)
+            ->getWithHost($host, '/admin/notification-subscriptions/browser')
+            ->assertOk();
+    }
+
+    public function test_operator_without_manage_settings_gets_forbidden_on_storage_monitoring(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('nfsm');
+        $host = $this->tenancyHostForSlug('nfsm');
+        $user = User::factory()->create(['status' => 'active']);
+        $user->tenants()->attach($tenant->id, ['role' => 'operator', 'status' => 'active']);
+
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+        $this->actingAs($user)
+            ->getWithHost($host, '/admin/storage-monitoring')
+            ->assertForbidden();
+    }
+
     public function test_notification_destination_policy_personal_vs_shared_for_limited_role(): void
     {
         $tenant = $this->createTenantWithActiveDomain('nfpol');

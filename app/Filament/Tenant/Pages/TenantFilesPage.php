@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\Services\TenantFiles\TenantFileCatalogService;
 use App\Tenant\StorageQuota\TenantStorageQuotaData;
 use App\Tenant\StorageQuota\TenantStorageQuotaService;
@@ -43,6 +44,21 @@ class TenantFilesPage extends Page
         return Gate::allows('manage_pages')
             || Gate::allows('manage_homepage')
             || Gate::allows('manage_settings');
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            TenantPanelHintHeaderAction::makeLines(
+                'tenantFilesWhatIs',
+                [
+                    'Каталог файлов в публичном хранилище тенанта: поиск, фильтр по типу, постраничный просмотр.',
+                    '',
+                    'Учитывайте квоту при удалении или загрузке крупных медиа.',
+                ],
+                'Справка по файлам сайта',
+            ),
+        ];
     }
 
     #[Computed]

@@ -5,6 +5,7 @@ namespace App\Filament\Tenant\Resources;
 use App\Filament\Shared\Lifecycle\AdminFilamentDelete;
 use App\Filament\Support\FilamentInlineMarkdown;
 use App\Filament\Tenant\Resources\AvailabilityRuleResource\Pages;
+use App\Filament\Tenant\Support\SchedulingAdminNavigationPrerequisites;
 use App\Models\AvailabilityRule;
 use App\Models\SchedulingResource;
 use App\Scheduling\Enums\AvailabilityRuleType;
@@ -49,6 +50,15 @@ class AvailabilityRuleResource extends Resource
         return $tenant !== null
             && $tenant->scheduling_module_enabled
             && Gate::allows('manage_scheduling');
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        if (! static::$shouldRegisterNavigation) {
+            return false;
+        }
+
+        return SchedulingAdminNavigationPrerequisites::tenantHasSchedulingResources(currentTenant());
     }
 
     public static function getEloquentQuery(): Builder

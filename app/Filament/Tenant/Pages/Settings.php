@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\Filament\Forms\Components\TenantPublicImagePicker;
 use App\Filament\Shared\TenantAnalyticsFormSchema;
 use App\Livewire\Concerns\InteractsWithTenantPublicFilePicker;
@@ -469,6 +470,8 @@ class Settings extends Page
 
     public function save(): void
     {
+        abort_unless(Gate::allows('manage_settings'), 403);
+
         $data = $this->getSchema('form')->getState();
         $tenant = \currentTenant();
 
@@ -738,5 +741,20 @@ class Settings extends Page
                 ->body('Выбранный цвет может быть слишком тёмным для тёмного текста на кнопках публичного сайта (ориентир WCAG 4.5:1). Рекомендуется более светлый или насыщенный акцент.')
                 ->send();
         }
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            TenantPanelHintHeaderAction::makeLines(
+                'settingsWhatIs',
+                [
+                    'Основные настройки сайта: название, бренд, контакты, аналитика, отображение денег и др.',
+                    '',
+                    'Сохранённые значения влияют на публичный сайт и письма.',
+                ],
+                'Справка по настройкам сайта',
+            ),
+        ];
     }
 }

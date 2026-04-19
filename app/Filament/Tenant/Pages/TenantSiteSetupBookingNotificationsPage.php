@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Tenant\Pages;
 
 use App\Filament\Tenant\Concerns\ResolvesTenantOnboardingBranch;
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\Models\Tenant;
 use App\NotificationCenter\NotificationEventRegistry;
 use App\Filament\Shared\TimezoneSelect;
@@ -276,6 +277,16 @@ class TenantSiteSetupBookingNotificationsPage extends Page
     protected function getHeaderActions(): array
     {
         return [
+            TenantPanelHintHeaderAction::makeLines(
+                'bookingNotificationsBriefWhatIs',
+                [
+                    'Анкета «Запись и уведомления»: черновик параметров записи и правил уведомлений.',
+                    '',
+                    '«Сохранить черновик» — только в профиле запуска.',
+                    '«Применить» создаёт или обновляет пресет, получателей и правила в кабинете.',
+                ],
+                'Справка по анкете записи и уведомлений',
+            ),
             Action::make('saveDraft')
                 ->label('Сохранить черновик')
                 ->action('saveDraft'),

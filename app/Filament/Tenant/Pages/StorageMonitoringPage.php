@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\Jobs\RecalculateTenantStorageUsageJob;
 use App\Models\PlatformSetting;
 use App\Models\TenantStorageQuotaEvent;
@@ -12,6 +13,7 @@ use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use UnitEnum;
 
@@ -33,7 +35,13 @@ class StorageMonitoringPage extends Page
 
     public static function canAccess(): bool
     {
-        return \currentTenant() !== null;
+        return Gate::allows('manage_settings') && \currentTenant() !== null;
+    }
+
+    public function mount(): void
+    {
+        abort_unless(Gate::allows('manage_settings'), 403);
+        abort_if(\currentTenant() === null, 404);
     }
 
     protected function getHeaderActions(): array
@@ -43,19 +51,36 @@ class StorageMonitoringPage extends Page
             return [];
         }
 
-        return [
-            Action::make('syncStorageUsage')
+        $actions = [
+            TenantPanelHintHeaderAction::makeLines(
+                'storageMonitoringWhatIs',
+                [
+                    'Занятость хранилища тенанта по публичным и приватным файлам, события квот.',
+                    '',
+                    '«Синхронизировать» пересчитывает фактический объём в бакете.',
+                ],
+                'Справка по мониторингу хранилища',
+            ),
+        ];
+
+        if (Gate::allows('manage_settings')) {
+            $actions[] = Action::make('syncStorageUsage')
                 ->label('Синхронизировать с хранилищем')
                 ->icon('heroicon-o-arrow-path')
                 ->action(function () use ($tenant): void {
+                    abort_unless(Gate::allows('manage_settings'), 403);
+                    abort_if(\currentTenant() === null || (int) \currentTenant()->id !== (int) $tenant->id, 403);
+
                     RecalculateTenantStorageUsageJob::dispatchSync((int) $tenant->id);
                     Notification::make()
                         ->title('Данные обновлены')
                         ->body('Занятое место пересчитано по объектам в хранилище (публичный и приватный диск).')
                         ->success()
                         ->send();
-                }),
-        ];
+                });
+        }
+
+        return $actions;
     }
 
     #[Computed]

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\Auth\AccessRoles;
 use App\Models\TenantDomain;
 use App\Models\TenantPushEventPreference;
@@ -441,14 +442,31 @@ class TenantPushPwaSettingsPage extends Page
 
     protected function getHeaderActions(): array
     {
-        return [
-            Action::make('verify')
-                ->label('Проверить OneSignal')
-                ->action('verifyOnesignal'),
-            Action::make('test')
-                ->label('Тестовый push')
-                ->action('sendTestPush'),
+        $tenant = currentTenant();
+        $canEdit = $tenant !== null && app(TenantPushFeatureGate::class)->evaluate($tenant)->canEditSettings;
+
+        $actions = [
+            TenantPanelHintHeaderAction::makeLines(
+                'tenantPushPwaWhatIs',
+                [
+                    'Web Push и PWA через OneSignal: ключи приложения, сегменты получателей, тестовая отправка.',
+                    '',
+                    'Проверка в шапке валидирует конфигурацию, но не всю цепочку доставки для всех пользователей.',
+                ],
+                'Справка по Push и PWA',
+            ),
         ];
+
+        if ($canEdit) {
+            $actions[] = Action::make('verify')
+                ->label('Проверить OneSignal')
+                ->action('verifyOnesignal');
+            $actions[] = Action::make('test')
+                ->label('Тестовый push')
+                ->action('sendTestPush');
+        }
+
+        return $actions;
     }
 
 }

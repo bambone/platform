@@ -6,6 +6,7 @@ use App\Filament\Shared\Lifecycle\AdminFilamentDelete;
 use App\Filament\Tenant\Resources\CalendarConnectionResource\Pages;
 use App\Filament\Tenant\Resources\CalendarConnectionResource\RelationManagers\CalendarSubscriptionsRelationManager;
 use App\Filament\Tenant\Support\CalendarConnectionFormGuide;
+use App\Filament\Tenant\Support\SchedulingAdminNavigationPrerequisites;
 use App\Jobs\Scheduling\SyncCalendarBusyJob;
 use App\Models\CalendarConnection;
 use App\Scheduling\Enums\CalendarAccessMode;
@@ -56,6 +57,15 @@ class CalendarConnectionResource extends Resource
         return $tenant !== null
             && $tenant->scheduling_module_enabled
             && Gate::allows('manage_scheduling');
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        if (! static::$shouldRegisterNavigation) {
+            return false;
+        }
+
+        return SchedulingAdminNavigationPrerequisites::calendarIntegrationsEnabledForTenant(currentTenant());
     }
 
     public static function getEloquentQuery(): Builder

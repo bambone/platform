@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\ContactChannels\ContactChannelRegistry;
 use App\ContactChannels\ContactChannelType;
 use App\ContactChannels\TenantContactChannelsStore;
@@ -35,6 +36,21 @@ class ContactChannelsPage extends Page
     public static function canAccess(): bool
     {
         return Gate::allows('manage_settings') && currentTenant() !== null;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            TenantPanelHintHeaderAction::makeLines(
+                'contactChannelsWhatIs',
+                [
+                    'Каналы связи: что использует команда, что показывается на сайте и в формах.',
+                    '',
+                    'Плавающие кнопки мессенджеров — отдельный переключатель вверху страницы.',
+                ],
+                'Справка по каналам связи',
+            ),
+        ];
     }
 
     public function mount(): void
@@ -110,10 +126,9 @@ class ContactChannelsPage extends Page
 
     public function save(): void
     {
+        abort_unless(Gate::allows('manage_settings'), 403);
         $tenant = currentTenant();
-        if ($tenant === null) {
-            return;
-        }
+        abort_if($tenant === null, 404);
 
         $data = $this->getSchema('form')->getState();
 

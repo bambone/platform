@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\Models\TenantSetupItemState;
 use App\TenantSiteSetup\SetupApplicabilityEvaluator;
 use App\TenantSiteSetup\SetupCompletionEvaluator;
@@ -67,6 +68,16 @@ class TenantSiteSetupCenterPage extends Page
     protected function getHeaderActions(): array
     {
         return [
+            TenantPanelHintHeaderAction::makeLines(
+                'siteSetupCenterWhatIs',
+                [
+                    'Чеклист запуска сайта: статусы шагов и ссылки в кабинет.',
+                    '',
+                    '«Начать запуск» открывает гид.',
+                    '«Новая очередь» сбрасывает сессию и строит шаги заново.',
+                ],
+                'Справка по обзору запуска',
+            ),
             Action::make('startGuided')
                 ->label(fn (): string => $this->launchPrimaryCta['label'])
                 ->icon('heroicon-o-play')

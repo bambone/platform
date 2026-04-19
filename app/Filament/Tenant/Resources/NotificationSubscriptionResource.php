@@ -30,8 +30,6 @@ class NotificationSubscriptionResource extends Resource
 {
     protected static ?string $model = NotificationSubscription::class;
 
-    protected static ?string $panel = 'admin';
-
     protected static ?string $navigationLabel = 'Правила уведомлений';
 
     protected static ?string $modelLabel = 'Правило';
@@ -75,6 +73,11 @@ class NotificationSubscriptionResource extends Resource
 
         return $schema->components([
             Section::make('Правило')
+                ->description(
+                    'Связка «событие в системе → куда отправить». Когда событие происходит (например, новая заявка), '
+                    .'уведомление уходит на отмеченных получателей, если правило включено. Список каналов (email, Telegram, колокольчик в кабинете и т.д.) '
+                    .'задаётся в разделе «Получатели уведомлений» — здесь вы только подключаете их к этому правилу.'
+                )
                 ->schema([
                     TextInput::make('name')->label('Название')->required()->maxLength(255),
                     Select::make('event_key')

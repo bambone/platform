@@ -2,8 +2,8 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class NotificationBrowserSettingsPage extends Page
@@ -24,6 +24,22 @@ class NotificationBrowserSettingsPage extends Page
 
     public static function canAccess(): bool
     {
-        return Gate::allows('manage_notifications') || Gate::allows('manage_notification_subscriptions');
+        // Личные настройки браузера (push/звук в кабинете) — любой участник клиента с доступом в панель.
+        return currentTenant() !== null;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            TenantPanelHintHeaderAction::makeLines(
+                'notificationBrowserWhatIs',
+                [
+                    'Разрешения браузера на звук и web push для уведомлений в этом кабинете.',
+                    '',
+                    'Правила email, Telegram и т.д. настраиваются отдельно в центре уведомлений.',
+                ],
+                'Справка по браузерным уведомлениям',
+            ),
+        ];
     }
 }

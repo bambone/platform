@@ -5,6 +5,7 @@ namespace App\Filament\Tenant\Resources;
 use App\Filament\Shared\Lifecycle\AdminFilamentDelete;
 use App\Filament\Support\AdminEmptyState;
 use App\Filament\Tenant\Resources\CalendarOccupancyMappingResource\Pages;
+use App\Filament\Tenant\Support\SchedulingAdminNavigationPrerequisites;
 use App\Models\CalendarOccupancyMapping;
 use App\Models\CalendarSubscription;
 use App\Models\SchedulingResource;
@@ -49,6 +50,26 @@ class CalendarOccupancyMappingResource extends Resource
         return $tenant !== null
             && $tenant->scheduling_module_enabled
             && Gate::allows('manage_scheduling');
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        if (! static::$shouldRegisterNavigation) {
+            return false;
+        }
+
+        $tenant = currentTenant();
+
+        return SchedulingAdminNavigationPrerequisites::calendarIntegrationsEnabledForTenant($tenant)
+            && SchedulingAdminNavigationPrerequisites::tenantHasCalendarSubscriptions($tenant);
+    }
+
+    /**
+     * Создание записи: нужны интеграции и хотя бы одна подписка на календарь (иначе обязательные поля пустые).
+     */
+    public static function canStartCreatingMapping(): bool
+    {
+        return SchedulingAdminNavigationPrerequisites::tenantCanCreateOccupancyMapping(currentTenant());
     }
 
     public static function getEloquentQuery(): Builder
@@ -162,6 +183,11 @@ class CalendarOccupancyMappingResource extends Resource
 
     public static function table(Table $table): Table
     {
+        $canCreate = static::canStartCreatingMapping();
+        $emptyDescription = $canCreate
+            ? 'Календарь → цель или ресурс, чтобы внешняя занятость учитывалась на сайте. Сбросьте поиск/фильтры, если список пуст без причины.'
+            : 'Сначала включите интеграции и добавьте подписку на календарь в «Календари (подключения)». Подсказка — «?» в шапке.';
+
         return AdminEmptyState::applyInitial(
             $table
                 ->columns([
@@ -196,10 +222,9 @@ class CalendarOccupancyMappingResource extends Resource
                     ]),
                 ]),
             'Сопоставлений пока нет',
-            'Свяжите события из подключённого календаря с объектом или ресурсом записи — так учитывается занятость на сайте.'
-                .AdminEmptyState::hintFiltersAndSearch(),
+            $emptyDescription,
             'heroicon-o-arrows-right-left',
-            [CreateAction::make()->label('Добавить сопоставление')],
+            $canCreate ? [CreateAction::make()->label('Добавить сопоставление')] : [],
         );
     }
 

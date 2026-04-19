@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\Models\DomainTerm;
 use App\Models\TenantTermOverride;
 use App\Terminology\TenantTerminologyGuard;
@@ -18,7 +19,6 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use UnitEnum;
@@ -55,17 +55,31 @@ class TerminologySettings extends Page implements HasTable
         $this->bootedInteractsWithTable();
     }
 
-    public function getSubheading(): string|Htmlable|null
+    protected function getHeaderActions(): array
     {
         $t = currentTenant();
-        if ($t === null) {
-            return null;
+        $presetLine = '';
+        if ($t !== null) {
+            $name = $t->domainLocalizationPreset?->name;
+            $presetLine = ($name !== null && $name !== '')
+                ? 'Текущий пресет локализации: '.$name.'. '
+                : 'Пресет локализации не назначен — используются дефолты и ваши переименования. ';
         }
-        $name = $t->domainLocalizationPreset?->name;
 
-        return $name !== null && $name !== ''
-            ? 'Текущий пресет: '.$name.'. Ниже — отображаемые названия; системные ключи в коде не меняются.'
-            : 'Пресет терминологии не назначен — используются только значения по умолчанию и ваши переименования.';
+        $hintLines = [];
+        if ($presetLine !== '') {
+            $hintLines[] = rtrim($presetLine);
+            $hintLines[] = '';
+        }
+        $hintLines[] = 'Таблица ниже — подписи в интерфейсе и на сайте; системные ключи в коде не меняются.';
+
+        return [
+            TenantPanelHintHeaderAction::makeLines(
+                'terminologyWhatIs',
+                $hintLines,
+                'Справка по терминологии',
+            ),
+        ];
     }
 
     public function content(Schema $schema): Schema

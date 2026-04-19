@@ -9,6 +9,7 @@ use App\Bookings\Calendar\BookingStatusPresentation;
 use App\Enums\BookingStatus;
 use App\Filament\Tenant\Concerns\ResolvesDomainTermLabels;
 use App\Filament\Tenant\Forms\ManualOperatorBookingForm;
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\Filament\Tenant\Resources\BookableServiceResource;
 use App\Filament\Tenant\Resources\CalendarConnectionResource;
 use App\Filament\Tenant\Resources\SchedulingResourceResource;
@@ -27,6 +28,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use UnitEnum;
@@ -115,7 +117,17 @@ class BookingCalendarPage extends Page
 
     protected function getHeaderActions(): array
     {
-        $actions = [];
+        $actions = [
+            TenantPanelHintHeaderAction::makeLines(
+                'bookingCalendarWhatIs',
+                [
+                    'Календарь записей: фильтры по объектам и статусам, просмотр по неделе или месяцу.',
+                    '',
+                    'Кнопка создания открывает операторскую форму новой записи.',
+                ],
+                'Справка по календарю записей',
+            ),
+        ];
 
         if (TenantServiceProgramResource::canAccess()) {
             $actions[] = Action::make('openTenantServicePrograms')

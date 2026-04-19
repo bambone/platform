@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\Models\PlatformProductChangelogEntry;
 use BackedEnum;
 use Filament\Pages\Page;
@@ -28,6 +29,21 @@ class TenantProductChangelogPage extends Page
     public static function canAccess(): bool
     {
         return \currentTenant() !== null;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            TenantPanelHintHeaderAction::makeLines(
+                'productChangelogWhatIs',
+                [
+                    'Опубликованные изменения продукта RentBase для вашей команды.',
+                    '',
+                    'Не отображается посетителям публичного сайта.',
+                ],
+                'Справка по истории изменений',
+            ),
+        ];
     }
 
     /**

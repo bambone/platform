@@ -2,15 +2,16 @@
 
 namespace App\Filament\Tenant\Pages;
 
+use App\Filament\Tenant\Concerns\ValidatesUtcDateRangeForDebugTools;
 use App\Filament\Tenant\Resources\SchedulingResourceResource;
+use App\Filament\Tenant\Support\SchedulingAdminNavigationPrerequisites;
+use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
 use App\Models\SchedulingResource;
 use App\Models\SchedulingTarget;
 use App\Scheduling\Enums\SchedulingScope;
 use App\Scheduling\Occupancy\SchedulingOccupancyPreviewService;
 use BackedEnum;
-use Carbon\Carbon;
 use Filament\Pages\Page;
-use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class OccupancyPreviewPage extends Page
 {
+    use ValidatesUtcDateRangeForDebugTools;
+
     protected static ?string $navigationLabel = 'Превью занятости';
 
     protected static ?string $title = 'Превью занятости (internal + external)';
@@ -46,9 +49,25 @@ class OccupancyPreviewPage extends Page
         $this->range_to = now()->addDay()->format('Y-m-d');
     }
 
-    public function getSubheading(): string|Htmlable|null
+    protected function utcDateRangeInvalidNotificationTitle(): string
     {
-        return 'Диагностический экран: что считается занятым у выбранного ресурса — внутренние интервалы (заявки, holds, ручные блоки) и внешний busy из кэша синхронизации календарей. Даты задаются в UTC. Сначала нужен хотя бы один ресурс расписания, затем выберите его ниже.';
+        return 'Превью занятости';
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            TenantPanelHintHeaderAction::makeLines(
+                'occupancyPreviewWhatIs',
+                [
+                    'Диагностика: что считается занятым у ресурса — внутренние интервалы (заявки, holds, ручные блоки) и внешний busy из кэша календарей.',
+                    'Даты в UTC.',
+                    '',
+                    'Нужен ресурс расписания и выбор периода; подсказки на форме ниже.',
+                ],
+                'О превью занятости',
+            ),
+        ];
     }
 
     public function schedulingResourcesIndexUrl(): string
@@ -97,6 +116,15 @@ class OccupancyPreviewPage extends Page
             && Gate::allows('manage_scheduling');
     }
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        if (! static::$shouldRegisterNavigation) {
+            return false;
+        }
+
+        return SchedulingAdminNavigationPrerequisites::tenantHasSchedulingResources(currentTenant());
+    }
+
     /**
      * @return array{internal: list<array{start: string, end: string}>, external: list<array{start: string, end: string, is_tentative: bool}>}
      */
@@ -127,8 +155,11 @@ class OccupancyPreviewPage extends Page
                 ->first();
         }
 
-        $from = Carbon::parse($this->range_from.' 00:00:00', 'UTC');
-        $to = Carbon::parse($this->range_to.' 23:59:59', 'UTC');
+        $range = $this->parseUtcDateRangeOrNull();
+        if ($range === null) {
+            return ['internal' => [], 'external' => []];
+        }
+        [$from, $to] = $range;
 
         return app(SchedulingOccupancyPreviewService::class)->previewForResource($tenant, $resource, $from, $to, $target);
     }

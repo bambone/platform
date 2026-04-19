@@ -4,6 +4,7 @@ namespace App\Filament\Tenant\Resources;
 
 use App\Filament\Forms\Components\TenantSpatieMediaLibraryFileUpload;
 use App\Filament\Support\AdminEmptyState;
+use App\Filament\Support\HintIconTooltip;
 use App\Filament\Tenant\Resources\ReviewResource\Pages;
 use App\Models\Review;
 use Filament\Actions\Action;
@@ -58,13 +59,19 @@ class ReviewResource extends Resource
                             ->required()
                             ->maxLength(255)
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Как будет подписан автор на карточке отзыва (имя или имя + контекст).'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Как будет подписан автор на карточке отзыва.',
+                                'Имя или имя + контекст.',
+                            )),
                         TextInput::make('city')
                             ->label('Город')
                             ->maxLength(255)
                             ->placeholder('Например, Челябинск')
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Необязательно. Показывается рядом с именем, если тема выводит город.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Необязательно.',
+                                'Показывается рядом с именем, если тема выводит город.',
+                            )),
                         TextInput::make('contact_email')
                             ->label('Email отправителя')
                             ->email()
@@ -75,35 +82,46 @@ class ReviewResource extends Resource
                             ->maxLength(255)
                             ->placeholder('Короткая тема отзыва')
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Одна строка над текстом: тема или эмоция («Контраварийка и зима»). На сайте может идти бейджем или подзаголовком.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Одна строка над текстом: тема или эмоция («Контраварийка и зима»).',
+                                'На сайте может идти бейджем или подзаголовком.',
+                            )),
                         TextInput::make('category_key')
                             ->label('Ключ темы (программа)')
                             ->maxLength(64)
                             ->placeholder('counter-emergency')
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(
-                                'Связь с программой или темой для фильтра/бейджа на сайте. Обычно slug из «Каталог → Программы» '
-                                .'(например single-session, city-driving, counter-emergency). Допустимы и короткие ключи для бейджа: '
-                                .'parking, city, winter-driving, confidence, motorsport. Пусто — отзыв без привязки к теме.'
-                            ),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Связь с программой или темой для фильтра/бейджа на сайте.',
+                                'Обычно slug из «Каталог → Программы» (например single-session, city-driving, counter-emergency).',
+                                'Короткие ключи для бейджа: parking, city, winter-driving, confidence, motorsport.',
+                                'Пусто — отзыв без привязки к теме.',
+                            )),
                         Textarea::make('text_short')
                             ->label('Краткий текст')
                             ->rows(2)
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Анонс или первые предложения: для карточек и списков. Если пусто, при сохранении может быть сгенерирован из полного текста.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Анонс или первые предложения: для карточек и списков.',
+                                'Если пусто, при сохранении может быть сгенерирован из полного текста.',
+                            )),
                         Textarea::make('text_long')
                             ->label('Полный текст отзыва')
                             ->rows(5)
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Основной текст на странице. HTML не обязателен — достаточно обычного текста; переносы строк сохраняются.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Основной текст на странице.',
+                                'HTML не обязателен — достаточно обычного текста; переносы строк сохраняются.',
+                            )),
                         Textarea::make('text')
                             ->label('Текст (единое поле, legacy)')
                             ->rows(3)
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(
-                                'Для совместимости со старыми данными. Если оставить пустым, при сохранении подставится полный текст '
-                                .'или краткий. Редактировать удобнее «Полный текст» — это основной источник.'
-                            )
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Для совместимости со старыми данными.',
+                                'Если оставить пустым, при сохранении подставится полный или краткий текст.',
+                                'Редактировать удобнее «Полный текст» — это основной источник.',
+                            ))
                             ->helperText('Обычно не заполняют вручную: заполнится из «Полный» / «Краткий», если пусто.'),
                         TextInput::make('rating')
                             ->label('Оценка')
@@ -112,20 +130,29 @@ class ReviewResource extends Resource
                             ->maxValue(5)
                             ->default(5)
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Число от 1 до 5. На сайте может отображаться звёздами, если блок это поддерживает.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Число от 1 до 5.',
+                                'На сайте может отображаться звёздами, если блок это поддерживает.',
+                            )),
                         Select::make('media_type')
                             ->label('Тип контента')
                             ->options(['text' => 'Только текст', 'video' => 'С видео'])
                             ->default('text')
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('«С видео» — укажите ниже ссылку; для встроенного плеера подойдёт прямая ссылка на .mp4 / .webm или страница с плеером.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                '«С видео» — укажите ниже ссылку.',
+                                'Для встроенного плеера: прямая ссылка на .mp4 / .webm или страница с плеером.',
+                            )),
                         TextInput::make('video_url')
                             ->label('Ссылка на видео')
                             ->url()
                             ->maxLength(2048)
                             ->visible(fn (Get $get): bool => ($get('media_type') ?? 'text') === 'video')
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Обязательно, если выбран тип «С видео». Иначе поле можно не трогать.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Обязательно, если выбран тип «С видео».',
+                                'Иначе поле можно не трогать.',
+                            )),
                         Select::make('motorcycle_id')
                             ->label('Карточка в каталоге техники')
                             ->relationship('motorcycle', 'name')
@@ -133,19 +160,28 @@ class ReviewResource extends Resource
                             ->preload()
                             ->visible(fn () => ! $isExpertAuto())
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Для аренды мотопарка: привязка отзыва к модели из каталога. Для сайта инструктора (expert) поле скрыто — не используется.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Для аренды мотопарка: привязка отзыва к модели из каталога.',
+                                'Для сайта инструктора (expert) поле скрыто — не используется.',
+                            )),
                         DatePicker::make('date')
                             ->label('Дата отзыва')
                             ->native(false)
                             ->displayFormat('d.m.Y')
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Дата для сортировки и отображения («когда оставлен отзыв»). Можно поставить дату публикации.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Дата для сортировки и отображения («когда оставлен отзыв»).',
+                                'Можно поставить дату публикации.',
+                            )),
                         TextInput::make('source')
                             ->label('Источник (служебно)')
                             ->maxLength(255)
                             ->placeholder('site, yandex, …')
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Метка для себя: откуда пришёл отзыв. На публичный сайт обычно не выводится.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Метка для себя: откуда пришёл отзыв.',
+                                'На публичный сайт обычно не выводится.',
+                            )),
                     ])->columns(2),
 
                 Section::make('Медиа и статус')
@@ -158,25 +194,37 @@ class ReviewResource extends Resource
                             ->image()
                             ->label('Фото (аватар)')
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Квадратное или портретное фото лица; лучше не меньше 400×400 px. Показывается в карточке отзыва.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Квадратное или портретное фото лица; лучше не меньше 400×400 px.',
+                                'Показывается в карточке отзыва.',
+                            )),
                         TextInput::make('sort_order')
                             ->label('Порядок в списке')
                             ->numeric()
                             ->default(0)
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Меньшее число — выше в списке внутри своей группы (избранные и обычные сортируются отдельно на сайте).'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Меньшее число — выше в списке внутри своей группы.',
+                                'Избранные и обычные сортируются отдельно на сайте.',
+                            )),
                         Select::make('status')
                             ->label('Статус публикации')
                             ->options(Review::statuses())
                             ->required()
                             ->default('published')
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('На сайте попадают только отзывы в статусе «Опубликован». Черновик и «Скрыт» — только в админке.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'На сайте попадают только отзывы в статусе «Опубликован».',
+                                'Черновик и «Скрыт» — только в админке.',
+                            )),
                         Toggle::make('is_featured')
                             ->label('Крупная карточка (спотлайт)')
                             ->default(false)
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Включите для 1–3 главных отзывов: крупный блок и бейдж на лендинге. Остальные — без этой отметки.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Включите для 1–3 главных отзывов: крупный блок и бейдж на лендинге.',
+                                'Остальные — без этой отметки.',
+                            )),
                     ])->columns(2),
 
                 Section::make('Модерация')

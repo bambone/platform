@@ -10,3 +10,13 @@
     display: none !important;
     pointer-events: none !important;
 }
+
+/*
+ * Tippy (hintIcon / x-tooltip): в теме Filament у .tippy-box задано white-space: normal
+ * — переносы \n из textContent схлопываются. Поднимаем специфичность и перекрываем сам box.
+ * См. App\Filament\Support\HintIconTooltip (многострочные подсказки через \n).
+ */
+[data-tippy-root] > .tippy-box,
+[data-tippy-root] .tippy-box {
+    white-space: pre-line !important;
+}

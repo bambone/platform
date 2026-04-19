@@ -6,6 +6,9 @@ use App\Auth\AccessRoles;
 use App\Auth\TenantPivotPermissions;
 use App\ContactChannels\TenantPublicSiteContactsService;
 use App\Filesystem\WindowsSafeFilesystem;
+use App\Geocoding\Contracts\GeocodingProviderContract;
+use App\Geocoding\GeocodePlacesService;
+use App\Geocoding\NominatimGeocodingProvider;
 use App\Http\Controllers\HomeController;
 use App\Jobs\Mail\SendTenantMailableJob;
 use App\Jobs\PurgeSpatieMediaFromR2Job;
@@ -107,6 +110,15 @@ class AppServiceProvider extends ServiceProvider
         }
 
         $this->app->singleton(ExternalArticlePreviewFetcherInterface::class, ExternalArticlePreviewFetcher::class);
+
+        $this->app->singleton(GeocodingProviderContract::class, function (): GeocodingProviderContract {
+            return new NominatimGeocodingProvider(
+                baseUrl: (string) config('services.nominatim.base_url'),
+                contactIdentifier: (string) config('services.nominatim.contact'),
+                timeoutSeconds: (int) config('services.nominatim.timeout', 8),
+            );
+        });
+        $this->app->singleton(GeocodePlacesService::class);
 
         $this->app->singleton(CurrentTenantManager::class);
         $this->app->singleton(TenantViewResolver::class);

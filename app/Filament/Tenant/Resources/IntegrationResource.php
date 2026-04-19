@@ -10,12 +10,13 @@ use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use App\Filament\Tenant\Resources\Resource;
+use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Livewire\Livewire;
 use UnitEnum;
 
 class IntegrationResource extends Resource
@@ -68,9 +69,53 @@ class IntegrationResource extends Resource
                             ->addActionLabel('Добавить')
                             ->helperText('Типовые ключи зависят от интеграции (api_key, base_url и т.д.) — уточняйте у разработки.'),
                     ])
-                    ->collapsed()
-                    ->collapsible(),
+                    ->collapsible()
+                    // Пустые значения — секция раскрыта; после заполнения и сохранения — свёрнута (удобнее обзор формы).
+                    ->collapsed(fn (): bool => self::shouldCollapseApiParametersSection()),
             ]);
+    }
+
+    /**
+     * Секция свёрнута только если в уже сохранённом config есть хотя бы одно непустое значение.
+     *
+     * @param  array<string, mixed>|null  $config
+     */
+    private static function integrationConfigHasFilledValues(?array $config): bool
+    {
+        if ($config === null || $config === []) {
+            return false;
+        }
+
+        foreach ($config as $value) {
+            if (is_string($value) && trim($value) !== '') {
+                return true;
+            }
+
+            if (! is_string($value) && $value !== null && $value !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function shouldCollapseApiParametersSection(): bool
+    {
+        $livewire = Livewire::current();
+
+        if (! $livewire instanceof EditRecord) {
+            return false;
+        }
+
+        $record = $livewire->getRecord();
+        if (! $record instanceof Integration) {
+            return false;
+        }
+
+        /** @var array<string, mixed>|null $config */
+        $config = $record->getAttribute('config');
+
+        return self::integrationConfigHasFilledValues($config);
     }
 
     public static function table(Table $table): Table

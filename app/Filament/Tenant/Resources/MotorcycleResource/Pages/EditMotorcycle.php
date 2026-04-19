@@ -99,6 +99,12 @@ class EditMotorcycle extends EditRecord
                             ->id(LinkedBookableSchedulingForm::TAB_KEY_FLEET_UNITS)
                             ->hiddenOn('create')
                             ->visible(fn (): bool => (bool) $this->record->uses_fleet_units)
+                            ->icon(fn (): ?string => $this->shouldHighlightFleetUnitsTab()
+                                ? 'heroicon-o-exclamation-triangle'
+                                : null)
+                            ->badge(fn (): ?string => $this->shouldHighlightFleetUnitsTab() ? '!' : null)
+                            ->badgeColor(fn (): ?string => $this->shouldHighlightFleetUnitsTab() ? 'warning' : null)
+                            ->badgeTooltip('Список единиц парка пуст — добавьте хотя бы одну строку на этой вкладке.')
                             ->schema([
                                 SchemaView::make('filament.tenant.resources.motorcycle-resource.blocks.fleet-units-tab')
                                     ->viewData(['recordId' => $recordId]),
@@ -119,6 +125,18 @@ class EditMotorcycle extends EditRecord
         return $this->record->brand && $this->record->model
             ? "{$this->record->brand} {$this->record->model}"
             : null;
+    }
+
+    /**
+     * Вкладка «Единицы парка» появляется при включении парка; пока список пуст, подсвечиваем её в шапке табов.
+     */
+    protected function shouldHighlightFleetUnitsTab(): bool
+    {
+        if (! (bool) $this->record->uses_fleet_units) {
+            return false;
+        }
+
+        return ! $this->record->rentalUnits()->exists();
     }
 
     protected function getHeaderActions(): array

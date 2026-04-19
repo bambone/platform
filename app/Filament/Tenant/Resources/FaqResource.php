@@ -3,6 +3,7 @@
 namespace App\Filament\Tenant\Resources;
 
 use App\Filament\Support\AdminEmptyState;
+use App\Filament\Support\HintIconTooltip;
 use App\Filament\Tenant\Resources\FaqResource\Pages;
 use App\Models\Faq;
 use Filament\Actions\CreateAction;
@@ -52,14 +53,20 @@ class FaqResource extends Resource
                             ->columnSpanFull()
                             ->placeholder('Формулировка так, как её увидит посетитель')
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Краткий понятный вопрос без служебных пометок. Отображается как заголовок раскрывающегося пункта на /faq.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Краткий понятный вопрос без служебных пометок.',
+                                'Отображается как заголовок раскрывающегося пункта на /faq.',
+                            )),
                         Textarea::make('answer')
                             ->label('Ответ')
                             ->required()
                             ->rows(6)
                             ->columnSpanFull()
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Развёрнутый ответ: факты, условия, ссылки. Можно обычный текст с абзацами; HTML на сайте зависит от темы.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Развёрнутый ответ: факты, условия, ссылки.',
+                                'Можно обычный текст с абзацами; HTML на сайте зависит от темы.',
+                            )),
                     ])
                     ->columns(2),
 
@@ -72,16 +79,19 @@ class FaqResource extends Resource
                             ->maxLength(255)
                             ->placeholder('Например: Занятия, Оплата')
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(
-                                'Необязательно. Одинаковая строка у нескольких вопросов объединяет их в подзаголовок на /faq '
-                                .'(например «Обучение», «Автомобиль»). Пусто — пункт без группы.'
-                            ),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Необязательно. Одинаковая строка у нескольких вопросов объединяет их в подзаголовок на /faq (например «Обучение», «Автомобиль»).',
+                                'Пусто — пункт без группы.',
+                            )),
                         TextInput::make('sort_order')
                             ->label('Порядок в списке')
                             ->numeric()
                             ->default(0)
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('Меньшее число — выше внутри своей категории. Удобно задать 10, 20, 30, чтобы потом вставлять пункты между ними.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Меньшее число — выше внутри своей категории.',
+                                'Удобно задать 10, 20, 30, чтобы потом вставлять пункты между ними.',
+                            )),
                         Select::make('status')
                             ->label('Статус')
                             ->options(Faq::statuses())
@@ -89,14 +99,17 @@ class FaqResource extends Resource
                             ->default('published')
                             ->native(true)
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip('На сайте показываются только пункты «Опубликован». Черновик и «Скрыт» остаются в админке.'),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'На сайте показываются только пункты «Опубликован».',
+                                'Черновик и «Скрыт» остаются в админке.',
+                            )),
                         Toggle::make('show_on_home')
                             ->label('Показывать на главной')
                             ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(
-                                'Если включено, пункт может попасть в блок FAQ на главной (секция темы / конструктор страницы). '
-                                .'Полный список вопросов — всегда на странице /faq.'
-                            ),
+                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                'Если включено, пункт может попасть в блок FAQ на главной (секция темы / конструктор страницы).',
+                                'Полный список вопросов — всегда на странице /faq.',
+                            )),
                     ])
                     ->columns(2),
             ]);

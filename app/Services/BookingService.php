@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Booking\PublicBookingCheckoutException;
 use App\Booking\PublicBookingMotorcyclePolicy;
 use App\DTO\BookingData;
 use App\Enums\BookingStatus;
@@ -106,17 +107,32 @@ class BookingService
     {
         $tenantId = (int) ($data['tenant_id'] ?? 0);
         if ($tenantId < 1) {
-            throw new \InvalidArgumentException('tenant_id is required for public booking.');
+            throw new PublicBookingCheckoutException(
+                'Не удалось оформить бронирование. Обновите страницу и попробуйте снова.',
+                forgetDraft: true,
+                redirectToCatalog: true,
+            );
         }
 
         $booking = DB::transaction(function () use ($data, $tenantId): Booking {
             $motorcycle = Motorcycle::query()
                 ->where('tenant_id', $tenantId)
                 ->whereKey((int) $data['motorcycle_id'])
-                ->firstOrFail();
+                ->first();
+            if ($motorcycle === null) {
+                throw new PublicBookingCheckoutException(
+                    'Модель не найдена или больше недоступна для бронирования. Выберите технику в каталоге заново.',
+                    forgetDraft: true,
+                    redirectToCatalog: true,
+                );
+            }
 
             if (! PublicBookingMotorcyclePolicy::isAllowedForPublicBooking($motorcycle)) {
-                throw new \InvalidArgumentException(__('Эта модель недоступна для онлайн-бронирования.'));
+                throw new PublicBookingCheckoutException(
+                    'Эта модель недоступна для онлайн-бронирования.',
+                    forgetDraft: true,
+                    redirectToCatalog: true,
+                );
             }
 
             [$rangeStart, $rangeEnd] = $this->publicBookingRangeBounds($data);
@@ -129,37 +145,76 @@ class BookingService
                     ->whereKey($catalogLocationId)
                     ->first();
                 if ($catalogLocation === null) {
-                    throw new \InvalidArgumentException(__('Указана недопустимая точка каталога для бронирования.'));
+                    throw new PublicBookingCheckoutException(
+                        'Указана недопустимая точка каталога для бронирования.',
+                        forgetDraft: true,
+                        redirectToCatalog: true,
+                    );
                 }
             }
 
             $unit = null;
             if ($motorcycle->uses_fleet_units) {
                 if (empty($data['rental_unit_id']) || (int) $data['rental_unit_id'] < 1) {
-                    throw new \InvalidArgumentException(__('Для этой модели необходимо выбрать единицу парка.'));
+                    throw new PublicBookingCheckoutException(
+                        'Для этой модели необходимо выбрать единицу парка.',
+                        forgetDraft: true,
+                        redirectToCatalog: true,
+                    );
                 }
                 $unit = RentalUnit::query()
                     ->where('tenant_id', $tenantId)
                     ->whereKey((int) $data['rental_unit_id'])
-                    ->firstOrFail();
+                    ->first();
+                if ($unit === null) {
+                    throw new PublicBookingCheckoutException(
+                        'Единица парка не найдена. Выберите даты на странице модели заново.',
+                        forgetDraft: true,
+                        redirectToCatalog: true,
+                    );
+                }
                 if ((int) $unit->motorcycle_id !== (int) $data['motorcycle_id']) {
-                    throw new \InvalidArgumentException('Rental unit does not belong to the selected motorcycle.');
+                    throw new PublicBookingCheckoutException(
+                        'Единица парка не соответствует выбранной модели.',
+                        forgetDraft: true,
+                        redirectToCatalog: true,
+                    );
                 }
                 if (! $this->motorcycleLocationCatalog->rentalUnitIsEligibleForPublic($motorcycle, $unit, $catalogLocation)) {
-                    throw new \InvalidArgumentException(__('Единица парка недоступна для онлайн-бронирования.'));
+                    throw new PublicBookingCheckoutException(
+                        'Единица парка недоступна для онлайн-бронирования.',
+                        forgetDraft: true,
+                        redirectToCatalog: true,
+                    );
                 }
                 if (! $this->availabilityService->isAvailable($unit, $rangeStart, $rangeEnd)) {
-                    throw new Exception(__('The selected dates are no longer available for this vehicle.'));
+                    throw new PublicBookingCheckoutException(
+                        'Выбранные даты для этой техники больше недоступны. Выберите другие даты или оформите бронь заново.',
+                    );
                 }
             } elseif (! $this->isAvailableForMotorcycle((int) $data['motorcycle_id'], (string) $data['start_date'], (string) $data['end_date'])) {
-                throw new Exception(__('The selected dates are no longer available.'));
+                throw new PublicBookingCheckoutException(
+                    'Выбранные даты больше недоступны. Выберите другие даты или оформите бронь заново.',
+                );
             }
 
             $startDay = $rangeStart->copy()->startOfDay();
             $endDay = $rangeEnd->copy()->startOfDay();
             $days = RentalPricingDuration::inclusiveCalendarDays($startDay, $endDay);
 
-            $this->motorcycleBookingPricingPolicy->assertPublicCheckoutPricingResolvable($motorcycle, $days);
+            try {
+                $this->motorcycleBookingPricingPolicy->assertPublicCheckoutPricingResolvable($motorcycle, $days);
+            } catch (\InvalidArgumentException $e) {
+                if ($e instanceof PublicBookingCheckoutException) {
+                    throw $e;
+                }
+                throw new PublicBookingCheckoutException(
+                    $e->getMessage(),
+                    forgetDraft: true,
+                    redirectToCatalog: true,
+                    previous: $e,
+                );
+            }
 
             $addonIds = [];
             foreach ($data['addons'] ?? [] as $addonId => $qty) {
@@ -180,6 +235,7 @@ class BookingService
                 'tenant_id' => $tenantId,
                 'motorcycle_id' => $data['motorcycle_id'],
                 'rental_unit_id' => $unit?->id,
+                'public_catalog_location_id' => $catalogLocation?->id,
                 'start_date' => $data['start_date'],
                 'end_date' => $data['end_date'],
                 'start_at' => $data['start_at'],
@@ -202,6 +258,7 @@ class BookingService
                 'preferred_contact_channel' => $data['preferred_contact_channel'] ?? null,
                 'preferred_contact_value' => $data['preferred_contact_value'] ?? null,
                 'visitor_contact_channels_json' => $data['visitor_contact_channels_json'] ?? null,
+                'legal_acceptances_json' => $data['legal_acceptances_json'] ?? null,
                 'phone_normalized' => PhoneNormalizer::normalize($data['phone']),
                 'source' => $data['source'] ?? 'public_booking',
                 'customer_comment' => $data['customer_comment'] ?? null,

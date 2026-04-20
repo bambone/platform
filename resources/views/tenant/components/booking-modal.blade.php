@@ -201,6 +201,11 @@
                                     <textarea id="booking-modal-comment" name="customer_comment" x-model="form.customer_comment" placeholder="Например: нужна доставка в Анапу" rows="2" autocomplete="off"
                                               class="w-full resize-none rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-base text-white outline-none transition-colors placeholder:text-zinc-400 focus:border-moto-amber/50 focus:ring-1 focus:ring-moto-amber"></textarea>
                                 </div>
+
+                                @include('tenant.components.booking-legal-consents-fieldset', [
+                                    'rentalLegalUrls' => $rentalLegalUrls ?? [],
+                                    'variant' => 'modal',
+                                ])
                             </div>
                         </div>
                         </div>
@@ -329,6 +334,8 @@ document.addEventListener('alpine:init', () => {
             preferred_contact_channel: 'phone',
             preferred_contact_value: '',
             source: 'site',
+            agree_to_terms: false,
+            agree_to_privacy: false,
         },
 
         showPreferredBlock() {
@@ -652,6 +659,8 @@ document.addEventListener('alpine:init', () => {
             this.form.preferred_contact_channel = 'phone';
             this._prefChannelPrev = 'phone';
             this.form.preferred_contact_value = '';
+            this.form.agree_to_terms = false;
+            this.form.agree_to_privacy = false;
             this.calculatedDays = 0;
             this.totalPrice = 0;
             this.quoteStatus = 'idle';
@@ -858,6 +867,13 @@ document.addEventListener('alpine:init', () => {
                 }
             }
 
+            if (! this.form.agree_to_terms || ! this.form.agree_to_privacy) {
+                this.errorMessage = 'Подтвердите согласие с условиями проката и обработкой персональных данных.';
+                this.flashFieldGroup(this.$refs.bookingLegalConsents);
+
+                return;
+            }
+
             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             if (! csrf) {
                 this.errorMessage = 'Не удалось отправить заявку. Обновите страницу и попробуйте снова.';
@@ -886,6 +902,8 @@ document.addEventListener('alpine:init', () => {
                         source: 'booking_form',
                         preferred_contact_channel: this.form.preferred_contact_channel,
                         preferred_contact_value: this.selectedNeedsExtraValue() ? (this.form.preferred_contact_value || '').trim() : null,
+                        agree_to_terms: true,
+                        agree_to_privacy: true,
                     }),
                 });
 

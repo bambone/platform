@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Booking\PublicBookingCheckoutException;
 use App\Booking\PublicBookingMotorcyclePolicy;
 use App\ContactChannels\TenantContactChannelsStore;
 use App\ContactChannels\VisitorContactPayloadBuilder;
@@ -10,10 +11,12 @@ use App\Models\Addon;
 use App\Models\Booking;
 use App\Models\Motorcycle;
 use App\Models\RentalUnit;
+use App\Models\TenantLocation;
 use App\Money\MoneyBindingRegistry;
 use App\Services\AvailabilityService;
 use App\Services\BookingService;
 use App\Services\Catalog\MotorcycleLocationCatalogService;
+use App\Services\Tenancy\TenantMotoRentalLegalUrls;
 use App\Services\Catalog\TenantPublicCatalogLocationService;
 use App\Services\PricingService;
 use Carbon\Carbon;
@@ -33,6 +36,7 @@ class PublicBookingController extends Controller
         protected BookingService $bookingService,
         protected TenantPublicCatalogLocationService $catalogLocation,
         protected MotorcycleLocationCatalogService $motorcycleLocationCatalog,
+        protected TenantMotoRentalLegalUrls $motoRentalLegalUrls,
     ) {}
 
     /**
@@ -199,7 +203,12 @@ class PublicBookingController extends Controller
             return redirect()->route('booking.index')->with('error', 'Эта модель недоступна для бронирования.');
         }
 
-        $selectedCatalogLocation = $this->catalogLocation->resolve();
+        $selectedCatalogLocation = $this->resolveCatalogLocationForBookingDraft($session);
+        if ($this->bookingDraftCatalogLocationInvalid($session, $selectedCatalogLocation)) {
+            Session::forget('booking_draft');
+
+            return redirect()->route('booking.index')->with('error', 'Точка выдачи больше не доступна. Начните бронирование заново.');
+        }
         if ($selectedCatalogLocation !== null
             && ! $this->motorcycleLocationCatalog->isMotorcycleVisibleAtLocation($motorcycle, $selectedCatalogLocation)) {
             Session::forget('booking_draft');
@@ -207,7 +216,7 @@ class PublicBookingController extends Controller
             return redirect()->route('booking.index')->with('error', 'Модель недоступна в выбранной точке. Выберите другую локацию или весь каталог.');
         }
 
-        $allowedUnits = $this->activeRentalUnitsForPublicBooking($motorcycle);
+        $allowedUnits = $this->activeRentalUnitsForPublicBooking($motorcycle, $selectedCatalogLocation);
         if ($motorcycle->uses_fleet_units && empty($session['rental_unit_id'])) {
             Session::forget('booking_draft');
 
@@ -238,12 +247,14 @@ class PublicBookingController extends Controller
         }
 
         $preferredChannelFormOptions = app(TenantContactChannelsStore::class)->publicFormPreferredOptions($tenant->id);
+        $rentalLegalUrls = $this->motoRentalLegalUrls->forTenant($tenant);
 
         return view('tenant.booking.checkout', [
             'motorcycle' => $motorcycle,
             'draft' => $session,
             'addons' => $addons,
             'preferredChannelFormOptions' => $preferredChannelFormOptions,
+            'rentalLegalUrls' => $rentalLegalUrls,
         ]);
     }
 
@@ -285,7 +296,12 @@ class PublicBookingController extends Controller
             return redirect()->route('booking.index')->with('error', 'Эта модель недоступна для бронирования.');
         }
 
-        $selectedCatalogLocation = $this->catalogLocation->resolve();
+        $selectedCatalogLocation = $this->resolveCatalogLocationForBookingDraft($session);
+        if ($this->bookingDraftCatalogLocationInvalid($session, $selectedCatalogLocation)) {
+            Session::forget('booking_draft');
+
+            return redirect()->route('booking.index')->with('error', 'Точка выдачи больше не доступна. Начните бронирование заново.');
+        }
         if ($selectedCatalogLocation !== null
             && ! $this->motorcycleLocationCatalog->isMotorcycleVisibleAtLocation($motorcycle, $selectedCatalogLocation)) {
             Session::forget('booking_draft');
@@ -293,7 +309,7 @@ class PublicBookingController extends Controller
             return redirect()->route('booking.index')->with('error', 'Модель недоступна в выбранной точке.');
         }
 
-        $allowedUnits = $this->activeRentalUnitsForPublicBooking($motorcycle);
+        $allowedUnits = $this->activeRentalUnitsForPublicBooking($motorcycle, $selectedCatalogLocation);
         if ($motorcycle->uses_fleet_units && empty($session['rental_unit_id'])) {
             Session::forget('booking_draft');
 
@@ -356,13 +372,22 @@ class PublicBookingController extends Controller
                 'preferred_contact_channel' => $contact['preferred_contact_channel'],
                 'preferred_contact_value' => $contact['preferred_contact_value'],
                 'visitor_contact_channels_json' => $contact['visitor_contact_channels_json'],
+                'legal_acceptances_json' => $this->motoRentalLegalUrls->acceptanceSnapshotForBooking($tenant),
                 'email' => $validated['email'] ?? null,
                 'customer_comment' => $validated['customer_comment'] ?? null,
                 'source' => 'public_booking',
                 'addons' => $addonIds,
             ]);
         } catch (\InvalidArgumentException $e) {
-            return redirect()->route('booking.checkout')->with('error', $e->getMessage());
+            $forgetDraft = $e instanceof PublicBookingCheckoutException && $e->forgetDraft;
+            $toCatalog = $e instanceof PublicBookingCheckoutException && $e->redirectToCatalog;
+            if ($forgetDraft) {
+                Session::forget('booking_draft');
+            }
+
+            return redirect()
+                ->route($toCatalog ? 'booking.index' : 'booking.checkout')
+                ->with('error', $e->getMessage());
         }
 
         Session::forget('booking_draft');
@@ -446,12 +471,15 @@ class PublicBookingController extends Controller
             ], 422);
         }
 
+        $snapshotLocation = $this->catalogLocation->resolve($request);
+
         Session::put('booking_draft', [
             'motorcycle_id' => $validated['motorcycle_id'],
             'rental_unit_id' => $motorcycle->uses_fleet_units ? $unit?->id : null,
             'start_date' => $validated['start_date'],
             'end_date' => $validated['end_date'],
             'addons' => $validated['addons'] ?? [],
+            'public_catalog_location_id' => $snapshotLocation?->id,
         ]);
 
         return response()->json([
@@ -470,6 +498,11 @@ class PublicBookingController extends Controller
      */
     private function validatePublicBookingAddonsMap(int $tenantId, array $addons): void
     {
+        if ($addons === []) {
+            return;
+        }
+
+        $ids = [];
         foreach ($addons as $addonIdKey => $qty) {
             if (! is_numeric($addonIdKey)) {
                 throw ValidationException::withMessages([
@@ -481,16 +514,6 @@ class PublicBookingController extends Controller
             if ($addonId < 1) {
                 throw ValidationException::withMessages([
                     'addons' => ['Некорректный идентификатор дополнения.'],
-                ]);
-            }
-
-            if (! Addon::query()
-                ->where('tenant_id', $tenantId)
-                ->whereKey($addonId)
-                ->where('is_active', true)
-                ->exists()) {
-                throw ValidationException::withMessages([
-                    'addons' => ['Выбрано недоступное или отключённое дополнение.'],
                 ]);
             }
 
@@ -506,20 +529,79 @@ class PublicBookingController extends Controller
                     'addons' => ['Некорректное количество дополнения.'],
                 ]);
             }
+
+            $ids[] = $addonId;
+        }
+
+        $ids = array_values(array_unique($ids));
+        $validIds = Addon::query()
+            ->where('tenant_id', $tenantId)
+            ->whereIn('id', $ids)
+            ->where('is_active', true)
+            ->pluck('id')
+            ->all();
+        $validSet = array_flip($validIds);
+
+        foreach ($ids as $id) {
+            if (! isset($validSet[$id])) {
+                throw ValidationException::withMessages([
+                    'addons' => ['Выбрано недоступное или отключённое дополнение.'],
+                ]);
+            }
         }
     }
 
     /**
      * @return Collection<int, RentalUnit>
      */
-    private function activeRentalUnitsForPublicBooking(Motorcycle $motorcycle): Collection
+    private function activeRentalUnitsForPublicBooking(Motorcycle $motorcycle, ?TenantLocation $catalogLocation = null): Collection
     {
-        $loc = $this->catalogLocation->resolve();
+        $loc = $catalogLocation ?? $this->catalogLocation->resolve();
 
         return $this->motorcycleLocationCatalog
             ->rentalUnitsQueryForPublic($motorcycle, $loc)
             ->orderBy('id')
             ->get();
+    }
+
+    /**
+     * Локация каталога из снимка черновика; без ключа — прежнее поведение (текущая remembered/query).
+     */
+    private function resolveCatalogLocationForBookingDraft(array $session): ?TenantLocation
+    {
+        $tenant = currentTenant();
+        if ($tenant === null) {
+            return null;
+        }
+
+        if (! array_key_exists('public_catalog_location_id', $session)) {
+            return $this->catalogLocation->resolve();
+        }
+
+        $raw = $session['public_catalog_location_id'];
+        if ($raw === null || $raw === '' || (int) $raw < 1) {
+            return null;
+        }
+
+        return TenantLocation::query()
+            ->where('tenant_id', (int) $tenant->id)
+            ->whereKey((int) $raw)
+            ->where('is_active', true)
+            ->first();
+    }
+
+    /**
+     * В черновике сохранён id точки, но строка в БД недоступна (снята с публикации / удалена).
+     */
+    private function bookingDraftCatalogLocationInvalid(array $session, ?TenantLocation $resolved): bool
+    {
+        if (! array_key_exists('public_catalog_location_id', $session)) {
+            return false;
+        }
+
+        $rid = (int) ($session['public_catalog_location_id'] ?? 0);
+
+        return $rid > 0 && $resolved === null;
     }
 
     private function assertMotorcycleAllowedForPublicBooking(Motorcycle $motorcycle): ?JsonResponse

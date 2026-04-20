@@ -50,6 +50,7 @@ class TemplateCloningService
             'home' => ['name' => 'Главная', 'template' => 'default', 'status' => 'published'],
             'contacts' => ['name' => 'Контакты', 'template' => 'default', 'status' => 'published'],
             'usloviya-arenda' => ['name' => 'Правила аренды', 'template' => 'default', 'status' => 'published'],
+            'politika-konfidencialnosti' => ['name' => 'Политика конфиденциальности', 'template' => 'default', 'status' => 'published'],
         ];
     }
 
@@ -72,8 +73,12 @@ class TemplateCloningService
             ];
         }
 
-        if (in_array($pageSlug, ['contacts', 'usloviya-arenda'], true)) {
-            $label = $pageSlug === 'contacts' ? 'Контакты' : 'Правила аренды';
+        if (in_array($pageSlug, ['contacts', 'usloviya-arenda', 'politika-konfidencialnosti'], true)) {
+            $label = match ($pageSlug) {
+                'contacts' => 'Контакты',
+                'politika-konfidencialnosti' => 'Политика конфиденциальности',
+                default => 'Правила аренды',
+            };
 
             return [[
                 'section_key' => 'main',

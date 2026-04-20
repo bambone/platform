@@ -8,6 +8,7 @@ use App\Jobs\SendLeadTelegramNotification;
 use App\Product\CRM\Actions\CreateCrmRequestFromPublicForm;
 use App\Product\CRM\DTO\PublicInboundContext;
 use App\Product\CRM\DTO\PublicInboundSubmission;
+use App\Services\Tenancy\TenantMotoRentalLegalUrls;
 use App\Terminology\DomainTermKeys;
 use App\Terminology\TenantTerminologyService;
 use Illuminate\Http\JsonResponse;
@@ -18,9 +19,13 @@ class LeadController extends Controller
         StoreLeadRequest $request,
         CreateCrmRequestFromPublicForm $createCrmRequest,
         VisitorContactPayloadBuilder $contactPayloadBuilder,
+        TenantMotoRentalLegalUrls $motoRentalLegalUrls,
     ): JsonResponse {
         $tenant = currentTenant();
         abort_if($tenant === null, 404);
+
+        $motorcycleIdRaw = $request->validated('motorcycle_id');
+        $hasMotorcycleBooking = $motorcycleIdRaw !== null && $motorcycleIdRaw !== '' && (int) $motorcycleIdRaw > 0;
 
         $contact = $contactPayloadBuilder->build($tenant->id, [
             'phone' => $request->validated('phone'),
@@ -48,6 +53,7 @@ class LeadController extends Controller
             preferredContactChannel: $contact['preferred_contact_channel'],
             preferredContactValue: $contact['preferred_contact_value'],
             visitorContactChannelsJson: $contact['visitor_contact_channels_json'],
+            legalAcceptancesJson: $hasMotorcycleBooking ? $motoRentalLegalUrls->acceptanceSnapshotForBooking($tenant) : null,
         );
 
         $result = $createCrmRequest->handle(PublicInboundContext::tenant($tenant->id), $submission);

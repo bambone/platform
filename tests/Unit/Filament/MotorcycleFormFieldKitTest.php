@@ -11,7 +11,6 @@ use App\MotorcyclePricing\MotorcyclePricingProfileFormHydrator;
 use App\MotorcyclePricing\MotorcyclePricingSchema;
 use App\MotorcyclePricing\TariffKind;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 final class MotorcycleFormFieldKitTest extends TestCase
@@ -40,10 +39,8 @@ final class MotorcycleFormFieldKitTest extends TestCase
         $this->assertSame([5, 7], $data['tenant_location_ids']);
     }
 
-    public function test_merge_pricing_profile_blocks_stale_primary_tariff_reference(): void
+    public function test_merge_pricing_profile_coalesces_stale_primary_tariff_to_first_row(): void
     {
-        $this->expectException(ValidationException::class);
-
         $keepId = (string) Str::uuid();
         $staleId = (string) Str::uuid();
         $row = array_merge(MotorcyclePricingProfileFormHydrator::defaultTariffRow(), [
@@ -52,7 +49,7 @@ final class MotorcycleFormFieldKitTest extends TestCase
             'label' => 'День',
         ]);
 
-        MotorcycleFormFieldKit::mergePricingProfileIntoMotorcycleData([
+        $merged = MotorcycleFormFieldKit::mergePricingProfileIntoMotorcycleData([
             'pricing_currency' => 'RUB',
             'pricing_tariffs' => [$row],
             'pricing_card_primary_tariff_id' => $staleId,
@@ -64,6 +61,30 @@ final class MotorcycleFormFieldKitTest extends TestCase
             'pricing_prepayment_amount' => null,
             'pricing_catalog_price_note' => '',
         ]);
+
+        $display = $merged['pricing_profile_json']['display'] ?? [];
+        $this->assertSame($keepId, (string) ($display['card_primary_tariff_id'] ?? ''));
+    }
+
+    public function test_parse_exclusive_show_on_card_branch_supports_nested_and_root_paths(): void
+    {
+        $uuid = 'a1111111-b222-4ccc-9ddd-eeeeeeeeeeee';
+        $nested = MotorcycleFormFieldKit::parseExclusiveShowOnCardBranch('data.pricing_tariffs.'.$uuid.'.default.show_on_card');
+        $this->assertNotNull($nested);
+        $this->assertSame('data.pricing_tariffs', $nested['repeaterBase']);
+        $this->assertSame($uuid, $nested['currentItemKey']);
+        $this->assertSame('default', $nested['inItemSuffix']);
+
+        $flat = MotorcycleFormFieldKit::parseExclusiveShowOnCardBranch('pricing_tariffs.'.$uuid.'.show_on_card');
+        $this->assertNotNull($flat);
+        $this->assertSame('pricing_tariffs', $flat['repeaterBase']);
+        $this->assertSame($uuid, $flat['currentItemKey']);
+        $this->assertSame('', $flat['inItemSuffix']);
+
+        $prefixed = MotorcycleFormFieldKit::parseExclusiveShowOnCardBranch('mountedSchemas.foo.data.pricing_tariffs.'.$uuid.'.show_on_card');
+        $this->assertNotNull($prefixed);
+        $this->assertSame('mountedSchemas.foo.data.pricing_tariffs', $prefixed['repeaterBase']);
+        $this->assertSame($uuid, $prefixed['currentItemKey']);
     }
 
     public function test_merge_pricing_profile_sets_primary_when_single_tariff_and_empty(): void

@@ -58,6 +58,7 @@ use App\Services\Platform\PlatformNotificationSettings;
 use App\Services\Tenancy\TenantAdvocateEditorialFooterData;
 use App\Services\Tenancy\TenantExpertAutoFooterData;
 use App\Services\Tenancy\TenantMainMenuPages;
+use App\Services\Tenancy\TenantMotoRentalLegalUrls;
 use App\Services\Tenancy\TenantPagePrimaryHtmlSync;
 use App\Services\Tenancy\TenantViewResolver;
 use App\Support\TenantPanelMembershipCache;
@@ -398,10 +399,11 @@ class AppServiceProvider extends ServiceProvider
                     'tenantAdvocateFooter' => $tenant->themeKey() === 'advocate_editorial'
                         ? app(TenantAdvocateEditorialFooterData::class)->build($tenant)
                         : null,
-                    'tenantExpertAutoFooter' => $tenant->themeKey() === 'expert_auto'
+                    'tenantMotoPublicFooter' => in_array($tenant->themeKey(), ['default', 'moto', 'expert_auto'], true)
                         ? app(TenantExpertAutoFooterData::class)->build($tenant)
                         : null,
                     'tenantReviewSubmitConfig' => TenantReviewSubmitConfig::forTenant((int) $tenant->id),
+                    'rentalLegalUrls' => app(TenantMotoRentalLegalUrls::class)->forTenant($tenant),
                 ];
             } else {
                 $bundle = [
@@ -427,8 +429,9 @@ class AppServiceProvider extends ServiceProvider
                     'site_name' => config('app.name'),
                     'tenantMainMenuPages' => collect(),
                     'tenantAdvocateFooter' => null,
-                    'tenantExpertAutoFooter' => null,
+                    'tenantMotoPublicFooter' => null,
                     'tenantReviewSubmitConfig' => null,
+                    'rentalLegalUrls' => [],
                 ];
             }
 
@@ -496,8 +499,9 @@ class AppServiceProvider extends ServiceProvider
             'site_name' => config('app.name'),
             'tenantMainMenuPages' => collect(),
             'tenantAdvocateFooter' => null,
-            'tenantExpertAutoFooter' => null,
+            'tenantMotoPublicFooter' => null,
             'tenantReviewSubmitConfig' => null,
+            'rentalLegalUrls' => [],
         ];
     }
 }

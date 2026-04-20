@@ -56,6 +56,7 @@ class Settings extends Page
     private const FORM_FIELD_TO_SETTING_KEY = [
         'general_site_name' => 'general.site_name',
         'general_short_description' => 'general.short_description',
+        'general_footer_tagline' => 'general.footer_tagline',
         'general_domain' => 'general.domain',
         'branding_logo' => 'branding.logo',
         'branding_logo_path' => 'branding.logo_path',
@@ -115,6 +116,7 @@ class Settings extends Page
             return [
                 'general_site_name' => TenantSetting::getForTenant($tenant->id, 'general.site_name', $tenant->defaultPublicSiteName()),
                 'general_short_description' => TenantSetting::getForTenant($tenant->id, 'general.short_description', ''),
+                'general_footer_tagline' => TenantSetting::getForTenant($tenant->id, 'general.footer_tagline', ''),
                 'general_domain' => $this->resolvedGeneralDomainFormValue($tenant),
                 'branding_logo' => TenantSetting::getForTenant($tenant->id, 'branding.logo', ''),
                 'branding_logo_path' => TenantSetting::getForTenant($tenant->id, 'branding.logo_path', ''),
@@ -207,6 +209,12 @@ class Settings extends Page
                     'data-setup-target' => 'settings.tagline_or_short_description',
                     'data-setup-focus-target' => '',
                 ]),
+            Textarea::make('general_footer_tagline')
+                ->label('Подпись в подвале сайта')
+                ->rows(2)
+                ->maxLength(500)
+                ->helperText('Текст справа от копирайта на публичном сайте (темы «по умолчанию» и expert_auto). Пусто — подставится стандартная формулировка про аренду и связь.')
+                ->visible(fn (): bool => $tenant !== null),
         ];
         if ($tenant === null) {
             $siteIdentityFields[] = TextInput::make('general_domain')

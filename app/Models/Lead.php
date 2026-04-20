@@ -21,6 +21,7 @@ class Lead extends Model
         'preferred_contact_channel',
         'preferred_contact_value',
         'visitor_contact_channels_json',
+        'legal_acceptances_json',
         'email',
         'comment',
         'motorcycle_id',
@@ -43,6 +44,7 @@ class Lead extends Model
         'rental_date_from' => 'date',
         'rental_date_to' => 'date',
         'visitor_contact_channels_json' => 'array',
+        'legal_acceptances_json' => 'array',
     ];
 
     protected static function booted(): void

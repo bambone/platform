@@ -25,6 +25,10 @@ final class MotorcycleTariffResolver
             if (! is_array($t)) {
                 continue;
             }
+            $vis = is_array($t['visibility'] ?? null) ? $t['visibility'] : [];
+            if (! ($vis['show_in_quote'] ?? true)) {
+                continue;
+            }
             $kind = TariffKind::tryFrom((string) ($t['kind'] ?? ''));
             if ($kind === null || $kind === TariffKind::Informational) {
                 continue;

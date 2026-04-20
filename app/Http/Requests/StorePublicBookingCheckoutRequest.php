@@ -2,10 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\ContactChannels\ContactChannelRegistry;
 use App\ContactChannels\ContactChannelType;
+use App\ContactChannels\PreferredContactValueMessages;
 use App\ContactChannels\TenantContactChannelsStore;
+use App\ContactChannels\VisitorContactNormalizer;
 use App\Support\Phone\IntlPhoneNormalizer;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -40,6 +44,8 @@ class StorePublicBookingCheckoutRequest extends FormRequest
             : [ContactChannelType::Phone->value];
 
         return [
+            'agree_to_terms' => ['required', 'accepted'],
+            'agree_to_privacy' => ['required', 'accepted'],
             'customer_name' => ['required', 'string', 'max:255'],
             'phone' => [
                 'required',
@@ -56,5 +62,44 @@ class StorePublicBookingCheckoutRequest extends FormRequest
             'preferred_contact_channel' => ['required', 'string', Rule::in($allowed)],
             'preferred_contact_value' => ['nullable', 'string', 'max:500'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v): void {
+            $ch = (string) $this->input('preferred_contact_channel', '');
+            if (! ContactChannelRegistry::requiresVisitorValue($ch)) {
+                return;
+            }
+
+            $raw = trim((string) $this->input('preferred_contact_value', ''));
+            if ($raw === '') {
+                $v->errors()->add('preferred_contact_value', PreferredContactValueMessages::requiredRu($ch));
+
+                return;
+            }
+
+            if ($ch === ContactChannelType::Telegram->value) {
+                if (VisitorContactNormalizer::normalizeTelegram($raw) === null) {
+                    $v->errors()->add('preferred_contact_value', PreferredContactValueMessages::invalidFormatRu($ch));
+                }
+
+                return;
+            }
+
+            if ($ch === ContactChannelType::Vk->value) {
+                if (VisitorContactNormalizer::normalizeVk($raw) === null) {
+                    $v->errors()->add('preferred_contact_value', PreferredContactValueMessages::invalidFormatRu($ch));
+                }
+
+                return;
+            }
+
+            if ($ch === ContactChannelType::Max->value) {
+                if (VisitorContactNormalizer::normalizeMax($raw) === null) {
+                    $v->errors()->add('preferred_contact_value', PreferredContactValueMessages::invalidFormatRu($ch));
+                }
+            }
+        });
     }
 }

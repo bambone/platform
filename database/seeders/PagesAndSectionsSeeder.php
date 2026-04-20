@@ -168,6 +168,7 @@ class PagesAndSectionsSeeder extends Seeder
 
         $this->seedMotolevinsContactsPage($tenant);
         $this->seedMotolevinsRentalTermsPage($tenant);
+        $this->seedMotolevinsPrivacyPage($tenant);
     }
 
     private function seedMotolevinsContactsPage(Tenant $tenant): void
@@ -348,6 +349,25 @@ class PagesAndSectionsSeeder extends Seeder
             ]
         );
 
+        PageSection::withoutGlobalScopes()->updateOrCreate(
+            [
+                'tenant_id' => $tenant->id,
+                'page_id' => $page->id,
+                'section_key' => 'terms_downloads',
+            ],
+            [
+                'tenant_id' => $tenant->id,
+                'title' => 'Документы для скачивания',
+                'section_type' => 'rich_text',
+                'data_json' => [
+                    'content' => '<p><strong>Документы для скачивания</strong></p><p>Разместите PDF в каталоге медиатеки тенанта (например <code>media/dogovor-prokata-motocikla.pdf</code>, <code>media/pravila-prokata-motociklov.pdf</code>, <code>media/instrukciya-po-tb.pdf</code>) и замените этот блок ссылками на файлы после загрузки.</p><ul><li>Договор аренды (проката) мотоцикла</li><li>Правила проката мотоциклов</li><li>Инструкция по технике безопасности</li></ul>',
+                ],
+                'sort_order' => 15,
+                'status' => 'published',
+                'is_visible' => true,
+            ]
+        );
+
         PageSection::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
             ->where('page_id', $page->id)
@@ -436,7 +456,7 @@ class PagesAndSectionsSeeder extends Seeder
         }
 
         $allowedSectionKeys = array_merge(
-            ['main', 'terms_hero'],
+            ['main', 'terms_hero', 'terms_downloads'],
             array_column($chapters, 'key')
         );
         PageSection::withoutGlobalScopes()
@@ -444,5 +464,59 @@ class PagesAndSectionsSeeder extends Seeder
             ->where('page_id', $page->id)
             ->whereNotIn('section_key', $allowedSectionKeys)
             ->delete();
+    }
+
+    private function seedMotolevinsPrivacyPage(Tenant $tenant): void
+    {
+        $page = Page::withoutGlobalScopes()->updateOrCreate(
+            [
+                'tenant_id' => $tenant->id,
+                'slug' => 'politika-konfidencialnosti',
+            ],
+            [
+                'name' => 'Политика конфиденциальности',
+                'template' => 'default',
+                'status' => 'published',
+                'published_at' => now(),
+            ]
+        );
+
+        $body = <<<'HTML'
+<h2>Политика конфиденциальности</h2>
+<p>Настоящая политика определяет порядок обработки персональных данных посетителей сайта и клиентов в соответствии с Федеральным законом №&nbsp;152-ФЗ «О персональных данных». Уточните наименование оператора, контакты и детали у юриста перед публикацией на проде.</p>
+<h3>1. Общие положения</h3>
+<p>Оператор обрабатывает персональные данные в целях исполнения договора проката, связи с клиентом, учёта заявок и бронирований, а также в случаях, предусмотренных законодательством РФ.</p>
+<h3>2. Виды обрабатываемых данных</h3>
+<p>Могут обрабатываться, в том числе: фамилия, имя, отчество; контактный телефон и адрес электронной почты; паспортные данные и водительское удостоверение (при оформлении договора); сведения о бронировании и аренде техники.</p>
+<h3>3. Цели обработки</h3>
+<ul>
+<li>заключение и исполнение договора проката (аренды) мотоцикла;</li>
+<li>связь с клиентом по заявкам и бронированиям;</li>
+<li>внутренний учёт и анализ обращений.</li>
+</ul>
+<h3>4. Правовое основание</h3>
+<p>Обработка осуществляется на основании заключения и исполнения договора (ст.&nbsp;6 152-ФЗ), согласия субъекта персональных данных — где это требуется, а также иных оснований, предусмотренных законом.</p>
+<h3>5. Права субъекта персональных данных</h3>
+<p>Вы вправе запросить доступ к своим данным, уточнение, блокирование или удаление (с учётом обязательств по закону и договору), отозвать согласие на обработку — через контакты, указанные на сайте.</p>
+HTML;
+
+        PageSection::withoutGlobalScopes()->updateOrCreate(
+            [
+                'tenant_id' => $tenant->id,
+                'page_id' => $page->id,
+                'section_key' => 'main',
+            ],
+            [
+                'tenant_id' => $tenant->id,
+                'title' => 'Основной текст',
+                'section_type' => 'rich_text',
+                'data_json' => [
+                    'content' => $body,
+                ],
+                'sort_order' => 0,
+                'status' => 'published',
+                'is_visible' => true,
+            ]
+        );
     }
 }

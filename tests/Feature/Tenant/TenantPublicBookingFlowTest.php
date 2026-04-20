@@ -87,6 +87,7 @@ class TenantPublicBookingFlowTest extends TestCase
         $this->assertStringContainsString('open-booking-modal', $html);
         $this->assertStringContainsString('TenantIntlPhone', $html);
         $this->assertStringContainsString('+7 (999) 123-45-67', $html);
+        $this->assertStringContainsString('Перед отправкой заявки', $html);
     }
 
     public function test_tenant_post_json_booking_lead_with_motorcycle_and_dates_creates_lead(): void
@@ -118,6 +119,8 @@ class TenantPublicBookingFlowTest extends TestCase
             'rental_date_from' => '2026-04-10',
             'rental_date_to' => '2026-04-12',
             'source' => 'booking_form',
+            'agree_to_terms' => true,
+            'agree_to_privacy' => true,
         ], JSON_THROW_ON_ERROR));
 
         $response->assertOk();
@@ -135,6 +138,8 @@ class TenantPublicBookingFlowTest extends TestCase
         $this->assertIsArray($lead->visitor_contact_channels_json);
         $this->assertSame('phone', $lead->visitor_contact_channels_json[0]['type'] ?? null);
         $this->assertSame('+79997776655', $lead->visitor_contact_channels_json[0]['value'] ?? null);
+        $this->assertIsArray($lead->legal_acceptances_json);
+        $this->assertArrayHasKey('accepted_at', $lead->legal_acceptances_json);
     }
 
     public function test_tenant_post_json_booking_lead_accepts_masked_russian_phone(): void
@@ -166,6 +171,8 @@ class TenantPublicBookingFlowTest extends TestCase
             'rental_date_from' => '2026-04-10',
             'rental_date_to' => '2026-04-12',
             'source' => 'booking_form',
+            'agree_to_terms' => true,
+            'agree_to_privacy' => true,
         ], JSON_THROW_ON_ERROR));
 
         $response->assertOk();
@@ -174,5 +181,40 @@ class TenantPublicBookingFlowTest extends TestCase
         $lead = Lead::query()->findOrFail((int) $response->json('lead_id'));
         $this->assertSame('+79517845889', $lead->phone);
         $this->assertSame('phone', $lead->preferred_contact_channel);
+    }
+
+    public function test_tenant_post_json_booking_lead_with_motorcycle_requires_legal_consents(): void
+    {
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        $tenant = $this->createTenantWithActiveDomain('flowconsent');
+
+        $bike = Motorcycle::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Consent Bike',
+            'slug' => 'consent-bike',
+            'status' => 'available',
+            'show_in_catalog' => true,
+            'price_per_day' => 5000,
+        ]);
+
+        $host = $this->tenancyHostForSlug('flowconsent');
+
+        $response = $this->call('POST', 'http://'.$host.'/api/leads', [], [], [], [
+            'HTTP_ACCEPT' => 'application/json',
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'name' => 'Иван Тестовый',
+            'phone' => '+79997776655',
+            'email' => null,
+            'comment' => null,
+            'motorcycle_id' => $bike->id,
+            'rental_date_from' => '2026-04-10',
+            'rental_date_to' => '2026-04-12',
+            'source' => 'booking_form',
+        ], JSON_THROW_ON_ERROR));
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['agree_to_terms', 'agree_to_privacy']);
     }
 }

@@ -33,5 +33,7 @@ final class PublicInboundSubmission
         public readonly ?string $preferredContactValue = null,
         /** @var list<array<string, mixed>>|null */
         public readonly ?array $visitorContactChannelsJson = null,
+        /** @var array<string, mixed>|null */
+        public readonly ?array $legalAcceptancesJson = null,
     ) {}
 }

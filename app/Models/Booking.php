@@ -27,6 +27,7 @@ class Booking extends Model
         'bike_id',
         'motorcycle_id',
         'rental_unit_id',
+        'public_catalog_location_id',
         'booking_number',
         'start_date',
         'end_date',
@@ -50,6 +51,7 @@ class Booking extends Model
         'preferred_contact_channel',
         'preferred_contact_value',
         'visitor_contact_channels_json',
+        'legal_acceptances_json',
         'phone_normalized',
         'source',
         'customer_comment',
@@ -68,6 +70,7 @@ class Booking extends Model
         'pricing_snapshot_json' => 'array',
         'pricing_snapshot_schema_version' => 'integer',
         'visitor_contact_channels_json' => 'array',
+        'legal_acceptances_json' => 'array',
         'rental_total_minor' => 'integer',
         'deposit_amount_minor' => 'integer',
         'payable_now_minor' => 'integer',
@@ -132,6 +135,14 @@ class Booking extends Model
     public function motorcycle(): BelongsTo
     {
         return $this->belongsTo(Motorcycle::class);
+    }
+
+    /**
+     * @return BelongsTo<TenantLocation, $this>
+     */
+    public function publicCatalogLocation(): BelongsTo
+    {
+        return $this->belongsTo(TenantLocation::class, 'public_catalog_location_id');
     }
 
     public function addons(): HasMany

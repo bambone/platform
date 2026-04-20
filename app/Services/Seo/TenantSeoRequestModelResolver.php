@@ -30,6 +30,10 @@ final class TenantSeoRequestModelResolver
                 ->where('slug', 'usloviya-arenda')
                 ->where('status', 'published')
                 ->first(),
+            'privacy' => Page::query()
+                ->where('slug', 'politika-konfidencialnosti')
+                ->where('status', 'published')
+                ->first(),
             'about' => $this->pageFromSlug('about'),
             'page.show' => $this->pageFromSlug($this->slugForPageShow($request)),
             'motorcycle.show' => $this->motorcycleFromSlug($request->route('slug'), requireAvailable: true),

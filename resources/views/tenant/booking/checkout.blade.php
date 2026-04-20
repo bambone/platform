@@ -120,6 +120,11 @@
             </div>
         </div>
 
+        @include('tenant.components.booking-legal-consents-fieldset', [
+            'rentalLegalUrls' => $rentalLegalUrls ?? [],
+            'variant' => 'checkout',
+        ])
+
         <button type="submit" class="tenant-btn-primary mt-8 min-h-12 w-full py-3.5 touch-manipulation sm:min-h-14 sm:py-4">
             Подтвердить бронирование
         </button>

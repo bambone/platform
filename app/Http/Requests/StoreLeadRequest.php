@@ -65,6 +65,16 @@ class StoreLeadRequest extends FormRequest
             'page_url' => ['nullable', 'string', 'max:500'],
             'preferred_contact_channel' => ['required', 'string', Rule::in($allowed)],
             'preferred_contact_value' => ['nullable', 'string', 'max:500'],
+            'agree_to_terms' => [
+                Rule::excludeIf(fn () => ! $this->filled('motorcycle_id')),
+                'required',
+                'accepted',
+            ],
+            'agree_to_privacy' => [
+                Rule::excludeIf(fn () => ! $this->filled('motorcycle_id')),
+                'required',
+                'accepted',
+            ],
         ];
     }
 }

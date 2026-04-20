@@ -160,6 +160,7 @@ final class CreateCrmRequestFromPublicForm
             'preferred_contact_channel' => $submission->preferredContactChannel,
             'preferred_contact_value' => $submission->preferredContactValue,
             'visitor_contact_channels_json' => $submission->visitorContactChannelsJson,
+            'legal_acceptances_json' => $submission->legalAcceptancesJson,
             'email' => $submission->email,
             'comment' => $submission->message,
             'motorcycle_id' => isset($extras['motorcycle_id']) ? (int) $extras['motorcycle_id'] : null,

@@ -171,6 +171,10 @@ final class MotorcycleQuoteEngine
             if (! is_array($t)) {
                 continue;
             }
+            $vis = is_array($t['visibility'] ?? null) ? $t['visibility'] : [];
+            if (! ($vis['show_in_quote'] ?? true)) {
+                continue;
+            }
             if (($t['kind'] ?? '') === TariffKind::OnRequest->value) {
                 return $t;
             }

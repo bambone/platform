@@ -183,4 +183,52 @@ final class PublicBookingFleetPerUnitAndCatalogTest extends TestCase
 
         $response->assertRedirect(route('booking.index'));
     }
+
+    public function test_checkout_uses_draft_catalog_location_snapshot_over_remembered_session_location(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('pub_chk_draft_loc');
+        $host = $this->tenancyHostForSlug('pub_chk_draft_loc');
+
+        $locA = TenantLocation::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Point A',
+            'slug' => 'point-a',
+            'is_active' => true,
+        ]);
+        $locB = TenantLocation::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Point B',
+            'slug' => 'point-b',
+            'is_active' => true,
+        ]);
+
+        $m = Motorcycle::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Loc Bike Draft',
+            'slug' => 'loc-bike-draft',
+            'status' => 'available',
+            'show_in_catalog' => true,
+            'price_per_day' => 3000,
+            'uses_fleet_units' => false,
+            'location_mode' => MotorcycleLocationMode::Selected,
+        ]);
+        $m->tenantLocations()->sync([$locA->id]);
+
+        $start = now()->addDays(5)->format('Y-m-d');
+        $end = now()->addDays(6)->format('Y-m-d');
+
+        $response = $this->withSession([
+            TenantPublicCatalogLocationService::SESSION_KEY => $locB->slug,
+            'booking_draft' => [
+                'motorcycle_id' => $m->id,
+                'rental_unit_id' => null,
+                'start_date' => $start,
+                'end_date' => $end,
+                'addons' => [],
+                'public_catalog_location_id' => $locA->id,
+            ],
+        ])->call('GET', 'http://'.$host.'/checkout');
+
+        $response->assertOk();
+    }
 }

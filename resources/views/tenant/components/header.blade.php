@@ -163,7 +163,7 @@
             </a>
 
             <nav class="hidden flex-1 items-center justify-center gap-6 px-4 text-[15px] font-medium md:flex lg:gap-10 xl:gap-12 xl:text-base" aria-label="Основное меню">
-                <a href="#catalog" class="shrink-0 text-white/90 transition-colors hover:text-moto-amber">Автопарк</a>
+                <a href="{{ route('home') }}#catalog" class="shrink-0 text-white/90 transition-colors hover:text-moto-amber">Автопарк</a>
                 @foreach($tenantMainMenuPages ?? [] as $navItem)
                     <a href="{{ $navItem['url'] }}" class="shrink-0 text-white/80 transition-colors hover:text-white">{{ $navItem['label'] }}</a>
                 @endforeach
@@ -211,7 +211,7 @@
                         <a href="{{ $navItem['url'] }}" @click="mobileNavOpen = false" class="flex min-h-11 items-center rounded-lg px-3 py-2 text-base font-medium {{ $isAdvocateEditorial ? 'text-stone-800 hover:bg-stone-900/[0.06]' : 'text-white/90 hover:bg-white/10' }}">{{ $navItem['label'] }}</a>
                     @endforeach
                 @else
-                    <a href="#catalog" @click="mobileNavOpen = false" class="flex min-h-11 items-center rounded-lg px-3 py-2 text-base font-medium text-white/90 hover:bg-white/10">Автопарк</a>
+                    <a href="{{ route('home') }}#catalog" @click="mobileNavOpen = false" class="flex min-h-11 items-center rounded-lg px-3 py-2 text-base font-medium text-white/90 hover:bg-white/10">Автопарк</a>
                     @foreach($tenantMainMenuPages ?? [] as $navItem)
                         <a href="{{ $navItem['url'] }}" @click="mobileNavOpen = false" class="flex min-h-11 items-center rounded-lg px-3 py-2 text-base font-medium text-white/90 hover:bg-white/10">{{ $navItem['label'] }}</a>
                     @endforeach

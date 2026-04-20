@@ -148,6 +148,8 @@ class CrmRequestInboundFlowTest extends TestCase
             'phone' => '+79997776655',
             'comment' => 'Trying foreign id',
             'motorcycle_id' => $otherTenantBike->id,
+            'agree_to_terms' => true,
+            'agree_to_privacy' => true,
         ]);
 
         $response->assertUnprocessable();

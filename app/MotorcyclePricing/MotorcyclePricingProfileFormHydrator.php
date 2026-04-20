@@ -61,13 +61,16 @@ final class MotorcyclePricingProfileFormHydrator
             $rows[] = self::defaultTariffRow();
         }
 
+        $preferredCardTariffId = (string) ($display['card_primary_tariff_id'] ?? '');
+        self::dedupeShowOnCardForFormRows($rows, $preferredCardTariffId);
+
         $depMinor = $fin['deposit_amount_minor'] ?? null;
         $preMinor = $fin['prepayment_amount_minor'] ?? null;
 
         return [
             'currency' => $currency,
             'tariffs' => $rows,
-            'card_primary_tariff_id' => (string) ($display['card_primary_tariff_id'] ?? ($rows[0]['id'] ?? '')),
+            'card_primary_tariff_id' => self::coalesceCardPrimaryTariffId((string) ($display['card_primary_tariff_id'] ?? ''), $rows),
             'card_secondary_mode' => self::normalizeCardSecondaryMode((string) ($display['card_secondary_mode'] ?? 'none')),
             'card_secondary_text' => isset($display['card_secondary_text']) ? (string) $display['card_secondary_text'] : '',
             'card_secondary_tariff_id' => isset($display['card_secondary_tariff_id']) ? (string) $display['card_secondary_tariff_id'] : '',
@@ -89,6 +92,8 @@ final class MotorcyclePricingProfileFormHydrator
         $currency = (string) ($flat['currency'] ?? MotorcyclePricingSchema::DEFAULT_CURRENCY);
         $rawTariffs = is_array($flat['tariffs'] ?? null) ? $flat['tariffs'] : [];
         $rawTariffs = array_values($rawTariffs);
+        $preferredCardTariffId = (string) ($flat['card_primary_tariff_id'] ?? '');
+        self::dedupeShowOnCardForFormRows($rawTariffs, $preferredCardTariffId);
 
         $tariffs = [];
         $seenIds = [];
@@ -151,7 +156,7 @@ final class MotorcyclePricingProfileFormHydrator
             $tariffs[] = $t;
         }
 
-        $primary = (string) ($flat['card_primary_tariff_id'] ?? '');
+        $primary = self::coalesceCardPrimaryTariffId((string) ($flat['card_primary_tariff_id'] ?? ''), $tariffs);
         $secondaryMode = self::normalizeCardSecondaryMode((string) ($flat['card_secondary_mode'] ?? 'none'));
         $secondaryTariffId = (string) ($flat['card_secondary_tariff_id'] ?? '');
         if ($secondaryMode !== 'secondary_tariff') {
@@ -275,6 +280,81 @@ final class MotorcyclePricingProfileFormHydrator
         }
 
         return $out;
+    }
+
+    /**
+     * Если id основного тарифа на карточке не совпадает ни с одной строкой — подставляем первый непустой id из списка.
+     *
+     * @param  list<array<string, mixed>>  $tariffs
+     */
+    private static function coalesceCardPrimaryTariffId(string $primary, array $tariffs): string
+    {
+        if ($tariffs === []) {
+            return '';
+        }
+        $validIds = [];
+        foreach ($tariffs as $t) {
+            if (! is_array($t)) {
+                continue;
+            }
+            $id = (string) ($t['id'] ?? '');
+            if ($id !== '') {
+                $validIds[$id] = true;
+            }
+        }
+        if ($primary !== '' && isset($validIds[$primary])) {
+            return $primary;
+        }
+        foreach ($tariffs as $t) {
+            if (! is_array($t)) {
+                continue;
+            }
+            $id = (string) ($t['id'] ?? '');
+            if ($id !== '') {
+                return $id;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Не более одной строки с «Показывать в каталоге»: при нескольких true оставляем строку,
+     * совпадающую с основным тарифом на карточке (если она среди отмеченных), иначе первую в списке.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     */
+    private static function dedupeShowOnCardForFormRows(array &$rows, string $preferredTariffId): void
+    {
+        $indexes = [];
+        foreach ($rows as $i => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            if (! empty($row['show_on_card'])) {
+                $indexes[] = (int) $i;
+            }
+        }
+        if (count($indexes) <= 1) {
+            return;
+        }
+        $keepIdx = $indexes[0];
+        if ($preferredTariffId !== '') {
+            foreach ($indexes as $i) {
+                if (! is_array($rows[$i] ?? null)) {
+                    continue;
+                }
+                if ((string) ($rows[$i]['id'] ?? '') === $preferredTariffId) {
+                    $keepIdx = $i;
+                    break;
+                }
+            }
+        }
+        foreach ($indexes as $i) {
+            if ($i !== $keepIdx && is_array($rows[$i] ?? null)) {
+                $rows[$i]['show_on_card'] = false;
+            }
+        }
     }
 
     /**

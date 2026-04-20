@@ -82,4 +82,69 @@ final class MotorcycleTariffResolverTest extends TestCase
         $this->assertFalse($out['conflict']);
         $this->assertSame($idB, $out['tariff']['id'] ?? null);
     }
+
+    #[Test]
+    public function it_skips_tariffs_with_show_in_quote_disabled(): void
+    {
+        $resolver = new MotorcycleTariffResolver;
+        $tariffs = [
+            [
+                'id' => 'hidden_from_quote',
+                'kind' => TariffKind::FixedPerDay->value,
+                'amount_minor' => 10_000,
+                'applicability' => ['mode' => 'always'],
+                'priority' => 500,
+                'visibility' => [
+                    'show_on_card' => true,
+                    'show_on_detail' => true,
+                    'show_in_quote' => false,
+                ],
+            ],
+            [
+                'id' => 'quoted',
+                'kind' => TariffKind::FixedPerDay->value,
+                'amount_minor' => 12_000,
+                'applicability' => ['mode' => 'always'],
+                'priority' => 501,
+                'visibility' => [
+                    'show_on_card' => true,
+                    'show_on_detail' => true,
+                    'show_in_quote' => true,
+                ],
+            ],
+        ];
+
+        $out = $resolver->resolveForAutoQuote($tariffs, 2);
+
+        $this->assertFalse($out['conflict']);
+        $this->assertSame('quoted', $out['tariff']['id'] ?? null);
+    }
+
+    #[Test]
+    public function it_reports_conflict_when_two_always_tariffs_tie_on_priority(): void
+    {
+        $resolver = new MotorcycleTariffResolver;
+        $tariffs = [
+            [
+                'id' => 'a',
+                'kind' => TariffKind::FixedPerDay->value,
+                'amount_minor' => 10_000,
+                'applicability' => ['mode' => 'always'],
+                'priority' => 100,
+            ],
+            [
+                'id' => 'b',
+                'kind' => TariffKind::FixedPerDay->value,
+                'amount_minor' => 11_000,
+                'applicability' => ['mode' => 'always'],
+                'priority' => 100,
+            ],
+        ];
+
+        $out = $resolver->resolveForAutoQuote($tariffs, 3);
+
+        $this->assertTrue($out['conflict']);
+        $this->assertNull($out['tariff']);
+        $this->assertSame('unresolved_tariff_tie', $out['reason']);
+    }
 }

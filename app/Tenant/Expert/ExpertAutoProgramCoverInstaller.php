@@ -90,7 +90,8 @@ final class ExpertAutoProgramCoverInstaller
             }
 
             if (! is_string($bytesDesktop) || $bytesDesktop === '') {
-                Log::warning('Expert program covers: нет данных для slug', [
+                // Ожидаемо, пока нет бренд-фото или системного пула; не засоряем warning-логи тестами и девом.
+                Log::debug('Expert program covers: нет данных для slug', [
                     'slug' => $slug,
                     'tenant_id' => $tenantId,
                     'hint' => 'Залейте site/brand/hero.jpg (и др.) или php artisan expert:seed-system-program-covers',
@@ -158,16 +159,20 @@ final class ExpertAutoProgramCoverInstaller
         if ($src === false) {
             return null;
         }
-        /* Меньше anchorY → кроп ближе к верху исходника (лица/головы в кадре). */
-        $anchorX = 0.22 + ($this->stableIndex($slug.'#cx', 40) / 100.0);
-        $anchorY = 0.05 + ($this->stableIndex($slug.'#cy', 28) / 100.0);
-        $desktop = $this->coverResizeToWebp($src, self::DESKTOP_W, self::DESKTOP_H, $anchorX, $anchorY);
-        $mobile = $this->coverResizeToWebp($src, self::MOBILE_W, self::MOBILE_H, $anchorX, $anchorY);
-        if ($desktop === null || $mobile === null) {
-            return null;
-        }
+        try {
+            /* Меньше anchorY → кроп ближе к верху исходника (лица/головы в кадре). */
+            $anchorX = 0.22 + ($this->stableIndex($slug.'#cx', 40) / 100.0);
+            $anchorY = 0.05 + ($this->stableIndex($slug.'#cy', 28) / 100.0);
+            $desktop = $this->coverResizeToWebp($src, self::DESKTOP_W, self::DESKTOP_H, $anchorX, $anchorY);
+            $mobile = $this->coverResizeToWebp($src, self::MOBILE_W, self::MOBILE_H, $anchorX, $anchorY);
+            if ($desktop === null || $mobile === null) {
+                return null;
+            }
 
-        return [$desktop, $mobile];
+            return [$desktop, $mobile];
+        } finally {
+            imagedestroy($src);
+        }
     }
 
     /**
@@ -199,6 +204,8 @@ final class ExpertAutoProgramCoverInstaller
 
         $out = imagecreatetruecolor($tw, $th);
         if ($out === false) {
+            imagedestroy($scaled);
+
             return null;
         }
         imagecopy($out, $scaled, 0, 0, $x, $y, $tw, $th);
@@ -206,6 +213,9 @@ final class ExpertAutoProgramCoverInstaller
         ob_start();
         $ok = imagewebp($out, null, 88);
         $buf = ob_get_clean();
+
+        imagedestroy($out);
+        imagedestroy($scaled);
 
         return $ok && is_string($buf) && $buf !== '' ? $buf : null;
     }

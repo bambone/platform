@@ -122,6 +122,9 @@ Route::middleware([EnsureTenantContext::class, RememberTenantCatalogLocation::cl
     Route::get('/usloviya-arenda', [PageController::class, 'show'])
         ->defaults('slug', 'usloviya-arenda')
         ->name('terms');
+    Route::get('/politika-konfidencialnosti', [PageController::class, 'show'])
+        ->defaults('slug', 'politika-konfidencialnosti')
+        ->name('privacy');
     Route::get('/motorcycles', [MotorcycleController::class, 'catalogIndex'])->name('motorcycles.index');
     Route::get('/locations/{slug}', [LocationLandingController::class, 'show'])->name('location.show');
     Route::get('/landings/{slug}', [SeoLandingPageController::class, 'show'])->name('seo_landing.show');

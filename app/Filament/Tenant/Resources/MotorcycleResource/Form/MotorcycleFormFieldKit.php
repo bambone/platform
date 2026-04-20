@@ -7,6 +7,7 @@ namespace App\Filament\Tenant\Resources\MotorcycleResource\Form;
 use App\Enums\MotorcycleLocationMode;
 use App\Filament\Forms\Components\SeoMetaFields;
 use App\Filament\Forms\Components\TenantSpatieMediaLibraryFileUpload;
+use App\Filament\Support\HintIconTooltip;
 use App\Models\Motorcycle;
 use App\Models\TenantLocation;
 use App\MotorcyclePricing\ApplicabilityMode;
@@ -24,13 +25,13 @@ use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Component;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -256,11 +257,11 @@ final class MotorcycleFormFieldKit
         ];
     }
 
-    public static function seoSnippetPreviewPlaceholder(): Placeholder
+    public static function seoSnippetPreviewPlaceholder(): TextEntry
     {
-        return Placeholder::make('seo_resolver_preview')
+        return TextEntry::make('seo_resolver_preview')
             ->label('Публичный title / description (как у TenantSeoResolver)')
-            ->content(function (?Motorcycle $record): HtmlString {
+            ->state(function (?Motorcycle $record): HtmlString {
                 if ($record === null || ! $record->exists) {
                     return new HtmlString('<p class="text-sm text-gray-500">Сохраните запись, чтобы увидеть предпросмотр.</p>');
                 }
@@ -515,15 +516,37 @@ final class MotorcycleFormFieldKit
                                                         ->schema([
                                                             Toggle::make('show_on_card')
                                                                 ->label('Показывать в каталоге')
-                                                                ->helperText('Плитка моделей на сайте для гостей. Сумма «от …» на плитке берётся только из поля «Основной тариф на карточке» ниже; если включить здесь у всех тарифов, вторая цена на одну карточку не появится — переключатель про «участие» строки в каталоге и про то, чтобы не выключить всё сразу.')
+                                                                ->hintIcon('heroicon-o-information-circle')
+                                                                ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                                                    'Публичная плитка моделей: каталог и блоки на лендинге, где гость видит карточки целиком.',
+                                                                    'Логика как у одной радиокнопки в группе: при включении здесь остальные строки тарифов сбрасываются автоматически (визуально по-прежнему переключатель).',
+                                                                    'Крупная сумма «от …» и основная подпись под ней задаются полем «Основной тариф на карточке» ниже — не этим переключателем.',
+                                                                    'Системе нужна хотя бы одна строка с включённой видимостью где‑либо (каталог, страница модели или калькулятор).',
+                                                                ))
                                                                 ->default(false)
+                                                                ->live()
+                                                                ->afterStateUpdated(function (?bool $state, Set $set, Get $get, Toggle $toggle): void {
+                                                                    self::applyExclusiveShowOnCardInRepeater($state, $set, $get, $toggle);
+                                                                })
                                                                 ->inline(false),
                                                             Toggle::make('show_on_detail')
                                                                 ->label('Показывать на странице модели')
+                                                                ->hintIcon('heroicon-o-information-circle')
+                                                                ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                                                    'Список условий и цен на странице конкретной модели (полная карточка мотоцикла на сайте).',
+                                                                    'Формулировки и «сутки / день» совпадают с тем, что видит гость в блоке цен.',
+                                                                    'Выключите, если строка нужна только в калькуляторе или не должна светиться в тексте на странице модели.',
+                                                                ))
                                                                 ->default(true)
                                                                 ->inline(false),
                                                             Toggle::make('show_in_quote')
                                                                 ->label('Показывать в калькуляторе бронирования')
+                                                                ->hintIcon('heroicon-o-information-circle')
+                                                                ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                                                    'Участие тарифа в автоматическом расчёте при выборе дат бронирования на сайте.',
+                                                                    'Выключённая строка не попадает в кандидаты для калькулятора.',
+                                                                    'На плитке в каталоге и в списке на странице модели строка может оставаться — если включены соответствующие переключатели выше.',
+                                                                ))
                                                                 ->default(true)
                                                                 ->inline(false),
                                                         ]),
@@ -868,5 +891,66 @@ final class MotorcycleFormFieldKit
     public static function seoMetaSection(): Section
     {
         return SeoMetaFields::make(useTabs: true);
+    }
+
+    /**
+     * Разбор абсолютного state path поля show_on_card (последний сегмент {@code .pricing_tariffs.} — устойчиво к префиксу формы).
+     *
+     * @return array{repeaterBase: string, currentItemKey: string, inItemSuffix: string}|null
+     */
+    public static function parseExclusiveShowOnCardBranch(string $fullPath): ?array
+    {
+        $suffix = '.show_on_card';
+        if ($fullPath === '' || ! str_ends_with($fullPath, $suffix)) {
+            return null;
+        }
+        $branch = substr($fullPath, 0, -strlen($suffix));
+        $needle = '.pricing_tariffs.';
+        $pos = strrpos($branch, $needle);
+        if ($pos !== false) {
+            $repeaterBase = substr($branch, 0, $pos).'.pricing_tariffs';
+            $afterRepeater = substr($branch, $pos + strlen($needle));
+        } elseif (str_starts_with($branch, 'pricing_tariffs.')) {
+            $repeaterBase = 'pricing_tariffs';
+            $afterRepeater = substr($branch, strlen('pricing_tariffs.'));
+        } else {
+            return null;
+        }
+        $dotPos = strpos($afterRepeater, '.');
+        $currentItemKey = $dotPos === false ? $afterRepeater : substr($afterRepeater, 0, $dotPos);
+        $inItemSuffix = $dotPos === false ? '' : substr($afterRepeater, $dotPos + 1);
+
+        return [
+            'repeaterBase' => $repeaterBase,
+            'currentItemKey' => $currentItemKey,
+            'inItemSuffix' => $inItemSuffix,
+        ];
+    }
+
+    private static function applyExclusiveShowOnCardInRepeater(?bool $state, Set $set, Get $get, Toggle $toggle): void
+    {
+        if ($state !== true) {
+            return;
+        }
+        $parsed = self::parseExclusiveShowOnCardBranch((string) ($toggle->getStatePath() ?? ''));
+        if ($parsed === null) {
+            return;
+        }
+        $repeaterBase = $parsed['repeaterBase'];
+        $currentItemKey = $parsed['currentItemKey'];
+        $inItemSuffix = $parsed['inItemSuffix'];
+        $suffix = '.show_on_card';
+
+        $tariffs = $get('/'.$repeaterBase, true);
+        if (! is_array($tariffs)) {
+            return;
+        }
+        foreach (array_keys($tariffs) as $key) {
+            if ((string) $key === $currentItemKey) {
+                continue;
+            }
+            $targetBranch = $repeaterBase.'.'.$key.($inItemSuffix !== '' ? '.'.$inItemSuffix : '');
+            $set('/'.$targetBranch.$suffix, false, true);
+        }
     }
 }

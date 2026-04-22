@@ -77,3 +77,4 @@ docs/tenants_tz/*
 # Дампы «все изменённые файлы после пуша» (scripts/export-changed-files-since-push.ps1)
 /scripts/export-changed-files-dumps/
 
+rclone.conf

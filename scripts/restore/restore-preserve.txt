@@ -1,0 +1,32 @@
+# Документация только для ревью (не парсится скриптами).
+# Таблицы и группы, которые намеренно НЕ входят в restore-include.txt.
+#
+# Локальные домены и окружение
+# - tenant_domains — не переливаем; stage/local сохраняют свои host → tenant.
+#
+# Кэш, сессии, очереди, служебное Laravel
+# - cache, cache_locks, sessions, jobs, job_batches, failed_jobs, password_reset_tokens
+#
+# Интеграции, календари, уведомления (часто env- и токен-специфичны)
+# - calendar_connections, calendar_subscriptions, calendar_event_links
+# - calendar_occupancy_mappings
+# - integrations, integration_logs
+# - notification_destinations, notification_subscriptions, notification_subscription_destinations
+# - notification_events, notification_deliveries, notification_delivery_attempts
+# - notification_push_subscriptions
+# - tenant_onesignal_push_identities, tenant_push_settings, tenant_push_event_preferences, tenant_push_diagnostics
+# - tenant_mail_logs
+#
+# Репликация медиа и миграции
+# - media_replication_outbox, migrations
+#
+# Квоты, SEO-файлы, сетап, маркетинг (по смыслу часто не нужны для контентного stage-restore)
+# - tenant_storage_quota_events, tenant_storage_quotas
+# - tenant_seo_file_generations, tenant_seo_files
+# - tenant_setup_item_states, tenant_setup_sessions
+# - platform_marketing_leads, platform_product_changelog_entries
+#
+# Таблицы «проверить отдельно» перед добавлением в whitelist
+# - domain_localization_presets, domain_localization_preset_terms, domain_terms
+# - seo_meta, seo_landing_pages, location_landing_pages
+# - form_configs, exports

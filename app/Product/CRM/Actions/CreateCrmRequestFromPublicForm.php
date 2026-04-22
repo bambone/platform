@@ -13,6 +13,7 @@ use App\NotificationCenter\Presenters\CrmRequestNotificationPresenter;
 use App\Product\CRM\CrmRequestCreationResult;
 use App\Product\CRM\DTO\PublicInboundContext;
 use App\Product\CRM\DTO\PublicInboundSubmission;
+use App\Product\CRM\Notifications\PlatformInboundStaffNotifier;
 use App\Product\Mail\ProductMailOrchestrator;
 use App\TenantPush\TenantPushCrmRequestRecipientResolver;
 use App\TenantPush\TenantPushFeatureGate;
@@ -28,6 +29,7 @@ final class CreateCrmRequestFromPublicForm
 {
     public function __construct(
         private readonly ProductMailOrchestrator $mailOrchestrator,
+        private readonly PlatformInboundStaffNotifier $platformInboundStaffNotifier,
         private readonly NotificationEventRecorder $notificationRecorder,
         private readonly CrmRequestNotificationPresenter $crmNotifications,
         private readonly TenantPushFeatureGate $tenantPushFeatureGate,
@@ -82,6 +84,14 @@ final class CreateCrmRequestFromPublicForm
 
             if ($context->isPlatformScope) {
                 $this->mailOrchestrator->queuePlatformInboundNotification($crm);
+                $platformCrmId = (int) $crm->id;
+                DB::afterCommit(function () use ($platformCrmId): void {
+                    $fresh = CrmRequest::query()->find($platformCrmId);
+                    if ($fresh === null) {
+                        return;
+                    }
+                    $this->platformInboundStaffNotifier->queueForPlatformContact($fresh);
+                });
             }
 
             if (! $context->isPlatformScope && $context->tenantId !== null) {

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\CRM;
 
+use App\Jobs\SendPlatformContactTelegramNotification;
 use App\Mail\PlatformMarketingContactMail;
 use App\Models\CrmRequest;
 use App\Models\CrmRequestActivity;
@@ -10,7 +11,9 @@ use App\Product\CRM\Actions\CreateCrmRequestFromPublicForm;
 use App\Product\CRM\DTO\PublicInboundContext;
 use App\Product\CRM\DTO\PublicInboundSubmission;
 use App\Product\Mail\ProductMailOrchestrator;
+use App\Services\Platform\PlatformNotificationSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Mail;
 use Mockery;
 use Tests\Support\CreatesTenantsWithDomains;
@@ -50,6 +53,44 @@ class CreateCrmRequestFromPublicFormTest extends TestCase
         ]);
 
         Mail::assertQueued(PlatformMarketingContactMail::class);
+    }
+
+    /**
+     * Asserts the full stack including {@see \Illuminate\Support\Facades\DB::afterCommit()} inside
+     * {@see CreateCrmRequestFromPublicForm}. If this flakes under another DB driver, CI transaction
+     * wrapping, or outer transaction level, rely on {@see \Tests\Feature\Product\CRM\PlatformInboundStaffNotifierTest}
+     * for notifier behavior and treat this as an integration guard only.
+     */
+    public function test_platform_dispatches_telegram_jobs_when_provider_configured(): void
+    {
+        Mail::fake();
+        Bus::fake();
+        config(['mail.from.address' => 'ops@example.test']);
+
+        $settings = app(PlatformNotificationSettings::class);
+        $settings->setChannelEnabled('telegram', true);
+        $settings->setTelegramBotToken('tok');
+        $settings->setPlatformContactTelegramChatIds('999,-100111');
+
+        $submission = new PublicInboundSubmission(
+            requestType: 'platform_contact',
+            name: 'Tg User',
+            phone: '+79990001122',
+            email: 'tg@example.test',
+            message: 'Hello telegram',
+            source: 'platform_marketing_contact',
+            channel: 'web',
+            payloadJson: ['intent' => 'demo'],
+        );
+
+        $result = app(CreateCrmRequestFromPublicForm::class)->handle(PublicInboundContext::platform(), $submission);
+
+        Bus::assertDispatchedTimes(SendPlatformContactTelegramNotification::class, 2);
+
+        $this->assertDatabaseHas('crm_request_activities', [
+            'crm_request_id' => $result->crmRequest->id,
+            'type' => CrmRequestActivity::TYPE_TELEGRAM_QUEUED,
+        ]);
     }
 
     public function test_tenant_handle_creates_lead_linked_to_crm_and_inbound_activity(): void

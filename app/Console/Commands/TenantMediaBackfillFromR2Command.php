@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Aws\S3\Exception\S3Exception;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -45,11 +46,9 @@ class TenantMediaBackfillFromR2Command extends Command
         }
 
         if (! is_dir($target)) {
-            error_clear_last();
-            @mkdir($target, 0775, true);
-            if (! is_dir($target)) {
-                $last = error_get_last();
-                $this->error('Cannot create target directory: '.($last['message'] ?? 'unknown'));
+            // $force: use @mkdir so permission failures don't become ErrorException in the console.
+            if (! File::makeDirectory($target, 0775, true, true) && ! is_dir($target)) {
+                $this->error('Cannot create target directory: '.$this->formatLastFilesystemError('mkdir'));
 
                 return self::FAILURE;
             }
@@ -144,11 +143,8 @@ class TenantMediaBackfillFromR2Command extends Command
 
                 $dir = dirname($localPath);
                 if (! is_dir($dir)) {
-                    error_clear_last();
-                    @mkdir($dir, 0775, true);
-                    if (! is_dir($dir)) {
+                    if (! File::makeDirectory($dir, 0775, true, true) && ! is_dir($dir)) {
                         $failed++;
-                        $last = error_get_last();
                         $rows[] = $this->manifestRow(
                             $bucket,
                             $key,
@@ -157,7 +153,7 @@ class TenantMediaBackfillFromR2Command extends Command
                             $etag,
                             $lastMod,
                             'failed',
-                            $last['message'] ?? 'mkdir failed',
+                            $this->formatLastFilesystemError('mkdir'),
                         );
 
                         continue;
@@ -271,6 +267,16 @@ class TenantMediaBackfillFromR2Command extends Command
             'status' => $status,
             'error_message' => $errorMessage,
         ];
+    }
+
+    private function formatLastFilesystemError(string $op): string
+    {
+        $last = error_get_last();
+        if (is_array($last) && ($last['message'] ?? '') !== '') {
+            return (string) $last['message'];
+        }
+
+        return $op.' failed (check that the process user can create directories under the target parent).';
     }
 
     private function isInsideRepo(string $target): bool

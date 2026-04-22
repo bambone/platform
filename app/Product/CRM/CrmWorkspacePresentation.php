@@ -57,56 +57,84 @@ final class CrmWorkspacePresentation
     }
 
     /**
-     * @return array{icon: string, iconWrap: string, rail: string}
+     * Filament shared CRM activity list (light + dark): dot, heroicon, emphasis.
+     *
+     * @return array{dot_classes: string, icon: string, is_important: bool}
      */
-    public static function activityTimelineVisuals(CrmRequestActivity $activity): array
+    public static function activityTimelineListRow(CrmRequestActivity $activity): array
     {
         return match ($activity->type) {
             CrmRequestActivity::TYPE_INBOUND_RECEIVED => [
-                'icon' => 'heroicon-o-inbox',
-                'iconWrap' => 'bg-sky-500/15 text-sky-300',
-                'rail' => 'border-s-sky-500/45',
+                'dot_classes' => 'text-primary-500 bg-primary-50 dark:bg-primary-500/10',
+                'icon' => 'heroicon-o-inbox-arrow-down',
+                'is_important' => false,
             ],
             CrmRequestActivity::TYPE_STATUS_CHANGED => [
+                'dot_classes' => 'text-success-500 bg-success-50 dark:bg-success-500/10',
                 'icon' => 'heroicon-o-arrow-path',
-                'iconWrap' => 'bg-amber-500/15 text-amber-300',
-                'rail' => 'border-s-amber-500/45',
+                'is_important' => true,
             ],
             CrmRequestActivity::TYPE_NOTE_ADDED => [
-                'icon' => 'heroicon-o-chat-bubble-left-ellipsis',
-                'iconWrap' => 'bg-violet-500/15 text-violet-300',
-                'rail' => 'border-s-violet-500/45',
-            ],
-            CrmRequestActivity::TYPE_FOLLOW_UP_SET => [
-                'icon' => 'heroicon-o-clock',
-                'iconWrap' => 'bg-cyan-500/15 text-cyan-300',
-                'rail' => 'border-s-cyan-500/45',
-            ],
-            CrmRequestActivity::TYPE_PRIORITY_CHANGED => [
-                'icon' => 'heroicon-o-signal',
-                'iconWrap' => 'bg-orange-500/15 text-orange-300',
-                'rail' => 'border-s-orange-500/45',
-            ],
-            CrmRequestActivity::TYPE_SUMMARY_UPDATED => [
+                'dot_classes' => 'text-amber-500 bg-amber-50 dark:bg-amber-500/10',
                 'icon' => 'heroicon-o-document-text',
-                'iconWrap' => 'bg-zinc-500/20 text-zinc-300',
-                'rail' => 'border-s-zinc-500/40',
+                'is_important' => false,
             ],
             CrmRequestActivity::TYPE_MAIL_QUEUED => [
+                'dot_classes' => 'text-info-500 bg-info-50 dark:bg-info-500/10',
                 'icon' => 'heroicon-o-envelope',
-                'iconWrap' => 'bg-blue-500/15 text-blue-300',
-                'rail' => 'border-s-blue-500/45',
+                'is_important' => false,
+            ],
+            CrmRequestActivity::TYPE_TELEGRAM_QUEUED => [
+                'dot_classes' => 'text-sky-500 bg-sky-50 dark:bg-sky-500/10',
+                'icon' => 'heroicon-o-paper-airplane',
+                'is_important' => false,
+            ],
+            CrmRequestActivity::TYPE_PRIORITY_CHANGED => [
+                'dot_classes' => 'text-orange-500 bg-orange-50 dark:bg-orange-500/10',
+                'icon' => 'heroicon-o-exclamation-triangle',
+                'is_important' => true,
+            ],
+            CrmRequestActivity::TYPE_FOLLOW_UP_SET => [
+                'dot_classes' => 'text-violet-500 bg-violet-50 dark:bg-violet-500/10',
+                'icon' => 'heroicon-o-bell-alert',
+                'is_important' => false,
+            ],
+            CrmRequestActivity::TYPE_SUMMARY_UPDATED => [
+                'dot_classes' => 'text-teal-500 bg-teal-50 dark:bg-teal-500/10',
+                'icon' => 'heroicon-o-clipboard-document-check',
+                'is_important' => false,
             ],
             CrmRequestActivity::TYPE_ASSIGNED => [
-                'icon' => 'heroicon-o-user',
-                'iconWrap' => 'bg-teal-500/15 text-teal-300',
-                'rail' => 'border-s-teal-500/45',
+                'dot_classes' => 'text-sky-500 bg-sky-50 dark:bg-sky-500/10',
+                'icon' => 'heroicon-o-user-circle',
+                'is_important' => false,
             ],
             default => [
-                'icon' => 'heroicon-o-bolt',
-                'iconWrap' => 'bg-zinc-500/15 text-zinc-400',
-                'rail' => 'border-s-zinc-500/35',
+                'dot_classes' => 'text-gray-500 bg-gray-100 dark:bg-zinc-800',
+                'icon' => 'heroicon-o-clock',
+                'is_important' => false,
             ],
+        };
+    }
+
+    /**
+     * Which meta template the activity list partial should render.
+     *
+     * @return 'status_changed'|'priority_changed'|'preview'|'follow_up'|'summary_line'|'json'
+     */
+    public static function activityTimelineMetaKind(CrmRequestActivity $activity): string
+    {
+        return match ($activity->type) {
+            CrmRequestActivity::TYPE_STATUS_CHANGED => 'status_changed',
+            CrmRequestActivity::TYPE_PRIORITY_CHANGED => 'priority_changed',
+            CrmRequestActivity::TYPE_NOTE_ADDED,
+            CrmRequestActivity::TYPE_SUMMARY_UPDATED => 'preview',
+            CrmRequestActivity::TYPE_FOLLOW_UP_SET => 'follow_up',
+            CrmRequestActivity::TYPE_INBOUND_RECEIVED,
+            CrmRequestActivity::TYPE_MAIL_QUEUED,
+            CrmRequestActivity::TYPE_TELEGRAM_QUEUED,
+            CrmRequestActivity::TYPE_ASSIGNED => 'summary_line',
+            default => 'json',
         };
     }
 }

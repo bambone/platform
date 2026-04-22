@@ -15,4 +15,13 @@ return [
     'webpush' => [
         'vapid_subject' => env('NOTIFICATION_VAPID_SUBJECT', 'mailto:noreply@example.com'),
     ],
+
+    /**
+     * Queue for platform marketing staff notifications (e.g. Telegram per chat_id).
+     * Use a dedicated worker queue on prod to avoid competing with heavy jobs.
+     */
+    'platform_inbound' => [
+        'queue' => env('PLATFORM_INBOUND_NOTIFICATIONS_QUEUE', 'notifications'),
+        'job_tries' => (int) env('PLATFORM_INBOUND_NOTIFICATIONS_TRIES', 3),
+    ],
 ];

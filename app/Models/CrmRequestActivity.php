@@ -18,6 +18,9 @@ class CrmRequestActivity extends Model
 
     public const TYPE_MAIL_QUEUED = 'mail_queued';
 
+    /** Staff Telegram notifications queued (platform marketing contact). */
+    public const TYPE_TELEGRAM_QUEUED = 'telegram_queued';
+
     public const TYPE_PRIORITY_CHANGED = 'priority_changed';
 
     public const TYPE_FOLLOW_UP_SET = 'follow_up_set';
@@ -65,6 +68,7 @@ class CrmRequestActivity extends Model
             self::TYPE_STATUS_CHANGED => 'Смена статуса',
             self::TYPE_NOTE_ADDED => 'Комментарий оператора',
             self::TYPE_MAIL_QUEUED => 'Письмо в очереди',
+            self::TYPE_TELEGRAM_QUEUED => 'Telegram в очереди',
             self::TYPE_PRIORITY_CHANGED => 'Приоритет',
             self::TYPE_FOLLOW_UP_SET => 'Напоминание / follow-up',
             self::TYPE_SUMMARY_UPDATED => 'Внутреннее резюме',
@@ -95,6 +99,9 @@ class CrmRequestActivity extends Model
             self::TYPE_MAIL_QUEUED => isset($meta['recipients_count'])
                 ? 'Получателей: '.$meta['recipients_count']
                 : 'Письмо поставлено в очередь',
+            self::TYPE_TELEGRAM_QUEUED => isset($meta['chat_ids_count'])
+                ? 'Telegram: задач в очереди — '.$meta['chat_ids_count']
+                : 'Telegram поставлен в очередь',
             self::TYPE_PRIORITY_CHANGED => sprintf(
                 '%s → %s',
                 self::formatPriorityLabel($meta['old'] ?? null),

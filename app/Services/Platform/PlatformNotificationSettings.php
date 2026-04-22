@@ -3,6 +3,7 @@
 namespace App\Services\Platform;
 
 use App\Models\PlatformSetting;
+use App\Support\Recipients\RecipientListParser;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -89,5 +90,48 @@ final class PlatformNotificationSettings
         if ($privateKeyPlain !== null && $privateKeyPlain !== '') {
             PlatformSetting::set(self::PREFIX.'webpush.vapid_private', encrypt($privateKeyPlain), 'string');
         }
+    }
+
+    /**
+     * Remove stored VAPID public and private keys (Web Push).
+     */
+    public function clearVapidKeys(): void
+    {
+        $this->setVapidKeypair(null, null);
+    }
+
+    /**
+     * Telegram chat ids for staff alerts on platform marketing contact form (raw stored; parsed on read).
+     *
+     * @return list<string>
+     */
+    public function platformContactTelegramChatIds(): array
+    {
+        $raw = PlatformSetting::get(self::PREFIX.'telegram.platform_contact_chat_ids', '');
+        if (! is_string($raw) || trim($raw) === '') {
+            return [];
+        }
+
+        return RecipientListParser::parse($raw);
+    }
+
+    public function platformContactTelegramChatIdsRaw(): string
+    {
+        $raw = PlatformSetting::get(self::PREFIX.'telegram.platform_contact_chat_ids', '');
+
+        return is_string($raw) ? $raw : '';
+    }
+
+    public function setPlatformContactTelegramChatIds(?string $value): void
+    {
+        $key = self::PREFIX.'telegram.platform_contact_chat_ids';
+        if ($value === null || trim($value) === '') {
+            PlatformSetting::query()->where('key', $key)->delete();
+            Cache::forget('platform_settings.'.$key);
+
+            return;
+        }
+
+        PlatformSetting::set($key, trim($value), 'string');
     }
 }

@@ -3,7 +3,7 @@
 namespace App\Product\Settings;
 
 use App\Models\PlatformSetting;
-use Illuminate\Support\Str;
+use App\Support\Recipients\RecipientListParser;
 
 /**
  * Чтение platform-level почтовых и брендовых настроек для продукта (не SMTP-транспорт).
@@ -41,7 +41,7 @@ final class ProductMailSettingsResolver
     {
         $raw = PlatformSetting::get('email.contact_form_recipients', '');
         if (is_string($raw) && trim($raw) !== '') {
-            $parsed = $this->parseRecipientList($raw);
+            $parsed = RecipientListParser::parse($raw);
             if ($parsed !== []) {
                 return $parsed;
             }
@@ -49,31 +49,11 @@ final class ProductMailSettingsResolver
 
         $envTo = trim((string) config('platform_marketing.contact_mail_to', ''));
         if ($envTo !== '') {
-            return $this->parseRecipientList($envTo);
+            return RecipientListParser::parse($envTo);
         }
 
         $from = trim((string) config('mail.from.address', ''));
 
         return $from !== '' ? [$from] : [];
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function parseRecipientList(string $raw): array
-    {
-        $raw = trim($raw);
-        if ($raw === '') {
-            return [];
-        }
-
-        if (Str::startsWith($raw, '[')) {
-            $decoded = json_decode($raw, true);
-            if (is_array($decoded)) {
-                return array_values(array_filter(array_map('trim', array_map('strval', $decoded))));
-            }
-        }
-
-        return array_values(array_filter(array_map('trim', explode(',', $raw))));
     }
 }

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Auth\AccessRoles;
 use App\Auth\TenantPivotPermissions;
+use App\BookingConsent\TenantBookingConsentQuery;
 use App\ContactChannels\TenantPublicSiteContactsService;
 use App\Filesystem\WindowsSafeFilesystem;
 use App\Geocoding\Contracts\GeocodingProviderContract;
@@ -21,6 +22,7 @@ use App\Models\PageSection;
 use App\Models\RentalUnit;
 use App\Models\Review;
 use App\Models\Setting;
+use App\Models\Tenant;
 use App\Models\TenantSetting;
 use App\Models\User;
 use App\Money\MoneyAmountConverter;
@@ -40,6 +42,8 @@ use App\Observers\LeadObserver;
 use App\PageBuilder\LegacySectionTypeResolver;
 use App\PageBuilder\PageSectionKeyGenerator;
 use App\PageBuilder\PageSectionTypeRegistry;
+use App\Product\CRM\Notifications\PlatformInboundStaffNotifier;
+use App\Product\CRM\Notifications\TelegramPlatformInboundNotificationChannel;
 use App\Product\Mail\ProductMailOrchestrator;
 use App\Product\Settings\MarketingContentResolver;
 use App\Product\Settings\ProductMailSettingsResolver;
@@ -52,17 +56,17 @@ use App\Services\CurrentTenantManager;
 use App\Services\LinkPreview\ExternalArticlePreviewFetcher;
 use App\Services\LinkPreview\ExternalArticlePreviewFetcherInterface;
 use App\Services\Mail\TenantMailer;
+use App\Services\Notifications\TelegramTextSender;
 use App\Services\PageBuilder\PageSectionOperationsService;
 use App\Services\PageBuilder\SectionViewResolver;
 use App\Services\Platform\PlatformNotificationSettings;
-use App\BookingConsent\TenantBookingConsentQuery;
 use App\Services\Tenancy\TenantAdvocateEditorialFooterData;
-use App\Tenant\Footer\TenantFooterResolver;
 use App\Services\Tenancy\TenantMainMenuPages;
 use App\Services\Tenancy\TenantMotoRentalLegalUrls;
 use App\Services\Tenancy\TenantPagePrimaryHtmlSync;
 use App\Services\Tenancy\TenantViewResolver;
 use App\Support\TenantPanelMembershipCache;
+use App\Tenant\Footer\TenantFooterResolver;
 use App\Tenant\Reviews\TenantReviewSubmitConfig;
 use App\Tenant\StorageQuota\TenantMediaStorageQuotaObserver;
 use App\TenantPush\TenantPushCrmRequestRecipientResolver;
@@ -139,6 +143,17 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(SectionViewResolver::class);
 
         $this->app->singleton(PlatformNotificationSettings::class);
+        $this->app->singleton(TelegramTextSender::class);
+        $this->app->singleton(TelegramPlatformInboundNotificationChannel::class);
+        $this->app->tag([TelegramPlatformInboundNotificationChannel::class], 'platform_inbound_notification_channels');
+        $this->app->singleton(PlatformInboundStaffNotifier::class, static function ($app): PlatformInboundStaffNotifier {
+            $channels = [];
+            foreach ($app->tagged('platform_inbound_notification_channels') as $channel) {
+                $channels[] = $channel;
+            }
+
+            return new PlatformInboundStaffNotifier($channels);
+        });
         $this->app->singleton(TenantPushFeatureGate::class);
         $this->app->singleton(TenantPushCrmRequestRecipientResolver::class);
         $this->app->singleton(TenantPushNotificationBindingSync::class);
@@ -520,7 +535,7 @@ class AppServiceProvider extends ServiceProvider
     /**
      * @return array{show: bool, required: bool, items: list<array<string, mixed>>}
      */
-    private static function tenantBookingConsentUiBundle(\App\Models\Tenant $tenant): array
+    private static function tenantBookingConsentUiBundle(Tenant $tenant): array
     {
         $required = (bool) TenantSetting::getForTenant((int) $tenant->id, 'booking.legal_consents_required', false);
         $items = app(TenantBookingConsentQuery::class)->enabledOrdered((int) $tenant->id);

@@ -5,6 +5,7 @@ namespace Tests\Feature\Filament;
 use App\Filament\Platform\Pages\PlatformNotificationProvidersPage;
 use App\Models\User;
 use App\Services\Platform\PlatformNotificationSettings;
+use App\Services\Platform\VapidKeyPairGenerator;
 use Database\Seeders\RolePermissionSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -128,6 +129,41 @@ class PlatformNotificationProvidersSaveTest extends TestCase
         $this->assertSame('stored-private', app(PlatformNotificationSettings::class)->vapidPrivateKeyDecrypted());
     }
 
+    public function test_save_applies_other_fields_when_legacy_vapid_public_only_unchanged(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        $user->assignRole('platform_owner');
+
+        $settings = app(PlatformNotificationSettings::class);
+        $settings->setChannelEnabled('email', true);
+        $settings->setChannelEnabled('telegram', false);
+        $settings->setVapidKeypair('BKlegacyPublicOnly', null);
+
+        Filament::setCurrentPanel(Filament::getPanel('platform'));
+        $this->actingAs($user);
+
+        Livewire::test(PlatformNotificationProvidersPage::class)
+            ->fillForm([
+                'channel_email_enabled' => true,
+                'channel_telegram_enabled' => true,
+                'channel_webhook_enabled' => true,
+                'channel_web_push_enabled' => true,
+                'channel_web_push_onesignal_enabled' => true,
+                'telegram_bot_token' => '',
+                'clear_telegram_bot_token' => false,
+                'platform_contact_chat_ids' => '',
+                'vapid_public' => 'BKlegacyPublicOnly',
+                'vapid_private' => '',
+                'clear_vapid_keys' => false,
+            ])
+            ->call('save');
+
+        $fresh = app(PlatformNotificationSettings::class);
+        $this->assertTrue($fresh->isChannelEnabled('telegram'));
+        $this->assertSame('BKlegacyPublicOnly', $fresh->vapidPublicKey());
+        $this->assertNull($fresh->vapidPrivateKeyDecrypted());
+    }
+
     public function test_save_clears_vapid_when_toggle_enabled(): void
     {
         $user = User::factory()->create(['status' => 'active']);
@@ -193,25 +229,62 @@ class PlatformNotificationProvidersSaveTest extends TestCase
         $this->assertSame('priv-secret', $fresh->vapidPrivateKeyDecrypted());
     }
 
-    public function test_generate_vapid_header_action_persists_new_keypair(): void
+    public function test_generate_vapid_section_action_persists_new_keypair(): void
     {
         $user = User::factory()->create(['status' => 'active']);
         $user->assignRole('platform_owner');
+
+        $this->mock(VapidKeyPairGenerator::class, function ($mock): void {
+            $mock->shouldReceive('generate')
+                ->once()
+                ->andReturn([
+                    'public' => 'BKtestMockPublic',
+                    'private' => 'testMockPrivate',
+                ]);
+        });
 
         Filament::setCurrentPanel(Filament::getPanel('platform'));
         $this->actingAs($user);
 
         Livewire::test(PlatformNotificationProvidersPage::class)
-            ->callAction('generateVapidKeypair')
+            ->callAction([
+                'name' => 'generateVapidKeypair',
+                'context' => ['schemaComponent' => 'form.web_push_vapid_section.vapid_keygen_row'],
+            ])
             ->assertSet('lastVapidKeypairOutcome', 'Новая пара VAPID ключей сгенерирована и сохранена.');
 
         $fresh = app(PlatformNotificationSettings::class);
-        $pub = $fresh->vapidPublicKey();
-        $priv = $fresh->vapidPrivateKeyDecrypted();
-        $this->assertNotNull($pub);
-        $this->assertNotNull($priv);
-        $this->assertNotSame('', $pub);
-        $this->assertNotSame('', $priv);
+        $this->assertSame('BKtestMockPublic', $fresh->vapidPublicKey());
+        $this->assertSame('testMockPrivate', $fresh->vapidPrivateKeyDecrypted());
+    }
+
+    public function test_generate_vapid_section_action_overwrites_existing_after_confirm(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        $user->assignRole('platform_owner');
+
+        app(PlatformNotificationSettings::class)->setVapidKeypair('BKpubsample', 'priv-plain');
+
+        $this->mock(VapidKeyPairGenerator::class, function ($mock): void {
+            $mock->shouldReceive('generate')
+                ->once()
+                ->andReturn([
+                    'public' => 'BKtestMockPublicReplaced',
+                    'private' => 'testMockPrivateReplaced',
+                ]);
+        });
+
+        Filament::setCurrentPanel(Filament::getPanel('platform'));
+        $this->actingAs($user);
+
+        Livewire::test(PlatformNotificationProvidersPage::class)
+            ->call('mountAction', 'generateVapidKeypair', [], ['schemaComponent' => 'form.web_push_vapid_section.vapid_keygen_row'])
+            ->call('callMountedAction')
+            ->assertSet('lastVapidKeypairOutcome', 'Новая пара VAPID ключей сгенерирована и сохранена.');
+
+        $fresh = app(PlatformNotificationSettings::class);
+        $this->assertSame('BKtestMockPublicReplaced', $fresh->vapidPublicKey());
+        $this->assertSame('testMockPrivateReplaced', $fresh->vapidPrivateKeyDecrypted());
     }
 
     public function test_save_reports_telegram_token_outcomes(): void
@@ -281,6 +354,37 @@ class PlatformNotificationProvidersSaveTest extends TestCase
                 'telegram_bot_token' => '',
                 'clear_telegram_bot_token' => false,
                 'platform_contact_chat_ids' => '12345, @gman1990_bot',
+                'vapid_public' => '',
+                'vapid_private' => '',
+                'clear_vapid_keys' => false,
+            ])
+            ->call('save');
+
+        $this->assertSame('111', app(PlatformNotificationSettings::class)->platformContactTelegramChatIdsRaw());
+    }
+
+    public function test_save_rejects_chat_ids_when_any_token_is_not_numeric_chat_id(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        $user->assignRole('platform_owner');
+
+        $settings = app(PlatformNotificationSettings::class);
+        $settings->setChannelEnabled('email', true);
+        $settings->setPlatformContactTelegramChatIds('111');
+
+        Filament::setCurrentPanel(Filament::getPanel('platform'));
+        $this->actingAs($user);
+
+        Livewire::test(PlatformNotificationProvidersPage::class)
+            ->fillForm([
+                'channel_email_enabled' => true,
+                'channel_telegram_enabled' => true,
+                'channel_webhook_enabled' => true,
+                'channel_web_push_enabled' => true,
+                'channel_web_push_onesignal_enabled' => true,
+                'telegram_bot_token' => '',
+                'clear_telegram_bot_token' => false,
+                'platform_contact_chat_ids' => '12345, foo',
                 'vapid_public' => '',
                 'vapid_private' => '',
                 'clear_vapid_keys' => false,

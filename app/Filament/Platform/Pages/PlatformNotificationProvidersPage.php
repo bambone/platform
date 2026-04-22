@@ -12,6 +12,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\HtmlString;
@@ -130,8 +131,47 @@ class PlatformNotificationProvidersPage extends Page
                             ->columnSpanFull(),
                     ]),
                 Section::make('Web Push (VAPID)')
+                    ->key('web_push_vapid_section')
                     ->description($this->vapidSectionDescription())
                     ->schema([
+                        Actions::make([
+                            Action::make('generateVapidKeypair')
+                                ->label('Сгенерировать VAPID-ключи')
+                                ->icon('heroicon-o-key')
+                                ->button()
+                                ->requiresConfirmation(fn (): bool => $this->hasStoredVapidPair(app(PlatformNotificationSettings::class)))
+                                ->modalHeading(fn (): ?string => $this->hasStoredVapidPair(app(PlatformNotificationSettings::class))
+                                    ? 'Заменить сохранённую пару VAPID-ключей?'
+                                    : null)
+                                ->modalDescription(fn (): ?string => $this->hasStoredVapidPair(app(PlatformNotificationSettings::class))
+                                    ? 'Новая пара перезапишет текущую. У части браузерных подписок может потребоваться повторная подписка на уведомления.'
+                                    : null)
+                                ->modalSubmitActionLabel(fn (): ?string => $this->hasStoredVapidPair(app(PlatformNotificationSettings::class))
+                                    ? 'Сгенерировать и сохранить'
+                                    : null)
+                                ->action(function (VapidKeyPairGenerator $generator, PlatformNotificationSettings $settings): void {
+                                    try {
+                                        $pair = $generator->generate();
+                                        $settings->setVapidKeypair($pair['public'], $pair['private']);
+                                        $this->lastVapidKeypairOutcome = 'Новая пара VAPID ключей сгенерирована и сохранена.';
+                                        $this->lastTelegramTokenOutcome = null;
+                                        $this->fillFormFromSettings(app(PlatformNotificationSettings::class));
+                                        Notification::make()
+                                            ->title('VAPID-ключи сохранены')
+                                            ->success()
+                                            ->send();
+                                    } catch (\Throwable $e) {
+                                        report($e);
+                                        Notification::make()
+                                            ->title('Не удалось сгенерировать VAPID-ключи')
+                                            ->body('Проверьте OpenSSL: задайте переменную окружения OPENSSL_CONF на путь к рабочему openssl.cnf (часто это файл рядом с PHP, например extras/ssl/openssl.cnf, либо системный /etc/ssl/openssl.cnf) и убедитесь, что EC-ключи prime256v1 доступны.')
+                                            ->danger()
+                                            ->send();
+                                    }
+                                }),
+                        ])
+                            ->key('vapid_keygen_row')
+                            ->columnSpanFull(),
                         Placeholder::make('vapid_pair_persistent_status')
                             ->hiddenLabel()
                             ->content(fn (): string => $this->vapidPairPersistentStatus()),
@@ -156,34 +196,6 @@ class PlatformNotificationProvidersPage extends Page
             ]);
     }
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Action::make('generateVapidKeypair')
-                ->label('Сгенерировать VAPID-ключи')
-                ->action(function (VapidKeyPairGenerator $generator, PlatformNotificationSettings $settings): void {
-                    try {
-                        $pair = $generator->generate();
-                        $settings->setVapidKeypair($pair['public'], $pair['private']);
-                        $this->lastVapidKeypairOutcome = 'Новая пара VAPID ключей сгенерирована и сохранена.';
-                        $this->lastTelegramTokenOutcome = null;
-                        $this->fillFormFromSettings(app(PlatformNotificationSettings::class));
-                        Notification::make()
-                            ->title('VAPID-ключи сохранены')
-                            ->success()
-                            ->send();
-                    } catch (\Throwable $e) {
-                        report($e);
-                        Notification::make()
-                            ->title('Не удалось сгенерировать VAPID-ключи')
-                            ->body('Проверьте OpenSSL: задайте переменную окружения OPENSSL_CONF на путь к рабочему openssl.cnf (часто это файл рядом с PHP, например extras/ssl/openssl.cnf, либо системный /etc/ssl/openssl.cnf) и убедитесь, что EC-ключи prime256v1 доступны.')
-                            ->danger()
-                            ->send();
-                    }
-                }),
-        ];
-    }
-
     public function save(PlatformNotificationSettings $settings): void
     {
         $data = $this->getSchema('form')->getState();
@@ -193,14 +205,17 @@ class PlatformNotificationProvidersPage extends Page
         $priv = trim((string) ($data['vapid_private'] ?? ''));
 
         if (! $clearVapid) {
+            $storedPub = $settings->vapidPublicKey() ?? '';
             if ($pub !== '' && $priv === '' && $settings->vapidPrivateKeyDecrypted() === null) {
-                Notification::make()->title('Укажите приватный VAPID ключ или сбросьте ключи VAPID.')->danger()->send();
+                if ($pub !== $storedPub) {
+                    Notification::make()->title('Укажите приватный VAPID ключ или сбросьте ключи VAPID.')->danger()->send();
 
-                return;
+                    return;
+                }
+                // Legacy: в БД только public — форма совпадает с сохранённым; остальные поля можно сохранить без трогания VAPID.
             }
 
             if ($pub !== '' && $priv === '' && $settings->vapidPrivateKeyDecrypted() !== null) {
-                $storedPub = $settings->vapidPublicKey() ?? '';
                 if ($storedPub !== '' && $pub !== $storedPub) {
                     Notification::make()->title('Новый публичный ключ сохраняется только вместе с приватным. Введите приватный ключ или сбросьте VAPID и задайте пару заново.')->danger()->send();
 
@@ -222,10 +237,10 @@ class PlatformNotificationProvidersPage extends Page
         }
 
         $chatIdsRaw = trim((string) ($data['platform_contact_chat_ids'] ?? ''));
-        if ($this->platformContactChatIdsContainAtPrefixedToken($chatIdsRaw)) {
+        if (($chatIdsInvalidBody = $this->platformContactChatIdsInvalidBody($chatIdsRaw)) !== null) {
             Notification::make()
                 ->title('Некорректные chat_id')
-                ->body('Укажите числовой chat_id, а не @username. Значения, начинающиеся с «@» (включая @gman1990_bot), в этом поле не сохраняются.')
+                ->body($chatIdsInvalidBody)
                 ->danger()
                 ->send();
 
@@ -336,7 +351,7 @@ class PlatformNotificationProvidersPage extends Page
         return new HtmlString(
             '<p>Web Push — браузерные push-уведомления для сайта. Этот блок <strong>не нужен</strong>, если вы используете только email или Telegram.</p>'
             .'<p><strong>Когда нужно:</strong> если подключаете доставку уведомлений в браузер пользователя (стандарт Web Push).</p>'
-            .'<p><strong>Откуда ключи:</strong> это пара public/private в формате VAPID; их можно ввести вручную или <strong>сгенерировать кнопкой «Сгенерировать VAPID-ключи»</strong> в шапке страницы — пара сразу сохраняется в настройках.</p>'
+            .'<p><strong>Откуда ключи:</strong> это пара public/private в формате VAPID; их можно ввести вручную или <strong>сгенерировать кнопкой «Сгенерировать VAPID-ключи»</strong> в этом блоке (сразу под этим текстом) — пара сразу сохраняется в настройках.</p>'
             .'<p>После смены пары VAPID у части браузерных подписок может потребоваться повторная подписка.</p>'
         );
     }
@@ -386,18 +401,19 @@ class PlatformNotificationProvidersPage extends Page
         );
     }
 
-    private function platformContactChatIdsContainAtPrefixedToken(string $raw): bool
+    /** @return string|null Текст ошибки для уведомления или null, если значение допустимо. */
+    private function platformContactChatIdsInvalidBody(string $raw): ?string
     {
         if ($raw === '') {
-            return false;
+            return null;
         }
 
         foreach (RecipientListParser::parse($raw) as $id) {
-            if (str_starts_with($id, '@')) {
-                return true;
+            if (preg_match('/^-?\d+$/', $id) !== 1) {
+                return 'Каждый chat_id — целое число (для групп часто отрицательное, например -100…), несколько значений через запятую. Username и строки вида «@bot», буквы и пробелы не подходят.';
             }
         }
 
-        return false;
+        return null;
     }
 }

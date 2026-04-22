@@ -8,8 +8,10 @@ use RuntimeException;
 
 /**
  * OpenSSL-only VAPID key pair for Web Push (P-256 / prime256v1), base64url as used by browser Push API.
+ *
+ * Class is not final so tests can mock {@see self::generate()} without depending on host OpenSSL.
  */
-final class VapidKeyPairGenerator
+class VapidKeyPairGenerator
 {
     /**
      * @return array{public: string, private: string}

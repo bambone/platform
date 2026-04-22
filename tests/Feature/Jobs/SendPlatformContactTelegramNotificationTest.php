@@ -14,7 +14,7 @@ class SendPlatformContactTelegramNotificationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_sends_plain_text_via_telegram_api(): void
+    public function test_sends_html_message_via_telegram_api(): void
     {
         Http::fake([
             'api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 42]], 200),
@@ -54,7 +54,7 @@ class SendPlatformContactTelegramNotificationTest extends TestCase
                 && ($data['chat_id'] ?? null) === '-1001234567890'
                 && ($data['text'] ?? '') !== ''
                 && ($data['disable_web_page_preview'] ?? false) === true
-                && ! array_key_exists('parse_mode', $data);
+                && ($data['parse_mode'] ?? null) === 'HTML';
         });
     }
 

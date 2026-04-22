@@ -22,7 +22,38 @@ final class ProductMailSettingsResolver
 
     public function defaultFromAddress(): string
     {
-        return (string) PlatformSetting::get('email.default_from_address', config('mail.from.address', ''));
+        if (config('mail.use_smtp_user_as_platform_from', false)) {
+            $smtp = $this->smtpUsernameAsEmail();
+            if ($smtp !== '') {
+                return $smtp;
+            }
+        }
+
+        $from = trim((string) PlatformSetting::get('email.default_from_address', ''));
+        if ($from === '') {
+            $from = trim((string) config('mail.from.address', ''));
+        }
+        if ($from !== '' && filter_var($from, FILTER_VALIDATE_EMAIL)) {
+            return $from;
+        }
+
+        $smtp = $this->smtpUsernameAsEmail();
+        if ($smtp !== '') {
+            return $smtp;
+        }
+
+        return $from;
+    }
+
+    private function smtpUsernameAsEmail(): string
+    {
+        $u = trim((string) config('mail.mailers.smtp.username', ''));
+
+        if ($u === '' || filter_var($u, FILTER_VALIDATE_EMAIL) === false) {
+            return '';
+        }
+
+        return $u;
     }
 
     public function defaultFromName(): string

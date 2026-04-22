@@ -79,7 +79,8 @@ class PlatformMarketingSettingsPage extends Page
                     TextInput::make('email_default_from_address')
                         ->label('From: адрес (email.default_from_address)')
                         ->email()
-                        ->maxLength(255),
+                        ->maxLength(255)
+                        ->helperText('Должен быть реальным ящиком в вашей почте (как в SMTP). При ошибке 553 в логе на Yandex 360: выставьте тот же адрес, что MAIL_USERNAME, или .env: MAIL_USE_SMTP_USER_AS_PLATFORM_FROM=true'),
                     TextInput::make('email_default_from_name')
                         ->label('From: имя (email.default_from_name)')
                         ->maxLength(255),

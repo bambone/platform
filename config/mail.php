@@ -115,4 +115,16 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Product mail (маркетинг) vs SMTP identity (Yandex 360, etc.)
+    |--------------------------------------------------------------------------
+    |
+    | If true, "From" for product/PlatformSetting-driven mail is forced to
+    | MAIL_USERNAME when it looks like an email — avoids SMTP 553 when
+    | email.default_from_address / MAIL_FROM_ADDRESS point at a non-mailbox.
+    |
+    */
+    'use_smtp_user_as_platform_from' => (bool) env('MAIL_USE_SMTP_USER_AS_PLATFORM_FROM', false),
+
 ];

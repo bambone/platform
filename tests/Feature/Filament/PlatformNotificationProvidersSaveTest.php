@@ -192,4 +192,101 @@ class PlatformNotificationProvidersSaveTest extends TestCase
         $this->assertSame('BKpub', $fresh->vapidPublicKey());
         $this->assertSame('priv-secret', $fresh->vapidPrivateKeyDecrypted());
     }
+
+    public function test_generate_vapid_header_action_persists_new_keypair(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        $user->assignRole('platform_owner');
+
+        Filament::setCurrentPanel(Filament::getPanel('platform'));
+        $this->actingAs($user);
+
+        Livewire::test(PlatformNotificationProvidersPage::class)
+            ->callAction('generateVapidKeypair')
+            ->assertSet('lastVapidKeypairOutcome', 'Новая пара VAPID ключей сгенерирована и сохранена.');
+
+        $fresh = app(PlatformNotificationSettings::class);
+        $pub = $fresh->vapidPublicKey();
+        $priv = $fresh->vapidPrivateKeyDecrypted();
+        $this->assertNotNull($pub);
+        $this->assertNotNull($priv);
+        $this->assertNotSame('', $pub);
+        $this->assertNotSame('', $priv);
+    }
+
+    public function test_save_reports_telegram_token_outcomes(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        $user->assignRole('platform_owner');
+
+        Filament::setCurrentPanel(Filament::getPanel('platform'));
+        $this->actingAs($user);
+
+        $first = Livewire::test(PlatformNotificationProvidersPage::class)
+            ->fillForm([
+                'channel_email_enabled' => true,
+                'channel_telegram_enabled' => true,
+                'channel_webhook_enabled' => true,
+                'channel_web_push_enabled' => true,
+                'channel_web_push_onesignal_enabled' => true,
+                'telegram_bot_token' => 'new-token',
+                'clear_telegram_bot_token' => false,
+                'platform_contact_chat_ids' => '',
+                'vapid_public' => '',
+                'vapid_private' => '',
+                'clear_vapid_keys' => false,
+            ])
+            ->call('save');
+
+        $first->assertSet('lastTelegramTokenOutcome', 'Токен сохранён');
+
+        $second = Livewire::test(PlatformNotificationProvidersPage::class)
+            ->fillForm([
+                'channel_email_enabled' => true,
+                'channel_telegram_enabled' => true,
+                'channel_webhook_enabled' => true,
+                'channel_web_push_enabled' => true,
+                'channel_web_push_onesignal_enabled' => true,
+                'telegram_bot_token' => 'replaced',
+                'clear_telegram_bot_token' => false,
+                'platform_contact_chat_ids' => '',
+                'vapid_public' => '',
+                'vapid_private' => '',
+                'clear_vapid_keys' => false,
+            ])
+            ->call('save');
+
+        $second->assertSet('lastTelegramTokenOutcome', 'Токен обновлён');
+    }
+
+    public function test_save_rejects_chat_ids_when_any_token_starts_with_at(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        $user->assignRole('platform_owner');
+
+        $settings = app(PlatformNotificationSettings::class);
+        $settings->setChannelEnabled('email', true);
+        $settings->setPlatformContactTelegramChatIds('111');
+
+        Filament::setCurrentPanel(Filament::getPanel('platform'));
+        $this->actingAs($user);
+
+        Livewire::test(PlatformNotificationProvidersPage::class)
+            ->fillForm([
+                'channel_email_enabled' => true,
+                'channel_telegram_enabled' => true,
+                'channel_webhook_enabled' => true,
+                'channel_web_push_enabled' => true,
+                'channel_web_push_onesignal_enabled' => true,
+                'telegram_bot_token' => '',
+                'clear_telegram_bot_token' => false,
+                'platform_contact_chat_ids' => '12345, @gman1990_bot',
+                'vapid_public' => '',
+                'vapid_private' => '',
+                'clear_vapid_keys' => false,
+            ])
+            ->call('save');
+
+        $this->assertSame('111', app(PlatformNotificationSettings::class)->platformContactTelegramChatIdsRaw());
+    }
 }

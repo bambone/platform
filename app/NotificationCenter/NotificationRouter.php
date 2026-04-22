@@ -8,6 +8,10 @@ use App\Models\NotificationSubscription;
 /**
  * Routes a persisted {@see NotificationEvent} to matching subscriptions.
  *
+ * For the same event, subscriptions with the exact {@see NotificationSubscription::$event_key} are processed
+ * before {@see NotificationEventRegistry::WILDCARD_EVENT_KEY} so the dedupe by {@see \App\Models\NotificationDelivery::$destination_id}
+ * favours the more specific rule when both target the same destination.
+ *
  * Personal subscriptions ({@see NotificationSubscription} with non-null {@see NotificationSubscription::$user_id})
  * match only when {@see NotificationRoutingContext::$recipientUserIds} is non-null and non-empty and includes that user.
  * Without an explicit recipient list, only shared subscriptions (user_id null) are considered — by design (MVP).
@@ -28,9 +32,14 @@ final class NotificationRouter
 
         $eventSeverity = NotificationSeverity::tryFromString($event->severity) ?? NotificationSeverity::Normal;
 
+        $wildcard = NotificationEventRegistry::WILDCARD_EVENT_KEY;
+
         $subs = NotificationSubscription::query()
             ->where('tenant_id', $event->tenant_id)
-            ->where('event_key', $event->event_key)
+            ->where(function ($q) use ($event, $wildcard): void {
+                $q->where('event_key', $event->event_key)
+                    ->orWhere('event_key', $wildcard);
+            })
             ->where('enabled', true)
             ->with('destinations')
             ->where(function ($q) use ($context): void {
@@ -39,6 +48,8 @@ final class NotificationRouter
                     $q->orWhereIn('user_id', $context->recipientUserIds);
                 }
             })
+            // Точное совпадение события — раньше wildcard, чтобы дедуп по destination применял «более специфичное» правило первым.
+            ->orderByRaw('CASE WHEN event_key = ? THEN 0 WHEN event_key = ? THEN 1 ELSE 2 END', [$event->event_key, $wildcard])
             ->orderBy('id')
             ->get();
 

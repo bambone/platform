@@ -9,6 +9,7 @@ use App\Models\NotificationDestination;
 use App\Models\NotificationSubscription;
 use App\NotificationCenter\NotificationEventRegistry;
 use App\NotificationCenter\NotificationSeverity;
+use App\Rules\ValidNotificationSubscriptionEventKey;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -83,6 +84,12 @@ class NotificationSubscriptionResource extends Resource
                     Select::make('event_key')
                         ->label('Событие')
                         ->options(NotificationEventRegistry::optionsForFilament())
+                        ->helperText(
+                            '«Все уведомления» — одно правило на все текущие и будущие типы событий. '
+                            .'По-прежнему учитываются «Мин. важность», условия, расписание и дедуп доставок по получателю. '
+                            .'Для одного и того же получателя точное правило (конкретное событие) имеет приоритет над «Все уведомления».'
+                        )
+                        ->rules([new ValidNotificationSubscriptionEventKey])
                         ->required()
                         ->native(true)
                         ->searchable(false),
@@ -120,7 +127,10 @@ class NotificationSubscriptionResource extends Resource
             $table
                 ->columns([
                     TextColumn::make('name')->label('Название'),
-                    TextColumn::make('event_key')->label('Событие')->badge(),
+                    TextColumn::make('event_key')
+                        ->label('Событие')
+                        ->badge()
+                        ->formatStateUsing(fn (?string $state): string => NotificationEventRegistry::labelForEventKeyInUi((string) $state)),
                     IconColumn::make('enabled')->label('Вкл.')->boolean(),
                 ])
                 ->recordActions([

@@ -73,13 +73,33 @@ class PlatformNotificationProvidersPage extends Page
                         Toggle::make('channel_telegram_enabled')->label('Telegram'),
                     ])->columns(2),
                 Section::make('Технические интеграции')
-                    ->description('Обычно требуют настройки разработчиком и не нужны для базовой работы email/Telegram.')
+                    ->description(
+                        'Web Push (VAPID) и OneSignal — для клиентских сценариев. Маркетинговый лендинг (apex) не использует OneSignal SDK; рубильник OneSignal ниже относится к сайтам тенантов. Подробности — в подсказке под переключателями.'
+                    )
                     ->schema([
                         Toggle::make('channel_webhook_enabled')->label('Входящий webhook (HTTP)'),
                         Toggle::make('channel_web_push_enabled')->label('Push в браузере (Web Push, VAPID)'),
                         Toggle::make('channel_web_push_onesignal_enabled')
-                            ->label('OneSignal Web Push (тенанты)')
-                            ->helperText('Глобальный рубильник: если выключить, web push через OneSignal будет недоступен для всех тенантов.'),
+                            ->label('OneSignal Web Push (сайты клиентов / тенантов)')
+                            ->helperText(
+                                'Выкл. — web push через OneSignal недоступен для публичных сайтов тенантов. Сами ключи OneSignal (App ID, API) задаются в кабинете клиента, не здесь.'
+                            ),
+                        Placeholder::make('onesignal_scope_clarification')
+                            ->label('')
+                            ->content(fn (): HtmlString => new HtmlString(
+                                '<div class="text-sm text-gray-600 dark:text-gray-400 space-y-2">'
+                                .'<p><span class="font-medium text-gray-800 dark:text-gray-200">Где настраивается OneSignal.</span> '
+                                .'App ID и REST API key вводятся в <strong>кабинете конкретного клиента</strong> (тенанта): «PWA и Push (OneSignal)». '
+                                .'Эта страница только включает или отключает канал <strong>для всех тенантов</strong> на уровне платформы.</p>'
+                                .'<p><span class="font-medium text-gray-800 dark:text-gray-200">Маркетинговый сайт (лендинг платформы).</span> '
+                                .'Домены вроде <code class="text-xs">rentbase.su</code> сейчас <strong>не встраивают</strong> OneSignal в вёрстку — отдельного поля «OneSignal для лендинга» в админке нет; уведомления с формы /contact — почта и Telegram (см. выше и «Маркетинг: контент…»).</p>'
+                                .'<p>Сводка по доступу тенантов к push: '
+                                .'<a class="text-primary-600 dark:text-primary-400 underline font-medium" href="'
+                                .e(TenantsPushPwaPage::getUrl())
+                                .'">Клиенты → Push &amp; PWA</a>.</p>'
+                                .'</div>'
+                            ))
+                            ->columnSpanFull(),
                     ])->columns(2),
                 Section::make('Telegram')
                     ->schema([

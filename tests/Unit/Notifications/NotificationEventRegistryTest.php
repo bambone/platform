@@ -26,6 +26,22 @@ class NotificationEventRegistryTest extends TestCase
         $this->assertNull(NotificationEventRegistry::definition('not.a.real.event'));
     }
 
+    public function test_wildcard_is_only_for_subscription_ui_not_a_real_emitted_event(): void
+    {
+        $this->assertFalse(NotificationEventRegistry::has(NotificationEventRegistry::WILDCARD_EVENT_KEY));
+        $this->assertTrue(NotificationEventRegistry::isSubscribableEventKey(NotificationEventRegistry::WILDCARD_EVENT_KEY));
+        $opts = NotificationEventRegistry::optionsForFilament();
+        $this->assertArrayHasKey(NotificationEventRegistry::WILDCARD_EVENT_KEY, $opts);
+        $this->assertStringContainsString('Все уведомления', $opts[NotificationEventRegistry::WILDCARD_EVENT_KEY]);
+        $this->assertStringContainsString('Все уведомления', NotificationEventRegistry::labelForEventKeyInUi(NotificationEventRegistry::WILDCARD_EVENT_KEY));
+    }
+
+    public function test_is_subscribable_event_key(): void
+    {
+        $this->assertTrue(NotificationEventRegistry::isSubscribableEventKey('crm_request.created'));
+        $this->assertFalse(NotificationEventRegistry::isSubscribableEventKey('not.registered.event'));
+    }
+
     /**
      * @return iterable<string, array{0: string}>
      */

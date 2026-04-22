@@ -11,6 +11,11 @@ use App\Models\Lead;
  */
 final class NotificationEventRegistry
 {
+    /**
+     * Подписка с этим event_key в БД срабатывает на любое зарегистрированное событие (см. {@see \App\NotificationCenter\NotificationRouter}).
+     */
+    public const WILDCARD_EVENT_KEY = '*';
+
     /** @var array<string, NotificationEventDefinition> */
     private static ?array $map = null;
 
@@ -155,16 +160,40 @@ final class NotificationEventRegistry
     }
 
     /**
+     * Ключи, разрешённые для {@see \App\Models\NotificationSubscription::$event_key} (вкл. wildcard для UI).
+     */
+    public static function isSubscribableEventKey(string $eventKey): bool
+    {
+        return $eventKey === self::WILDCARD_EVENT_KEY || self::has($eventKey);
+    }
+
+    /**
      * @return array<string, string> key => label for selects
      */
     public static function optionsForFilament(): array
     {
-        $out = [];
+        $out = [
+            self::WILDCARD_EVENT_KEY => 'Все уведомления (все типы событий)',
+        ];
         foreach (self::all() as $def) {
             $out[$def->key] = $def->key.' — '.$def->defaultTitle;
         }
 
         return $out;
+    }
+
+    /**
+     * Подпись в таблицах/формах для ключа (в т.ч. wildcard).
+     */
+    public static function labelForEventKeyInUi(string $key): string
+    {
+        if ($key === self::WILDCARD_EVENT_KEY) {
+            return 'Все уведомления (все типы событий)';
+        }
+
+        $def = self::definition($key);
+
+        return $def !== null ? $def->key.' — '.$def->defaultTitle : $key;
     }
 
     /**

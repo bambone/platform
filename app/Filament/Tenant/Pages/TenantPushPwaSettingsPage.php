@@ -4,18 +4,22 @@ namespace App\Filament\Tenant\Pages;
 
 use App\Auth\AccessRoles;
 use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
+use App\Models\Tenant;
 use App\Models\TenantDomain;
 use App\Models\TenantPushEventPreference;
+use App\Models\TenantPushSettings;
 use App\TenantPush\OneSignalExternalUserId;
 use App\TenantPush\TenantPushCrmRequestRecipientResolver;
 use App\TenantPush\TenantPushDiagnosticCode;
 use App\TenantPush\TenantPushDiagnosticsService;
 use App\TenantPush\TenantPushFeatureGate;
+use App\TenantPush\TenantPushGuidedSetupState;
 use App\TenantPush\TenantPushNotificationBindingSync;
 use App\TenantPush\TenantPushOnesignalClient;
 use App\TenantPush\TenantPushProviderStatus;
 use App\TenantPush\TenantPushRecipientScope;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -26,6 +30,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\HtmlString;
 use UnitEnum;
 
 class TenantPushPwaSettingsPage extends Page
@@ -44,6 +49,11 @@ class TenantPushPwaSettingsPage extends Page
 
     protected string $view = 'filament.tenant.pages.tenant-push-pwa-settings';
 
+    /** @var array<string, mixed> */
+    public ?array $data = [];
+
+    public ?string $lastOnesignalApiKeyOutcome = null;
+
     public static function canAccess(): bool
     {
         if (! Gate::allows('manage_settings')) {
@@ -61,42 +71,14 @@ class TenantPushPwaSettingsPage extends Page
     {
         abort_unless(self::canAccess(), 403);
 
+        $this->lastOnesignalApiKeyOutcome = null;
+
         $tenant = currentTenant();
         if ($tenant === null) {
             abort(404);
         }
 
-        $settings = $gate->resolveSettingsForDisplay($tenant);
-        $pref = TenantPushEventPreference::query()
-            ->where('tenant_id', $tenant->id)
-            ->where('event_key', 'crm_request.created')
-            ->first();
-
-        $activeDomains = $tenant->domains()->where('status', TenantDomain::STATUS_ACTIVE)->get();
-        $domainOptions = $activeDomains
-            ->mapWithKeys(fn (TenantDomain $d) => [strtolower((string) $d->host) => (string) $d->host])
-            ->all();
-
-        $canonicalHost = $settings->canonical_host;
-        if (($canonicalHost === null || $canonicalHost === '') && $activeDomains->count() === 1) {
-            $canonicalHost = strtolower((string) $activeDomains->first()->host);
-        } elseif (($canonicalHost === null || $canonicalHost === '') && $domainOptions !== []) {
-            $first = array_key_first($domainOptions);
-            $canonicalHost = $first !== null ? (string) $first : null;
-        }
-
-        $this->getSchema('form')->fill([
-            'canonical_host' => $canonicalHost,
-            'onesignal_app_id' => $settings->onesignal_app_id,
-            'onesignal_app_api_key' => '',
-            'has_api_key' => array_key_exists('onesignal_app_api_key_encrypted', $settings->getAttributes())
-                && $settings->getAttributes()['onesignal_app_api_key_encrypted'] !== null,
-            'is_push_enabled' => $settings->is_push_enabled,
-            'is_pwa_enabled' => $settings->is_pwa_enabled,
-            'crm_push_enabled' => $pref?->is_enabled ?? false,
-            'recipient_scope' => $pref?->recipient_scope ?? TenantPushRecipientScope::OwnerOnly->value,
-            'selected_user_ids' => $pref?->selectedUserIds() ?? [],
-        ]);
+        $this->fillFormFromSettings($tenant, $gate);
     }
 
     public function form(Schema $schema): Schema
@@ -117,27 +99,46 @@ class TenantPushPwaSettingsPage extends Page
                 });
         }
 
+        $supportUrl = trim((string) config('tenant_push.support_url', ''));
+        $supportEmail = trim((string) config('tenant_push.support_email', ''));
+        $supportFallback = 'Обратитесь в поддержку платформы для подключения push-услуги.';
+
         return $schema
             ->statePath('data')
             ->components([
                 Section::make('Доступность услуги')
-                    ->description('Коммерческую активацию услуги push настраивает платформа. Здесь только статус.')
+                    ->description('Коммерческую активацию услуги настраивает платформа. Здесь — статус и что делать, если модули недоступны по тарифу.')
                     ->schema([
                         Placeholder::make('_commercial_status_readonly')
-                            ->label('Услуга push (коммерция)')
-                            ->content(function () use ($tenant): string {
+                            ->label('Push (коммерция и тариф)')
+                            ->content(function () use ($tenant, $supportUrl, $supportEmail, $supportFallback): HtmlString {
                                 if ($tenant === null) {
-                                    return '—';
+                                    return new HtmlString('—');
                                 }
                                 $tenant->loadMissing('pushSettings');
                                 $active = (bool) ($tenant->pushSettings?->commercial_service_active ?? false);
+                                if ($active) {
+                                    return new HtmlString('Подключена. Отключение или смена условия — через поддержку платформы.');
+                                }
+                                $chunks = [
+                                    'Не подключена: для вас пока нельзя опираться на рассчёт по заявкам, пока платформа не отметит коммерческую готовность.',
+                                ];
+                                if ($supportUrl !== '') {
+                                    $href = $this->supportUrlAsHref($supportUrl);
+                                    $chunks[] = '<a class="text-primary-600 underline dark:text-primary-400" href="'.e($href).'" rel="noopener noreferrer" target="_blank">Страница поддержки (внешняя ссылка)</a>';
+                                }
+                                if ($supportEmail !== '') {
+                                    $chunks[] = 'Email: <a class="text-primary-600 underline dark:text-primary-400" href="mailto:'.e($supportEmail).'">'.e($supportEmail).'</a>';
+                                }
+                                if ($supportUrl === '' && $supportEmail === '') {
+                                    $chunks[] = e($supportFallback);
+                                }
 
-                                return $active
-                                    ? 'Подключена. Отключить или подключить можно через поддержку платформы.'
-                                    : 'Не подключена. Для подключения обратитесь в поддержку платформы.';
+                                return new HtmlString('<p>'.implode(' ', $chunks).'</p>');
                             }),
                     ]),
-                Section::make('Канонический домен для push')
+                Section::make('Шаг 1. Домен для push (HTTPS)')
+                    ->description('Сайт и подписки в браузере привязываются к одному хосту с действующим SSL.')
                     ->schema([
                         Select::make('canonical_host')
                             ->label('Основной домен (HTTPS)')
@@ -150,7 +151,7 @@ class TenantPushPwaSettingsPage extends Page
                                     return null;
                                 }
                                 if ($tenant->domains()->where('status', TenantDomain::STATUS_ACTIVE)->doesntExist()) {
-                                    return 'Сначала подключите и активируйте домен в разделе доменов / у платформы.';
+                                    return 'Сначала подключите и активируйте домен в разделе доменов или через платформу.';
                                 }
                                 $h = strtolower(trim((string) ($get('canonical_host') ?? '')));
                                 if ($h === '') {
@@ -163,54 +164,181 @@ class TenantPushPwaSettingsPage extends Page
                                 if ($domain === null) {
                                     return null;
                                 }
-                                if ($domain->ssl_status === TenantDomain::SSL_ISSUED) {
+                                if (in_array((string) $domain->ssl_status, [TenantDomain::SSL_ISSUED, TenantDomain::SSL_NOT_REQUIRED], true)) {
                                     return null;
                                 }
 
-                                return 'Для этого домена SSL ещё не в статусе «выпущен» — проверьте сертификат в настройках домена.';
+                                return 'Для выбранного хоста ещё нет пригодного SSL для публичного HTTPS — проверьте статус в настройках домена.';
                             }),
                     ]),
-                Section::make('OneSignal')
+                Section::make('Шаг 2. OneSignal: ключи приложения')
+                    ->description('В кабинете OneSignal: Settings → Keys & IDs: скопируйте App ID и REST API key (тот, что с правами на доставку).')
                     ->schema([
+                        Hidden::make('has_api_key'),
+                        Placeholder::make('onesignal_hint')
+                            ->hiddenLabel()
+                            ->content(new HtmlString(
+                                '<ol class="list-decimal space-y-1 pl-4 text-sm text-gray-600 dark:text-gray-400">'
+                                .'<li>Откройте ваше приложение в <a class="text-primary-600 underline" href="https://dashboard.onesignal.com/" rel="noopener noreferrer" target="_blank">OneSignal</a>.</li>'
+                                .'<li>Скопируйте <strong>App ID</strong> (UUID) в поле ниже.</li>'
+                                .'<li>Скопируйте <strong>REST API Key</strong> в «App API Key» (секрет не отображаем после сохранения).</li>'
+                                .'<li>Нажмите «Сохранить», затем «Проверить OneSignal» внизу страницы или в шапке.</li>'
+                                .'</ol>'
+                            )),
                         TextInput::make('onesignal_app_id')
                             ->label('App ID')
-                            ->disabled(! $editable),
+                            ->disabled(! $editable)
+                            ->maxLength(120),
+                        Placeholder::make('onesignal_app_id_status')
+                            ->hiddenLabel()
+                            ->content(function ($get): HtmlString {
+                                if (trim((string) $get('onesignal_app_id')) !== '') {
+                                    return new HtmlString('App ID: <span class="font-medium">задан</span> — в поле выше UUID из кабинета OneSignal; после смены нажмите «Сохранить».');
+                                }
+
+                                return new HtmlString('App ID: <span class="font-medium">не задан</span> — вставьте UUID из кабинета OneSignal.');
+                            }),
+                        Placeholder::make('onesignal_key_persistent')
+                            ->hiddenLabel()
+                            ->content(function ($get) use ($tenant): HtmlString {
+                                if ($tenant === null) {
+                                    return new HtmlString('—');
+                                }
+                                if ($get('has_api_key')) {
+                                    return new HtmlString('App API Key: сохранён в системе. Чтобы сменить — введите новый в поле ниже или сбросьте тогглом «Сбросить сохранённый App API Key».');
+                                }
+
+                                return new HtmlString('App API Key: <span class="font-medium">в системе не сохранён</span> — введите и нажмите «Сохранить».');
+                            }),
+                        Placeholder::make('onesignal_key_last_outcome')
+                            ->hiddenLabel()
+                            ->visible(fn (): bool => $this->lastOnesignalApiKeyOutcome !== null)
+                            ->content(fn (): string => (string) $this->lastOnesignalApiKeyOutcome),
                         TextInput::make('onesignal_app_api_key')
                             ->label('App API Key')
                             ->password()
                             ->revealable()
-                            ->helperText(fn ($get) => $get('has_api_key') ? 'Ключ сохранён. Введите новый, чтобы заменить.' : null)
+                            ->placeholder(fn ($get) => $get('has_api_key') ? '•••• … сохранён' : 'Ключ не задан')
+                            ->helperText('Если ключ уже в базе, поле пустое — введите новый только чтобы заменить. Для проверки и теста важен ключ, <strong>сохранённый</strong> в системе.')
                             ->disabled(! $editable),
-                        Toggle::make('is_push_enabled')->label('Включить отправку push')->disabled(! $editable),
-                    ]),
-                Section::make('PWA')
-                    ->schema([
-                        Toggle::make('is_pwa_enabled')
-                            ->label('Расширенный сценарий PWA / push')
-                            ->helperText('Базовый manifest сайта (имя, цвета темы) отдаётся всегда. Флаг отмечает, что клиент осознанно подключает сценарий с кастомными полями ниже и связанными проверками; он не «выключает» manifest в браузере.')
+                        Toggle::make('clear_onesignal_api_key')
+                            ->label('Сбросить сохранённый App API Key')
+                            ->helperText('Удаляет секрет из настроек. Пока тоггл включён, введённое в поле выше не применяется. Чтобы сменить ключ — выключите сброс, вставьте новый и сохраните.')
+                            ->default(false)
+                            ->visible(fn ($get) => (bool) $get('has_api_key'))
                             ->disabled(! $editable),
+                        Toggle::make('is_push_enabled')
+                            ->label('Включить отправку push через OneSignal')
+                            ->helperText(function ($get) {
+                                if ($get('is_push_enabled')) {
+                                    return 'Выключается одним переключателем, если больше не нужно доставлять с этого приложения.';
+                                }
+                                $g = $this->guidedStateFromGet($get);
+                                if (! $g->canEnablePush) {
+                                    return $g->primaryReasonMessage !== '' ? $g->primaryReasonMessage : $g->primaryReason->userMessage();
+                                }
+
+                                return 'Доступно, когда выбран HTTPS-домен с SSL, указаны и сохранены App ID и App API Key.';
+                            })
+                            ->disabled(fn ($get) => ! $editable
+                                || (! $get('is_push_enabled') && ! $this->guidedStateFromGet($get)->canEnablePush)),
                     ]),
-                Section::make('События: новая заявка')
+                Section::make('Шаг 3. События: новая заявка')
+                    ->description('Получатели — те, кто увидит push в кабинете, если у них есть подписка OneSignal.')
                     ->schema([
-                        Toggle::make('crm_push_enabled')->label('Push при новой заявке с сайта')->disabled(! $editable),
+                        Toggle::make('crm_push_enabled')
+                            ->label('Push о новой заявке с сайта')
+                            ->helperText(function ($get) {
+                                $g = $this->guidedStateFromGet($get);
+                                if ((bool) $get('crm_push_enabled') && $g->canEnableCrmPush) {
+                                    return 'Доставка зависит от подписок OneSignal на устройствах выбранных сотрудников.';
+                                }
+                                if ((bool) $get('crm_push_enabled') && ! $g->canEnableCrmPush) {
+                                    return $g->primaryReasonMessage !== '' ? $g->primaryReasonMessage : $g->primaryReason->userMessage();
+                                }
+                                if (! $g->canEnableCrmPush) {
+                                    return 'Сначала выберите домен с SSL, укажите и сохраните OneSignal, выполните проверку, включите общую отправку push и настройте получателей — затем снова откройте этот тумблер.';
+                                }
+
+                                return 'Можно включать уведомления о заявке: базовая цепочка OneSignal в порядке.';
+                            })
+                            ->disabled(fn ($get) => ! $editable
+                                || (! $get('crm_push_enabled') && ! $this->guidedStateFromGet($get)->canEnableCrmPush)),
                         Select::make('recipient_scope')
-                            ->label('Кому')
+                            ->label('Получатели уведомлений (кому отправлять push)')
                             ->options([
                                 TenantPushRecipientScope::OwnerOnly->value => 'Владелец клиента',
-                                TenantPushRecipientScope::SelectedUsers->value => 'Выбранные пользователи',
-                                TenantPushRecipientScope::AllAdmins->value => 'Все администраторы кабинета',
+                                TenantPushRecipientScope::SelectedUsers->value => 'Выбранные сотрудники',
+                                TenantPushRecipientScope::AllAdmins->value => 'Все, у кого есть доступ к этому кабинету',
                             ])
                             ->native(true)
                             ->disabled(! $editable),
                         Select::make('selected_user_ids')
-                            ->label('Пользователи')
+                            ->label('Выберите сотрудников')
                             ->multiple()
                             ->options($userOptions)
                             ->native(true)
                             ->visible(fn ($get) => ($get('recipient_scope') ?? '') === TenantPushRecipientScope::SelectedUsers->value)
                             ->disabled(! $editable),
                     ]),
+                Section::make('Дополнительно: PWA')
+                    ->description('Второстепенные поля, не связанные с базовой цепочкой OneSignal. Базовый manifest сайта отдаётся в любом случае.')
+                    ->collapsed()
+                    ->schema([
+                        Toggle::make('is_pwa_enabled')
+                            ->label('Расширенный сценарий PWA')
+                            ->helperText('Включает сопутствующие проверки и кастомные поля. Не влияет на наличие manifest в браузере.')
+                            ->disabled(! $editable),
+                    ]),
             ]);
+    }
+
+    /**
+     * @param  callable(string): mixed  $get
+     */
+    protected function guidedStateFromGet(callable $get): TenantPushGuidedSetupState
+    {
+        $tenant = currentTenant();
+        if ($tenant === null) {
+            throw new \RuntimeException('Current tenant is required for guided push state.');
+        }
+        $featureGate = app(TenantPushFeatureGate::class);
+        $g = $featureGate->evaluate($tenant);
+        $settings = $featureGate->resolveSettingsForDisplay($tenant);
+        $pref = TenantPushEventPreference::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('event_key', 'crm_request.created')
+            ->first();
+        $form = [
+            'canonical_host' => $get('canonical_host'),
+            'onesignal_app_id' => $get('onesignal_app_id'),
+            'onesignal_app_api_key' => $get('onesignal_app_api_key'),
+            'clear_onesignal_api_key' => (bool) $get('clear_onesignal_api_key'),
+            'is_push_enabled' => (bool) $get('is_push_enabled'),
+            'crm_push_enabled' => (bool) $get('crm_push_enabled'),
+            'recipient_scope' => (string) ($get('recipient_scope') ?? ''),
+            'selected_user_ids' => is_array($get('selected_user_ids')) ? $get('selected_user_ids') : [],
+        ];
+
+        return TenantPushGuidedSetupState::make($tenant, $g, $settings, $pref, $form);
+    }
+
+    public function guidedStateForActions(): TenantPushGuidedSetupState
+    {
+        $tenant = currentTenant();
+        if ($tenant === null) {
+            throw new \RuntimeException('Current tenant is required for guided push state.');
+        }
+        $featureGate = app(TenantPushFeatureGate::class);
+        $g = $featureGate->evaluate($tenant);
+        $settings = $featureGate->resolveSettingsForDisplay($tenant);
+        $pref = TenantPushEventPreference::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('event_key', 'crm_request.created')
+            ->first();
+        $form = $this->getSchema('form')->getState();
+
+        return TenantPushGuidedSetupState::make($tenant, $g, $settings, $pref, $form);
     }
 
     public function save(
@@ -234,6 +362,37 @@ class TenantPushPwaSettingsPage extends Page
 
         $data = $this->getSchema('form')->getState();
         $settings = $gate->ensureSettings($tenant);
+        $prefForGuided = TenantPushEventPreference::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('event_key', 'crm_request.created')
+            ->first();
+        $guided = TenantPushGuidedSetupState::make(
+            $tenant,
+            $g,
+            $settings,
+            $prefForGuided,
+            $data,
+        );
+        if ((bool) ($data['is_push_enabled'] ?? false) && ! $guided->canEnablePush) {
+            Notification::make()
+                ->title('Пока нельзя включить отправку push')
+                ->body($guided->primaryReasonMessage !== '' ? $guided->primaryReasonMessage : $guided->primaryReason->userMessage())
+                ->danger()
+                ->send();
+
+            return;
+        }
+        if ((bool) ($data['crm_push_enabled'] ?? false) && ! $guided->canEnableCrmPush) {
+            Notification::make()
+                ->title('Пока нельзя включить уведомления о заявке')
+                ->body($guided->primaryReasonMessage !== '' ? $guided->primaryReasonMessage : $guided->primaryReason->userMessage())
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $this->lastOnesignalApiKeyOutcome = null;
 
         $activeHostsLower = $tenant->domains()
             ->where('status', TenantDomain::STATUS_ACTIVE)
@@ -268,7 +427,9 @@ class TenantPushPwaSettingsPage extends Page
         $newAppId = $newAppIdTrimmed !== '' ? $newAppIdTrimmed : null;
         $newAppIdNorm = $newAppId !== null ? strtolower($newAppId) : '';
 
+        $clear = (bool) ($data['clear_onesignal_api_key'] ?? false);
         $key = trim((string) ($data['onesignal_app_api_key'] ?? ''));
+        $hadKey = $this->modelHasStoredOnesignalKey($settings);
 
         $settings->fill([
             'canonical_host' => $host !== '' ? $host : null,
@@ -278,7 +439,17 @@ class TenantPushPwaSettingsPage extends Page
             'is_pwa_enabled' => (bool) ($data['is_pwa_enabled'] ?? false),
         ]);
 
-        if ($key !== '') {
+        if ($clear) {
+            if ($hadKey) {
+                $this->lastOnesignalApiKeyOutcome = 'Ключ удалён';
+            }
+            $settings->onesignal_app_api_key_encrypted = null;
+            $settings->onesignal_key_pending_verification = true;
+            $settings->provider_status = TenantPushProviderStatus::Invalid->value;
+            $settings->onesignal_config_verified_at = null;
+            $settings->onesignal_last_verification_error = null;
+        } elseif ($key !== '') {
+            $this->lastOnesignalApiKeyOutcome = $hadKey ? 'Ключ обновлён' : 'Ключ сохранён';
             $settings->onesignal_app_api_key_encrypted = $key;
             $settings->onesignal_key_pending_verification = true;
             $settings->provider_status = TenantPushProviderStatus::Invalid->value;
@@ -321,6 +492,95 @@ class TenantPushPwaSettingsPage extends Page
         $bindingSync->syncCrmRequestCreated($tenant);
 
         Notification::make()->title('Сохранено')->success()->send();
+
+        if ($settings->exists) {
+            $settings->refresh();
+        }
+        if ($pref->exists) {
+            $pref->refresh();
+        }
+        $this->fillFormFromSettings($tenant, $gate);
+    }
+
+    private function fillFormFromSettings(Tenant $tenant, TenantPushFeatureGate $gate): void
+    {
+        $settings = $gate->resolveSettingsForDisplay($tenant);
+        if ($settings->exists) {
+            $settings->refresh();
+        }
+        $pref = TenantPushEventPreference::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('event_key', 'crm_request.created')
+            ->first();
+
+        $this->getSchema('form')->fill($this->formStateArrayForTenant($tenant, $settings, $pref));
+    }
+
+    /**
+     * Полное состояние формы из БД (как на платформе: после save — визу = данные, включая нормализованные id и хост).
+     *
+     * @return array<string, mixed>
+     */
+    private function formStateArrayForTenant(
+        Tenant $tenant,
+        TenantPushSettings $settings,
+        ?TenantPushEventPreference $pref,
+    ): array {
+        $activeDomains = $tenant->domains()->where('status', TenantDomain::STATUS_ACTIVE)->get();
+        $domainOptions = $activeDomains
+            ->mapWithKeys(fn (TenantDomain $d) => [strtolower((string) $d->host) => (string) $d->host])
+            ->all();
+
+        $canonicalHost = $settings->canonical_host;
+        if (($canonicalHost === null || $canonicalHost === '') && $activeDomains->count() === 1) {
+            $canonicalHost = strtolower((string) $activeDomains->first()->host);
+        } elseif (($canonicalHost === null || $canonicalHost === '') && $domainOptions !== []) {
+            $first = array_key_first($domainOptions);
+            $canonicalHost = $first !== null ? (string) $first : null;
+        }
+        if (is_string($canonicalHost) && $canonicalHost !== '') {
+            $canonicalHost = strtolower(trim($canonicalHost));
+        }
+
+        $attrs = $settings->getAttributes();
+        $hasKey = array_key_exists('onesignal_app_api_key_encrypted', $attrs)
+            && $attrs['onesignal_app_api_key_encrypted'] !== null
+            && $attrs['onesignal_app_api_key_encrypted'] !== '';
+
+        return [
+            'canonical_host' => $canonicalHost,
+            'onesignal_app_id' => $settings->onesignal_app_id,
+            'onesignal_app_api_key' => '',
+            'clear_onesignal_api_key' => false,
+            'has_api_key' => $hasKey,
+            'is_push_enabled' => (bool) $settings->is_push_enabled,
+            'is_pwa_enabled' => (bool) $settings->is_pwa_enabled,
+            'crm_push_enabled' => (bool) ($pref?->is_enabled ?? false),
+            'recipient_scope' => $pref?->recipient_scope ?? TenantPushRecipientScope::OwnerOnly->value,
+            'selected_user_ids' => $pref?->selectedUserIds() ?? [],
+        ];
+    }
+
+    private function supportUrlAsHref(string $raw): string
+    {
+        $t = trim($raw);
+        if ($t === '' || str_starts_with($t, 'http://') || str_starts_with($t, 'https://') || str_starts_with($t, '//')) {
+            return $t;
+        }
+        if (str_starts_with($t, 'mailto:')) {
+            return $t;
+        }
+
+        return 'https://'.$t;
+    }
+
+    private function modelHasStoredOnesignalKey(TenantPushSettings $settings): bool
+    {
+        $attrs = $settings->getAttributes();
+
+        return array_key_exists('onesignal_app_api_key_encrypted', $attrs)
+            && $attrs['onesignal_app_api_key_encrypted'] !== null
+            && $attrs['onesignal_app_api_key_encrypted'] !== '';
     }
 
     public function verifyOnesignal(TenantPushFeatureGate $gate, TenantPushOnesignalClient $client, TenantPushDiagnosticsService $diagnostics): void
@@ -463,10 +723,22 @@ class TenantPushPwaSettingsPage extends Page
         if ($canEdit) {
             $actions[] = Action::make('verify')
                 ->label('Проверить OneSignal')
-                ->action('verifyOnesignal');
+                ->action('verifyOnesignal')
+                ->disabled(fn () => ! $this->guidedStateForActions()->canVerifyOnesignal)
+                ->tooltip(function (): ?string {
+                    $m = $this->guidedStateForActions()->verifyActionDisabledMessage;
+
+                    return $m === '' ? null : $m;
+                });
             $actions[] = Action::make('test')
                 ->label('Тестовый push')
-                ->action('sendTestPush');
+                ->action('sendTestPush')
+                ->disabled(fn () => ! $this->guidedStateForActions()->canSendTestPush)
+                ->tooltip(function (): ?string {
+                    $m = $this->guidedStateForActions()->testPushActionDisabledMessage;
+
+                    return $m === '' ? null : $m;
+                });
         }
 
         return $actions;

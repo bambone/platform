@@ -19,6 +19,7 @@ final readonly class TenantPushSettingsView
         public bool $crmEventEnabled,
         public int $targetRecipientCount,
         public int $activeSubscriptionCount,
+        public TenantPushGuidedSetupState $guidedSetup,
     ) {}
 
     public static function make(Tenant $tenant, TenantPushFeatureGate $featureGate, TenantPushCrmRequestRecipientResolver $recipientResolver): self
@@ -59,7 +60,9 @@ final readonly class TenantPushSettingsView
             && $total > 0
             && $active >= 1;
 
-        return new self($gate, $settings, $aggregate, $ready, $crmEnabled, $total, $active);
+        $guided = TenantPushGuidedSetupState::make($tenant, $gate, $settings, $pref, null);
+
+        return new self($gate, $settings, $aggregate, $ready, $crmEnabled, $total, $active, $guided);
     }
 
     public function providerStatusLabel(): string
@@ -83,29 +86,34 @@ final readonly class TenantPushSettingsView
     public function readinessHint(): string
     {
         if (! $this->gate->isFeatureEntitled()) {
-            return 'Доставка по событиям недоступна: нет права на функцию (тариф / коммерция или отключение платформой). Настройки только для просмотра.';
+            return 'По текущему тарифу или коммерческим настройкам доставка push не активна. Раздел можно смотреть, но тесты и события на сайт не пойдут, пока платформа не подключит функцию.';
         }
 
         if (! $this->crmEventEnabled) {
-            return 'Включите push для события «Новая заявка» ниже и сохраните — иначе маршрутизация OneSignal не используется.';
+            $g = $this->guidedSetup;
+            if ($g->primaryReason !== TenantPushGuidedSetupReason::None) {
+                return 'Сначала завершите настройку push: '.$g->primaryReason->userMessage();
+            }
+
+            return 'Включите ниже уведомление о новой заявке и сохраните — тогда при обращении с сайта сможет уходить push к выбранным сотрудникам (если у них подписка в браузере).';
         }
 
         if ($this->targetRecipientCount === 0) {
-            return 'Не выбраны получатели для этого события (владелец / команда). Укажите, кому слать.';
+            return 'Нужны получатели: владелец, команда и/или выбранные сотрудники с доступом. Укажите «кому», сохраните и проверьте подписки в браузере.';
         }
 
         if ($this->settings->providerStatusEnum() !== TenantPushProviderStatus::Verified) {
-            return 'Провайдер OneSignal не подтверждён: выполните проверку ключей. Подписки получателей учитываются отдельно от статуса ключей.';
+            return 'Сначала подтвердите ключи OneSignal кнопкой «Проверить OneSignal» на странице PWA и Push.';
         }
 
         if ($this->activeSubscriptionCount === 0) {
-            return 'Провайдер проверен, но у целевых получателей нет активной подписки OneSignal: войдите в кабинет с устройства, разрешите уведомления (и на iOS откройте сайт с иконки на главном экране).';
+            return 'Ключи в порядке, но у выбранных сотрудников нет активной push-подписки: зайдите в кабинет с устройства и разрешите уведомления. На iPhone откройте сайт с иконки на «Домой».';
         }
 
         if ($this->subscriptionAggregate === TenantPushSubscriptionAggregate::Partial) {
-            return 'События могут доставляться, но не всем выбранным получателям — у части нет подписки OneSignal.';
+            return 'События доставляются, но у части выбранных сотрудников нет push-подписки в браузере — войдите за них и примите уведомления.';
         }
 
-        return 'Готово: провайдер проверен и есть хотя бы одна активная подписка среди целевых получателей.';
+        return 'Готово: OneSignal подтверждён и у целевых сотрудников есть хотя бы одна активная подписка.';
     }
 }

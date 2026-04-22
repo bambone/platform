@@ -113,7 +113,9 @@ class TenantPushAcceptanceScenariosTest extends TestCase
         $view = TenantPushSettingsView::make($tenant, $gate, app(TenantPushCrmRequestRecipientResolver::class));
 
         $this->assertFalse($view->readyForEventDelivery);
-        $this->assertStringContainsString('Провайдер проверен', $view->readinessHint());
+        $hint = $view->readinessHint();
+        $this->assertStringContainsString('Ключи в порядке', $hint);
+        $this->assertStringContainsString('подпис', $hint);
     }
 
     public function test_4_test_push_uses_canonical_external_user_id_and_http(): void

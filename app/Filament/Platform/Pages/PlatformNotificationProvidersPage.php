@@ -65,7 +65,9 @@ class PlatformNotificationProvidersPage extends Page
                     ->schema([
                         Toggle::make('channel_webhook_enabled')->label('Входящий webhook (HTTP)'),
                         Toggle::make('channel_web_push_enabled')->label('Push в браузере (Web Push, VAPID)'),
-                        Toggle::make('channel_web_push_onesignal_enabled')->label('OneSignal Web Push (тенанты)'),
+                        Toggle::make('channel_web_push_onesignal_enabled')
+                            ->label('OneSignal Web Push (тенанты)')
+                            ->helperText('Глобальный рубильник: если выключить, web push через OneSignal будет недоступен для всех тенантов.'),
                     ])->columns(2),
                 Section::make('Telegram')
                     ->schema([
@@ -88,12 +90,12 @@ class PlatformNotificationProvidersPage extends Page
                             ->default(false),
                         TextInput::make('platform_contact_chat_ids')
                             ->label('Chat ID для заявок с лендинга')
-                            ->helperText(new HtmlString(
-                                'Укажите <strong>числовой chat_id</strong> (пользователь, группа или канал), а не @username бота.<br>'
-                                .'<strong>Правильно:</strong> <code>123456789</code>, <code>-1001234567890</code> — можно несколько через запятую.<br>'
-                                .'<strong>Неправильно:</strong> <code>@gman1990_bot</code> — это username, сюда не подходит.'
-                            ))
+                            ->helperText('Укажите числовой chat_id, а не @username бота. Несколько id — через запятую.')
                             ->maxLength(4000),
+                        Placeholder::make('platform_contact_chat_id_guide')
+                            ->label('Как узнать свой chat_id')
+                            ->content(fn (): HtmlString => $this->platformContactChatIdGuideHtml())
+                            ->columnSpanFull(),
                     ]),
                 Section::make('Web Push (VAPID)')
                     ->description($this->vapidSectionDescription())
@@ -318,6 +320,38 @@ class PlatformNotificationProvidersPage extends Page
     {
         return $settings->vapidPublicKey() !== null
             && $settings->vapidPrivateKeyDecrypted() !== null;
+    }
+
+    private function platformContactChatIdGuideHtml(): HtmlString
+    {
+        $userInfoBot = 'https://t.me/userinfobot';
+        $rawDataBot = 'https://t.me/RawDataBot';
+        $getUpdates = 'https://core.telegram.org/bots/api#getupdates';
+
+        return new HtmlString(
+            '<div class="space-y-3 text-sm text-gray-600 dark:text-gray-400">'
+            .'<ol class="list-decimal space-y-1 ps-5">'
+            .'<li>Откройте Telegram.</li>'
+            .'<li>Найдите бота <a class="text-primary-600 underline dark:text-primary-400" href="'.e($userInfoBot).'" target="_blank" rel="noopener noreferrer">@userinfobot</a> или '
+            .'<a class="text-primary-600 underline dark:text-primary-400" href="'.e($rawDataBot).'" target="_blank" rel="noopener noreferrer">@RawDataBot</a>.</li>'
+            .'<li>Нажмите Start.</li>'
+            .'<li>Скопируйте показанный числовой chat_id.</li>'
+            .'</ol>'
+            .'<div>'
+            .'<p class="mb-1 font-medium text-gray-800 dark:text-gray-200">Примеры</p>'
+            .'<ul class="list-disc space-y-0.5 ps-5">'
+            .'<li>Личный чат: <code class="rounded bg-gray-100 px-1 py-0.5 text-xs text-gray-900 dark:bg-white/10 dark:text-gray-100">123456789</code></li>'
+            .'<li>Группа/канал: <code class="rounded bg-gray-100 px-1 py-0.5 text-xs text-gray-900 dark:bg-white/10 dark:text-gray-100">-1001234567890</code></li>'
+            .'</ul>'
+            .'</div>'
+            .'<p><span class="font-medium text-gray-800 dark:text-gray-200">Важно: </span>'
+            .'<code class="rounded bg-gray-100 px-1 py-0.5 text-xs text-gray-900 dark:bg-white/10 dark:text-gray-100">@gman1990_bot</code> — это username, сюда не подходит.</p>'
+            .'<p><span class="font-medium text-gray-800 dark:text-gray-200">Для группы: </span>'
+            .'добавьте бота в группу и получите chat_id группы через '
+            .'<a class="text-primary-600 underline dark:text-primary-400" href="'.e($rawDataBot).'" target="_blank" rel="noopener noreferrer">@RawDataBot</a> '
+            .'или <a class="text-primary-600 underline dark:text-primary-400" href="'.e($getUpdates).'" target="_blank" rel="noopener noreferrer">Bot API getUpdates</a>.</p>'
+            .'</div>'
+        );
     }
 
     private function platformContactChatIdsContainAtPrefixedToken(string $raw): bool

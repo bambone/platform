@@ -27,6 +27,10 @@ final class ServiceProgramCardPresentationResolver
     {
         $mobile = $this->resolveFramingDetails($program, ViewportKey::Mobile);
         $desktop = $this->resolveFramingDetails($program, ViewportKey::Desktop);
+        $dims = ServiceProgramCardPresentationProfile::mediaAspectDimensionsForServiceCard(
+            $mobile['heightFactor'],
+            $desktop['heightFactor'],
+        );
 
         $parts = [
             '--svc-program-focal-x-mobile: '.$mobile['focal']->x.'%',
@@ -35,6 +39,10 @@ final class ServiceProgramCardPresentationResolver
             '--svc-program-focal-y-desktop: '.$desktop['focal']->y.'%',
             '--svc-program-scale-mobile: '.$mobile['scale'],
             '--svc-program-scale-desktop: '.$desktop['scale'],
+            '--svc-program-media-aspect-w-mobile: '.$dims['w_mobile'],
+            '--svc-program-media-aspect-h-mobile: '.$dims['h_mobile'],
+            '--svc-program-media-aspect-w-desktop: '.$dims['w_desktop'],
+            '--svc-program-media-aspect-h-desktop: '.$dims['h_desktop'],
         ];
         foreach (ServiceProgramCardPresentationProfile::articleOverlayCssVariables() as $name => $value) {
             $parts[] = '--'.$name.': '.$value;
@@ -114,9 +122,9 @@ final class ServiceProgramCardPresentationResolver
     }
 
     /**
-     * Framing (focal + user scale) — used by article inline style and by {@see resolveFocal}.
+     * Framing (focal + user scale + media height factor) — used by article inline style and by {@see resolveFocal}.
      *
-     * @return array{focal: FocalPoint, scale: float, legacyUsed: bool}
+     * @return array{focal: FocalPoint, scale: float, heightFactor: float, legacyUsed: bool}
      */
     private function resolveFramingDetails(TenantServiceProgram $program, ViewportKey $viewport): array
     {
@@ -131,6 +139,7 @@ final class ServiceProgramCardPresentationResolver
             return [
                 'focal' => $framing->toFocalPoint(),
                 'scale' => $framing->scale,
+                'heightFactor' => $framing->heightFactor,
                 'legacyUsed' => false,
             ];
         }
@@ -140,6 +149,7 @@ final class ServiceProgramCardPresentationResolver
             return [
                 'focal' => $legacy,
                 'scale' => 1.0,
+                'heightFactor' => ServiceProgramCardPresentationProfile::HEIGHT_FACTOR_DEFAULT,
                 'legacyUsed' => true,
             ];
         }
@@ -149,6 +159,7 @@ final class ServiceProgramCardPresentationResolver
         return [
             'focal' => $focal,
             'scale' => 1.0,
+            'heightFactor' => ServiceProgramCardPresentationProfile::HEIGHT_FACTOR_DEFAULT,
             'legacyUsed' => false,
         ];
     }

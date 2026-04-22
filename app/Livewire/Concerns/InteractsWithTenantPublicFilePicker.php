@@ -121,12 +121,10 @@ trait InteractsWithTenantPublicFilePicker
         $this->validate([
             'tenantPublicImageUploadBuffer' => ['required', 'image', 'max:4096'],
         ]);
-        $disk = TenantStorageDisks::publicDiskName();
         $sub = trim($this->tenantPublicImageUploadSubdirectory, '/');
         if ($sub === '') {
             $sub = 'page-builder';
         }
-        $dirKey = TenantStorage::for($t)->publicPathInArea(TenantStorageArea::PublicSite, $sub);
         $ext = strtolower($this->tenantPublicImageUploadBuffer->getClientOriginalExtension() ?: 'bin');
         if (! in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'], true)) {
             $this->tenantPublicImageUploadBuffer = null;
@@ -134,14 +132,15 @@ trait InteractsWithTenantPublicFilePicker
             return;
         }
         $name = Str::uuid()->toString().'.'.$ext;
-        $adapter = Storage::disk($disk);
-        $adapter->putFileAs(
-            $dirKey,
+        $replica = Storage::disk(TenantStorageDisks::replicaPublicDiskName());
+        $options = TenantStorage::mergedOptionsForPublicObjectWrite($replica, []);
+        TenantStorage::for($t)->putInArea(
+            TenantStorageArea::PublicSite,
+            $sub.'/'.$name,
             $this->tenantPublicImageUploadBuffer,
-            $name,
-            TenantStorage::mergedOptionsForPublicObjectWrite($adapter),
+            $options,
         );
-        $objectKey = $dirKey.'/'.$name;
+        $objectKey = TenantStorage::for($t)->publicPathInArea(TenantStorageArea::PublicSite, $sub).'/'.$name;
         $this->assignToLivewireRootState($this->tenantPublicImageUploadTargetPath, $objectKey);
         $this->tenantPublicImageUploadBuffer = null;
         $this->tenantPublicImageUploadTargetPath = '';
@@ -183,12 +182,10 @@ trait InteractsWithTenantPublicFilePicker
                 'max:'.self::TENANT_PUBLIC_VIDEO_UPLOAD_MAX_KB,
             ],
         ]);
-        $disk = TenantStorageDisks::publicDiskName();
         $sub = trim($this->tenantPublicVideoUploadSubdirectory, '/');
         if ($sub === '') {
             $sub = 'page-builder';
         }
-        $dirKey = TenantStorage::for($t)->publicPathInArea(TenantStorageArea::PublicSite, $sub);
         $ext = strtolower($this->tenantPublicVideoUploadBuffer->getClientOriginalExtension() ?: 'bin');
         if (! in_array($ext, TenantFileCatalogService::VIDEO_EXTENSIONS, true)) {
             $this->tenantPublicVideoUploadBuffer = null;
@@ -196,14 +193,15 @@ trait InteractsWithTenantPublicFilePicker
             return;
         }
         $name = Str::uuid()->toString().'.'.$ext;
-        $adapter = Storage::disk($disk);
-        $adapter->putFileAs(
-            $dirKey,
+        $replica = Storage::disk(TenantStorageDisks::replicaPublicDiskName());
+        $options = TenantStorage::mergedOptionsForPublicObjectWrite($replica, []);
+        TenantStorage::for($t)->putInArea(
+            TenantStorageArea::PublicSite,
+            $sub.'/'.$name,
             $this->tenantPublicVideoUploadBuffer,
-            $name,
-            TenantStorage::mergedOptionsForPublicObjectWrite($adapter),
+            $options,
         );
-        $objectKey = $dirKey.'/'.$name;
+        $objectKey = TenantStorage::for($t)->publicPathInArea(TenantStorageArea::PublicSite, $sub).'/'.$name;
         $this->assignToLivewireRootState($this->tenantPublicVideoUploadTargetPath, $objectKey);
         $this->tenantPublicVideoUploadBuffer = null;
         $this->tenantPublicVideoUploadTargetPath = '';

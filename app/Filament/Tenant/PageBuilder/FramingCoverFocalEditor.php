@@ -3,6 +3,7 @@
 namespace App\Filament\Tenant\PageBuilder;
 
 use App\MediaPresentation\Contracts\SlotPresentationProfileInterface;
+use App\MediaPresentation\Profiles\ServiceProgramCardPresentationProfile;
 use App\MediaPresentation\ViewportFraming;
 use App\MediaPresentation\ViewportKey;
 use Filament\Forms\Components\ViewField;
@@ -47,12 +48,14 @@ final class FramingCoverFocalEditor
                 $mx = $mobileFr ? $mobileFr->x : $defM->x;
                 $my = $mobileFr ? $mobileFr->y : $defM->y;
                 $ms = $mobileFr ? $mobileFr->scale : $profile->framingScaleDefault();
+                $mhf = $mobileFr ? $mobileFr->heightFactor : 1.0;
                 $tx = $tabletFr ? $tabletFr->x : $defT->x;
                 $ty = $tabletFr ? $tabletFr->y : $defT->y;
                 $ts = $tabletFr ? $tabletFr->scale : $profile->framingScaleDefault();
                 $dx = $desktopFr ? $desktopFr->x : $defD->x;
                 $dy = $desktopFr ? $desktopFr->y : $defD->y;
                 $ds = $desktopFr ? $desktopFr->scale : $profile->framingScaleDefault();
+                $dhf = $desktopFr ? $desktopFr->heightFactor : 1.0;
                 $tenantId = $t ? (int) $t->id : 0;
                 $desktopUrl = $tenantId !== 0 ? $resolveDesktopImageUrl($get) : null;
                 $mobileUrl = $tenantId !== 0 ? $resolveMobileImageUrl($get) : null;
@@ -96,6 +99,16 @@ final class FramingCoverFocalEditor
                         'sourceLabel' => $sourceLabel,
                     ];
                 }
+                $staticPreviewFrames = [];
+                foreach ($tiles as $t) {
+                    $k = (string) ($t['key'] ?? '');
+                    if ($k !== '') {
+                        $staticPreviewFrames[$k] = [
+                            'w' => (int) ($t['width'] ?? 200),
+                            'h' => (int) ($t['height'] ?? 120),
+                        ];
+                    }
+                }
 
                 $syncDefault = $resolveSyncDefault !== null
                     ? (bool) $resolveSyncDefault($get)
@@ -112,34 +125,44 @@ final class FramingCoverFocalEditor
                 ]));
 
                 $editorConfig = [
-                    'mobile' => ['x' => $mx, 'y' => $my, 's' => $ms],
-                    'tablet' => ['x' => $tx, 'y' => $ty, 's' => $ts],
-                    'desktop' => ['x' => $dx, 'y' => $dy, 's' => $ds],
+                    'mobile' => ['x' => $mx, 'y' => $my, 's' => $ms, 'heightFactor' => $mhf],
+                    'tablet' => ['x' => $tx, 'y' => $ty, 's' => $ts, 'heightFactor' => $mhf],
+                    'desktop' => ['x' => $dx, 'y' => $dy, 's' => $ds, 'heightFactor' => $dhf],
                     'defaults' => [
                         'mobile' => [
                             'x' => $defM->x,
                             'y' => $defM->y,
                             's' => $profile->framingScaleDefault(),
+                            'heightFactor' => 1.0,
                         ],
                         'tablet' => [
                             'x' => $defT->x,
                             'y' => $defT->y,
                             's' => $profile->framingScaleDefault(),
+                            'heightFactor' => 1.0,
                         ],
                         'desktop' => [
                             'x' => $defD->x,
                             'y' => $defD->y,
                             's' => $profile->framingScaleDefault(),
+                            'heightFactor' => 1.0,
                         ],
                     ],
+                    'staticPreviewFrames' => $staticPreviewFrames,
                     'scaleMin' => $profile->framingScaleMin(),
                     'scaleMax' => $profile->framingScaleMax(),
                     'scaleStep' => $profile->framingScaleStep(),
+                    'heightFactorMin' => ServiceProgramCardPresentationProfile::HEIGHT_FACTOR_MIN,
+                    'heightFactorMax' => ServiceProgramCardPresentationProfile::HEIGHT_FACTOR_MAX,
+                    'heightFactorStep' => ServiceProgramCardPresentationProfile::HEIGHT_FACTOR_STEP,
                     'wirePathPrefix' => $wirePathPrefix,
                     'syncDefault' => $syncDefault,
+                    'safeAreaBottomPercent' => (float) ($profile->safeAreaBottomBand()['bottomPercent'] ?? 38),
+                    'safeAreaLabel' => (string) ($safeArea['label'] ?? ''),
                 ];
 
                 return [
+                    'previewEngine' => 'simulated',
                     'tiles' => $tiles,
                     'safeArea' => $safeArea,
                     'editorConfig' => $editorConfig,
@@ -165,7 +188,7 @@ final class FramingCoverFocalEditor
             }
         }
 
-        return $mobile !== [] ? $mobile : ['svc-program-mask-fade-start' => '52%', 'svc-program-mask-fade-mid' => '70%'];
+        return $mobile !== [] ? $mobile : ['svc-program-mask-fade-start' => '78%', 'svc-program-mask-fade-mid' => '90%'];
     }
 
     /**
@@ -182,6 +205,6 @@ final class FramingCoverFocalEditor
             }
         }
 
-        return $desktop !== [] ? $desktop : ['svc-program-mask-fade-start' => '55%', 'svc-program-mask-fade-mid' => '72%'];
+        return $desktop !== [] ? $desktop : ['svc-program-mask-fade-start' => '80%', 'svc-program-mask-fade-mid' => '91%'];
     }
 }

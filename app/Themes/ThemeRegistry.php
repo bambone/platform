@@ -110,6 +110,15 @@ final class ThemeRegistry
             return route('theme.platform.asset', ['theme' => $def->key, 'path' => $relativeWithinTheme]);
         }
 
+        // Темы без theme.json / без bundled PNG (например expert_auto): не тянуть legacy motolevins для PWA-иконок.
+        if ($relativeWithinTheme !== '' && str_starts_with($relativeWithinTheme, 'icons/')
+            && $def->key !== 'moto') {
+            $motoResource = resource_path('themes/moto/public/'.$relativeWithinTheme);
+            if (is_file($motoResource)) {
+                return route('theme.platform.asset', ['theme' => 'moto', 'path' => $relativeWithinTheme]);
+            }
+        }
+
         $legacy = trim((string) config('themes.legacy_asset_url_prefix', ''), '/');
         if ($legacy !== '' && $relativeWithinTheme !== '') {
             return asset($legacy.'/'.$relativeWithinTheme);

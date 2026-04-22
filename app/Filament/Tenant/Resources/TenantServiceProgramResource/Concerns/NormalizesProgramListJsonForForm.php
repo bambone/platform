@@ -131,7 +131,7 @@ trait NormalizesProgramListJsonForForm
 
     /**
      * @param  array<string, mixed>|null  $row
-     * @return array{x: float, y: float, scale: float}
+     * @return array{x: float, y: float, scale: float, height_factor: float}
      */
     private function normalizeViewportRowForForm(?array $row, float $defaultX, float $defaultY): array
     {
@@ -139,8 +139,11 @@ trait NormalizesProgramListJsonForForm
         $scale = isset($row['scale']) && is_numeric($row['scale'])
             ? ViewportFraming::clampScale((float) $row['scale'])
             : ServiceProgramCardPresentationProfile::FRAMING_SCALE_DEFAULT;
+        $hf = $row !== null
+            ? ViewportFraming::heightFactorFromRow($row)
+            : ServiceProgramCardPresentationProfile::HEIGHT_FACTOR_DEFAULT;
 
-        return ViewportFraming::normalized($pair['x'], $pair['y'], $scale)->toArray();
+        return ViewportFraming::normalized($pair['x'], $pair['y'], $scale, $hf)->toArray();
     }
 
     /**

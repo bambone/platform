@@ -48,8 +48,8 @@ final class PageHeroCoverPresentationProfile
     public static function overlayVariablesMobile(): array
     {
         return [
-            'svc-program-mask-fade-start' => '52%',
-            'svc-program-mask-fade-mid' => '70%',
+            'svc-program-mask-fade-start' => '78%',
+            'svc-program-mask-fade-mid' => '90%',
         ];
     }
 
@@ -59,8 +59,8 @@ final class PageHeroCoverPresentationProfile
     public static function overlayVariablesDesktop(): array
     {
         return [
-            'svc-program-mask-fade-start' => '55%',
-            'svc-program-mask-fade-mid' => '72%',
+            'svc-program-mask-fade-start' => '80%',
+            'svc-program-mask-fade-mid' => '91%',
         ];
     }
 

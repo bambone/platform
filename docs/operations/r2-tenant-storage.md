@@ -2,6 +2,12 @@
 
 Локальное зеркало, dual-write и delivery `/media/…`: см. [tenant-media-local-mirror.md](tenant-media-local-mirror.md).
 
+### Запись и синхронизация с R2
+
+- **Нормальный путь записи** — `TenantStorage::putPublic` / `putInArea` → `TenantPublicMediaWriter`: сначала зеркало (`tenant_storage.public_mirror_disk`), при режиме `dual` — PUT в `r2-public` или строка в `media_replication_outbox` + job `ProcessMediaReplicationOutboxJob` (раз в минуту в `routes/console.php`).
+- **Догонка без удалений** между зеркалом и R2: `php artisan tenant-storage:sync-replica` (`TenantStorageSyncReplicaCommand`).
+- Загрузки **page builder** (модалка файлов, editorial gallery и др.) должны использовать тот же writer. Прямой `Storage::disk(TENANT_STORAGE_PUBLIC_DISK)->put*()` при диске-зеркале **обходит** реплику в R2 — на проде файлы могут остаться только на ФС сервера, а в бакете их не будет (backfill с пустым префиксом).
+
 ## Два трека (не смешивать в одном PR)
 
 1. **Dual-disk read/write** — приложение корректно работает с `public` или `r2-public` / `local` или `r2-private` без смены ключей в БД.

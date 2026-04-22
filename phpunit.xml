@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap.php"
          colors="true"
 >
     <testsuites>
@@ -45,6 +45,8 @@
         <env name="TENANCY_ROOT_DOMAIN" value="apex.test"/>
         <!-- Изолировать тесты от .env разработчика (R2/local); иначе fake('public') и normalize не совпадают с tenant_storage.public_disk -->
         <env name="TENANT_STORAGE_PUBLIC_DISK" value="public"/>
+        <!-- Зеркало = тот же fake-диск, что и public_disk: загрузки page-builder идут через TenantPublicMediaWriter на mirror -->
+        <env name="TENANT_STORAGE_PUBLIC_MIRROR_DISK" value="public"/>
         <env name="TENANT_STORAGE_PRIVATE_DISK" value="local"/>
         <env name="SEO_FILES_DISK" value="local"/>
         <env name="MEDIA_DISK" value="public"/>

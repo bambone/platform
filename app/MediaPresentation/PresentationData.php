@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
  * **Legacy JSON key** {@code viewport_focal_map}: historically "focal map"; values are now
  * {@see ViewportFraming} objects ({@code x}, {@code y}, {@code scale}). The key name is kept for DB compatibility.
  *
- * @phpstan-type ViewportFramingMap array<string, array{x: float, y: float, scale: float}>
+ * @phpstan-type ViewportFramingMap array<string, array{x: float, y: float, scale: float, height_factor?: float}>
  */
 final class PresentationData implements \JsonSerializable
 {

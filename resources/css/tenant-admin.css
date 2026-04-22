@@ -2,6 +2,9 @@
 
 @import "./filament-ghost-modal-overlay.css";
 
+/* WYSIWYG: публичная карточка программы в Filament (scoped, без body.expert-auto-theme). */
+@import "./tenant-expert-program-card-wysiwyg-mirror.css";
+
 /* Как у Filament: тёмные утилиты только при class="dark" на <html>, а не по prefers-color-scheme.
    Иначе при явной светлой теме и тёмной ОС блоки с dark:* (напр. «Требует внимания») остаются чёрными. */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -1347,6 +1350,61 @@ body.fi-ts-setup-active.fi-ts-setup-use-top-offset {
 
 .svc-program-focal-frame:active {
     cursor: grabbing;
+}
+
+/* Вкладка «Обложка» (программа): форма и блок кадр+превью — друг под другом на полную ширину content area. */
+.fi-sc-form:has(.svc-program-cover-tab-stack) .fi-sc-tabs,
+.fi-body .fi-sc-form .fi-sc-tabs:has([data-svc-program-cover-tab='true']) {
+    width: 100%;
+    max-width: 100% !important;
+    box-sizing: border-box;
+}
+
+.svc-program-cover-tab-stack {
+    display: flex;
+    flex-direction: column;
+    row-gap: 1.5rem;
+    width: 100%;
+    max-width: none;
+}
+
+.fi-sc-tabs [data-svc-program-cover-tab='true'] .svc-program-cover-tab-stack,
+.fi-sc-tabs .svc-program-cover-tab .svc-program-cover-tab-stack {
+    max-width: none;
+    width: 100%;
+}
+
+/* Колонка с полями: лёгкие внутренние отступы от края панели вкладки. */
+.svc-program-cover-tab-main {
+    box-sizing: border-box;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+}
+
+@media (min-width: 48rem) {
+    .svc-program-cover-tab-main {
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
+}
+
+.svc-program-cover-tab-full-preview {
+    min-width: 0;
+    box-sizing: border-box;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+}
+
+@media (min-width: 48rem) {
+    .svc-program-cover-tab-full-preview {
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
+}
+
+/* Без max-height/overflow — одна прокрутка страницы, без вложенных «лифтов». */
+.svc-program-cover-tab-preview {
+    min-width: 0;
 }
 
 /* Tenant site setup guided mode: поле — точный акцент; секция — мягкий контекст без «кислотного» glow */

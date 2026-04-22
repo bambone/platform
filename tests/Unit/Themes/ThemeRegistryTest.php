@@ -38,6 +38,15 @@ class ThemeRegistryTest extends TestCase
         $this->assertStringContainsString('theme/build/moto', $url);
     }
 
+    public function test_expert_auto_icons_use_moto_bundled_before_legacy_motolevins(): void
+    {
+        $r = app(ThemeRegistry::class);
+        $url = $r->assetUrl('expert_auto', 'icons/icon-192.png');
+
+        $this->assertStringContainsString('theme/build/moto', $url);
+        $this->assertStringNotContainsString('motolevins', $url);
+    }
+
     public function test_invalid_theme_key_falls_back_to_default(): void
     {
         $r = app(ThemeRegistry::class);

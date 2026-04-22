@@ -38,6 +38,81 @@ final class ServiceProgramCardPresentationProfile
     public const FRAMING_SCALE_DEFAULT = 1.0;
 
     /**
+     * Media box height for program cards: &gt;1.0 = taller area, &lt;1.0 = shorter, 1.0 = theme baseline.
+     * Resolver outputs precomputed {@code w}/{@code h} for {@code aspect-ratio} (see {@see mediaAspectHeightsForServiceCard}).
+     */
+    public const HEIGHT_FACTOR_MIN = 0.5;
+
+    public const HEIGHT_FACTOR_MAX = 2.0;
+
+    public const HEIGHT_FACTOR_STEP = 0.05;
+
+    public const HEIGHT_FACTOR_DEFAULT = 1.0;
+
+    /**
+     * Baseline (height_factor = 1) aspect for CSS — must stay in sync with {@code tenant-expert-auto} media rules.
+     */
+    public const MEDIA_BASE_W_NARROW = 3.0;
+
+    public const MEDIA_BASE_H_NARROW = 2.2;
+
+    public const MEDIA_BASE_W_SM = 7.0;
+
+    public const MEDIA_BASE_H_SM = 4.4;
+
+    public const MEDIA_BASE_W_DESKTOP = 2.1;
+
+    public const MEDIA_BASE_H_DESKTOP = 1.1;
+
+    public const MEDIA_BASE_W_FEATURED = 2.25;
+
+    /**
+     * @return array{
+     *     w_mobile: float,
+     *     h_mobile: float,
+     *     w_desktop: float,
+     *     h_desktop: float
+     * }
+     */
+    public static function mediaAspectDimensionsForServiceCard(float $heightFactorMobile, float $heightFactorDesktop): array
+    {
+        $fM = ViewportFraming::clampHeightFactor($heightFactorMobile);
+        $fD = ViewportFraming::clampHeightFactor($heightFactorDesktop);
+
+        return [
+            'w_mobile' => self::MEDIA_BASE_W_NARROW,
+            'h_mobile' => self::MEDIA_BASE_H_NARROW * $fM,
+            'w_desktop' => self::MEDIA_BASE_W_DESKTOP,
+            'h_desktop' => self::MEDIA_BASE_H_DESKTOP * $fD,
+        ];
+    }
+
+    /**
+     * Preview frame pixel size: same w/h as public CSS (narrow, sm, or desktop) — one formula per key.
+     *
+     * @return array{width: int, height: int}
+     */
+    public static function serviceCardPreviewFrameSizeForKey(string $key, int $refWidth, float $heightFactorMobile, float $heightFactorDesktop): array
+    {
+        $fM = ViewportFraming::clampHeightFactor($heightFactorMobile);
+        $fD = ViewportFraming::clampHeightFactor($heightFactorDesktop);
+        $w = (float) $refWidth;
+        if ($key === 'desktop') {
+            $hNum = self::MEDIA_BASE_H_DESKTOP * $fD;
+            $wNum = self::MEDIA_BASE_W_DESKTOP;
+        } elseif ($key === 'tablet') {
+            $hNum = self::MEDIA_BASE_H_SM * $fM;
+            $wNum = self::MEDIA_BASE_W_SM;
+        } else {
+            $hNum = self::MEDIA_BASE_H_NARROW * $fM;
+            $wNum = self::MEDIA_BASE_W_NARROW;
+        }
+        $height = (int) round($w * $hNum / $wNum);
+
+        return ['width' => (int) $w, 'height' => $height];
+    }
+
+    /**
      * Default focal when no data (neutral; avoids legacy "top-heavy" crop).
      */
     public static function defaultFocalForViewport(ViewportKey $key): FocalPoint
@@ -58,8 +133,8 @@ final class ServiceProgramCardPresentationProfile
     public static function overlayVariablesMobile(): array
     {
         return [
-            'svc-program-mask-fade-start' => '52%',
-            'svc-program-mask-fade-mid' => '70%',
+            'svc-program-mask-fade-start' => '78%',
+            'svc-program-mask-fade-mid' => '90%',
         ];
     }
 
@@ -69,8 +144,8 @@ final class ServiceProgramCardPresentationProfile
     public static function overlayVariablesDesktop(): array
     {
         return [
-            'svc-program-mask-fade-start' => '55%',
-            'svc-program-mask-fade-mid' => '72%',
+            'svc-program-mask-fade-start' => '80%',
+            'svc-program-mask-fade-mid' => '91%',
         ];
     }
 

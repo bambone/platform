@@ -1,0 +1,474 @@
+/* WYSIWYG mirror: keep in sync with tenant-expert-auto.css (expert-program-card cluster ~L799-1136).
+ * Брейкпоинты — @container по ширине карточки (expert-program-card), не @media по окну: иначе в узком превью
+ * в админке срабатывали «широкие» стили и портился макет. */
+.rb-expert-card-wysiwyg {
+    --color-moto-amber: #c9a87c;
+    --color-silver: #aeb6c6;
+}
+/* Карточки программ: колонка (баннер сверху + текст + CTA), без узкой «третьей колонки» с фото */
+.rb-expert-card-wysiwyg .expert-program-card {
+    background-color: transparent;
+    isolation: isolate;
+    container-type: inline-size;
+    container-name: expert-program-card;
+}
+
+/* База под текст: без текстуры «мокрой трассы»; при обложке — ровный тёмный подложка под копирайт */
+.rb-expert-card-wysiwyg .expert-program-card__bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background-color: #070910;
+    background-image: linear-gradient(165deg, #0e121c 0%, #080b12 48%, #050608 100%);
+    background-size: cover;
+    background-position: center;
+    transition: filter 0.35s ease, opacity 0.35s ease;
+}
+
+.rb-expert-card-wysiwyg .expert-program-card:has(.expert-program-card__media) .expert-program-card__bg {
+    background-image: linear-gradient(180deg, #0a0c12 0%, #070910 55%, #06080e 100%);
+}
+
+/* Нет обложки в БД: ровный тёмный фон без «орбов» и декоративного шума */
+.rb-expert-card-wysiwyg .expert-program-card:not(:has(.expert-program-card__media)) .expert-program-card__bg {
+    background-image: linear-gradient(180deg, #0c0f16 0%, #080a10 52%, #050608 100%);
+}
+
+.rb-expert-card-wysiwyg .expert-program-card--featured .expert-program-card__bg {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+/* Текстовая колонка: базовые отступы; при обложке — заезд на нижние ~10% фото (фото под текстом по z-index) */
+.rb-expert-card-wysiwyg .expert-program-card__main {
+    padding-top: 1.5rem;
+}
+
+@container (min-width: 40rem) {
+    .rb-expert-card-wysiwyg .expert-program-card__main {
+        padding-top: 2rem;
+    }
+}
+
+@container (min-width: 80rem) {
+    .rb-expert-card-wysiwyg .expert-program-card__main {
+        padding-top: 2.5rem;
+    }
+}
+
+/* 10% высоты баннера ≈ 100cqi * 0.1 * (H/A); A:H из --svc-program-media-aspect-* на article (ServiceProgramCardPresentationResolver) */
+.rb-expert-card-wysiwyg .expert-program-card:has(.expert-program-card__media) {
+    --expert-program-overlap: calc(
+        100cqi * 0.1 * var(--svc-program-media-aspect-h-mobile, 2.2) / var(--svc-program-media-aspect-w-mobile, 3)
+    );
+}
+
+@container (min-width: 40rem) {
+    .rb-expert-card-wysiwyg .expert-program-card:has(.expert-program-card__media) {
+        --expert-program-overlap: calc(
+            100cqi * 0.1 * (2 * var(--svc-program-media-aspect-h-mobile, 2.2)) / 7
+        );
+    }
+}
+
+@container (min-width: 64rem) {
+    .rb-expert-card-wysiwyg .expert-program-card:has(.expert-program-card__media) {
+        --expert-program-overlap: calc(
+            100cqi * 0.1 * var(--svc-program-media-aspect-h-desktop, 1.1) / var(--svc-program-media-aspect-w-desktop, 2.1)
+        );
+    }
+
+    .rb-expert-card-wysiwyg .expert-program-card--featured:has(.expert-program-card__media) {
+        --expert-program-overlap: calc(100cqi * 0.1 * var(--svc-program-media-aspect-h-desktop, 1.1) / 2.25);
+    }
+}
+
+.rb-expert-card-wysiwyg .expert-program-card:has(.expert-program-card__media) .expert-program-card__main {
+    z-index: 2;
+    margin-top: calc(-1 * var(--expert-program-overlap));
+    padding-top: calc(1.5rem + var(--expert-program-overlap));
+}
+
+@container (min-width: 40rem) {
+    .rb-expert-card-wysiwyg .expert-program-card:has(.expert-program-card__media) .expert-program-card__main {
+        padding-top: calc(2rem + var(--expert-program-overlap));
+    }
+}
+
+@container (min-width: 80rem) {
+    .rb-expert-card-wysiwyg .expert-program-card:has(.expert-program-card__media) .expert-program-card__main {
+        padding-top: calc(2.5rem + var(--expert-program-overlap));
+    }
+}
+
+/* Без второго тёмного слоя ::before — он давал заметную горизонталь с scrim; читаемость — text-shadow */
+
+.rb-expert-card-wysiwyg .expert-program-card__main > * {
+    position: relative;
+    z-index: 1;
+}
+
+.rb-expert-card-wysiwyg .expert-program-card:has(.expert-program-card__media) .expert-program-card__main h3,
+.rb-expert-card-wysiwyg .expert-program-card:has(.expert-program-card__media) .expert-program-card__main .expert-program-card__cta-head {
+    text-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.55),
+        0 2px 16px rgba(0, 0, 0, 0.45),
+        0 0 28px rgba(0, 0, 0, 0.35);
+}
+
+.rb-expert-card-wysiwyg .expert-program-card:has(.expert-program-card__media) .expert-program-card__main .mb-3 span:last-child {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 0, 0, 0.35);
+}
+
+/* Медиа: на ~10% выше за счёт aspect (H увеличена); слой под текстовым блоком */
+.rb-expert-card-wysiwyg .expert-program-card__media {
+    position: relative;
+    z-index: 1;
+    isolation: isolate;
+    width: 100%;
+    flex-shrink: 0;
+    overflow: hidden;
+    aspect-ratio: var(--svc-program-media-aspect-w-mobile, 3) / var(--svc-program-media-aspect-h-mobile, 2.2);
+    max-height: min(
+        16.25rem,
+        calc(100cqi * var(--svc-program-media-aspect-h-mobile, 2.2) / var(--svc-program-media-aspect-w-mobile, 3))
+    );
+    /* Низ как у фона карточки — через «дырку» маски не вспыхивает чужой цвет */
+    background: linear-gradient(180deg, #161d2e 0%, #101522 35%, #0a0d14 65%, #070910 100%);
+    /*
+     * Маска на рамке: до --svc-program-mask-fade-start-* фото в маске непросвечено; от линии start до 100% — плавное затухание
+     * к фону карточки (cover обрезает исходник по высоте, затухание только у нижнего края бокса). См. articleStyleAttribute().
+     */
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        #000 0%,
+        #000 var(--svc-program-mask-fade-start-mobile, 78%),
+        rgba(0, 0, 0, 0.96) calc(var(--svc-program-mask-fade-start-mobile, 78%) + (100% - var(--svc-program-mask-fade-start-mobile, 78%)) * 0.15),
+        rgba(0, 0, 0, 0.86) calc(var(--svc-program-mask-fade-start-mobile, 78%) + (100% - var(--svc-program-mask-fade-start-mobile, 78%)) * 0.3),
+        rgba(0, 0, 0, 0.7) var(--svc-program-mask-fade-mid-mobile, 90%),
+        rgba(0, 0, 0, 0.45) calc(var(--svc-program-mask-fade-start-mobile, 78%) + (100% - var(--svc-program-mask-fade-start-mobile, 78%)) * 0.65),
+        rgba(0, 0, 0, 0.2) calc(var(--svc-program-mask-fade-start-mobile, 78%) + (100% - var(--svc-program-mask-fade-start-mobile, 78%)) * 0.85),
+        rgba(0, 0, 0, 0.05) calc(var(--svc-program-mask-fade-start-mobile, 78%) + (100% - var(--svc-program-mask-fade-start-mobile, 78%)) * 0.96),
+        transparent 100%
+    );
+    mask-image: linear-gradient(
+        to bottom,
+        #000 0%,
+        #000 var(--svc-program-mask-fade-start-mobile, 78%),
+        rgba(0, 0, 0, 0.96) calc(var(--svc-program-mask-fade-start-mobile, 78%) + (100% - var(--svc-program-mask-fade-start-mobile, 78%)) * 0.15),
+        rgba(0, 0, 0, 0.86) calc(var(--svc-program-mask-fade-start-mobile, 78%) + (100% - var(--svc-program-mask-fade-start-mobile, 78%)) * 0.3),
+        rgba(0, 0, 0, 0.7) var(--svc-program-mask-fade-mid-mobile, 90%),
+        rgba(0, 0, 0, 0.45) calc(var(--svc-program-mask-fade-start-mobile, 78%) + (100% - var(--svc-program-mask-fade-start-mobile, 78%)) * 0.65),
+        rgba(0, 0, 0, 0.2) calc(var(--svc-program-mask-fade-start-mobile, 78%) + (100% - var(--svc-program-mask-fade-start-mobile, 78%)) * 0.85),
+        rgba(0, 0, 0, 0.05) calc(var(--svc-program-mask-fade-start-mobile, 78%) + (100% - var(--svc-program-mask-fade-start-mobile, 78%)) * 0.96),
+        transparent 100%
+    );
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+}
+
+@container (min-width: 40rem) {
+    .rb-expert-card-wysiwyg .expert-program-card__media {
+        aspect-ratio: 7 / calc(2 * var(--svc-program-media-aspect-h-mobile, 2.2));
+        max-height: min(
+            18.75rem,
+            calc(100cqi * (2 * var(--svc-program-media-aspect-h-mobile, 2.2)) / 7)
+        );
+    }
+}
+
+@container (min-width: 64rem) {
+    .rb-expert-card-wysiwyg .expert-program-card__media {
+        aspect-ratio: var(--svc-program-media-aspect-w-desktop, 2.1) / var(--svc-program-media-aspect-h-desktop, 1.1);
+        max-height: min(
+            21.5rem,
+            calc(
+                100cqi * var(--svc-program-media-aspect-h-desktop, 1.1) / var(--svc-program-media-aspect-w-desktop, 2.1)
+            )
+        );
+        -webkit-mask-image: linear-gradient(
+            to bottom,
+            #000 0%,
+            #000 var(--svc-program-mask-fade-start-desktop, 80%),
+            rgba(0, 0, 0, 0.96) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.15),
+            rgba(0, 0, 0, 0.86) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.3),
+            rgba(0, 0, 0, 0.7) var(--svc-program-mask-fade-mid-desktop, 91%),
+            rgba(0, 0, 0, 0.45) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.65),
+            rgba(0, 0, 0, 0.2) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.85),
+            rgba(0, 0, 0, 0.05) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.96),
+            transparent 100%
+        );
+        mask-image: linear-gradient(
+            to bottom,
+            #000 0%,
+            #000 var(--svc-program-mask-fade-start-desktop, 80%),
+            rgba(0, 0, 0, 0.96) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.15),
+            rgba(0, 0, 0, 0.86) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.3),
+            rgba(0, 0, 0, 0.7) var(--svc-program-mask-fade-mid-desktop, 91%),
+            rgba(0, 0, 0, 0.45) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.65),
+            rgba(0, 0, 0, 0.2) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.85),
+            rgba(0, 0, 0, 0.05) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.96),
+            transparent 100%
+        );
+    }
+
+    .rb-expert-card-wysiwyg .expert-program-card--featured .expert-program-card__media {
+        aspect-ratio: 2.25 / var(--svc-program-media-aspect-h-desktop, 1.1);
+        max-height: min(
+            24.25rem,
+            calc(100cqi * var(--svc-program-media-aspect-h-desktop, 1.1) / 2.25)
+        );
+    }
+}
+
+/*
+ * Filament desktop preview: колонка < 64rem, @container (min-width: 64rem) не срабатывает; иначе визу
+ * остаётся ветка mobile (transform/position с --svc-*-mobile, правки десктопа на article не влияют).
+ * expert-program-card--wysiwyg-as-desktop = те же правила, что @container 64rem (expert-program-card).
+ */
+.rb-expert-card-wysiwyg .expert-program-card--wysiwyg-as-desktop:has(.expert-program-card__media) {
+    --expert-program-overlap: calc(
+        100cqi * 0.1 * var(--svc-program-media-aspect-h-desktop, 1.1) / var(--svc-program-media-aspect-w-desktop, 2.1)
+    );
+}
+
+.rb-expert-card-wysiwyg
+    .expert-program-card--wysiwyg-as-desktop.expert-program-card--featured:has(.expert-program-card__media) {
+    --expert-program-overlap: calc(100cqi * 0.1 * var(--svc-program-media-aspect-h-desktop, 1.1) / 2.25);
+}
+
+.rb-expert-card-wysiwyg .expert-program-card--wysiwyg-as-desktop .expert-program-card__media {
+    aspect-ratio: var(--svc-program-media-aspect-w-desktop, 2.1) / var(--svc-program-media-aspect-h-desktop, 1.1);
+    max-height: min(
+        21.5rem,
+        calc(100cqi * var(--svc-program-media-aspect-h-desktop, 1.1) / var(--svc-program-media-aspect-w-desktop, 2.1))
+    );
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        #000 0%,
+        #000 var(--svc-program-mask-fade-start-desktop, 80%),
+        rgba(0, 0, 0, 0.96) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.15),
+        rgba(0, 0, 0, 0.86) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.3),
+        rgba(0, 0, 0, 0.7) var(--svc-program-mask-fade-mid-desktop, 91%),
+        rgba(0, 0, 0, 0.45) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.65),
+        rgba(0, 0, 0, 0.2) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.85),
+        rgba(0, 0, 0, 0.05) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.96),
+        transparent 100%
+    );
+    mask-image: linear-gradient(
+        to bottom,
+        #000 0%,
+        #000 var(--svc-program-mask-fade-start-desktop, 80%),
+        rgba(0, 0, 0, 0.96) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.15),
+        rgba(0, 0, 0, 0.86) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.3),
+        rgba(0, 0, 0, 0.7) var(--svc-program-mask-fade-mid-desktop, 91%),
+        rgba(0, 0, 0, 0.45) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.65),
+        rgba(0, 0, 0, 0.2) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.85),
+        rgba(0, 0, 0, 0.05) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.96),
+        transparent 100%
+    );
+}
+
+.rb-expert-card-wysiwyg
+    .expert-program-card--wysiwyg-as-desktop.expert-program-card--featured
+    .expert-program-card__media {
+    aspect-ratio: 2.25 / var(--svc-program-media-aspect-h-desktop, 1.1);
+    max-height: min(
+        24.25rem,
+        calc(100cqi * var(--svc-program-media-aspect-h-desktop, 1.1) / 2.25)
+    );
+}
+
+.rb-expert-card-wysiwyg .expert-program-card__media-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    transform: scale(var(--svc-program-scale-mobile, 1));
+    transform-origin: var(--svc-program-focal-x-mobile, 50%) var(--svc-program-focal-y-mobile, 52%);
+    will-change: transform;
+}
+
+@container (min-width: 64rem) {
+    .rb-expert-card-wysiwyg .expert-program-card__media-layer {
+        transform: scale(var(--svc-program-scale-desktop, 1));
+        transform-origin: var(--svc-program-focal-x-desktop, 50%) var(--svc-program-focal-y-desktop, 48%);
+    }
+}
+
+.rb-expert-card-wysiwyg .expert-program-card--wysiwyg-as-desktop .expert-program-card__media-layer {
+    transform: scale(var(--svc-program-scale-desktop, 1));
+    transform-origin: var(--svc-program-focal-x-desktop, 50%) var(--svc-program-focal-y-desktop, 48%);
+}
+
+.rb-expert-card-wysiwyg .expert-program-card__media picture {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+.rb-expert-card-wysiwyg .expert-program-card__media-img {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--svc-program-focal-x-mobile, 50%) var(--svc-program-focal-y-mobile, 52%);
+}
+
+@container (min-width: 64rem) {
+    .rb-expert-card-wysiwyg .expert-program-card__media-img {
+        object-position: var(--svc-program-focal-x-desktop, 50%) var(--svc-program-focal-y-desktop, 48%);
+    }
+}
+
+.rb-expert-card-wysiwyg .expert-program-card--wysiwyg-as-desktop .expert-program-card__media-img {
+    object-position: var(--svc-program-focal-x-desktop, 50%) var(--svc-program-focal-y-desktop, 48%);
+}
+
+/* Слёгкое дожимание снизу (читабельность); основной переход к фону — mask, без двойного «мутного» слоя */
+.rb-expert-card-wysiwyg .expert-program-card__media-scrim {
+    pointer-events: none;
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        transparent var(--svc-program-mask-fade-start-mobile, 78%),
+        rgba(0, 0, 0, 0.04) calc(var(--svc-program-mask-fade-start-mobile, 78%) + (100% - var(--svc-program-mask-fade-start-mobile, 78%)) * 0.4),
+        rgba(0, 0, 0, 0.1) calc(var(--svc-program-mask-fade-start-mobile, 78%) + (100% - var(--svc-program-mask-fade-start-mobile, 78%)) * 0.72),
+        rgba(0, 0, 0, 0.16) calc(var(--svc-program-mask-fade-start-mobile, 78%) + (100% - var(--svc-program-mask-fade-start-mobile, 78%)) * 0.9),
+        rgba(7, 9, 16, 0.22) 100%
+    );
+}
+
+@container (min-width: 64rem) {
+    .rb-expert-card-wysiwyg .expert-program-card__media-scrim {
+        background: linear-gradient(
+            180deg,
+            transparent 0%,
+            transparent var(--svc-program-mask-fade-start-desktop, 80%),
+            rgba(0, 0, 0, 0.04) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.4),
+            rgba(0, 0, 0, 0.1) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.72),
+            rgba(0, 0, 0, 0.16) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.9),
+            rgba(7, 9, 16, 0.22) 100%
+        );
+    }
+}
+
+.rb-expert-card-wysiwyg .expert-program-card--wysiwyg-as-desktop .expert-program-card__media-scrim {
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        transparent var(--svc-program-mask-fade-start-desktop, 80%),
+        rgba(0, 0, 0, 0.04) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.4),
+        rgba(0, 0, 0, 0.1) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.72),
+        rgba(0, 0, 0, 0.16) calc(var(--svc-program-mask-fade-start-desktop, 80%) + (100% - var(--svc-program-mask-fade-start-desktop, 80%)) * 0.9),
+        rgba(7, 9, 16, 0.22) 100%
+    );
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    /* Подложка без «подсветки» при hover, если сверху уже фото */
+    .rb-expert-card-wysiwyg .expert-program-card:not(:has(.expert-program-card__media)):hover .expert-program-card__bg {
+        filter: brightness(1.04);
+    }
+
+    .rb-expert-card-wysiwyg .expert-program-card:hover .expert-program-card__media-layer {
+        transform: scale(calc(var(--svc-program-scale-mobile, 1) * 1.03));
+        transition: transform 0.45s ease;
+    }
+
+    .rb-expert-card-wysiwyg .expert-program-card .expert-program-card__media-layer {
+        transition: transform 0.45s ease;
+    }
+
+    @container (min-width: 64rem) {
+        .rb-expert-card-wysiwyg .expert-program-card:hover .expert-program-card__media-layer {
+            transform: scale(calc(var(--svc-program-scale-desktop, 1) * 1.03));
+        }
+    }
+
+    .rb-expert-card-wysiwyg .expert-program-card--wysiwyg-as-desktop:hover .expert-program-card__media-layer {
+        transform: scale(calc(var(--svc-program-scale-desktop, 1) * 1.03));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* Без дополнительного hover-zoom к user scale */
+    .rb-expert-card-wysiwyg .expert-program-card:hover .expert-program-card__media-layer {
+        transform: scale(var(--svc-program-scale-mobile, 1));
+    }
+
+    @container (min-width: 64rem) {
+        .rb-expert-card-wysiwyg .expert-program-card:hover .expert-program-card__media-layer {
+            transform: scale(var(--svc-program-scale-desktop, 1));
+        }
+    }
+
+    .rb-expert-card-wysiwyg .expert-program-card--wysiwyg-as-desktop:hover .expert-program-card__media-layer {
+        transform: scale(var(--svc-program-scale-desktop, 1));
+    }
+}
+
+/* Второстепенные карточки: только рамка (заливка даёт слой __bg) */
+.rb-expert-card-wysiwyg .expert-program-card:not(.expert-program-card--featured) {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Сворачиваемые списки в карточке программы */
+.rb-expert-card-wysiwyg .expert-program-card__more summary:focus-visible {
+    outline: 2px solid rgba(232, 93, 4, 0.55);
+    outline-offset: 2px;
+    border-radius: 0.375rem;
+}
+
+.rb-expert-card-wysiwyg .expert-program-card__more[open] summary {
+    margin-bottom: 0;
+}
+
+/* Кнопка CTA в карточке (см. tenant-expert-auto.css ~L31) */
+.rb-expert-card-wysiwyg .tenant-btn-primary {
+    background: linear-gradient(145deg, #ebd8b5 0%, #c9a87c 45%, #a68958 100%);
+    color: #050608;
+    box-shadow: 0 4px 14px -2px rgba(201, 168, 124, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.rb-expert-card-wysiwyg .tenant-btn-primary:hover {
+    background: linear-gradient(145deg, #f4ecd6 0%, #d4bc94 50%, #b89762 100%);
+    color: #000;
+    box-shadow: 0 6px 20px -3px rgba(201, 168, 124, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.rb-expert-card-wysiwyg .tenant-btn-primary:focus-visible {
+    outline-color: rgba(201, 168, 124, 0.85);
+}
+
+/*
+ * Узкое превью в админке: Tailwind `sm:` и `md:` смотрят на viewport окна, а не на ширину карточки.
+ * На широком мониторе карточка 390px, но sm: включался — заголовок и CTA в ряд, кнопка наезжала.
+ * @container: при ширине карточки < 640px — тот же вертикальный стек, что на реальном телефоне.
+ */
+@container (max-width: 39.9375rem) {
+    .rb-expert-card-wysiwyg .expert-program-card__main > .flex {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .rb-expert-card-wysiwyg .expert-program-card__cta-head {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        padding-top: 1.25rem !important;
+        text-align: left !important;
+    }
+
+    .rb-expert-card-wysiwyg .expert-program-card__cta-head .flex {
+        align-items: flex-start !important;
+    }
+}

@@ -131,6 +131,37 @@ function Get-RestoreTableNames {
     return $names
 }
 
+function Get-MySqlTableColumnNamesOrdered {
+    param(
+        [string] $CnfPath,
+        [string] $Schema,
+        [string] $Table
+    )
+    $sch = $Schema.Replace("'", "''")
+    $tbl = $Table.Replace("'", "''")
+    $q = @"
+SELECT COLUMN_NAME
+FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = '$sch' AND TABLE_NAME = '$tbl'
+ORDER BY ORDINAL_POSITION
+"@
+    $out = & mysql --defaults-extra-file=$CnfPath -N -B -e $q 2>&1
+    if ($LASTEXITCODE -ne 0) { Write-Error "mysql (columns for $Schema.$Table): $out" }
+    $list = [System.Collections.Generic.List[string]]::new()
+    foreach ($line in $out) {
+        $n = $line.ToString().Trim()
+        if ($n -ne '') { $list.Add($n) }
+    }
+    return $list
+}
+
+function Get-MySqlBacktick {
+    param([string] $Name)
+    $bt = [char] 96
+    $inner = $Name.Replace("$bt", "$bt$bt")
+    return "$bt$inner$bt"
+}
+
 function Test-MySqlTableExists {
     param(
         [string] $CnfPath,
@@ -315,7 +346,28 @@ try {
         [void]$sb.AppendLine("DELETE FROM ``$dbName``.``$t``;")
     }
     foreach ($t in $tableNames) {
-        [void]$sb.AppendLine("INSERT INTO ``$dbName``.``$t`` SELECT * FROM ``$SrcDatabase``.``$t``;")
+        $destCols = Get-MySqlTableColumnNamesOrdered -CnfPath $cnf -Schema $dbName -Table $t
+        $srcCols = Get-MySqlTableColumnNamesOrdered -CnfPath $cnf -Schema $SrcDatabase -Table $t
+        $srcLookup = @{}
+        foreach ($c in $srcCols) {
+            $srcLookup[$c] = $true
+        }
+        $common = [System.Collections.Generic.List[string]]::new()
+        foreach ($c in $destCols) {
+            if ($srcLookup.ContainsKey($c)) {
+                $common.Add($c)
+            }
+        }
+        if ($common.Count -eq 0) {
+            $msg = 'No overlapping columns for table {0} (target vs {1}) - run migrations or check dump version.' -f $t, $SrcDatabase
+            Write-Error $msg
+        }
+        $colList = ($common | ForEach-Object { Get-MySqlBacktick $_ }) -join ', '
+        $dDb = Get-MySqlBacktick $dbName
+        $dT = Get-MySqlBacktick $t
+        $sDb = Get-MySqlBacktick $SrcDatabase
+        $sT = Get-MySqlBacktick $t
+        [void]$sb.AppendLine("INSERT INTO $dDb.$dT ($colList) SELECT $colList FROM $sDb.$sT;")
     }
     [void]$sb.AppendLine('SET FOREIGN_KEY_CHECKS=1;')
     [IO.File]::WriteAllText($copySqlPath, $sb.ToString(), [Text.UTF8Encoding]::new($false))

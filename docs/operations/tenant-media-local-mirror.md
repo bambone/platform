@@ -47,6 +47,7 @@ URL в приложении: `/media/tenants/{id}/public/...`.
 
 - Переменная репозитория **`MEDIA_BACKFILL_AS_WWW_DATA`**: если не задана или пустая, backfill запускается **от SSH-пользователя** (без `sudo`). Значение **`1`** — выполнять `sudo -n -u www-data` (нужен passwordless sudo для этого пользователя на сервере).
 - Убедитесь, что SSH-пользователь может писать в `MEDIA_LOCAL_ROOT` и читать/писать каталог приложения (или оставьте `1` и настройте sudoers).
+- **Код выхода 1** у `tenant-media:backfill-from-r2`: неверный/пустой `--target`, нет/бит `r2-public` (в т.ч. `R2_PUBLIC_BUCKET`), сбой `ListObjectsV2`, или **хотя бы один объект** не скачался (`failed > 0` в итоговой строке). Лог на сервере: `storage/logs/tenant-media-backfill.log`. В логе Actions при падении печатается хвост этого файла.
 
 ## Rollout
 

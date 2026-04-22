@@ -31,8 +31,9 @@
     @endphp
     <div x-show="activeViewport === 'mobile'" x-cloak class="w-full min-w-0">
         <div
-            class="svc-program-focal-frame touch-none relative isolate overflow-hidden rounded-md border border-gray-200 bg-zinc-900/5 dark:border-white/10 dark:bg-zinc-950/40"
-            :class="[ framePointerClass('mobile'), previewShowFullImage &amp;&amp; 'ring-1 ring-amber-500/20' ]"
+            class="svc-program-focal-frame relative isolate overflow-hidden rounded-md border border-gray-200 bg-zinc-900/5 dark:border-white/10 dark:bg-zinc-950/40"
+            :class="[ previewShowFullImage &amp;&amp; 'ring-1 ring-amber-500/20' ]"
+            x-bind:data-svc-focal-can-drag="canDrag('mobile') ? '1' : '0'"
             x-bind:style="frameOuterStyle('mobile')"
             x-init="frameRefs.mobile = $el"
             tabindex="0"
@@ -43,10 +44,22 @@
         >
             @if ($mOk)
                 <div
-                    x-show="!isNaturalReady('mobile')"
+                    x-show="!isNaturalReady('mobile') &amp;&amp; !loadError.mobile"
                     x-cloak
                     class="absolute inset-0 z-20 flex items-center justify-center bg-white/80 text-[10px] text-gray-600 dark:bg-gray-900/85 dark:text-gray-300"
                 >Загрузка изображения…</div>
+                <div
+                    x-show="loadError.mobile"
+                    x-cloak
+                    class="absolute inset-0 z-30 flex flex-col items-center justify-center gap-1 bg-white/90 p-2 text-center text-[10px] text-red-800 dark:bg-gray-900/90 dark:text-red-200"
+                >
+                    <span>Не удалось загрузить изображение.</span>
+                    <button
+                        type="button"
+                        class="rounded border border-amber-600/50 px-2 py-0.5 text-amber-900 hover:bg-amber-500/10 dark:text-amber-100"
+                        @click="retryFocalImage('mobile')"
+                    >Повторить</button>
+                </div>
                 <div class="pointer-events-none absolute inset-0 overflow-hidden bg-zinc-900 dark:bg-zinc-950">
                     <div class="pointer-events-none absolute inset-0" x-bind:style="layerTransformStyle('mobile')">
                         <img
@@ -88,8 +101,9 @@
     <div x-show="activeViewport === 'tablet'" x-cloak class="mx-auto w-full min-w-0 max-w-xl">
         <p class="mb-1 text-[10px] font-medium uppercase tracking-wide text-amber-800/90 dark:text-amber-200/80">Только preview</p>
         <div
-            class="svc-program-focal-frame touch-none relative isolate overflow-hidden rounded-md border border-gray-200 bg-zinc-900/5 dark:border-white/10 dark:bg-zinc-950/40"
-            :class="[ framePointerClass('tablet'), previewShowFullImage &amp;&amp; 'ring-1 ring-amber-500/20' ]"
+            class="svc-program-focal-frame relative isolate overflow-hidden rounded-md border border-gray-200 bg-zinc-900/5 dark:border-white/10 dark:bg-zinc-950/40"
+            :class="[ previewShowFullImage &amp;&amp; 'ring-1 ring-amber-500/20' ]"
+            x-bind:data-svc-focal-can-drag="canDrag('tablet') ? '1' : '0'"
             x-bind:style="frameOuterStyle('tablet')"
             x-init="frameRefs.tablet = $el"
             tabindex="0"
@@ -100,10 +114,18 @@
         >
             @if ($tOk)
                 <div
-                    x-show="!isNaturalReady('tablet')"
+                    x-show="!isNaturalReady('tablet') &amp;&amp; !loadError.tablet"
                     x-cloak
                     class="absolute inset-0 z-20 flex items-center justify-center bg-white/80 text-[10px] text-gray-600 dark:bg-gray-900/85 dark:text-gray-300"
                 >Загрузка изображения…</div>
+                <div
+                    x-show="loadError.tablet"
+                    x-cloak
+                    class="absolute inset-0 z-30 flex flex-col items-center justify-center gap-1 bg-white/90 p-2 text-center text-[10px] text-red-800 dark:bg-gray-900/90 dark:text-red-200"
+                >
+                    <span>Не удалось загрузить изображение.</span>
+                    <button type="button" class="rounded border border-amber-600/50 px-2 py-0.5 text-amber-900 hover:bg-amber-500/10 dark:text-amber-100" @click="retryFocalImage('tablet')">Повторить</button>
+                </div>
                 <div class="pointer-events-none absolute inset-0 overflow-hidden bg-zinc-900 dark:bg-zinc-950">
                     <div class="pointer-events-none absolute inset-0" x-bind:style="layerTransformStyle('tablet')">
                         <img
@@ -144,8 +166,9 @@
     @endphp
     <div x-show="activeViewport === 'desktop'" x-cloak class="w-full min-w-0">
         <div
-            class="svc-program-focal-frame touch-none relative isolate overflow-hidden rounded-md border border-gray-200 bg-zinc-900/5 dark:border-white/10 dark:bg-zinc-950/40"
-            :class="[ framePointerClass('desktop'), previewShowFullImage &amp;&amp; 'ring-1 ring-amber-500/20' ]"
+            class="svc-program-focal-frame relative isolate overflow-hidden rounded-md border border-gray-200 bg-zinc-900/5 dark:border-white/10 dark:bg-zinc-950/40"
+            :class="[ previewShowFullImage &amp;&amp; 'ring-1 ring-amber-500/20' ]"
+            x-bind:data-svc-focal-can-drag="canDrag('desktop') ? '1' : '0'"
             x-bind:style="frameOuterStyle('desktop')"
             x-init="frameRefs.desktop = $el"
             tabindex="0"
@@ -156,10 +179,18 @@
         >
             @if ($dOk)
                 <div
-                    x-show="!isNaturalReady('desktop')"
+                    x-show="!isNaturalReady('desktop') &amp;&amp; !loadError.desktop"
                     x-cloak
                     class="absolute inset-0 z-20 flex items-center justify-center bg-white/80 text-[10px] text-gray-600 dark:bg-gray-900/85 dark:text-gray-300"
                 >Загрузка изображения…</div>
+                <div
+                    x-show="loadError.desktop"
+                    x-cloak
+                    class="absolute inset-0 z-30 flex flex-col items-center justify-center gap-1 bg-white/90 p-2 text-center text-[10px] text-red-800 dark:bg-gray-900/90 dark:text-red-200"
+                >
+                    <span>Не удалось загрузить изображение.</span>
+                    <button type="button" class="rounded border border-amber-600/50 px-2 py-0.5 text-amber-900 hover:bg-amber-500/10 dark:text-amber-100" @click="retryFocalImage('desktop')">Повторить</button>
+                </div>
                 <div class="pointer-events-none absolute inset-0 overflow-hidden bg-zinc-900 dark:bg-zinc-950">
                     <div class="pointer-events-none absolute inset-0" x-bind:style="layerTransformStyle('desktop')">
                         <img

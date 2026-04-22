@@ -2,6 +2,13 @@
     /** @var string $fieldId */
 @endphp
 <p
+    x-show="commitError"
+    x-cloak
+    class="text-[11px] text-red-700 dark:text-red-300"
+    x-text="commitError"
+    role="alert"
+></p>
+<p
     class="text-[10px] leading-snug text-amber-800/90 dark:text-amber-200/80"
     x-show="axisSlackHint(activeViewport) !== ''"
     x-text="axisSlackHint(activeViewport)"

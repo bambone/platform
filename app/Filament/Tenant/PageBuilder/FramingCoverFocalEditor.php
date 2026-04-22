@@ -159,6 +159,7 @@ final class FramingCoverFocalEditor
                     'syncDefault' => $syncDefault,
                     'safeAreaBottomPercent' => (float) ($profile->safeAreaBottomBand()['bottomPercent'] ?? 38),
                     'safeAreaLabel' => (string) ($safeArea['label'] ?? ''),
+                    'viewportStorageId' => $previewKey,
                 ];
 
                 return [

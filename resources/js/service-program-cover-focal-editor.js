@@ -1,7 +1,23 @@
 /**
  * Cover preview geometry — same formulas as App\MediaPresentation\FocalCoverPreviewGeometry (PHP).
+ *
+ * @typedef {Object} SvcFocalConfigRow
+ * @property {number} x
+ * @property {number} y
+ * @property {number} [s]
+ * @property {number} [heightFactor]
+ * @typedef {Object} SvcFocalEditorConfig
+ * @property {SvcFocalConfigRow} mobile
+ * @property {SvcFocalConfigRow} [tablet]
+ * @property {SvcFocalConfigRow} desktop
+ * @property {string} [wirePathPrefix]
+ * @property {string} [viewportStorageId] — id для sessionStorage; без него — inst-N на инстанс.
+ * @property {string} [previewEngine]
  */
 const EPS = 1e-6;
+
+/** Уникальный id для sessionStorage, если `viewportStorageId` не задан в config (нельзя делить `default` между инстансами). */
+let __svcFocalInstanceSeq = 0;
 
 function getByPath(obj, path) {
     if (obj == null || path === '' || path == null) {
@@ -196,6 +212,21 @@ function registerServiceProgramCoverFocalEditor() {
         previewShowFullImage: false,
         /** Один активный кадр в UI: mobile | tablet | desktop */
         activeViewport: 'mobile',
+        /** Ошибка загрузки <img> по вьюпорту — не подставляем «фейковые» natural, drag выключен. */
+        loadError: { mobile: false, tablet: false, desktop: false },
+        /** Сообщение при неудачном commitFraming (wire.set); null = ок. */
+        commitError: null,
+        frameVersion: 0,
+        /** Сериализация commitFraming (очередь + «последний победил»). */
+        _commitRunId: 0,
+        commitQueue: Promise.resolve(),
+        _nudgeDebounce: null,
+        _dragRaf: 0,
+        _pendingMove: null,
+        pageAbort: null,
+        dragMoveAbort: null,
+        _cleaned: false,
+        _instanceId: 0,
         pointerId: null,
         _onWinUp: null,
         _onWinCancel: null,
@@ -203,6 +234,7 @@ function registerServiceProgramCoverFocalEditor() {
         _onVis: null,
 
         init() {
+            this._instanceId = ++__svcFocalInstanceSeq;
             this.sync = config.syncDefault !== false;
             const dt = config.defaults?.tablet ?? { x: 50, y: 50, s: 1, heightFactor: 1 };
             const mhf = config.mobile?.heightFactor ?? config.defaults?.mobile?.heightFactor ?? 1;
@@ -231,10 +263,15 @@ function registerServiceProgramCoverFocalEditor() {
                     this.cancelDrag(new Event('pointercancel'));
                 }
             };
-            window.addEventListener('pointerup', this._onWinUp);
-            window.addEventListener('pointercancel', this._onWinCancel);
-            document.addEventListener('visibilitychange', this._onVis);
-            this.$el.addEventListener('alpine:destroy', () => this.cleanup());
+            /** `addEventListener(..., { signal })` — Safari 15.4+ / Chromium 80+; целенаправленно admin-only. */
+            this.pageAbort = new AbortController();
+            const sig = this.pageAbort.signal;
+            window.addEventListener('pointerup', this._onWinUp, { signal: sig });
+            window.addEventListener('pointercancel', this._onWinCancel, { signal: sig });
+            document.addEventListener('visibilitychange', this._onVis, { signal: sig });
+            this.$el.addEventListener('alpine:destroy', () => {
+                this._runCleanup();
+            });
             this.$watch('previewShowFullImage', (value) => {
                 this.resyncFromWire();
                 this.syncViewportFocalExtraReadonly(!!value);
@@ -245,6 +282,39 @@ function registerServiceProgramCoverFocalEditor() {
                 this.resyncFromWire();
                 this.syncViewportFocalExtraReadonly(!!this.previewShowFullImage);
             });
+        },
+
+        destroy() {
+            this._runCleanup();
+        },
+
+        _runCleanup() {
+            if (this._cleaned) {
+                return;
+            }
+            this._cleaned = true;
+            try {
+                this.syncViewportFocalExtraReadonly(false);
+            } catch (_) {
+                /* ignore */
+            }
+            this.dragMoveAbort?.abort();
+            this.dragMoveAbort = null;
+            this.pageAbort?.abort();
+            this.pageAbort = null;
+            if (this._dragRaf) {
+                cancelAnimationFrame(this._dragRaf);
+                this._dragRaf = 0;
+            }
+            this._pendingMove = null;
+            if (this._nudgeDebounce) {
+                clearTimeout(this._nudgeDebounce);
+                this._nudgeDebounce = null;
+            }
+            if (this.ro) {
+                this.ro.disconnect();
+                this.ro = null;
+            }
         },
 
         /**
@@ -258,6 +328,7 @@ function registerServiceProgramCoverFocalEditor() {
             const w = img.naturalWidth;
             const h = img.naturalHeight;
             if (w > 0 && h > 0) {
+                this.loadError[key] = false;
                 this.setNatural(key, w, h);
             }
         },
@@ -272,11 +343,13 @@ function registerServiceProgramCoverFocalEditor() {
                 if (!img) {
                     return;
                 }
-                const apply = () => this.applyNaturalFromImage(key, img);
+                if (img.dataset.svcFocalBound === '1') {
+                    return;
+                }
+                img.dataset.svcFocalBound = '1';
+                img.addEventListener('load', () => this.applyNaturalFromImage(key, img), { once: true });
                 if (img.complete) {
-                    apply();
-                } else {
-                    img.addEventListener('load', apply, { once: true });
+                    this.applyNaturalFromImage(key, img);
                 }
             });
             this.$nextTick(() => this.setupResize());
@@ -302,18 +375,16 @@ function registerServiceProgramCoverFocalEditor() {
                 heightFactor: newConfig.desktop?.heightFactor ?? newConfig.defaults?.desktop?.heightFactor ?? 1,
             };
             this.natural = { mobile: null, tablet: null, desktop: null };
-            this.$nextTick(() => this.hydrateNaturalDimensionsFromImages());
-        },
-
-        cleanup() {
-            window.removeEventListener('pointerup', this._onWinUp);
-            window.removeEventListener('pointercancel', this._onWinCancel);
-            window.removeEventListener('pointermove', this._onWinMove);
-            document.removeEventListener('visibilitychange', this._onVis);
-            if (this.ro) {
-                this.ro.disconnect();
-                this.ro = null;
-            }
+            this.$nextTick(() => {
+                ['mobile', 'tablet', 'desktop'].forEach((key) => {
+                    const frame = this.frameRefs[key];
+                    const img = frame?.querySelector('img.svc-program-focal-img');
+                    if (img) {
+                        delete img.dataset.svcFocalBound;
+                    }
+                });
+                this.hydrateNaturalDimensionsFromImages();
+            });
         },
 
         getWire() {
@@ -448,26 +519,14 @@ function registerServiceProgramCoverFocalEditor() {
             };
         },
 
-        /** Курсор над рамкой одного вьюпорта: в режиме «вся картинка» — default. */
-        framePointerClass(key) {
-            if (this.config?.previewEngine === 'public_card' && !this.config?.allowFocalDrag) {
-                return 'cursor-default';
-            }
-            if (this.previewShowFullImage) {
-                return 'cursor-default';
-            }
-            if (this.dragging && this.dragging.key === key) {
-                return 'cursor-grabbing';
-            }
-
-            return 'cursor-grab';
-        },
-
         canDrag(key) {
             if (this.config?.previewEngine === 'public_card' && !this.config?.allowFocalDrag) {
                 return false;
             }
             if (this.previewShowFullImage) {
+                return false;
+            }
+            if (this.loadError?.[key]) {
                 return false;
             }
             const n = this.naturalFor(key);
@@ -476,6 +535,9 @@ function registerServiceProgramCoverFocalEditor() {
 
         /** Оверлей «Загрузка…» — только пока нет natural; не путать с canDrag (в режиме «весь кадр» drag выключен, но картинка уже загружена). */
         isNaturalReady(key) {
+            if (this.loadError?.[key]) {
+                return false;
+            }
             const n = this.naturalFor(key);
             return !!(n && n.iw > 0 && n.ih > 0);
         },
@@ -486,7 +548,7 @@ function registerServiceProgramCoverFocalEditor() {
                 return `svc-focal-active-vp:${String(id)}`;
             }
 
-            return 'svc-focal-active-vp:default';
+            return `svc-focal-active-vp:inst-${this._instanceId}`;
         },
 
         persistActiveViewport(key) {
@@ -590,7 +652,14 @@ function registerServiceProgramCoverFocalEditor() {
                 /* ignore */
             }
             this.pointerId = ev.pointerId;
-            window.addEventListener('pointermove', this._onWinMove);
+            this.dragMoveAbort?.abort();
+            this.dragMoveAbort = new AbortController();
+            const sig = this.dragMoveAbort.signal;
+            window.addEventListener('pointermove', this._onWinMove, { signal: sig });
+            // При setPointerCapture цель — элемент кадра; всплытие до window иногда съедается (Livewire/оверлеи).
+            // Слушатели capture + глобальный bubble (pageAbort) дублируют end — второй no-op.
+            window.addEventListener('pointerup', this._onWinUp, { capture: true, signal: sig });
+            window.addEventListener('pointercancel', this._onWinCancel, { capture: true, signal: sig });
             const n = this.naturalFor(key);
             const { w, h } = this.frameSize(key);
             const focal = this.localFocal(key);
@@ -609,6 +678,24 @@ function registerServiceProgramCoverFocalEditor() {
             if (!this.dragging || ev.pointerId !== this.pointerId) {
                 return;
             }
+            this._pendingMove = { x: ev.clientX, y: ev.clientY };
+            if (this._dragRaf) {
+                return;
+            }
+            this._dragRaf = requestAnimationFrame(() => {
+                this._dragRaf = 0;
+                const p = this._pendingMove;
+                if (!p || !this.dragging) {
+                    return;
+                }
+                this._applyMoveDrag(p.x, p.y);
+            });
+        },
+
+        _applyMoveDrag(clientX, clientY) {
+            if (!this.dragging) {
+                return;
+            }
             const { key, startX, startY, startTx, startTy } = this.dragging;
             const n = this.naturalFor(key);
             if (!n) {
@@ -617,8 +704,8 @@ function registerServiceProgramCoverFocalEditor() {
             const { w, h } = this.frameSize(key);
             const focal = this.localFocal(key);
             const us = focal.s ?? 1;
-            let tx = startTx + (ev.clientX - startX);
-            let ty = startTy + (ev.clientY - startY);
+            let tx = startTx + (clientX - startX);
+            let ty = startTy + (clientY - startY);
             const c = clampTranslate(tx, ty, w, h, n.iw, n.ih, us);
             tx = c.tx;
             ty = c.ty;
@@ -646,20 +733,28 @@ function registerServiceProgramCoverFocalEditor() {
             if (ev && ev.pointerId !== undefined && ev.pointerId !== this.pointerId) {
                 return;
             }
-            window.removeEventListener('pointermove', this._onWinMove);
-            const frame = this.frameRefs[this.dragging.key];
-            if (frame && this.pointerId != null) {
+            const frameKey = this.dragging.key;
+            const capId = this.pointerId;
+            this._pendingMove = null;
+            this.dragMoveAbort?.abort();
+            this.dragMoveAbort = null;
+            if (this._dragRaf) {
+                cancelAnimationFrame(this._dragRaf);
+                this._dragRaf = 0;
+            }
+            this.dragging = null;
+            this.pointerId = null;
+            const frame = this.frameRefs[frameKey];
+            if (frame && capId != null) {
                 try {
-                    if (frame.hasPointerCapture?.(this.pointerId)) {
-                        frame.releasePointerCapture(this.pointerId);
+                    if (frame.hasPointerCapture?.(capId)) {
+                        frame.releasePointerCapture(capId);
                     }
                 } catch (_) {
                     /* ignore */
                 }
             }
-            this.dragging = null;
-            this.pointerId = null;
-            this.commitFraming();
+            this.queueCommit();
         },
 
         cancelDrag(ev) {
@@ -669,24 +764,34 @@ function registerServiceProgramCoverFocalEditor() {
             if (ev && ev.pointerId !== undefined && ev.pointerId !== this.pointerId) {
                 return;
             }
-            window.removeEventListener('pointermove', this._onWinMove);
-            const frame = this.frameRefs[this.dragging.key];
-            if (frame && this.pointerId != null) {
+            const frameKey = this.dragging.key;
+            const capId = this.pointerId;
+            this._pendingMove = null;
+            this.dragMoveAbort?.abort();
+            this.dragMoveAbort = null;
+            if (this._dragRaf) {
+                cancelAnimationFrame(this._dragRaf);
+                this._dragRaf = 0;
+            }
+            this.dragging = null;
+            this.pointerId = null;
+            const frame = this.frameRefs[frameKey];
+            if (frame && capId != null) {
                 try {
-                    if (frame.hasPointerCapture?.(this.pointerId)) {
-                        frame.releasePointerCapture(this.pointerId);
+                    if (frame.hasPointerCapture?.(capId)) {
+                        frame.releasePointerCapture(capId);
                     }
                 } catch (_) {
                     /* ignore */
                 }
             }
-            this.dragging = null;
-            this.pointerId = null;
             this.resyncFromWire();
         },
 
         /**
          * Поля «Дополнительно» (секция с data-svc-focal-numeric-extras) — readOnly в режиме «весь кадр»; не сканировать весь form.
+         * Исходные disabled/readOnly фиксируем в `data-svc-focal-orig-*` (один раз на элемент), чтобы не включать обратно контрол,
+         * который был disabled не из-за этого режима.
          */
         syncViewportFocalExtraReadonly(readonly) {
             const form = this.$el?.closest('form');
@@ -706,8 +811,27 @@ function registerServiceProgramCoverFocalEditor() {
                         isFocal = true;
                     }
                 }
-                if (isFocal) {
-                    el.readOnly = !!readonly;
+                if (!isFocal) {
+                    continue;
+                }
+                if (!el.hasAttribute('data-svc-focal-orig-captured')) {
+                    el.setAttribute('data-svc-focal-orig-captured', '1');
+                    if (el.tagName === 'SELECT') {
+                        el.setAttribute('data-svc-focal-orig-disabled', el.disabled ? '1' : '0');
+                    } else {
+                        el.setAttribute('data-svc-focal-orig-readonly', el.readOnly ? '1' : '0');
+                    }
+                }
+                if (readonly) {
+                    if (el.tagName === 'SELECT') {
+                        el.disabled = true;
+                    } else {
+                        el.readOnly = true;
+                    }
+                } else if (el.tagName === 'SELECT') {
+                    el.disabled = el.getAttribute('data-svc-focal-orig-disabled') === '1';
+                } else {
+                    el.readOnly = el.getAttribute('data-svc-focal-orig-readonly') === '1';
                 }
             }
         },
@@ -731,6 +855,7 @@ function registerServiceProgramCoverFocalEditor() {
          *        На сайте 768–1023 кадр из ветки mobile в JSON, поля — в `tablet`; в CSS это всё ещё --svc-*-mobile.
          */
         programCardArticleStyleForPreview(previewMode) {
+            void this.frameVersion;
             const mode = previewMode === 'tablet' || previewMode === 'desktop' ? previewMode : 'mobile';
             const cfg = this.config || {};
             const mb = cfg.mediaBase || {};
@@ -776,11 +901,21 @@ function registerServiceProgramCoverFocalEditor() {
             return this.programCardArticleStyleForPreview('mobile');
         },
 
+        queueCommit() {
+            this.commitQueue = this.commitQueue
+                .then(() => this.commitFraming())
+                .catch((err) => {
+                    console.error('serviceProgramCoverFocalEditor queueCommit failed', err);
+                });
+            return this.commitQueue;
+        },
+
         async commitFraming() {
             const wire = this.getWire();
             if (!wire) {
                 return;
             }
+            const runId = ++this._commitRunId;
             const base = this.wirePath();
             const { min, max, step } = this.scaleBounds();
             const hb = this.heightBounds();
@@ -877,12 +1012,20 @@ function registerServiceProgramCoverFocalEditor() {
                     desktop: buildRow(d.x, d.y, ds, dh),
                 };
                 await wire.set(base, mapPayload);
+                if (runId !== this._commitRunId) {
+                    return;
+                }
+                this.commitError = null;
                 this.persistActiveViewport(this.activeViewport);
                 this.$nextTick(() => {
                     this.syncViewportFocalExtraReadonly(!!this.previewShowFullImage);
                 });
             } catch (_) {
-                this.resyncFromWire();
+                if (runId === this._commitRunId) {
+                    this.commitError =
+                        'Не удалось сохранить кадр. Проверьте соединение и попробуйте ещё раз.';
+                    this.resyncFromWire();
+                }
                 if (typeof window.dispatchEvent === 'function') {
                     window.dispatchEvent(
                         new CustomEvent('service-program-focal-commit-error', { detail: { base } }),
@@ -987,15 +1130,15 @@ function registerServiceProgramCoverFocalEditor() {
             }
         },
 
-        async commitScaleFromSlider() {
-            await this.commitFraming();
+        commitScaleFromSlider() {
+            return this.queueCommit();
         },
 
-        async commitHeightFromSlider() {
-            await this.commitFraming();
+        commitHeightFromSlider() {
+            return this.queueCommit();
         },
 
-        async nudge(key, dpx, dpy, shift) {
+        nudge(key, dpx, dpy, shift) {
             if (this.previewShowFullImage) {
                 return;
             }
@@ -1029,7 +1172,8 @@ function registerServiceProgramCoverFocalEditor() {
                     this.local.desktop = { ...this.local.desktop, x: nf.x, y: nf.y, s: this.local.desktop.s };
                 }
             }
-            await this.commitFraming();
+            clearTimeout(this._nudgeDebounce);
+            this._nudgeDebounce = setTimeout(() => this.queueCommit(), 120);
         },
 
         resetMobile() {
@@ -1040,7 +1184,7 @@ function registerServiceProgramCoverFocalEditor() {
                 const dd = this.config.defaults.desktop;
                 this.local.desktop = { x: dd.x, y: dd.y, s: dd.s, heightFactor: dd.heightFactor ?? 1 };
             }
-            this.commitFraming();
+            this.queueCommit();
         },
 
         resetDesktop() {
@@ -1051,7 +1195,7 @@ function registerServiceProgramCoverFocalEditor() {
                 this.local.mobile = { x: md.x, y: md.y, s: md.s, heightFactor: md.heightFactor ?? 1 };
                 this.local.tablet = { ...this.local.tablet, heightFactor: md.heightFactor ?? 1 };
             }
-            this.commitFraming();
+            this.queueCommit();
         },
 
         resetBoth() {
@@ -1061,7 +1205,7 @@ function registerServiceProgramCoverFocalEditor() {
             this.local.tablet = { x: mdT.x, y: mdT.y, s: mdT.s, heightFactor: md.heightFactor ?? 1 };
             const dd = this.config.defaults.desktop;
             this.local.desktop = { ...dd, heightFactor: dd.heightFactor ?? 1 };
-            this.commitFraming();
+            this.queueCommit();
         },
 
         resetTablet() {
@@ -1072,38 +1216,61 @@ function registerServiceProgramCoverFocalEditor() {
                 s: mdT.s,
                 heightFactor: this.local.mobile?.heightFactor ?? 1,
             };
-            this.commitFraming();
+            this.queueCommit();
         },
 
         copyToDesktop() {
             this.local.desktop = { ...this.local.mobile };
-            this.commitFraming();
+            this.queueCommit();
         },
 
         copyToMobile() {
             this.local.mobile = { ...this.local.desktop };
             this.local.tablet = { ...this.local.tablet, heightFactor: this.local.mobile.heightFactor };
-            this.commitFraming();
+            this.queueCommit();
         },
 
         onImgLoad(key, ev) {
+            this.loadError[key] = false;
             const img = ev.target;
             this.applyNaturalFromImage(key, img);
             this.$nextTick(() => this.setupResize());
         },
 
-        /** Fallback if браузер не отдал naturalWidth (редко); иначе перетаскивание не включится. */
         onImgError(key) {
-            this.setNatural(key, 1600, 1200);
-            this.$nextTick(() => this.setupResize());
+            this.loadError[key] = true;
+            this.natural[key] = null;
+        },
+
+        retryFocalImage(key) {
+            this.loadError[key] = false;
+            this.natural[key] = null;
+            const frame = this.frameRefs[key];
+            const img = frame?.querySelector('img.svc-program-focal-img');
+            if (img) {
+                img.removeAttribute('data-svc-focal-bound');
+                const raw = String(img.getAttribute('src') ?? img.src);
+                try {
+                    const u = new URL(raw, document.baseURI);
+                    u.searchParams.set('_retry', String(Date.now()));
+                    img.src = u.href;
+                } catch (_) {
+                    const b = raw.split('?')[0];
+                    img.src = `${b}?_retry=${Date.now()}`;
+                }
+            }
+            this.$nextTick(() => this.hydrateNaturalDimensionsFromImages());
         },
 
         setupResize() {
+            if (typeof ResizeObserver !== 'function') {
+                return;
+            }
             if (this.ro) {
                 this.ro.disconnect();
             }
             this.ro = new ResizeObserver(() => {
-                /* trigger Alpine re-eval for object-position (same focal, new frame size) */
+                this.frameVersion++;
             });
             ['mobile', 'tablet', 'desktop'].forEach((k) => {
                 const el = this.frameRefs[k];

@@ -37,6 +37,11 @@ jobs:
             page_builder:
               - 'app/PageBuilder/**'
               - 'app/Services/PageBuilder/**'
+              - 'app/Filament/Tenant/PageBuilder/**'
+              - 'resources/js/service-program-cover-focal-editor.js'
+              - 'resources/views/filament/forms/components/service-program-cover-preview*'
+              - 'resources/views/filament/forms/components/_service-program-cover-preview*'
+              - 'resources/css/tenant-admin.css'
               - 'resources/views/tenant/themes/**/sections/**'
               - 'app/Livewire/Tenant/PageSectionsBuilder.php'
               - 'tests/Feature/PageBuilder/Smoke/**'
@@ -491,6 +496,10 @@ jobs:
           set -eu
           (set -o pipefail) 2>/dev/null && set -o pipefail || true
 
+          echo "media-backfill: APP_DIR=$APP_DIR"
+          echo "media-backfill: MEDIA_ROOT=$MEDIA_ROOT"
+          echo "media-backfill: MEDIA_BACKFILL_AS_WWW_DATA=${MEDIA_BACKFILL_AS_WWW_DATA:-0}"
+
           if [ ! -d "$APP_DIR" ]; then
             echo "media-backfill: app dir not found: $APP_DIR"
             exit 1
@@ -525,7 +534,11 @@ jobs:
             fi
           }
 
-          run_backfill
+          if ! run_backfill; then
+            echo "media-backfill: run_backfill failed (non-zero); tailing $LOG (see also on server)"
+            tail -n 200 "$LOG" 2>/dev/null || true
+            exit 1
+          fi
 
           echo "media-backfill: finished (log: $LOG)"
           echo "media-backfill: tail of log"

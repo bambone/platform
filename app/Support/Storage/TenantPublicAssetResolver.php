@@ -13,6 +13,9 @@ use Throwable;
  *
  * При {@see MediaDeliveryMode::Local} — same-origin путь {@code /media/tenants/{id}/public/...} (nginx или dev-fallback).
  * При {@see MediaDeliveryMode::R2} — прямой URL объекта (CDN/R2) как раньше.
+ *
+ * Для **админского** focal-превью: абсолютные чужие URL всё ещё могут попасть в &lt;img src&gt; (Referrer,
+ * внешняя зависимость). Ужесточение — в политике загрузки/валидации ref при сохранении, а не в каждом render.
  */
 final class TenantPublicAssetResolver
 {

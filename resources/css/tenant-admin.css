@@ -1344,11 +1344,17 @@ body.fi-ts-setup-active.fi-ts-setup-use-top-offset {
 
 /* Service program cover focal editor (tenant Filament) */
 .svc-program-focal-frame {
+    /* Курсор/touch: только при data-svc-focal-can-drag=1, не через Tailwind из JS-строк. */
+    touch-action: auto;
+    cursor: default;
+}
+
+.svc-program-focal-frame[data-svc-focal-can-drag='1'] {
     touch-action: none;
     cursor: grab;
 }
 
-.svc-program-focal-frame:active {
+.svc-program-focal-frame[data-svc-focal-can-drag='1']:active {
     cursor: grabbing;
 }
 

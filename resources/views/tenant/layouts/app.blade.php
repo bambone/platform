@@ -768,7 +768,7 @@
         {{-- Если на странице нет секции формы (нет #expert-sticky-cta), показываем ссылку на заявку с главной --}}
         <div id="expert-sticky-cta-fallback" class="expert-sticky-cta hidden" hidden>
             <div class="expert-sticky-cta__inner">
-                <a href="{{ route('home') }}#expert-inquiry" class="expert-sticky-cta__btn tenant-btn-primary flex w-full justify-center rounded-xl py-3 text-[15px] font-bold shadow-md shadow-black/30">{{ $__tenantAdvocateEditorial ? 'Связаться' : 'Записаться' }}</a>
+                <a href="{{ $__tenantBlackDuck ? url(\App\Tenant\BlackDuck\BlackDuckContentConstants::PRIMARY_LEAD_URL) : (route('home').'#expert-inquiry') }}" class="expert-sticky-cta__btn tenant-btn-primary flex w-full justify-center rounded-xl py-3 text-[15px] font-bold shadow-md shadow-black/30">{{ $__tenantAdvocateEditorial ? 'Связаться' : 'Записаться' }}</a>
             </div>
         </div>
         <script>

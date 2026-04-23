@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "role": "home_service_card",
+      "service_slug": "ppf",
+      "logical_path": "site/brand/proof/ppf-cover.jpg",
+      "sort_order": 0,
+      "kind": "image"
+    },
+    {
+      "role": "featured_video",
+      "page": "raboty",
+      "logical_path": "site/brand/videos/wrap.mp4",
+      "poster_path": "site/brand/videos/wrap-poster.jpg"
+    }
+  ]
+}

@@ -42,16 +42,12 @@
                         <p class="mt-2 text-sm text-zinc-500">{{ (string) ($it['price_from'] ?? '') }}@if(!empty($it['duration'])) · {{ (string) ($it['duration'] ?? '') }}@endif</p>
                         <div class="mt-3 flex flex-wrap gap-2 text-xs">
                             @if ($mode === 'instant')
-                                <span class="rounded bg-[#F0FF00]/15 px-2 py-0.5 text-[#F0FF00]">быстрый слот</span>
-                            @endif
-                            @if ($mode === 'quote')
+                                <span class="rounded bg-[#F0FF00]/12 px-2 py-0.5 text-[#E8F5A0]">слот</span>
+                            @elseif ($mode === 'quote')
                                 <span class="rounded bg-violet-500/20 px-2 py-0.5 text-violet-200">расчёт</span>
+                            @else
+                                <span class="rounded bg-white/10 px-2 py-0.5 text-zinc-300">запись</span>
                             @endif
-                            @if ($mode === 'confirm')
-                                <span class="rounded bg-white/10 px-2 py-0.5 text-zinc-300">по записи</span>
-                            @endif
-                            @if (!empty($it['online_booking']))<span class="rounded bg-[#F0FF00]/15 px-2 py-0.5 text-[#F0FF00]">онлайн</span>@endif
-                            @if (!empty($it['needs_confirmation']))<span class="rounded bg-white/10 px-2 py-0.5 text-zinc-300">согласование</span>@endif
                         </div>
                         @if ($cta !== '')
                             <span class="mt-4 text-sm font-medium text-[#36C7FF] underline-offset-2 group-hover:underline">Подробнее</span>

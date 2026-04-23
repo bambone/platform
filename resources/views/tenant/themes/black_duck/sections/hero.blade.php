@@ -1,5 +1,6 @@
 @php
     use App\Support\Storage\TenantPublicAssetResolver;
+    use App\Tenant\Expert\ExpertBrandMediaUrl;
 
     $heading = $data['heading'] ?? '';
     $sub = $data['subheading'] ?? '';
@@ -10,6 +11,10 @@
         ? TenantPublicAssetResolver::resolveForCurrentTenant($bgRaw)
         : theme_platform_asset_url('marketing/hero-bg.png');
     $hasCustomBg = is_string($data['background_image'] ?? null) && trim((string) $data['background_image']) !== '';
+    $vSrc = trim((string) ($data['video_src'] ?? ''));
+    $vPoster = trim((string) ($data['video_poster'] ?? ''));
+    $vSrcUrl = $vSrc !== '' ? ExpertBrandMediaUrl::resolve($vSrc) : '';
+    $vPosterUrl = $vPoster !== '' ? ExpertBrandMediaUrl::resolve($vPoster) : '';
 @endphp
 <section class="relative min-h-[min(52vh,28rem)] overflow-hidden rounded-2xl border border-white/10 bg-carbon/90 sm:min-h-[min(44vh,26rem)]">
     @if (filled($bgUrl))
@@ -38,6 +43,19 @@
         @endif
         @if (filled($btn))
             <a href="{{ e($url) }}" class="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[#36C7FF] px-5 py-2.5 text-sm font-semibold text-carbon transition hover:bg-[#5ad2ff]">{{ $btn }}</a>
+        @endif
+        @if (filled($vSrcUrl) && filled($vPosterUrl))
+            <div class="mt-8 w-full max-w-3xl">
+                <video
+                    class="w-full overflow-hidden rounded-xl border border-white/10"
+                    controls
+                    playsinline
+                    preload="metadata"
+                    poster="{{ e($vPosterUrl) }}"
+                >
+                    <source src="{{ e($vSrcUrl) }}" type="video/mp4" />
+                </video>
+            </div>
         @endif
     </div>
 </section>

@@ -48,6 +48,17 @@
         ? 'bg-[#f7f4ef]/95 shadow-[0_8px_30px_rgba(28,31,38,0.08)]'
         : 'bg-[#050608] shadow-[0_4px_32px_rgba(0,0,0,0.4)]';
     $headerDividerBg = $isAdvocateEditorial ? 'bg-stone-200/90' : 'bg-white/[0.06]';
+    /** Текущий пункт меню: совпадение path с URL (route home и CMS-страницы page.show). */
+    $tenantNavCurrentPath = ltrim((string) request()->path(), '/');
+    $isTenantNavHome = request()->routeIs('home');
+    $tenantNavPathMatches = static function (string $url) use ($tenantNavCurrentPath): bool {
+        $path = ltrim((string) parse_url($url, PHP_URL_PATH), '/');
+        if ($path === '') {
+            return false;
+        }
+
+        return $path === $tenantNavCurrentPath;
+    };
 @endphp
 {{-- fixed: full-bleed hero under bar; flicker fix = opacity-only surfaces + 1px divider layer (no border-width toggle). --}}
 <header x-data="tenantHeader()"
@@ -98,16 +109,26 @@
             <nav class="expert-header-bar__nav relative z-20 flex-1 min-w-0 items-center justify-center gap-x-3 gap-y-1 text-[15px] font-semibold tracking-wide xl:flex-wrap xl:gap-x-5 xl:gap-y-1.5 xl:text-[15px]"
                  :class="advocateNavInline() ? 'hidden xl:flex' : 'hidden'"
                  aria-label="Основное меню">
-                <a href="{{ route('home') }}" class="shrink-0 rounded-sm px-0.5 py-1 transition-colors hover:text-moto-amber text-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber">Главная</a>
+                <a href="{{ route('home') }}"
+                   @if($isTenantNavHome) aria-current="page" @endif
+                   class="shrink-0 rounded-sm px-0.5 py-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber {{ $isTenantNavHome ? 'font-semibold text-moto-amber' : 'text-stone-800 hover:text-moto-amber' }}">Главная</a>
                 @foreach($tenantMainMenuPages ?? [] as $navItem)
-                    <a href="{{ $navItem['url'] }}" class="shrink-0 rounded-sm px-0.5 py-1 transition-colors text-stone-600 hover:text-stone-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber">{{ $navItem['label'] }}</a>
+                    @php $navItemActive = $tenantNavPathMatches($navItem['url']); @endphp
+                    <a href="{{ $navItem['url'] }}"
+                       @if($navItemActive) aria-current="page" @endif
+                       class="shrink-0 rounded-sm px-0.5 py-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber {{ $navItemActive ? 'font-semibold text-moto-amber' : 'text-stone-600 hover:text-stone-900' }}">{{ $navItem['label'] }}</a>
                 @endforeach
             </nav>
             @else
             <nav class="expert-header-bar__nav relative z-20 hidden flex-1 min-w-0 items-center justify-center gap-6 text-[14px] font-semibold tracking-wide md:flex lg:gap-10 lg:text-[15px]" aria-label="Основное меню">
-                <a href="{{ route('home') }}" class="shrink-0 rounded-sm px-0.5 py-1 transition-colors hover:text-moto-amber text-white/95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber">Главная</a>
+                <a href="{{ route('home') }}"
+                   @if($isTenantNavHome) aria-current="page" @endif
+                   class="shrink-0 rounded-sm px-0.5 py-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber {{ $isTenantNavHome ? 'text-moto-amber' : 'text-white/95 hover:text-moto-amber' }}">Главная</a>
                 @foreach($tenantMainMenuPages ?? [] as $navItem)
-                    <a href="{{ $navItem['url'] }}" class="shrink-0 rounded-sm px-0.5 py-1 transition-colors text-silver/80 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber">{{ $navItem['label'] }}</a>
+                    @php $navItemActive = $tenantNavPathMatches($navItem['url']); @endphp
+                    <a href="{{ $navItem['url'] }}"
+                       @if($navItemActive) aria-current="page" @endif
+                       class="shrink-0 rounded-sm px-0.5 py-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber {{ $navItemActive ? 'text-moto-amber' : 'text-silver/80 hover:text-white' }}">{{ $navItem['label'] }}</a>
                 @endforeach
             </nav>
             @endif
@@ -167,9 +188,14 @@
             </a>
 
             <nav class="hidden flex-1 items-center justify-center gap-6 px-4 text-[15px] font-medium md:flex lg:gap-10 xl:gap-12 xl:text-base" aria-label="Основное меню">
-                <a href="{{ route('home') }}#catalog" class="shrink-0 text-white/90 transition-colors hover:text-moto-amber">Автопарк</a>
+                <a href="{{ route('home') }}#catalog"
+                   @if($isTenantNavHome) aria-current="page" @endif
+                   class="shrink-0 transition-colors {{ $isTenantNavHome ? 'text-moto-amber' : 'text-white/90 hover:text-moto-amber' }}">Автопарк</a>
                 @foreach($tenantMainMenuPages ?? [] as $navItem)
-                    <a href="{{ $navItem['url'] }}" class="shrink-0 text-white/80 transition-colors hover:text-white">{{ $navItem['label'] }}</a>
+                    @php $navItemActive = $tenantNavPathMatches($navItem['url']); @endphp
+                    <a href="{{ $navItem['url'] }}"
+                       @if($navItemActive) aria-current="page" @endif
+                       class="shrink-0 transition-colors {{ $navItemActive ? 'text-moto-amber' : 'text-white/80 hover:text-white' }}">{{ $navItem['label'] }}</a>
                 @endforeach
             </nav>
 
@@ -210,14 +236,28 @@
              aria-label="Мобильное меню">
             <div class="flex flex-col gap-1">
                 @if($isExpertStyleNav)
-                    <a href="{{ route('home') }}" @click="mobileNavOpen = false" class="flex min-h-11 items-center rounded-lg px-3 py-2 text-base font-medium {{ $isAdvocateEditorial ? 'text-stone-800 hover:bg-stone-900/[0.06]' : 'text-white/90 hover:bg-white/10' }}">Главная</a>
+                    <a href="{{ route('home') }}"
+                       @if($isTenantNavHome) aria-current="page" @endif
+                       @click="mobileNavOpen = false"
+                       class="flex min-h-11 items-center rounded-lg px-3 py-2 text-base font-medium {{ $isAdvocateEditorial ? ($isTenantNavHome ? 'text-moto-amber bg-stone-900/[0.04]' : 'text-stone-800 hover:bg-stone-900/[0.06]') : ($isTenantNavHome ? 'text-moto-amber bg-white/10' : 'text-white/90 hover:bg-white/10') }}">Главная</a>
                     @foreach($tenantMainMenuPages ?? [] as $navItem)
-                        <a href="{{ $navItem['url'] }}" @click="mobileNavOpen = false" class="flex min-h-11 items-center rounded-lg px-3 py-2 text-base font-medium {{ $isAdvocateEditorial ? 'text-stone-800 hover:bg-stone-900/[0.06]' : 'text-white/90 hover:bg-white/10' }}">{{ $navItem['label'] }}</a>
+                        @php $navItemActive = $tenantNavPathMatches($navItem['url']); @endphp
+                        <a href="{{ $navItem['url'] }}"
+                           @if($navItemActive) aria-current="page" @endif
+                           @click="mobileNavOpen = false"
+                           class="flex min-h-11 items-center rounded-lg px-3 py-2 text-base font-medium {{ $isAdvocateEditorial ? ($navItemActive ? 'text-moto-amber bg-stone-900/[0.04]' : 'text-stone-800 hover:bg-stone-900/[0.06]') : ($navItemActive ? 'text-moto-amber bg-white/10' : 'text-white/90 hover:bg-white/10') }}">{{ $navItem['label'] }}</a>
                     @endforeach
                 @else
-                    <a href="{{ route('home') }}#catalog" @click="mobileNavOpen = false" class="flex min-h-11 items-center rounded-lg px-3 py-2 text-base font-medium text-white/90 hover:bg-white/10">Автопарк</a>
+                    <a href="{{ route('home') }}#catalog"
+                       @if($isTenantNavHome) aria-current="page" @endif
+                       @click="mobileNavOpen = false"
+                       class="flex min-h-11 items-center rounded-lg px-3 py-2 text-base font-medium {{ $isTenantNavHome ? 'text-moto-amber bg-white/10' : 'text-white/90 hover:bg-white/10' }}">Автопарк</a>
                     @foreach($tenantMainMenuPages ?? [] as $navItem)
-                        <a href="{{ $navItem['url'] }}" @click="mobileNavOpen = false" class="flex min-h-11 items-center rounded-lg px-3 py-2 text-base font-medium text-white/90 hover:bg-white/10">{{ $navItem['label'] }}</a>
+                        @php $navItemActive = $tenantNavPathMatches($navItem['url']); @endphp
+                        <a href="{{ $navItem['url'] }}"
+                           @if($navItemActive) aria-current="page" @endif
+                           @click="mobileNavOpen = false"
+                           class="flex min-h-11 items-center rounded-lg px-3 py-2 text-base font-medium {{ $navItemActive ? 'text-moto-amber bg-white/10' : 'text-white/90 hover:bg-white/10' }}">{{ $navItem['label'] }}</a>
                     @endforeach
                 @endif
                 @if($contacts['phone'] ?? null)

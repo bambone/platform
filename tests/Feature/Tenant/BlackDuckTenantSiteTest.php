@@ -6,6 +6,7 @@ namespace Tests\Feature\Tenant;
 
 use App\Models\CrmRequest;
 use App\Tenant\BlackDuck\BlackDuckContentConstants;
+use App\Tenant\BlackDuck\BlackDuckMediaCatalog;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\Tenant\BlackDuckBootstrap;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,6 +45,114 @@ final class BlackDuckTenantSiteTest extends TestCase
         $response->assertOk();
         $response->assertSee('Black Duck', false);
         $response->assertSee('912', false);
+    }
+
+    public function test_home_does_not_include_pruned_or_inline_lead_form_sections(): void
+    {
+        $tid = (int) DB::table('tenants')->where('slug', BlackDuckBootstrap::SLUG)->value('id');
+        $homeId = (int) DB::table('pages')->where('tenant_id', $tid)->where('slug', 'home')->value('id');
+        $this->assertGreaterThan(0, $homeId);
+        $keys = DB::table('page_sections')
+            ->where('tenant_id', $tid)
+            ->where('page_id', $homeId)
+            ->pluck('section_key')
+            ->all();
+        foreach (['expert_lead_form', 'vehicle_class', 'package_matrix'] as $bad) {
+            $this->assertNotContains($bad, $keys, 'Pruned home section should not exist: '.$bad);
+        }
+    }
+
+    public function test_home_service_hub_uses_preview_matrix_size(): void
+    {
+        $tid = (int) DB::table('tenants')->where('slug', BlackDuckBootstrap::SLUG)->value('id');
+        $homeId = (int) DB::table('pages')->where('tenant_id', $tid)->where('slug', 'home')->value('id');
+        $row = DB::table('page_sections')
+            ->where('tenant_id', $tid)
+            ->where('page_id', $homeId)
+            ->where('section_key', 'service_hub')
+            ->first();
+        $this->assertNotNull($row);
+        $d = is_string($row->data_json) ? json_decode($row->data_json, true) : $row->data_json;
+        $this->assertIsArray($d);
+        $items = is_array($d['items'] ?? null) ? $d['items'] : [];
+        $this->assertCount(
+            count(BlackDuckContentConstants::HOME_SERVICE_PREVIEW_SLUGS),
+            $items,
+        );
+    }
+
+    public function test_home_renders_primary_lead_and_works_cta_hrefs(): void
+    {
+        $tid = (int) DB::table('tenants')->where('slug', BlackDuckBootstrap::SLUG)->value('id');
+        $host = (string) DB::table('tenant_domains')->where('tenant_id', $tid)->value('host');
+        $r = $this->call('GET', 'http://'.$host.'/');
+        $r->assertOk();
+        $h = (string) $r->getContent();
+        $this->assertStringContainsString(BlackDuckContentConstants::PRIMARY_LEAD_URL, $h);
+        $this->assertStringContainsString(BlackDuckContentConstants::WORKS_PAGE_URL, $h);
+    }
+
+    public function test_public_home_does_not_link_to_expert_inquiry_hash(): void
+    {
+        $tid = (int) DB::table('tenants')->where('slug', BlackDuckBootstrap::SLUG)->value('id');
+        $host = (string) DB::table('tenant_domains')->where('tenant_id', $tid)->value('host');
+        $h = (string) $this->call('GET', 'http://'.$host.'/')->getContent();
+        $this->assertStringNotContainsString('#expert-inquiry', $h);
+    }
+
+    public function test_ppf_landing_does_not_render_expert_lead_mega_block(): void
+    {
+        $tid = (int) DB::table('tenants')->where('slug', BlackDuckBootstrap::SLUG)->value('id');
+        $host = (string) DB::table('tenant_domains')->where('tenant_id', $tid)->value('host');
+        $r = $this->call('GET', 'http://'.$host.'/ppf');
+        $r->assertOk();
+        $html = (string) $r->getContent();
+        $this->assertStringNotContainsString('expert-inquiry-block', $html);
+        $this->assertStringNotContainsString('id="expert-inquiry', $html);
+    }
+
+    public function test_raboty_renders_and_uses_lead_href_in_cta(): void
+    {
+        $tid = (int) DB::table('tenants')->where('slug', BlackDuckBootstrap::SLUG)->value('id');
+        $host = (string) DB::table('tenant_domains')->where('tenant_id', $tid)->value('host');
+        $r = $this->call('GET', 'http://'.$host.'/raboty');
+        $r->assertOk();
+        $this->assertStringContainsString(BlackDuckContentConstants::PRIMARY_LEAD_URL, (string) $r->getContent());
+    }
+
+    public function test_home_hides_both_result_sections_when_no_curated_media(): void
+    {
+        $tid = (int) DB::table('tenants')->where('slug', BlackDuckBootstrap::SLUG)->value('id');
+        $homeId = (int) DB::table('pages')->where('tenant_id', $tid)->where('slug', 'home')->value('id');
+        foreach (['before_after', 'case_cards'] as $key) {
+            $vis = (bool) DB::table('page_sections')
+                ->where('tenant_id', $tid)
+                ->where('page_id', $homeId)
+                ->where('section_key', $key)
+                ->value('is_visible');
+            $this->assertFalse($vis, 'Without stored proof images, '.$key.' should be hidden');
+        }
+    }
+
+    public function test_ppf_service_proof_section_hidden_without_catalog_gallery(): void
+    {
+        $tid = (int) DB::table('tenants')->where('slug', BlackDuckBootstrap::SLUG)->value('id');
+        $pageId = (int) DB::table('pages')->where('tenant_id', $tid)->where('slug', 'ppf')->value('id');
+        $this->assertGreaterThan(0, $pageId);
+        $vis = (bool) DB::table('page_sections')
+            ->where('tenant_id', $tid)
+            ->where('page_id', $pageId)
+            ->where('section_key', 'service_proof')
+            ->value('is_visible');
+        $this->assertFalse($vis);
+    }
+
+    public function test_media_catalog_loads_for_tenant(): void
+    {
+        $tid = (int) DB::table('tenants')->where('slug', BlackDuckBootstrap::SLUG)->value('id');
+        $c = BlackDuckMediaCatalog::loadOrEmpty($tid);
+        $this->assertSame(1, $c['version']);
+        $this->assertIsArray($c['assets']);
     }
 
     public function test_seeded_bookable_instant_and_confirmation_services_exist(): void

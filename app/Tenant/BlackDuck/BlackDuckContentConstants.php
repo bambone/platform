@@ -9,8 +9,12 @@ use Database\Seeders\Tenant\BlackDuckBootstrap;
 /**
  * Freeze-лист Q1: каноничные публичные данные и внешние ссылки (источник для refresh-команд и bootstrap).
  *
+ * Медиа: Яндекс.Карты/внешние каталоги — только этап отбора. На сайт попадают оптимизированные файлы
+ * (curated-export) и пути из {@see \App\Tenant\BlackDuck\BlackDuckMediaCatalog}, не внешние URL в src.
+ *
  * @see BlackDuckContentRefresher
  * @see BlackDuckBootstrap
+ * @see BlackDuckMediaCatalog
  */
 final class BlackDuckContentConstants
 {
@@ -34,6 +38,26 @@ final class BlackDuckContentConstants
      * Основной CTA «запись / расчёт»: отдельная страница, форма contact_inquiry (не встроенный expert_lead внизу лендинга).
      */
     public const PRIMARY_LEAD_URL = '/contacts#contact-inquiry';
+
+    /** Вторичный CTA с home: визуальное портфолио на /raboty (не lead-форма). */
+    public const WORKS_PAGE_URL = '/raboty';
+
+    /**
+     * Slug витринных карточек на home (6–8), без полного каталога. Порядок = порядок на главной.
+     * Включает только сущности с лендингом или осмысленный CTA на заявку.
+     *
+     * @var list<string>
+     */
+    public const HOME_SERVICE_PREVIEW_SLUGS = [
+        'detejling-mojka',
+        'ppf',
+        'keramika',
+        'himchistka-salona',
+        'polirovka-kuzova',
+        'tonirovka',
+        'predprodazhnaya',
+        'pdr',
+    ];
 
     public const URL_2GIS = 'https://2gis.ru/chelyabinsk/inside/2111698024786654/query/%D0%B4%D0%B5%D1%82%D0%B5%D0%B9%D0%BB%D0%B8%D0%BD%D0%B3/firm/70000001053335703';
 
@@ -82,6 +106,55 @@ final class BlackDuckContentConstants
      *
      * @return list<array{slug: string, title: string, blurb: string, booking_mode: string, has_landing: bool}>
      */
+    /**
+     * Подмножество {@see serviceMatrixQ1()} для превью на главной: 6–8 сильных направлений.
+     *
+     * @return list<array{slug: string, title: string, blurb: string, booking_mode: string, has_landing: bool}>
+     */
+    public static function serviceMatrixHomePreview(): array
+    {
+        $allow = array_flip(self::HOME_SERVICE_PREVIEW_SLUGS);
+        $out = [];
+        foreach (self::serviceMatrixQ1() as $row) {
+            if (isset($allow[(string) $row['slug']])) {
+                $out[] = $row;
+            }
+        }
+        if ($out === []) {
+            foreach (self::serviceMatrixQ1() as $row) {
+                if (str_starts_with((string) $row['slug'], '#')) {
+                    continue;
+                }
+                $out[] = $row;
+                if (count($out) >= 8) {
+                    break;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Короткий подзаголовок для home-карточки (маркетинг), если отличается от blurb.
+     * Ключ — slug из {@see serviceMatrixQ1()}.
+     *
+     * @return array<string, string>
+     */
+    public static function homeServiceCardPreviewSubtitlesBySlug(): array
+    {
+        return [
+            'detejling-mojka' => 'Быстрые слоты, когда расписание включено.',
+            'ppf' => 'Защита ЛКП: зоны и кромка под задачу.',
+            'keramika' => 'Глянец и уход: план с мастером.',
+            'himchistka-salona' => 'Салон и материалы — после осмотра.',
+            'polirovka-kuzova' => 'Абразив и финиш по состоянию ЛКП.',
+            'tonirovka' => 'Комфорт и внешний вид стёкол/оптики.',
+            'predprodazhnaya' => 'Внешний вид под осмотр покупателя.',
+            'pdr' => 'Вмятины без окраса — оценка на месте.',
+        ];
+    }
+
     public static function serviceMatrixQ1(): array
     {
         return [

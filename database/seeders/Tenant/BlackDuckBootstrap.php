@@ -20,6 +20,7 @@ use App\Scheduling\Enums\SchedulingScope;
 use App\Scheduling\Enums\TentativeEventsPolicy;
 use App\Scheduling\Enums\UnconfirmedRequestsPolicy;
 use App\Tenant\BlackDuck\BlackDuckContentConstants;
+use App\Tenant\BlackDuck\BlackDuckMediaCatalog;
 use App\Tenant\StorageQuota\TenantStorageQuotaService;
 use App\TenantSiteSetup\BookingNotificationsQuestionnaireRepository;
 use Illuminate\Database\Seeder;
@@ -370,6 +371,26 @@ final class BlackDuckBootstrap extends Seeder
      */
     private function defServiceLanding(string $slug, string $name, string $lead): array
     {
+        $sections = [
+            $this->sec('hero', 'hero', 'Hero', 0, [
+                'variant' => 'full_background',
+                'heading' => $name,
+                'subheading' => $lead,
+                'button_text' => 'Оставить заявку',
+                'button_url' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
+                'overlay_dark' => true,
+            ]),
+            $this->sec('body', 'rich_text', 'Суть', 20, [
+                'content' => '<p>'.e($lead).' Точные сроки и стоимость фиксируем после осмотра или по чек-листу, если применимо.</p>',
+            ]),
+        ];
+        if (in_array($slug, BlackDuckMediaCatalog::SERVICE_PROOF_LANDING_SLUGS, true)) {
+            $sections[] = $this->sec('service_proof', 'case_study_cards', 'На фото', 40, [
+                'heading' => 'На фото',
+                'items' => [],
+            ]);
+        }
+
         return [
             'slug' => $slug,
             'name' => $name,
@@ -377,19 +398,7 @@ final class BlackDuckBootstrap extends Seeder
             'status' => 'published',
             'show_in_main_menu' => false,
             'main_menu_sort_order' => 0,
-            'sections' => [
-                $this->sec('hero', 'hero', 'Hero', 0, [
-                    'variant' => 'full_background',
-                    'heading' => $name,
-                    'subheading' => $lead,
-                    'button_text' => 'Оставить заявку',
-                    'button_url' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
-                    'overlay_dark' => true,
-                ]),
-                $this->sec('body', 'rich_text', 'Суть', 20, [
-                    'content' => '<p>'.e($lead).' Точные сроки и стоимость фиксируем после осмотра или по чек-листу, если применимо.</p>',
-                ]),
-            ],
+            'sections' => $sections,
         ];
     }
 
@@ -406,7 +415,21 @@ final class BlackDuckBootstrap extends Seeder
             'show_in_main_menu' => true,
             'main_menu_sort_order' => 20,
             'sections' => [
-                $this->sec('case_list', 'case_study_cards', 'Кейсы', 0, [
+                $this->sec('works_hero', 'hero', 'Видео', 0, [
+                    'variant' => 'full_background',
+                    'heading' => 'Работы Black Duck',
+                    'subheading' => 'Фрагменты этапов и итогов. Полный подбор — в зале и по заявке.',
+                    'button_text' => 'Заявка и расчёт',
+                    'button_url' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
+                    'video_src' => '',
+                    'video_poster' => '',
+                    'overlay_dark' => true,
+                ]),
+                $this->sec('works_before_after', 'before_after_slider', 'До / после', 10, [
+                    'heading' => 'До и после',
+                    'pairs' => [],
+                ]),
+                $this->sec('case_list', 'case_study_cards', 'Кейсы', 20, [
                     'heading' => 'Примеры работ',
                     'items' => [
                         [
@@ -422,6 +445,9 @@ final class BlackDuckBootstrap extends Seeder
                             'duration' => 'по плану',
                         ],
                     ],
+                ]),
+                $this->sec('works_cta', 'rich_text', 'Связь', 40, [
+                    'content' => '<p class="text-zinc-300">Готовы обсудить работу? <a class="font-medium text-[#36C7FF] underline" href="'.e(BlackDuckContentConstants::PRIMARY_LEAD_URL).'">Оставьте заявку</a> — ответим и согласуем план.</p>',
                 ]),
             ],
         ];
@@ -561,6 +587,25 @@ final class BlackDuckBootstrap extends Seeder
      */
     private function homeSectionRows(): array
     {
+        $preview = BlackDuckContentConstants::serviceMatrixHomePreview();
+        $subs = BlackDuckContentConstants::homeServiceCardPreviewSubtitlesBySlug();
+        $hubItems = [];
+        foreach ($preview as $row) {
+            $slug = (string) $row['slug'];
+            $cta = str_starts_with($slug, '#') ? BlackDuckContentConstants::PRIMARY_LEAD_URL : '/'.$slug;
+            $hubItems[] = [
+                'title' => $row['title'],
+                'card_subtitle' => (string) ($subs[$slug] ?? $row['blurb']),
+                'price_from' => 'по задаче',
+                'duration' => 'по плану',
+                'online_booking' => $slug === 'detejling-mojka',
+                'needs_confirmation' => $slug !== 'detejling-mojka',
+                'booking_mode' => (string) $row['booking_mode'],
+                'cta_url' => $cta,
+                'image_url' => '',
+            ];
+        }
+
         return [
             $this->sec('expert_hero', 'expert_hero', 'Hero', 0, [
                 'heading' => 'Black Duck Detailing',
@@ -581,31 +626,18 @@ final class BlackDuckBootstrap extends Seeder
             ]),
             $this->sec('service_hub', 'service_hub_grid', 'Направления', 10, [
                 'heading' => 'Ключевые направления',
-                'items' => [
-                    [
-                        'title' => 'Детейлинг-мойка',
-                        'price_from' => 'от —',
-                        'duration' => '1–2 ч',
-                        'online_booking' => true,
-                        'needs_confirmation' => false,
-                        'cta_url' => '/uslugi',
-                    ],
-                    [
-                        'title' => 'PPF / керамика',
-                        'price_from' => 'по осмотру',
-                        'duration' => 'по плану',
-                        'online_booking' => false,
-                        'needs_confirmation' => true,
-                        'cta_url' => '/uslugi',
-                    ],
-                ],
+                'items' => $hubItems,
             ]),
             $this->sec('before_after', 'before_after_slider', 'До/после', 20, [
                 'heading' => 'Результат в деталях',
+                'proof_works_cta_label' => 'Смотреть работы',
+                'proof_works_cta_href' => BlackDuckContentConstants::WORKS_PAGE_URL,
                 'pairs' => [],
             ]),
             $this->sec('case_cards', 'case_study_cards', 'Кейсы', 30, [
-                'heading' => 'Последние проекты',
+                'heading' => 'Свежие проекты',
+                'proof_works_cta_label' => 'Смотреть работы',
+                'proof_works_cta_href' => BlackDuckContentConstants::WORKS_PAGE_URL,
                 'items' => [
                     [
                         'vehicle' => 'SUV',
@@ -613,14 +645,6 @@ final class BlackDuckBootstrap extends Seeder
                         'result' => 'Согласованный глянец, уход за стыками плёнки.',
                         'duration' => '3 дня',
                     ],
-                ],
-            ]),
-            $this->sec('vehicle_class', 'vehicle_class_selector', 'Класс авто', 40, [
-                'heading' => 'Класс авто (для заявки)',
-                'options' => [
-                    ['key' => 'a', 'label' => 'A / компакт'],
-                    ['key' => 'bc', 'label' => 'B / C, кросс'],
-                    ['key' => 'suv_plus', 'label' => 'D / E / SUV+'],
                 ],
             ]),
             $this->sec('reviews', 'review_feed', 'Отзывы', 50, [
@@ -633,19 +657,16 @@ final class BlackDuckBootstrap extends Seeder
                 'section_heading' => 'Частые вопросы',
                 'source' => 'faqs_table',
             ]),
-            $this->sec('package_matrix', 'package_matrix', 'Пакеты', 70, [
-                'heading' => 'Сравнение пакетов (пример)',
-                'columns' => [
-                    ['name' => 'База', 'price_hint' => 'от — · мойка + осмотр'],
-                    ['name' => 'Оптимум', 'price_hint' => 'от — · керамика зоны риска'],
-                    ['name' => 'Премиум', 'price_hint' => 'по осмотру · многоэтапно'],
-                ],
-            ]),
             $this->sec('messenger', 'messenger_capture_bar', 'Каналы', 85, [
-                'title' => 'Связаться быстро',
+                'title' => 'Связь с центром',
+                'subheading' => 'Заявка — основной путь. Быстрые ответы в мессенджерах.',
                 'show_whatsapp' => true,
                 'show_telegram' => true,
                 'show_call' => true,
+                'primary_lead_label' => 'Заявка на сайте',
+                'primary_lead_href' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
+                'works_cta_label' => 'Смотреть работы',
+                'works_cta_href' => BlackDuckContentConstants::WORKS_PAGE_URL,
             ]),
             $this->sec('sticky_cta', 'sticky_mobile_cta_dock', 'Моб. CTA', 88, [
                 'enabled' => true,

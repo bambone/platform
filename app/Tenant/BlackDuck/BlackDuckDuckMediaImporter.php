@@ -92,7 +92,12 @@ final class BlackDuckDuckMediaImporter
             return [];
         }
 
-        $this->mergeImageKeysIntoPageSections((int) $tenant->id, $outKeys, count(BlackDuckContentConstants::serviceMatrixQ1()));
+        $this->mergeImageKeysIntoPageSections(
+            (int) $tenant->id,
+            $outKeys,
+            count(BlackDuckContentConstants::serviceMatrixHomePreview()),
+            count(BlackDuckContentConstants::serviceMatrixQ1()),
+        );
         HomeController::forgetCachedPayloadForTenant((int) $tenant->id);
 
         return $outKeys;
@@ -161,15 +166,25 @@ final class BlackDuckDuckMediaImporter
 
     /**
      * @param  list<string>  $orderedKeys  Логические ключи (site/brand/hub/01.jpg, …) по порядку
+     * @param  int|null  $homeHubSlotCount  Слоты на главной (preview)
+     * @param  int|null  $uslugiHubSlotCount  Слоты на /uslugi (полный каталог)
      */
-    public function mergeImageKeysIntoPageSections(int $tenantId, array $orderedKeys, ?int $serviceHubSlotCount = null): void
-    {
+    public function mergeImageKeysIntoPageSections(
+        int $tenantId,
+        array $orderedKeys,
+        ?int $homeHubSlotCount = null,
+        ?int $uslugiHubSlotCount = null,
+    ): void {
         if ($orderedKeys === []) {
             return;
         }
-        $hubSlots = $serviceHubSlotCount ?? count(BlackDuckContentConstants::serviceMatrixQ1());
-        if ($hubSlots < 1) {
-            $hubSlots = 1;
+        $homeSlots = $homeHubSlotCount ?? count(BlackDuckContentConstants::serviceMatrixHomePreview());
+        $uslugiSlots = $uslugiHubSlotCount ?? count(BlackDuckContentConstants::serviceMatrixQ1());
+        if ($homeSlots < 1) {
+            $homeSlots = 1;
+        }
+        if ($uslugiSlots < 1) {
+            $uslugiSlots = 1;
         }
         $pick = static function (int $i) use ($orderedKeys): string {
             $n = count($orderedKeys);
@@ -181,14 +196,14 @@ final class BlackDuckDuckMediaImporter
             $tenantId,
             'home',
             'service_hub',
-            $hubSlots,
+            $homeSlots,
             $pick,
         );
         $this->mergeServiceHub(
             $tenantId,
             'uslugi',
             'service_hub',
-            $hubSlots,
+            $uslugiSlots,
             $pick,
         );
         for ($c = 0; $c < 3; $c++) {

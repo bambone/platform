@@ -4,8 +4,8 @@
     $c = (array) ($contacts ?? []);
     $phone = (string) ($c['phone'] ?? '');
     $phoneHref = $phone !== '' ? 'tel:'.preg_replace('/\D+/', '', $phone) : '#';
-    $book = (string) ($d['book_anchor'] ?? '#expert-inquiry');
-    $quote = (string) ($d['quote_anchor'] ?? '#expert-inquiry');
+    $book = (string) ($d['book_anchor'] ?? \App\Tenant\BlackDuck\BlackDuckContentConstants::PRIMARY_LEAD_URL);
+    $quote = (string) ($d['quote_anchor'] ?? \App\Tenant\BlackDuck\BlackDuckContentConstants::PRIMARY_LEAD_URL);
 @endphp
 <nav
     class="bd-sticky-dock pointer-events-auto fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#0A1220]/95 px-2 py-2 backdrop-blur sm:hidden"

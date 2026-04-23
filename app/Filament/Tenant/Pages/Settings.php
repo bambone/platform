@@ -197,6 +197,7 @@ class Settings extends Page
     public function form(Schema $schema): Schema
     {
         $tenant = \currentTenant();
+        $isBlackDuckTheme = $tenant !== null && (string) ($tenant->theme_key ?? '') === 'black_duck';
 
         $siteIdentityFields = [
             TextInput::make('general_site_name')
@@ -415,13 +416,19 @@ class Settings extends Page
                                     ->columns(1),
                             ]),
 
-                        'enrollment' => Tab::make(__('tenant_admin_settings.tabs.enrollment'))
+                        'enrollment' => Tab::make(
+                            $isBlackDuckTheme ? 'Заявка и CTA' : __('tenant_admin_settings.tabs.enrollment')
+                        )
                             ->id('enrollment')
-                            ->icon('heroicon-o-academic-cap')
-                            ->visible(fn (): bool => $tenant !== null && in_array((string) ($tenant->theme_key ?? ''), ['expert_auto', 'advocate_editorial'], true))
+                            ->icon($isBlackDuckTheme ? 'heroicon-o-clipboard-document-check' : 'heroicon-o-academic-cap')
+                            ->visible(fn (): bool => $tenant !== null && in_array((string) ($tenant->theme_key ?? ''), ['expert_auto', 'advocate_editorial', 'black_duck'], true))
                             ->schema([
                                 Section::make('Кнопка «Записаться»')
-                                    ->description('Для тем с программами и записями (например автошкола, адвокат). Обычно удобнее окно с формой; отдельная страница — если нужен длинный сценарий.')
+                                    ->description(
+                                        $isBlackDuckTheme
+                                            ? 'Поведение плавающей кнопки и CTA на услугах: окно с формой, отдельная страница или прокрутка к форме. Те же поля, что и у тем «школ/программ», остаются в настройках для совместимости.'
+                                            : 'Для тем с программами и записями (например автошкола, адвокат). Обычно удобнее окно с формой; отдельная страница — если нужен длинный сценарий.'
+                                    )
                                     ->schema([
                                         Select::make('programs_cta_behavior')
                                             ->label('Что делает кнопка')
@@ -436,9 +443,13 @@ class Settings extends Page
                                             ->label('Адрес страницы записи')
                                             ->maxLength(128)
                                             ->regex('/^[a-z0-9\-]+$/')
-                                            ->helperText('Часть URL без слешей, латиница и дефисы. Пример: programs — откроется страница /programs. Для предзаполнения программы можно добавить ?program= в ссылке.'),
+                                            ->helperText(
+                                                $isBlackDuckTheme
+                                                    ? 'Часть URL без слешей, латиница и дефисы. Например: uslugi — откроется /uslugi. Для предзаполнения карточки услуги при необходимости используйте ?program= в ссылке (как в «школьных» темах).'
+                                                    : 'Часть URL без слешей, латиница и дефисы. Пример: programs — откроется страница /programs. Для предзаполнения программы можно добавить ?program= в ссылке.'
+                                            ),
                                         TextInput::make('programs_modal_title')
-                                            ->label('Заголовок окна с формой')
+                                            ->label($isBlackDuckTheme ? 'Заголовок окна с заявкой' : 'Заголовок окна с формой')
                                             ->maxLength(255),
                                         Textarea::make('programs_modal_success_message')
                                             ->label('Сообщение после отправки')

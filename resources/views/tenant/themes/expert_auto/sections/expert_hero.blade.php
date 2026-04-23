@@ -18,10 +18,17 @@
     if ($heroUrl === '' && isset($data['hero_image_slot']) && is_array($data['hero_image_slot'])) {
         $heroUrl = trim((string) ($data['hero_image_slot']['url'] ?? ''));
     }
+    $isBlackDuck = tenant()?->themeKey() === 'black_duck';
+    if ($isBlackDuck && $heroUrl === '') {
+        $heroUrl = trim((string) (\tenant_branding_hero_url() ?? ''));
+    }
+    if ($isBlackDuck && $heroUrl === '') {
+        $heroUrl = trim((string) (\tenant_branding_logo_url() ?? ''));
+    }
     $heroUrl = ExpertBrandMediaUrl::resolve($heroUrl);
     $heroAlt = trim((string) ($data['hero_image_alt'] ?? ''));
     if ($heroAlt === '') {
-        $heroAlt = 'Марат Афлятунов — инструктор по вождению';
+        $heroAlt = $isBlackDuck ? 'Black Duck Detailing, детейлинг-центр в Челябинске' : 'Марат Афлятунов — инструктор по вождению';
     }
     $hasPhoto = $heroUrl !== '';
     $videoUrl = ExpertBrandMediaUrl::resolve(trim((string) ($data['hero_video_url'] ?? '')));
@@ -34,7 +41,7 @@
     $dialogId = 'expert-hero-video-'.(int) data_get($section ?? [], 'id', 0);
     $eyebrow = trim((string) ($data['hero_eyebrow'] ?? ''));
     if ($eyebrow === '') {
-        $eyebrow = 'Инструктор • Челябинск и область';
+        $eyebrow = $isBlackDuck ? 'Детейлинг · Челябинск' : 'Инструктор • Челябинск и область';
     }
     $headingDisplay = RussianTypography::tiePrepositionsToNextWord($heading);
     $subDisplay = $sub !== '' ? RussianTypography::tiePrepositionsToNextWord($sub) : '';

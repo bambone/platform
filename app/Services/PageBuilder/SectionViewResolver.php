@@ -8,6 +8,10 @@ use App\PageBuilder\LegacySectionTypeResolver;
 use App\PageBuilder\PageSectionTypeRegistry;
 use Illuminate\Support\Facades\View;
 
+/**
+ * Секции страницы: для {@code black_duck} кандидаты включают {@code tenant.themes.expert_auto.*} после слоя темы
+ * (та же модель наследования, что и {@see TenantViewResolver}).
+ */
 final class SectionViewResolver
 {
     public function __construct(
@@ -36,6 +40,9 @@ final class SectionViewResolver
         $candidates = [];
         if ($themeKey !== '') {
             $candidates[] = "tenant.themes.{$themeKey}.{$logical}";
+        }
+        if ($themeKey === 'black_duck') {
+            $candidates[] = "tenant.themes.expert_auto.{$logical}";
         }
         $candidates[] = "tenant.themes.default.{$logical}";
         $candidates[] = "tenant.{$logical}";

@@ -2,7 +2,8 @@
 
 namespace Database\Seeders;
 
-use Database\Seeders\Tenant\AflyatunovExpertBootstrap;
+use Database\Seeders\Tenant\AflyatunovExpertBootstrapSeeder;
+use Database\Seeders\Tenant\BlackDuckBootstrap;
 use Database\Seeders\Tenant\DementievAdvocateBootstrap;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -35,6 +36,7 @@ class DatabaseSeeder extends Seeder
         // Демо-клиенты из bootstrap-миграций: без этого шага `php artisan db:seed` не создаёт/не досинхронизирует
         // тенантов, заведённых только миграциями — в консоли платформы (раздел «Клиенты») их не будет видно.
         $this->call(DementievAdvocateBootstrap::class);
-        AflyatunovExpertBootstrap::run();
+        $this->call(AflyatunovExpertBootstrapSeeder::class);
+        $this->call(BlackDuckBootstrap::class);
     }
 }

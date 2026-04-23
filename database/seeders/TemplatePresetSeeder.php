@@ -16,6 +16,7 @@ class TemplatePresetSeeder extends Seeder
         $this->seedMotoRental();
         $this->seedExpertAutoStarter();
         $this->seedAdvocateEditorialStarter();
+        $this->seedBlackDuckStarter();
     }
 
     private function seedMotoRental(): void
@@ -198,6 +199,72 @@ class TemplatePresetSeeder extends Seeder
                     ],
                 ],
                 'sort_order' => 3,
+                'is_active' => true,
+            ]
+        );
+    }
+
+    private function seedBlackDuckStarter(): void
+    {
+        TemplatePreset::firstOrCreate(
+            ['slug' => 'black-duck-starter'],
+            [
+                'name' => 'Detailing / Black Duck (black_duck)',
+                'description' => 'Премиальная витрина: хаб, посадочные, кейсы, FAQ; в карточке клиента — тема black_duck.',
+                'config_json' => [
+                    'theme' => [
+                        'theme_key_hint' => 'black_duck',
+                        'primary_color' => '#F0FF00',
+                        'font_family' => 'Inter',
+                    ],
+                    'default_pages' => [
+                        'home' => ['name' => 'Главная', 'template' => 'default', 'status' => 'published'],
+                        'uslugi' => ['name' => 'Услуги', 'template' => 'default', 'status' => 'published'],
+                        'contacts' => ['name' => 'Контакты', 'template' => 'default', 'status' => 'published'],
+                    ],
+                    'behavior_flags' => [
+                        'booking_widget_enabled' => true,
+                        'reviews_enabled' => true,
+                        'map_enabled' => true,
+                        'blog_enabled' => false,
+                    ],
+                    'default_sections' => [
+                        'home' => [
+                            [
+                                'section_key' => 'expert_hero',
+                                'section_type' => 'expert_hero',
+                                'title' => 'Hero',
+                                'data_json' => [
+                                    'heading' => 'Black Duck Detailing',
+                                    'subheading' => 'Премиальный детейлинг, запись и расчёт онлайн.',
+                                    'primary_cta_anchor' => '#expert-inquiry',
+                                ],
+                                'sort_order' => 0,
+                            ],
+                            [
+                                'section_key' => 'availability_ribbon',
+                                'section_type' => 'availability_ribbon',
+                                'title' => 'Инфо',
+                                'data_json' => [
+                                    'text' => 'Сложные работы согласуются с календарём; короткие — по слотам в расписании.',
+                                ],
+                                'sort_order' => 5,
+                            ],
+                            [
+                                'section_key' => 'expert_lead_form',
+                                'section_type' => 'expert_lead_form',
+                                'title' => 'Заявка',
+                                'data_json' => [
+                                    'heading' => 'Запись и расчёт',
+                                    'form_key' => 'expert_lead',
+                                    'section_id' => 'expert-inquiry',
+                                ],
+                                'sort_order' => 100,
+                            ],
+                        ],
+                    ],
+                ],
+                'sort_order' => 4,
                 'is_active' => true,
             ]
         );

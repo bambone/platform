@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\TenantFooterLink;
 use App\Models\TenantFooterSection;
 use App\Models\TenantSetting;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
@@ -71,6 +72,7 @@ final class TenantFooterResolver
 
         if ($sectionsOut === []) {
             return $this->minimalFooter(
+                $tenant,
                 $siteName,
                 $year,
                 $footerTagline,
@@ -128,6 +130,7 @@ final class TenantFooterResolver
     }
 
     private function minimalFooter(
+        Tenant $tenant,
         string $siteName,
         int $year,
         string $footerTagline,
@@ -135,11 +138,18 @@ final class TenantFooterResolver
     ): array {
         $systemLinks = [];
         /** @var list<array{route: string, path: string, label: string}> $candidates Относительные пути — корректны на любом домене тенанта (без route() в сидере/CLI). */
-        $candidates = [
-            ['route' => 'contacts', 'path' => '/contacts', 'label' => 'Контакты'],
-            ['route' => 'terms', 'path' => '/usloviya-arenda', 'label' => 'Правила аренды'],
-            ['route' => 'privacy', 'path' => '/politika-konfidencialnosti', 'label' => 'Политика конфиденциальности'],
-        ];
+        if ($tenant->themeKey() === 'black_duck') {
+            $candidates = [
+                ['route' => 'contacts', 'path' => '/contacts', 'label' => 'Контакты'],
+                ['route' => 'privacy', 'path' => '/politika-konfidencialnosti', 'label' => 'Политика конфиденциальности'],
+            ];
+        } else {
+            $candidates = [
+                ['route' => 'contacts', 'path' => '/contacts', 'label' => 'Контакты'],
+                ['route' => 'terms', 'path' => '/usloviya-arenda', 'label' => 'Правила аренды'],
+                ['route' => 'privacy', 'path' => '/politika-konfidencialnosti', 'label' => 'Политика конфиденциальности'],
+            ];
+        }
         foreach ($candidates as $c) {
             if (! Route::has($c['route'])) {
                 continue;
@@ -251,7 +261,7 @@ final class TenantFooterResolver
             ? $cleanMeta['group_titles']
             : [];
 
-        /** @var array<string, \Illuminate\Support\Collection<int, TenantFooterLink>> $byGroup */
+        /** @var array<string, Collection<int, TenantFooterLink>> $byGroup */
         $byGroup = [];
         foreach ($links as $link) {
             $gk = (string) ($link->group_key ?? '');

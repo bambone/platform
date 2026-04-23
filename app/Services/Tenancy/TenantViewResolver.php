@@ -14,6 +14,10 @@ use InvalidArgumentException;
  * Themed: tenant.themes.{theme_key}.{logical}
  * Default theme layer: tenant.themes.default.{logical}
  * Engine fallback: tenant.{logical}
+ *
+ * Осознанное наследование: при {@code theme_key = black_duck} после слоя {@code tenant.themes.black_duck.*}
+ * подставляется {@code tenant.themes.expert_auto.*}, затем default — чтобы не дублировать весь набор partials;
+ * отсутствие black_duck-шаблона не падает сразу (см. лог {@code tenancy.log_view_resolution}).
  */
 final class TenantViewResolver
 {
@@ -41,6 +45,9 @@ final class TenantViewResolver
         $candidates = [];
         if ($themeKeyNormalized !== '') {
             $candidates[] = "tenant.themes.{$themeKeyNormalized}.{$logicalName}";
+        }
+        if ($themeKeyNormalized === 'black_duck') {
+            $candidates[] = "tenant.themes.expert_auto.{$logicalName}";
         }
         $candidates[] = "tenant.themes.default.{$logicalName}";
         $candidates[] = "tenant.{$logicalName}";
@@ -113,10 +120,13 @@ final class TenantViewResolver
         if ($themeKeyNormalized !== '') {
             $candidates[] = "tenant.themes.{$themeKeyNormalized}.{$logicalName}";
         }
+        if ($themeKeyNormalized === 'black_duck') {
+            $candidates[] = "tenant.themes.expert_auto.{$logicalName}";
+        }
         $candidates[] = "tenant.themes.default.{$logicalName}";
         $candidates[] = "tenant.{$logicalName}";
 
-        foreach (array_unique($candidates) as $view) {
+        foreach (array_values(array_unique($candidates)) as $view) {
             if (View::exists($view)) {
                 return true;
             }

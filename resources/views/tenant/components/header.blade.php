@@ -1,7 +1,8 @@
 @php
     $isExpertAuto = tenant()?->themeKey() === 'expert_auto';
     $isAdvocateEditorial = tenant()?->themeKey() === 'advocate_editorial';
-    $isExpertStyleNav = $isExpertAuto || $isAdvocateEditorial;
+    $isBlackDuck = tenant()?->themeKey() === 'black_duck';
+    $isExpertStyleNav = $isExpertAuto || $isAdvocateEditorial || $isBlackDuck;
     $headerBrandTitle = $site_name ?? config('app.name');
     if ($isExpertAuto && is_string($headerBrandTitle)) {
         $parts = preg_split('/\s*[—–]\s*/u', $headerBrandTitle, 2);

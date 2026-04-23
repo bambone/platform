@@ -3,6 +3,14 @@
 namespace App\PageBuilder;
 
 use App\Models\Page;
+use App\PageBuilder\Blueprints\BlackDuck\AvailabilityRibbonBlueprint;
+use App\PageBuilder\Blueprints\BlackDuck\BeforeAfterSliderBlueprint;
+use App\PageBuilder\Blueprints\BlackDuck\CaseStudyCardsBlueprint;
+use App\PageBuilder\Blueprints\BlackDuck\MessengerCaptureBarBlueprint;
+use App\PageBuilder\Blueprints\BlackDuck\PackageMatrixBlueprint;
+use App\PageBuilder\Blueprints\BlackDuck\ServiceHubGridBlueprint;
+use App\PageBuilder\Blueprints\BlackDuck\StickyMobileCtaDockBlueprint;
+use App\PageBuilder\Blueprints\BlackDuck\VehicleClassSelectorBlueprint;
 use App\PageBuilder\Blueprints\CardsTeaserBlueprint;
 use App\PageBuilder\Blueprints\ContactInquirySectionBlueprint;
 use App\PageBuilder\Blueprints\ContactsBlueprint;
@@ -77,6 +85,14 @@ final class PageSectionTypeRegistry
             new FounderExpertBioBlueprint,
             new EnrollmentCtaStripBlueprint,
             new ExpertLeadFormBlueprint,
+            new ServiceHubGridBlueprint,
+            new BeforeAfterSliderBlueprint,
+            new StickyMobileCtaDockBlueprint,
+            new AvailabilityRibbonBlueprint,
+            new VehicleClassSelectorBlueprint,
+            new CaseStudyCardsBlueprint,
+            new PackageMatrixBlueprint,
+            new MessengerCaptureBarBlueprint,
         ];
     }
 
@@ -102,6 +118,14 @@ final class PageSectionTypeRegistry
             new ExpertLeadFormBlueprint,
             new EnrollmentCtaStripBlueprint,
             new CtaBlueprint,
+            new ServiceHubGridBlueprint,
+            new BeforeAfterSliderBlueprint,
+            new StickyMobileCtaDockBlueprint,
+            new AvailabilityRibbonBlueprint,
+            new VehicleClassSelectorBlueprint,
+            new CaseStudyCardsBlueprint,
+            new PackageMatrixBlueprint,
+            new MessengerCaptureBarBlueprint,
         ];
     }
 

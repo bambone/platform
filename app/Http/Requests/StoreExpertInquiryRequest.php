@@ -76,6 +76,9 @@ class StoreExpertInquiryRequest extends FormRequest
 
         $st = (string) ($this->input('source_type') ?? '');
         $needsPrivacy = in_array($st, ['program_enrollment', 'enrollment_cta'], true);
+        if ($tenant !== null && $tenant->themeKey() === 'black_duck') {
+            $needsPrivacy = true;
+        }
 
         return [
             'name' => ['required', 'string', 'max:255'],
@@ -118,6 +121,38 @@ class StoreExpertInquiryRequest extends FormRequest
             'utm_campaign' => ['nullable', 'string', 'max:255'],
             'utm_content' => ['nullable', 'string', 'max:255'],
             'utm_term' => ['nullable', 'string', 'max:255'],
+            /** @deprecated С клиента не влияет на тип CRM для black_duck — только аудит, см. payload client_crm_type_hint. */
+            'crm_request_type' => [
+                'nullable',
+                'string',
+                Rule::in([
+                    'booking_request',
+                    'quote_request',
+                    'callback_request',
+                    'messenger_request',
+                    'question_request',
+                    'expert_service_inquiry',
+                ]),
+            ],
+            'inquiry_intent' => [
+                'nullable',
+                'string',
+                Rule::in([
+                    'book_slot',
+                    'price_quote',
+                    'callback',
+                    'messenger',
+                    'question',
+                    'service_inquiry',
+                ]),
+            ],
+            'service_slug' => ['nullable', 'string', 'max:128'],
+            'service_group' => ['nullable', 'string', 'max:64'],
+            'vehicle_class' => ['nullable', 'string', 'max:64'],
+            'vehicle_make' => ['nullable', 'string', 'max:64'],
+            'vehicle_model' => ['nullable', 'string', 'max:64'],
+            'needs_confirmation' => ['nullable', 'boolean'],
+            'customer_goal' => ['nullable', 'string', 'max:500'],
         ];
     }
 

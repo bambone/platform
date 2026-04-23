@@ -28,7 +28,7 @@ final class ExpertBrandMediaUrl
         }
 
         $tenant = \currentTenant();
-        if ($tenant === null || ! in_array($tenant->themeKey(), ['expert_auto', 'advocate_editorial'], true)) {
+        if ($tenant === null || ! in_array($tenant->themeKey(), ['expert_auto', 'advocate_editorial', 'black_duck'], true)) {
             return $stored;
         }
 
@@ -41,13 +41,35 @@ final class ExpertBrandMediaUrl
 
         $path = parse_url($stored, PHP_URL_PATH);
         $path = is_string($path) ? $path : $stored;
+        $path = str_replace('\\', '/', (string) $path);
+
+        $underBrand = null;
+        if (preg_match('#(?:^|/)(?:public/)?site/brand/(.+)$#i', $path, $m)) {
+            $underBrand = $m[1];
+        }
+
+        if ($underBrand === null) {
+            if (preg_match('#^site/brand/(.+)$#i', ltrim($path, '/'), $m)) {
+                $underBrand = $m[1];
+            }
+        }
+
+        if ($underBrand !== null && is_string($underBrand) && $underBrand !== '') {
+            if (preg_match('#^(.+\.(?:jpe?g|png|gif|webp|avif|mp4|webm))$#i', $underBrand) === 1) {
+                $rel = 'site/brand/'.$underBrand;
+                $fresh = TenantPublicAssetResolver::resolve($rel, $tenantId)
+                    ?? TenantStorage::forTrusted($tenant)->publicUrl($rel);
+
+                return self::appendIntroVideoVersion($fresh, $stored, $tenant);
+            }
+        }
+
         if (! preg_match('#([^/]+\.(?:jpe?g|png|gif|webp|avif|mp4|webm))$#i', $path, $m)) {
             return $stored;
         }
         $file = $m[1];
 
-        $inBrandPath = str_contains($path, '/site/brand/')
-            || str_contains($path, '/public/site/brand/');
+        $inBrandPath = str_contains($path, 'site/brand/');
         if (! $inBrandPath && ! self::isKnownBrandFile($file)) {
             return $stored;
         }

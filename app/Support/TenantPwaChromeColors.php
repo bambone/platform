@@ -30,6 +30,10 @@ final class TenantPwaChromeColors
             return self::ADVOCATE_TOOLBAR;
         }
 
+        if ($tenant->themeKey() === 'black_duck') {
+            return '#0A1220';
+        }
+
         return self::DEFAULT_DARK;
     }
 

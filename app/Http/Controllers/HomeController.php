@@ -34,8 +34,8 @@ class HomeController extends Controller
          * Не кэшируем массив для Blade через Cache::remember: внутри Eloquent Collection / Model.
          * После serialize/unserialize из Redis на проде возможен «incomplete object» и 500 на home.blade.php.
          */
-        if (in_array($tenant->themeKey(), ['expert_auto', 'advocate_editorial'], true)) {
-            return tenant_view('pages.home', $this->buildExpertAutoHomeIndexData());
+        if (in_array($tenant->themeKey(), ['expert_auto', 'advocate_editorial', 'black_duck'], true)) {
+            return tenant_view('pages.home', $this->buildExpertFamilyHomeIndexData());
         }
 
         return tenant_view('pages.home', $this->buildHomeIndexData($catalogLocation, $locationScope));
@@ -44,7 +44,10 @@ class HomeController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function buildExpertAutoHomeIndexData(): array
+    /**
+     * Данные главной для «семейства» expert (expert_auto, advocate_editorial, black_duck) — без мото-каталога.
+     */
+    private function buildExpertFamilyHomeIndexData(): array
     {
         $page = Page::query()
             ->where('slug', 'home')

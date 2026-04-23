@@ -1,0 +1,79 @@
+/* Black Duck Detailing — premium-tech токены (на базе body.expert-auto-theme + tenant-expert-auto.css) */
+
+body.expert-auto-theme.black-duck-theme {
+    --ex-accent: #f0ff00;
+    --ex-accent-soft: rgba(240, 255, 0, 0.14);
+    --ex-hero-overlay: rgba(6, 10, 20, 0.72);
+    --ex-surface: rgba(17, 28, 46, 0.88);
+    --ex-border: rgba(255, 255, 255, 0.1);
+    --ex-ink: #f5f7fa;
+    --color-moto-amber: #f0ff00;
+    --color-silver: #8fa1b8;
+    --rb-focus-ring: #36c7ff;
+}
+
+body.expert-auto-theme.black-duck-theme.premium-bg {
+    background:
+        radial-gradient(ellipse 65% 50% at 100% 0%, rgba(54, 199, 255, 0.08), transparent 50%),
+        linear-gradient(168deg, #0a1220 0%, #0d1525 40%, #060910 100%);
+    min-height: 100vh;
+}
+
+body.expert-auto-theme.black-duck-theme .tenant-btn-primary {
+    background: linear-gradient(145deg, #ffff99 0%, #f0ff00 42%, #c8d400 100%);
+    color: #0a1220;
+    box-shadow: 0 4px 18px -2px rgba(240, 255, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    text-shadow: none;
+}
+
+body.expert-auto-theme.black-duck-theme .tenant-btn-primary:hover {
+    background: linear-gradient(145deg, #ffffcc 0%, #f5ff4d 50%, #d4e40a 100%);
+    color: #050810;
+}
+
+/* A11y: касание и фокус (WCAG 2.5.5 / 2.4.7) */
+body.expert-auto-theme.black-duck-theme .tenant-btn-primary,
+body.expert-auto-theme.black-duck-theme a.bd-tap {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+}
+
+body.expert-auto-theme.black-duck-theme a:focus-visible,
+body.expert-auto-theme.black-duck-theme button:focus-visible,
+body.expert-auto-theme.black-duck-theme [role="button"]:focus-visible,
+body.expert-auto-theme.black-duck-theme input:focus-visible,
+body.expert-auto-theme.black-duck-theme select:focus-visible,
+body.expert-auto-theme.black-duck-theme textarea:focus-visible {
+    outline: 2px solid var(--rb-focus-ring, #36c7ff);
+    outline-offset: 2px;
+}
+
+/* Вертикальный ритм секций Black Duck (expert home lazy-mount) */
+body.expert-auto-theme.black-duck-theme .expert-home .bd-section {
+    margin-top: 2.5rem;
+    margin-bottom: 2.5rem;
+    scroll-margin-top: 6.5rem;
+}
+
+@media (min-width: 1024px) {
+    body.expert-auto-theme.black-duck-theme .expert-home .bd-section {
+        margin-top: 3.5rem;
+        margin-bottom: 3.5rem;
+    }
+}
+
+/* Первый блок после full-bleed hero — без лишнего зазора сверху */
+body.expert-auto-theme.black-duck-theme .expert-home .expert-home-section--availability_ribbon {
+    margin-top: 0.75rem;
+}
+
+/* Карточки хаба: мягкая сетка, не «прилипает» к краям на xs */
+body.expert-auto-theme.black-duck-theme .bd-service-hub ul {
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    body.expert-auto-theme.black-duck-theme .bd-service-hub ul {
+        gap: 1.25rem;
+    }
+}

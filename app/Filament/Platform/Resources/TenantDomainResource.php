@@ -36,6 +36,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Js;
 use Illuminate\Support\LazyCollection;
 
 class TenantDomainResource extends Resource
@@ -251,10 +252,42 @@ class TenantDomainResource extends Resource
                     ->icon('heroicon-o-clipboard-document')
                     ->label('Копировать домен')
                     ->color('gray')
-                    ->action(fn () => null) // handled via js or just native copy action natively available in Filament
-                    ->extraAttributes(fn (TenantDomain $record) => [
-                        'x-on:click' => "window.navigator.clipboard.writeText('{$record->host}'); \$tooltip('Скопировано!')",
-                    ]),
+                    ->alpineClickHandler(function (TenantDomain $record): string {
+                        $hostJson = Js::from($record->host);
+
+                        return <<<JS
+                            (async () => {
+                                const text = {$hostJson};
+                                const copyFallback = () => {
+                                    const el = document.createElement('textarea');
+                                    el.value = text;
+                                    el.setAttribute('readonly', '');
+                                    el.style.position = 'fixed';
+                                    el.style.left = '-9999px';
+                                    document.body.appendChild(el);
+                                    el.select();
+                                    try {
+                                        document.execCommand('copy');
+                                    } finally {
+                                        document.body.removeChild(el);
+                                    }
+                                };
+                                try {
+                                    if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+                                        await navigator.clipboard.writeText(text);
+                                    } else {
+                                        copyFallback();
+                                    }
+                                } catch (e) {
+                                    try {
+                                        copyFallback();
+                                    } catch (e2) {
+                                        window.prompt('Скопируйте вручную (Ctrl+C):', text);
+                                    }
+                                }
+                            })()
+                        JS;
+                    }),
                 EditAction::make()->slideOver(),
                 AdminFilamentDelete::configureTableDeleteAction(
                     DeleteAction::make()

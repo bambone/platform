@@ -21,7 +21,7 @@ final class ContactInquirySectionBlueprint extends AbstractPageSectionBlueprint
 
     public function supportsTheme(string $themeKey): bool
     {
-        return in_array($themeKey, ['default', 'moto', 'advocate_editorial', 'expert_auto'], true);
+        return in_array($themeKey, ['default', 'moto', 'advocate_editorial', 'expert_auto', 'black_duck'], true);
     }
 
     public function label(): string

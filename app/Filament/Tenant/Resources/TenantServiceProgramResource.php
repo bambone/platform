@@ -36,18 +36,18 @@ class TenantServiceProgramResource extends Resource
 {
     protected static ?string $model = TenantServiceProgram::class;
 
-    protected static ?string $navigationLabel = 'Программы';
+    protected static ?string $navigationLabel = null;
 
     /** В «Каталоге» рядом с прежним местом «курсов» (Motorcycle), скрытым для expert_auto. */
     protected static string|UnitEnum|null $navigationGroup = 'Catalog';
 
     protected static ?int $navigationSort = 5;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-academic-cap';
+    protected static string|\BackedEnum|null $navigationIcon = null;
 
-    protected static ?string $modelLabel = 'Программа';
+    protected static ?string $modelLabel = null;
 
-    protected static ?string $pluralModelLabel = 'Программы';
+    protected static ?string $pluralModelLabel = null;
 
     protected static ?string $recordTitleAttribute = 'title';
 
@@ -57,6 +57,75 @@ class TenantServiceProgramResource extends Resource
     public const string TAB_KEY_MAIN = 'main';
 
     public const string TAB_KEY_COVER = 'cover';
+
+    public static function getNavigationLabel(): string
+    {
+        return self::isBlackDuckTheme() ? 'Услуги' : 'Программы';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return self::isBlackDuckTheme() ? 'Услуга' : 'Программа';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return self::isBlackDuckTheme() ? 'Услуги' : 'Программы';
+    }
+
+    public static function getNavigationIcon(): string|\BackedEnum|null
+    {
+        return self::isBlackDuckTheme() ? 'heroicon-o-rectangle-stack' : 'heroicon-o-academic-cap';
+    }
+
+    private static function isBlackDuckTheme(): bool
+    {
+        $t = \currentTenant();
+
+        return $t !== null && (string) ($t->theme_key ?? '') === 'black_duck';
+    }
+
+    private static function formRootTabsLabel(): string
+    {
+        return self::isBlackDuckTheme() ? 'Услуга' : 'Программа';
+    }
+
+    private static function mainSectionDescription(): string
+    {
+        return self::isBlackDuckTheme()
+            ? 'Данные карточек услуг на сайте. Состав страниц и порядок секций — в «Страницы» (конструктор).'
+            : 'Данные карточек блока «Программы обучения» на сайте. Состав страниц и порядок секций — в «Страницы» (конструктор).';
+    }
+
+    private static function cardCopySectionTitle(): string
+    {
+        return self::isBlackDuckTheme() ? 'Тексты на карточке услуги' : 'Тексты на карточке программы';
+    }
+
+    private static function outcomeRepeaterLabel(): string
+    {
+        return self::isBlackDuckTheme() ? 'Результат / что получит клиент' : 'Результат / что даёт программа';
+    }
+
+    private static function coverSectionTitle(): string
+    {
+        return self::isBlackDuckTheme() ? 'Обложка карточки услуги' : 'Обложка карточки программы';
+    }
+
+    private static function coverHelperAfterUpload(): string
+    {
+        return self::isBlackDuckTheme()
+            ? 'Рекомендуемый размер около 1200×640, формат WebP. Файл сохранится в медиатеке вместе с этой услугой.'
+            : 'Рекомендуемый размер около 1200×640, формат WebP. Файл сохранится в медиатеке вместе с этой программой.';
+    }
+
+    private static function coverUploadSubdirectory(Get $get): string
+    {
+        $slug = trim((string) ($get('slug') ?: 'draft'));
+        $prefix = self::isBlackDuckTheme() ? 'site/service-programs' : 'expert_auto/programs';
+
+        return $prefix.'/'.$slug;
+    }
 
     /**
      * @return float|int|string|null
@@ -80,7 +149,7 @@ class TenantServiceProgramResource extends Resource
         return $schema
             ->columns(1)
             ->components([
-                Tabs::make('Программа')
+                Tabs::make(self::formRootTabsLabel())
                     ->columnSpanFull()
                     ->contained(false)
                     ->persistTabInQueryString(self::TAB_QUERY_KEY)
@@ -120,7 +189,7 @@ class TenantServiceProgramResource extends Resource
                                     })
                                     ->columnSpanFull(),
                                 Section::make('Основное')
-                                    ->description('Данные карточек блока «Программы обучения» на сайте. Состав страниц и порядок секций — в «Страницы» (конструктор).')
+                                    ->description(self::mainSectionDescription())
                                     ->extraAttributes(['data-setup-target' => 'programs.program_form'])
                                     ->schema([
                                         TextInput::make('slug')
@@ -175,7 +244,7 @@ class TenantServiceProgramResource extends Resource
                                             ->numeric()
                                             ->default(0),
                                     ])->columns(2),
-                                Section::make('Тексты на карточке программы')
+                                Section::make(self::cardCopySectionTitle())
                                     ->schema([
                                         Repeater::make('audience_json')
                                             ->label('Кому подходит')
@@ -191,7 +260,7 @@ class TenantServiceProgramResource extends Resource
                                             ->live()
                                             ->columnSpanFull(),
                                         Repeater::make('outcomes_json')
-                                            ->label('Результат / что даёт программа')
+                                            ->label(self::outcomeRepeaterLabel())
                                             ->schema([
                                                 TextInput::make('text')
                                                     ->label('Пункт')
@@ -238,7 +307,7 @@ class TenantServiceProgramResource extends Resource
                             'class' => 'svc-program-cover-tab-main min-w-0 flex flex-col gap-6',
                         ])
                         ->schema([
-                            Section::make('Обложка карточки программы')
+                            Section::make(self::coverSectionTitle())
                                 ->description('На сайте сверху карточки показывается широкий баннер. Для компьютера загрузите горизонтальное изображение (~1200×640, WebP). Для телефона можно отдельно выбрать вертикальное (~720×1040); если не загрузить — на узком экране подставится баннер для компьютера.')
                                 ->schema(self::buildCoverTabLeftMainFieldsSchema()),
                             Section::make('Дополнительно: X, Y, Zoom, высота')
@@ -270,12 +339,12 @@ class TenantServiceProgramResource extends Resource
         return [
             TenantPublicImagePicker::make('cover_image_ref')
                 ->label('Баннер для компьютера (широкий)')
-                ->uploadPublicSiteSubdirectory(fn (Get $get): string => 'expert_auto/programs/'.trim((string) ($get('slug') ?: 'draft')))
-                ->helperText('Рекомендуемый размер около 1200×640, формат WebP. Файл сохранится в медиатеке вместе с этой программой.')
+                ->uploadPublicSiteSubdirectory(fn (Get $get): string => self::coverUploadSubdirectory($get))
+                ->helperText(self::coverHelperAfterUpload())
                 ->live(),
             TenantPublicImagePicker::make('cover_mobile_ref')
                 ->label('Баннер для телефона (портрет, по желанию)')
-                ->uploadPublicSiteSubdirectory(fn (Get $get): string => 'expert_auto/programs/'.trim((string) ($get('slug') ?: 'draft')))
+                ->uploadPublicSiteSubdirectory(fn (Get $get): string => self::coverUploadSubdirectory($get))
                 ->helperText('Рекомендуемый размер около 720×1040. Если не загрузить — на телефоне используется баннер для компьютера.')
                 ->live(),
             TextInput::make('cover_image_alt')
@@ -504,6 +573,8 @@ class TenantServiceProgramResource extends Resource
 
     public static function canAccess(): bool
     {
-        return currentTenant()?->themeKey() === 'expert_auto';
+        $k = currentTenant()?->themeKey() ?? '';
+
+        return in_array($k, ['expert_auto', 'black_duck'], true);
     }
 }

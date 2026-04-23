@@ -423,7 +423,7 @@ class AppServiceProvider extends ServiceProvider
                     'tenantAdvocateFooter' => $tenant->themeKey() === 'advocate_editorial'
                         ? app(TenantAdvocateEditorialFooterData::class)->build($tenant)
                         : null,
-                    'tenantMotoPublicFooter' => in_array($tenant->themeKey(), ['default', 'moto', 'expert_auto'], true)
+                    'tenantMotoPublicFooter' => in_array($tenant->themeKey(), ['default', 'moto', 'expert_auto', 'black_duck'], true)
                         ? app(TenantFooterResolver::class)->resolve($tenant)
                         : null,
                     'tenantBookingConsentUi' => self::tenantBookingConsentUiBundle($tenant),

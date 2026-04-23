@@ -7,6 +7,7 @@ use App\Http\Requests\StoreExpertInquiryRequest;
 use App\Product\CRM\Actions\CreateCrmRequestFromPublicForm;
 use App\Product\CRM\DTO\PublicInboundContext;
 use App\Product\CRM\DTO\PublicInboundSubmission;
+use App\Tenant\Expert\BlackDuckPublicCrmRequestTypeResolver;
 use App\Tenant\Expert\ExpertInquiryIntentResolver;
 use App\Tenant\Expert\TenantEnrollmentCtaConfig;
 use App\Terminology\DomainTermKeys;
@@ -70,7 +71,7 @@ final class ExpertInquiryController extends Controller
 
         $expertDomain = trim((string) ($validated['expert_domain'] ?? ''));
         if ($expertDomain === '') {
-            $expertDomain = 'driving_instruction';
+            $expertDomain = $tenant->themeKey() === 'black_duck' ? 'vehicle_detailing' : 'driving_instruction';
         }
 
         $intentTags = $intentResolver->resolve($programSlug, $goal);
@@ -80,6 +81,27 @@ final class ExpertInquiryController extends Controller
             'intent_tags' => $intentTags,
             'goal_text' => $goal,
         ];
+        if ($tenant->themeKey() === 'black_duck') {
+            foreach ([
+                'service_slug', 'service_group', 'vehicle_class', 'vehicle_make', 'vehicle_model', 'customer_goal',
+            ] as $pk) {
+                $v = $validated[$pk] ?? null;
+                if (is_string($v) && trim($v) !== '') {
+                    $payloadJson[$pk] = trim($v);
+                }
+            }
+            if (array_key_exists('needs_confirmation', $validated)) {
+                $payloadJson['needs_confirmation'] = (bool) $validated['needs_confirmation'];
+            }
+            $hint = trim((string) ($validated['crm_request_type'] ?? ''));
+            if ($hint !== '') {
+                $payloadJson['client_crm_type_hint'] = $hint;
+            }
+            $intent = trim((string) ($validated['inquiry_intent'] ?? ''));
+            if ($intent !== '') {
+                $payloadJson['inquiry_intent'] = $intent;
+            }
+        }
         if ($programSlug !== null) {
             $payloadJson['program_slug'] = $programSlug;
         }
@@ -119,8 +141,20 @@ final class ExpertInquiryController extends Controller
             default => 'expert_lead_form',
         };
 
+        if ($tenant->themeKey() === 'black_duck') {
+            $spLead = trim((string) ($validated['source_page'] ?? ''));
+            if ($spLead !== '' && $inboundSource === 'expert_lead_form' && ! isset($payloadJson['source_page'])) {
+                $payloadJson['source_page'] = $spLead;
+            }
+        }
+
+        $requestType = 'expert_service_inquiry';
+        if ($tenant->themeKey() === 'black_duck') {
+            $requestType = app(BlackDuckPublicCrmRequestTypeResolver::class)->resolve((int) $tenant->id, $validated);
+        }
+
         $submission = new PublicInboundSubmission(
-            requestType: 'expert_service_inquiry',
+            requestType: $requestType,
             name: $validated['name'],
             phone: $validated['phone'],
             email: null,

@@ -120,10 +120,11 @@ class TenantResource extends Resource
                                 'moto' => 'Мото',
                                 'expert_auto' => 'Инструктор / автошкола (expert_auto)',
                                 'advocate_editorial' => 'Адвокат / персональный бренд (advocate_editorial)',
+                                'black_duck' => 'Детейлинг / Black Duck (black_duck)',
                             ])
                             ->default('default')
                             ->required()
-                            ->helperText('Ключ = каталог Blade tenant/themes/{ключ}. Не используйте пустой плейсхолдер «auto» в БД — для мотопроката: moto или default; для лендинга инструктора: expert_auto.'),
+                            ->helperText('Ключ = каталог Blade tenant/themes/{ключ}. Не используйте пустой плейсхолдер «auto» в БД. Примеры: moto, default, expert_auto, black_duck.'),
                         Select::make('domain_localization_preset_id')
                             ->label('Терминология интерфейса')
                             ->relationship(

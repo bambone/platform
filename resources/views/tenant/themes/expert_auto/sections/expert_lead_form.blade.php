@@ -75,8 +75,23 @@
               data-expert-inquiry-default-success="{{ e($successMessage) }}">
             @csrf
             <script type="application/json" id="expert-inquiry-channel-meta" data-rb-expert-channel-meta>@json($contactChannelOptions)</script>
-            <input type="hidden" name="expert_domain" value="driving_instruction">
+            <input type="hidden" name="expert_domain" value="{{ $tenant->themeKey() === 'black_duck' ? 'vehicle_detailing' : 'driving_instruction' }}">
             <input type="hidden" name="page_url" value="{{ url()->current() }}">
+            @if ($tenant->themeKey() === 'black_duck')
+                @php
+                    $bdRouteSlug = request()->route('slug');
+                    $bdRouteSlug = is_string($bdRouteSlug) ? $bdRouteSlug : '';
+                    $bdPageSlugs = ['home', 'contacts', 'uslugi', 'raboty', 'otzyvy', 'faq', 'akcii', 'privacy-policy', 'usloviya-arenda', 'politika-konfidencialnosti', 'order', 'blog', 'about'];
+                    $bdServiceSlug = $bdRouteSlug !== '' && ! in_array($bdRouteSlug, $bdPageSlugs, true)
+                        ? $bdRouteSlug
+                        : '';
+                @endphp
+                <input type="hidden" name="inquiry_intent" value="service_inquiry">
+                <input type="hidden" name="source_page" value="{{ e(request()->getPathInfo() ?: '/') }}">
+                @if ($bdServiceSlug !== '')
+                    <input type="hidden" name="service_slug" value="{{ e($bdServiceSlug) }}">
+                @endif
+            @endif
             <div class="absolute -left-[9999px] h-px w-px overflow-hidden" aria-hidden="true">
                 <label for="expert-inquiry-hp-website">Website</label>
                 <input id="expert-inquiry-hp-website" type="text" name="website" tabindex="-1" autocomplete="off" value="">
@@ -140,7 +155,7 @@
 
             @if($programs->isNotEmpty())
                 <div data-rb-public-field="program_slug" class="expert-public-field-wrap min-w-0">
-                    <label for="expert-program" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">Программа (необязательно)</label>
+                    <label for="expert-program" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">{{ $tenant->themeKey() === 'black_duck' ? 'Пакет / направление (необязательно)' : 'Программа (необязательно)' }}</label>
                     <select id="expert-program" data-rb-expert-program name="program_slug"
                             class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors focus:border-moto-amber/50 focus:bg-white/[0.04] appearance-none">
                         <option value="" class="bg-black text-white">—</option>
@@ -154,7 +169,7 @@
             <div class="grid min-w-0 grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 md:grid-rows-[auto_auto_auto] md:items-start md:gap-x-5 md:gap-y-3">
                 <div data-rb-public-field="preferred_schedule" class="expert-public-field-wrap min-w-0 md:contents">
                     <span id="expert-schedule-legend" data-expert-schedule-activator tabindex="0" role="button" class="order-1 mb-2 block cursor-pointer select-none rounded-md text-sm font-semibold tracking-wide text-white/90 underline-offset-2 transition hover:text-moto-amber hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-moto-amber/45 md:order-none md:col-start-1 md:row-start-1 md:mb-0">Удобное время</span>
-                    <p id="expert-schedule-desc" data-expert-schedule-activator tabindex="0" role="button" class="order-2 mb-3 cursor-pointer select-none rounded-md text-[12px] leading-snug text-silver/60 sm:text-[13px] md:order-none md:col-start-1 md:row-start-2 md:mb-0">Интервал, когда вам удобно заниматься (необязательно). На телефоне откроется выбор времени.</p>
+                    <p id="expert-schedule-desc" data-expert-schedule-activator tabindex="0" role="button" class="order-2 mb-3 cursor-pointer select-none rounded-md text-[12px] leading-snug text-silver/60 sm:text-[13px] md:order-none md:col-start-1 md:row-start-2 md:mb-0">@if($tenant->themeKey() === 'black_duck')Интервал, когда вам удобно приехать (необязательно). На телефоне откроется выбор времени.@elseИнтервал, когда вам удобно заниматься (необязательно). На телефоне откроется выбор времени.@endif</p>
                     <div class="order-3 grid min-w-0 gap-3 rounded-xl border border-white/[0.1] bg-white/[0.03] p-2 shadow-sm transition focus-within:border-moto-amber/45 focus-within:bg-white/[0.05] focus-within:shadow-md focus-within:ring-2 focus-within:ring-moto-amber/25 sm:grid-cols-2 sm:gap-4 sm:p-3 md:order-none md:col-start-1 md:row-start-3" data-expert-schedule-time-group role="group" aria-labelledby="expert-schedule-legend" aria-describedby="expert-schedule-desc">
                         <div class="min-w-0">
                             <label for="expert-schedule-from" class="mb-1.5 block text-[13px] font-medium tracking-wide text-white/80">С</label>
@@ -210,6 +225,19 @@
                 <textarea id="expert-comment" name="comment" rows="2" maxlength="2000"
                           class="expert-form-input w-full min-h-[4.5rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors focus:border-moto-amber/50 focus:bg-white/[0.04]"></textarea>
             </div>
+
+            @if (tenant()->themeKey() === 'black_duck')
+                <div data-rb-public-field="privacy_accepted" class="expert-public-field-wrap min-w-0 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+                    <label class="flex cursor-pointer items-start gap-3 text-left">
+                        <input type="checkbox" name="privacy_accepted" value="1" required
+                               class="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 text-moto-amber focus:ring-2 focus:ring-moto-amber/40">
+                        <span class="text-[13px] leading-snug text-silver/85 sm:text-[14px]">
+                            Соглашаюсь на обработку персональных данных
+                            <a href="{{ url('/privacy-policy') }}" class="text-moto-amber underline-offset-2 hover:underline" target="_blank" rel="noopener">политика конфиденциальности</a>
+                        </span>
+                    </label>
+                </div>
+            @endif
 
             <div class="mt-8 text-center sm:mt-10">
                 <button type="submit" id="expert-inquiry-submit" data-rb-expert-inquiry-submit class="tenant-btn-primary inline-flex min-h-[4rem] w-full items-center justify-center rounded-xl px-12 text-[17px] font-bold shadow-2xl transition-transform hover:scale-[1.02] sm:w-auto">

@@ -285,9 +285,20 @@ final class BlackDuckTenantSiteTest extends TestCase
             ->value('data_json');
         $uslugiData = is_string($uslugiHub) ? json_decode($uslugiHub, true) : $uslugiHub;
         $this->assertIsArray($uslugiData);
+        $this->assertGreaterThanOrEqual(5, count($uslugiData['groups'] ?? []), 'Ожидаются бизнес-группы услуг на /uslugi');
         $ppfCard = collect($uslugiData['items'] ?? [])->firstWhere('cta_url', '/ppf');
         $this->assertIsArray($ppfCard);
         $this->assertStringContainsString('t-hub-ppf.jpg', (string) ($ppfCard['image_url'] ?? ''));
+        $ppfInGroup = false;
+        foreach ($uslugiData['groups'] ?? [] as $gr) {
+            foreach (is_array($gr['items'] ?? null) ? $gr['items'] : [] as $c) {
+                if (($c['cta_url'] ?? '') === '/ppf') {
+                    $ppfInGroup = true;
+                    break 2;
+                }
+            }
+        }
+        $this->assertTrue($ppfInGroup);
 
         $pageIdPpf = (int) DB::table('pages')->where('tenant_id', $tid)->where('slug', 'ppf')->value('id');
         $proofVis = (bool) DB::table('page_sections')
@@ -303,6 +314,7 @@ final class BlackDuckTenantSiteTest extends TestCase
         $ppfHtml = (string) $this->call('GET', 'http://'.$host.'/ppf')->getContent();
         $this->assertStringContainsString('t-ppf-1.jpg', $ppfHtml);
         $this->assertStringContainsString(BlackDuckContentConstants::PRIMARY_LEAD_URL, $ppfHtml);
+        $this->assertStringContainsString('Что входит', $ppfHtml);
     }
 
     /**

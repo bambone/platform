@@ -41,6 +41,7 @@ final class ServiceHubGridBlueprint extends BlackDuckSectionBlueprint
         return [
             'heading' => 'Услуги',
             'items' => [],
+            'groups' => [],
         ];
     }
 
@@ -91,7 +92,9 @@ final class ServiceHubGridBlueprint extends BlackDuckSectionBlueprint
     {
         $h = $this->stringPreview($data, 'heading', 50);
         $n = is_array($data['items'] ?? null) ? count($data['items']) : 0;
+        $g = is_array($data['groups'] ?? null) ? count($data['groups']) : 0;
+        $suffix = $g > 0 ? (string) $g.' групп' : (string) $n.' карт.';
 
-        return trim(($h !== '' ? $h : 'Service hub').' · '.(string) $n.' карт.');
+        return trim(($h !== '' ? $h : 'Service hub').' · '.$suffix);
     }
 }

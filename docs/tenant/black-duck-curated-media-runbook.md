@@ -1,5 +1,17 @@
 # Black Duck: curated media (операторский поток)
 
+## Этап 1 (текущий): без UI для каталога
+
+Операторский **SOP** без правки кода:
+
+1. Заполнить **контентный реестр** (таблица со схемой в `database/data/black_duck_content_registry.example.csv`) — один смысловой ассет = одна строка; сверка с `source_ref` на диске.
+2. Собрать `curated-manifest.json` (по реестру) и папку файлов; **`--dry-run`** импорта.
+3. `tenant:black-duck:import-curated-proof` (при необходимости с `--force` — см. риск полной подмены каталога).
+4. `tenant:black-duck:refresh-content {tenant} --force`.
+5. Визуальный QA: главная, `/raboty` (сетка **не менее 12** пунктов в `works_portfolio` для приёмки — см. `BlackDuckServiceRegistry::MIN_WORKS_PORTFOLIO_ITEMS_ACCEPTANCE`), `/uslugi`, посадочные, отсутствие внешних URL в proof.
+
+**Этап 2 (отдельная задача):** при необходимости — Filament-редактор `media-catalog.json` с валидацией v3. Не блокирует приёмку контента по SOP выше.
+
 ## Идея
 
 - **Яндекс.Карты, галереи и прочие HTTP-ссылки** — только вход для отбора и поле `source_ref` в манифесте. В вёрстке **нельзя** использовать внешние URL как финальные `src` для proof.

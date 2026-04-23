@@ -380,8 +380,24 @@ final class BlackDuckBootstrap extends Seeder
                 'button_url' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
                 'overlay_dark' => true,
             ]),
-            $this->sec('body', 'rich_text', 'Суть', 20, [
-                'content' => '<p>'.e($lead).' Точные сроки и стоимость фиксируем после осмотра или по чек-листу, если применимо.</p>',
+            $this->sec('body_intro', 'rich_text', 'О услуге', 8, [
+                'content' => '<p class="text-pretty leading-relaxed">'.e($lead).'</p>',
+            ]),
+            $this->sec('service_included', 'list_block', 'Что входит', 12, [
+                'title' => 'Что входит',
+                'variant' => 'bullets',
+                'items' => [
+                    ['title' => 'Согласование', 'text' => 'Объём и срок после осмотра или заявки.'],
+                ],
+            ]),
+            $this->sec('body', 'rich_text', 'Суть', 18, [
+                'content' => '',
+            ], false),
+            $this->sec('service_faq', 'faq', 'FAQ', 25, [
+                'section_heading' => 'Вопросы по услуге',
+                'source' => 'faqs_table_service',
+                'faq_category' => $slug,
+                'items' => [],
             ]),
         ];
         if (in_array($slug, BlackDuckMediaCatalog::SERVICE_PROOF_LANDING_SLUGS, true)) {
@@ -390,6 +406,9 @@ final class BlackDuckBootstrap extends Seeder
                 'items' => [],
             ]);
         }
+        $sections[] = $this->sec('service_final_cta', 'rich_text', 'Заявка', 50, [
+            'content' => '<p class="text-zinc-300">Нужен расчёт или запись? <a class="font-medium text-[#36C7FF] underline" href="'.e(BlackDuckContentConstants::PRIMARY_LEAD_URL).'">Оставьте заявку</a> — согласуем детали.</p>',
+        ]);
 
         return [
             'slug' => $slug,
@@ -691,7 +710,7 @@ final class BlackDuckBootstrap extends Seeder
     /**
      * @return array<string, mixed>
      */
-    private function sec(string $key, string $type, string $title, int $order, array $data): array
+    private function sec(string $key, string $type, string $title, int $order, array $data, bool $isVisible = true): array
     {
         return [
             'section_key' => $key,
@@ -699,6 +718,7 @@ final class BlackDuckBootstrap extends Seeder
             'title' => $title,
             'sort_order' => $order,
             'data_json' => json_encode($data, JSON_UNESCAPED_UNICODE),
+            'is_visible' => $isVisible,
         ];
     }
 
@@ -752,7 +772,7 @@ final class BlackDuckBootstrap extends Seeder
                 'title' => $s['title'] ?? null,
                 'sort_order' => (int) ($s['sort_order'] ?? 0),
                 'data_json' => is_string($s['data_json'] ?? null) ? $s['data_json'] : json_encode($s['data_json'] ?? [], JSON_UNESCAPED_UNICODE),
-                'is_visible' => true,
+                'is_visible' => array_key_exists('is_visible', $s) ? (bool) $s['is_visible'] : true,
                 'status' => 'published',
                 'created_at' => $now,
                 'updated_at' => $now,

@@ -15,6 +15,7 @@ use Database\Seeders\Tenant\BlackDuckBootstrap;
  * @see BlackDuckContentRefresher
  * @see BlackDuckBootstrap
  * @see BlackDuckMediaCatalog
+ * @see BlackDuckServiceRegistry
  */
 final class BlackDuckContentConstants
 {
@@ -119,13 +120,27 @@ final class BlackDuckContentConstants
         }
         $out = [];
         foreach (self::HOME_SERVICE_PREVIEW_SLUGS as $slug) {
+            $reg = BlackDuckServiceRegistry::rowBySlug($slug);
+            if ($reg !== null && ! ($reg['show_on_home'] ?? false)) {
+                continue;
+            }
             if (isset($bySlug[$slug])) {
                 $out[] = $bySlug[$slug];
             }
         }
         if ($out === []) {
-            foreach (self::serviceMatrixQ1() as $row) {
+            foreach (BlackDuckServiceRegistry::all() as $reg) {
+                $row = [
+                    'slug' => $reg['slug'],
+                    'title' => $reg['title'],
+                    'blurb' => $reg['blurb'],
+                    'booking_mode' => $reg['booking_mode'],
+                    'has_landing' => $reg['has_landing'],
+                ];
                 if (str_starts_with((string) $row['slug'], '#')) {
+                    continue;
+                }
+                if (! ($reg['show_on_home'] ?? false)) {
                     continue;
                 }
                 $out[] = $row;
@@ -160,38 +175,15 @@ final class BlackDuckContentConstants
 
     public static function serviceTitleForSlug(string $slug): string
     {
-        foreach (self::serviceMatrixQ1() as $row) {
-            if ((string) $row['slug'] === $slug) {
-                return (string) $row['title'];
-            }
-        }
-
-        return $slug;
+        return BlackDuckServiceRegistry::serviceTitleForSlug($slug);
     }
 
+    /**
+     * @return list<array{slug: string, title: string, blurb: string, booking_mode: string, has_landing: bool}>
+     */
     public static function serviceMatrixQ1(): array
     {
-        return [
-            ['slug' => 'detejling-mojka', 'title' => 'Детейлинг-мойка', 'blurb' => 'Короткие слоты онлайн после настройки расписания.', 'booking_mode' => 'instant', 'has_landing' => true],
-            ['slug' => 'setki-radiatora', 'title' => 'Установка защитных сеток', 'blurb' => 'Защита радиатора сетками: подбор и монтаж под модель.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'antidozhd', 'title' => 'Антидождь (гидрофоб)', 'blurb' => 'Обработка стекол для дождливой погоды; уточнить составы у мастера.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'remont-skolov', 'title' => 'Ремонт сколов', 'blurb' => 'Точечный ремонт ЛКП по дефекту, без «лишнего» кузова в работу.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'shumka', 'title' => 'Шумоизоляция', 'blurb' => 'Объём и сроки после диагностики.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'kozha-keramika', 'title' => 'Кожа: керамика салона', 'blurb' => 'Пропитка/керамика кожи и фактуры — по тесту материалов.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'tonirovka', 'title' => 'Тонировка / оптика', 'blurb' => 'Стёкла и оптика, варианты плёнки — по согласованию.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'keramika', 'title' => 'Керамика кузова', 'blurb' => 'Серия этапов, согласование плана с мастером.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'restavratsiya-kozhi', 'title' => 'Реставрация кожи', 'blurb' => 'Износ, потёртости, цвет — работа по согласованному ТЗ.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'himchistka-diskov', 'title' => 'Химчистка дисков', 'blurb' => 'Очистка суппорт-зон и внутреннего плоскости по доступу.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'bronirovanie-salona', 'title' => 'Бронь элементов салона', 'blurb' => 'Защитные плёнки на пластик, экран, пороги — по плану.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'himchistka-kuzova', 'title' => 'Химчистка кузова', 'blurb' => 'Деинкрустация, обезжиривание, подготовка под LKP.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'ppf', 'title' => 'Антигравий PPF', 'blurb' => 'Защита зон кузова, макет и зоны — по осмотру.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'podkapotnaya-himchistka', 'title' => 'Подкапотное: чистка и консервация', 'blurb' => 'Сухая и мойка-зонально; консервация пластиков и кожухов по задаче.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'polirovka-kuzova', 'title' => 'Полировка кузова', 'blurb' => 'По состоянию ЛКП, абразив и финиш по задаче.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'himchistka-salona', 'title' => 'Химчистка салона', 'blurb' => 'Салон, кожа, текстиль — объём по осмотру.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'pdr', 'title' => 'PDR (без покраса)', 'blurb' => 'Вмятины без окраса — оценка на месте.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'predprodazhnaya', 'title' => 'Предпродажная подготовка', 'blurb' => 'Комплекс под продажу по чек-листу.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => '#expert-inquiry', 'title' => 'Виниловая оклейка', 'blurb' => 'Проекты по дизайну; расчёт и сроки — заявка.', 'booking_mode' => 'quote', 'has_landing' => false],
-        ];
+        return BlackDuckServiceRegistry::legacyMatrixQ1();
     }
 
     /**

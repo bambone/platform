@@ -332,6 +332,9 @@ final class BlackDuckContentRefresher
         if ($this->shouldRunFaqs($id, $force, $ifPlaceholder)) {
             $this->replaceFaqs($id);
         }
+        if ($this->isBlackDuckTenant($id)) {
+            $this->seedServiceLandingFaqStubs($id);
+        }
 
         if ($this->shouldRunReviews($id, $force, $ifPlaceholder)) {
             $this->replaceReviews($id);
@@ -465,6 +468,35 @@ final class BlackDuckContentRefresher
                 'items' => [],
             ]);
         }
+        foreach (BlackDuckServiceRegistry::all() as $reg) {
+            if (! $reg['has_landing'] || str_starts_with((string) $reg['slug'], '#')) {
+                continue;
+            }
+            $slug = (string) $reg['slug'];
+            $pId = (int) DB::table('pages')->where('tenant_id', $tenantId)->where('slug', $slug)->value('id');
+            if ($pId < 1) {
+                continue;
+            }
+            $ins($pId, 'body_intro', 'rich_text', 'О услуге', 8, [
+                'content' => '',
+            ]);
+            $ins($pId, 'service_included', 'list_block', 'Что входит', 12, [
+                'title' => 'Что входит',
+                'variant' => 'bullets',
+                'items' => [
+                    ['title' => 'Согласование', 'text' => 'Объём и срок после осмотра или заявки.'],
+                ],
+            ]);
+            $ins($pId, 'service_faq', 'faq', 'FAQ', 25, [
+                'section_heading' => 'Вопросы по услуге',
+                'source' => 'faqs_table_service',
+                'faq_category' => $slug,
+                'items' => [],
+            ]);
+            $ins($pId, 'service_final_cta', 'rich_text', 'Заявка', 50, [
+                'content' => '<p class="text-zinc-300">Нужен расчёт или запись? <a class="font-medium text-[#36C7FF] underline" href="'.e(BlackDuckContentConstants::PRIMARY_LEAD_URL).'">Оставьте заявку</a> — согласуем детали.</p>',
+            ]);
+        }
     }
 
     /**
@@ -531,7 +563,12 @@ final class BlackDuckContentRefresher
 
     private function replaceFaqs(int $tenantId): void
     {
-        DB::table('faqs')->where('tenant_id', $tenantId)->delete();
+        DB::table('faqs')
+            ->where('tenant_id', $tenantId)
+            ->where(function ($q): void {
+                $q->whereNull('category')->orWhere('category', 'general');
+            })
+            ->delete();
         $now = now();
         $rows = [
             ['Как записаться и что быстрее: мойка или керамика?', '<p>Короткие работы (в т.ч. детейлинг-мойка) — по свободным слотам в онлайн-записи, когда расписание включено. Многоэтапные работы (керамика, PPF, крупная химчистка) согласуются сменой и планом после заявки или осмотра.</p>'],
@@ -553,6 +590,47 @@ final class BlackDuckContentRefresher
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+        }
+    }
+
+    /**
+     * Черновые FAQ по услуге (category = service slug); не затираются {@see replaceFaqs()}.
+     */
+    private function seedServiceLandingFaqStubs(int $tenantId): void
+    {
+        $now = now();
+        foreach (BlackDuckServiceRegistry::all() as $row) {
+            if (! $row['has_landing'] || str_starts_with((string) $row['slug'], '#')) {
+                continue;
+            }
+            $slug = (string) $row['slug'];
+            $exists = DB::table('faqs')
+                ->where('tenant_id', $tenantId)
+                ->where('category', $slug)
+                ->exists();
+            if ($exists) {
+                continue;
+            }
+            $title = (string) $row['title'];
+            $leadUrl = BlackDuckContentConstants::PRIMARY_LEAD_URL;
+            $pairs = [
+                ['Как записаться на «'.$title.'»?', 'Оставьте заявку на сайте ('.$leadUrl.') или позвоните — согласуем осмотр и окно.'],
+                ['Как понять итоговую цену и срок?', 'Ориентир до осмотра; точная смета и срок после осмотра или по согласованному чек-листу.'],
+            ];
+            $sort = 0;
+            foreach ($pairs as [$q, $a]) {
+                DB::table('faqs')->insert([
+                    'tenant_id' => $tenantId,
+                    'question' => $q,
+                    'answer' => $a,
+                    'category' => $slug,
+                    'sort_order' => ($sort += 10),
+                    'status' => 'published',
+                    'show_on_home' => false,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
         }
     }
 
@@ -894,9 +972,8 @@ final class BlackDuckContentRefresher
         bool $ifPlaceholder,
         ?string $forceSection,
     ): void {
-        $items = [];
         $isBlackDuck = $this->isBlackDuckTenant($tenantId);
-        foreach (BlackDuckContentConstants::serviceMatrixQ1() as $row) {
+        $buildCard = function (array $row) use ($tenantId, $isBlackDuck): array {
             $slug = (string) $row['slug'];
             if ($isBlackDuck) {
                 $img = BlackDuckMediaCatalog::serviceHubCatalogCover($tenantId, $slug)
@@ -905,25 +982,61 @@ final class BlackDuckContentRefresher
                 $img = BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
             }
             $cta = str_starts_with($slug, '#') ? BlackDuckContentConstants::PRIMARY_LEAD_URL : '/'.$slug;
-            $items[] = [
+
+            return [
                 'title' => $row['title'],
                 'card_subtitle' => (string) $row['blurb'],
                 'price_from' => 'по оценке',
                 'duration' => 'по плану',
-                'online_booking' => $row['slug'] === 'detejling-mojka',
-                'needs_confirmation' => true,
+                'online_booking' => $slug === 'detejling-mojka',
+                'needs_confirmation' => $slug !== 'detejling-mojka',
                 'booking_mode' => (string) $row['booking_mode'],
                 'cta_url' => $cta,
                 'image_url' => $img ?? '',
             ];
+        };
+        $groupsPayload = [];
+        if ($isBlackDuck) {
+            foreach (BlackDuckServiceRegistry::catalogGroupsWithPlaceholderItems() as $g) {
+                $cards = [];
+                foreach ($g['items'] as $meta) {
+                    $slug = (string) $meta['slug'];
+                    $reg = BlackDuckServiceRegistry::rowBySlug($slug);
+                    if ($reg === null) {
+                        continue;
+                    }
+                    $legacy = [
+                        'slug' => $reg['slug'],
+                        'title' => $reg['title'],
+                        'blurb' => $reg['blurb'],
+                        'booking_mode' => $reg['booking_mode'],
+                        'has_landing' => $reg['has_landing'],
+                    ];
+                    $cards[] = $buildCard($legacy);
+                }
+                $groupsPayload[] = [
+                    'group_key' => (string) $g['group_key'],
+                    'title' => (string) $g['group_title'],
+                    'intro' => (string) $g['group_blurb'],
+                    'items' => $cards,
+                ];
+            }
+        }
+        $items = [];
+        foreach (BlackDuckContentConstants::serviceMatrixQ1() as $row) {
+            $items[] = $buildCard($row);
         }
         $this->updateSectionData($tenantId, 'uslugi', 'intro', [
             'content' => '<p class="lead">'.e(BlackDuckContentConstants::taglineLong()).'</p>',
         ], $force, $ifPlaceholder, $forceSection);
-        $this->updateSectionData($tenantId, 'uslugi', 'service_hub', [
+        $hubData = [
             'heading' => 'Услуги детейлинга',
             'items' => $items,
-        ], $force, $ifPlaceholder, $forceSection);
+        ];
+        if ($groupsPayload !== []) {
+            $hubData['groups'] = $groupsPayload;
+        }
+        $this->updateSectionData($tenantId, 'uslugi', 'service_hub', $hubData, $force, $ifPlaceholder, $forceSection);
     }
 
     private function updateServiceLandings(
@@ -932,6 +1045,83 @@ final class BlackDuckContentRefresher
         bool $ifPlaceholder,
         ?string $forceSection,
     ): void {
+        if ($this->isBlackDuckTenant($tenantId)) {
+            foreach (BlackDuckServiceRegistry::all() as $reg) {
+                if (! $reg['has_landing']) {
+                    continue;
+                }
+                $slug = (string) $reg['slug'];
+                $name = (string) DB::table('pages')->where('tenant_id', $tenantId)->where('slug', $slug)->value('name');
+                if ($name === '') {
+                    continue;
+                }
+                $lead = (string) $reg['blurb'];
+                $hero = [
+                    'variant' => 'full_background',
+                    'heading' => $name,
+                    'subheading' => $lead,
+                    'button_text' => 'Оставить заявку',
+                    'button_url' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
+                    'overlay_dark' => true,
+                ];
+                $bg = BlackDuckServiceImages::firstServiceLandingShadePath($tenantId)
+                    ?? BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
+                if ($bg !== null) {
+                    $hero['background_image'] = $bg;
+                }
+                $svcVid = BlackDuckMediaCatalog::serviceFeaturedVideoMedia($tenantId, $slug);
+                if ($svcVid !== []) {
+                    $hero['video_src'] = $svcVid['video'];
+                    $hero['video_poster'] = $svcVid['poster'];
+                    $hero['video_deferred'] = true;
+                }
+                $this->updateSectionData($tenantId, $slug, 'hero', $hero, $force, $ifPlaceholder, $forceSection);
+                $intro = trim((string) $reg['body_intro']);
+                $this->updateSectionData($tenantId, $slug, 'body_intro', [
+                    'content' => $intro !== ''
+                        ? '<p class="text-pretty leading-relaxed text-zinc-200 sm:text-base">'.e($intro).'</p>'
+                        : '<p class="text-pretty leading-relaxed text-zinc-200 sm:text-base">'.e($lead).'</p>',
+                ], $force, $ifPlaceholder, $forceSection);
+                $incl = [];
+                foreach ($reg['included_items'] as $it) {
+                    if (! is_array($it)) {
+                        continue;
+                    }
+                    $incl[] = [
+                        'title' => (string) ($it['title'] ?? ''),
+                        'text' => (string) ($it['text'] ?? ''),
+                    ];
+                }
+                $this->updateSectionData($tenantId, $slug, 'service_included', [
+                    'title' => 'Что входит',
+                    'variant' => 'bullets',
+                    'items' => $incl !== [] ? $incl : [
+                        ['title' => 'Согласование', 'text' => 'Объём и срок после осмотра или заявки.'],
+                    ],
+                ], $force, $ifPlaceholder, $forceSection);
+                $this->updateSectionData($tenantId, $slug, 'body', [
+                    'content' => '',
+                ], $force, $ifPlaceholder, $forceSection);
+                $this->updatePageSectionVisibility($tenantId, $slug, 'body', false);
+                $this->updateSectionData($tenantId, $slug, 'service_faq', [
+                    'section_heading' => 'Вопросы по услуге',
+                    'source' => 'faqs_table_service',
+                    'faq_category' => $slug,
+                    'items' => [],
+                ], $force, $ifPlaceholder, $forceSection);
+                $faqN = (int) DB::table('faqs')
+                    ->where('tenant_id', $tenantId)
+                    ->where('category', $slug)
+                    ->where('status', 'published')
+                    ->count();
+                $this->updatePageSectionVisibility($tenantId, $slug, 'service_faq', $faqN > 0);
+                $this->updateSectionData($tenantId, $slug, 'service_final_cta', [
+                    'content' => '<p class="text-zinc-300">Нужен расчёт или запись? <a class="font-medium text-[#36C7FF] underline" href="'.e(BlackDuckContentConstants::PRIMARY_LEAD_URL).'">Оставьте заявку</a> — согласуем детали.</p>',
+                ], $force, $ifPlaceholder, $forceSection);
+            }
+
+            return;
+        }
         $leads = [
             'detejling-mojka' => 'Короткий цикл: запись в онлайн-расписании при включённых слотах. Длительность зависит от класса кузова и пакета.',
             'setki-radiatora' => 'Сетки на радиатор: подбор по геометрии, крепёж без вибрации; сроки — по согласованию.',
@@ -969,14 +1159,6 @@ final class BlackDuckContentRefresher
                 ?? BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
             if ($bg !== null) {
                 $hero['background_image'] = $bg;
-            }
-            if ($this->isBlackDuckTenant($tenantId)) {
-                $svcVid = BlackDuckMediaCatalog::serviceFeaturedVideoMedia($tenantId, $slug);
-                if ($svcVid !== []) {
-                    $hero['video_src'] = $svcVid['video'];
-                    $hero['video_poster'] = $svcVid['poster'];
-                    $hero['video_deferred'] = true;
-                }
             }
             $this->updateSectionData($tenantId, $slug, 'hero', $hero, $force, $ifPlaceholder, $forceSection);
             $this->updateSectionData($tenantId, $slug, 'body', [

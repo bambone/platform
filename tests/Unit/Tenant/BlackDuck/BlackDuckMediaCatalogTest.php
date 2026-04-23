@@ -96,6 +96,6 @@ final class BlackDuckMediaCatalogTest extends TestCase
 
         $chips = BlackDuckMediaCatalog::worksPortfolioFilterChips($tid);
         $values = array_map(static fn (array $c): string => (string) ($c['value'] ?? ''), $chips);
-        $this->assertSame(['all', 'service:keramika', 'service:ppf', 'tag:aaa', 'tag:zzz'], $values);
+        $this->assertSame(['all', 'service:ppf', 'service:keramika', 'tag:aaa', 'tag:zzz'], $values);
     }
 }

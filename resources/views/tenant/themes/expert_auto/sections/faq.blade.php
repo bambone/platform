@@ -10,6 +10,18 @@
             ->map(fn ($faq) => ['question' => $faq->question, 'answer' => $faq->answer])
             ->all();
     }
+    if ($items === [] && tenant() && ($data['source'] ?? null) === 'faqs_table_service') {
+        $cat = trim((string) ($data['faq_category'] ?? ''));
+        if ($cat !== '') {
+            $items = \App\Models\Faq::query()
+                ->where('category', $cat)
+                ->where('status', 'published')
+                ->orderBy('sort_order')
+                ->get()
+                ->map(fn ($faq) => ['question' => $faq->question, 'answer' => $faq->answer])
+                ->all();
+        }
+    }
     $faqIdPrefix = (isset($section) && $section instanceof \App\Models\PageSection && (int) $section->id > 0)
         ? 'expert-faq-ps-'.(int) $section->id
         : 'expert-faq-'.substr(hash('sha256', json_encode($items, JSON_UNESCAPED_UNICODE)."\n".($h ?? '')), 0, 12);

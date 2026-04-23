@@ -6,7 +6,7 @@
     $sub = $data['subheading'] ?? '';
     $btn = $data['button_text'] ?? '';
     $url = $data['button_url'] ?? '#';
-    $bgRaw = is_string($data['background_image'] ?? null) ? trim($data['background_image']) : '';
+    $bgRaw = is_string($data['background_image'] ?? null) ? trim((string) $data['background_image']) : '';
     $bgUrl = $bgRaw !== ''
         ? TenantPublicAssetResolver::resolveForCurrentTenant($bgRaw)
         : theme_platform_asset_url('marketing/hero-bg.png');
@@ -15,6 +15,9 @@
     $vPoster = trim((string) ($data['video_poster'] ?? ''));
     $vSrcUrl = $vSrc !== '' ? ExpertBrandMediaUrl::resolve($vSrc) : '';
     $vPosterUrl = $vPoster !== '' ? ExpertBrandMediaUrl::resolve($vPoster) : '';
+    $isWorksHero = ($section->section_key ?? '') === 'works_hero';
+    $videoDeferred = ! empty($data['video_deferred']) && ! $isWorksHero;
+    $bgFetchHigh = $hasCustomBg && ! ($videoDeferred && $vSrcUrl !== '' && $vPosterUrl !== '');
 @endphp
 <section class="relative min-h-[min(52vh,28rem)] overflow-hidden rounded-2xl border border-white/10 bg-carbon/90 sm:min-h-[min(44vh,26rem)]">
     @if (filled($bgUrl))
@@ -24,7 +27,7 @@
                     src="{{ e($bgUrl) }}"
                     alt=""
                     class="h-full w-full object-cover"
-                    fetchpriority="high"
+                    @if ($bgFetchHigh) fetchpriority="high" @endif
                     decoding="async"
                 />
             @else
@@ -34,26 +37,42 @@
             <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" aria-hidden="true"></div>
         </div>
     @endif
-    <div class="relative z-10 max-w-2xl p-6 sm:p-10">
-        @if (filled($heading))
-            <h1 class="text-balance text-2xl font-bold text-white sm:text-3xl lg:text-4xl">{{ $heading }}</h1>
-        @endif
-        @if (filled($sub))
-            <p class="mt-3 text-pretty text-base leading-relaxed text-zinc-300 sm:text-lg">{{ $sub }}</p>
-        @endif
-        @if (filled($btn))
-            <a href="{{ e($url) }}" class="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[#36C7FF] px-5 py-2.5 text-sm font-semibold text-carbon transition hover:bg-[#5ad2ff]">{{ $btn }}</a>
-        @endif
-        @if (filled($vSrcUrl) && filled($vPosterUrl))
-            <div class="mt-8 w-full max-w-3xl">
+    <div class="relative z-10 flex flex-col p-6 sm:p-10">
+        <div class="max-w-2xl">
+            @if (filled($heading))
+                <h1 class="text-balance text-2xl font-bold text-white sm:text-3xl lg:text-4xl">{{ $heading }}</h1>
+            @endif
+            @if (filled($sub))
+                <p class="mt-3 text-pretty text-base leading-relaxed text-zinc-300 sm:text-lg">{{ $sub }}</p>
+            @endif
+            @if (filled($btn))
+                <a href="{{ e($url) }}" class="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[#36C7FF] px-5 py-2.5 text-sm font-semibold text-carbon transition hover:bg-[#5ad2ff]">{{ $btn }}</a>
+            @endif
+            @if (! $videoDeferred && filled($vSrcUrl) && filled($vPosterUrl))
+                <div class="mt-8 w-full max-w-3xl sm:mt-10">
+                    <video
+                        class="w-full overflow-hidden rounded-xl border border-white/10"
+                        controls
+                        playsinline
+                        preload="metadata"
+                        poster="{{ e($vPosterUrl) }}"
+                    >
+                        <source src="{{ e($vSrcUrl) }}" type="{{ str_ends_with(strtolower($vSrc), '.webm') ? 'video/webm' : 'video/mp4' }}" />
+                    </video>
+                </div>
+            @endif
+        </div>
+        @if ($videoDeferred && filled($vSrcUrl) && filled($vPosterUrl))
+            {{-- Услуги: видео ниже текстового блока, без конкуренции с первым экраном; poster обязателен, без autoplay. --}}
+            <div class="relative z-10 mt-10 w-full max-w-4xl border-t border-white/10 pt-8">
                 <video
                     class="w-full overflow-hidden rounded-xl border border-white/10"
                     controls
                     playsinline
-                    preload="metadata"
+                    preload="none"
                     poster="{{ e($vPosterUrl) }}"
                 >
-                    <source src="{{ e($vSrcUrl) }}" type="video/mp4" />
+                    <source src="{{ e($vSrcUrl) }}" type="{{ str_ends_with(strtolower($vSrc), '.webm') ? 'video/webm' : 'video/mp4' }}" />
                 </video>
             </div>
         @endif

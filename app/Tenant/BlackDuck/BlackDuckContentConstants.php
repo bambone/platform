@@ -113,11 +113,14 @@ final class BlackDuckContentConstants
      */
     public static function serviceMatrixHomePreview(): array
     {
-        $allow = array_flip(self::HOME_SERVICE_PREVIEW_SLUGS);
-        $out = [];
+        $bySlug = [];
         foreach (self::serviceMatrixQ1() as $row) {
-            if (isset($allow[(string) $row['slug']])) {
-                $out[] = $row;
+            $bySlug[(string) $row['slug']] = $row;
+        }
+        $out = [];
+        foreach (self::HOME_SERVICE_PREVIEW_SLUGS as $slug) {
+            if (isset($bySlug[$slug])) {
+                $out[] = $bySlug[$slug];
             }
         }
         if ($out === []) {
@@ -153,6 +156,17 @@ final class BlackDuckContentConstants
             'predprodazhnaya' => 'Внешний вид под осмотр покупателя.',
             'pdr' => 'Вмятины без окраса — оценка на месте.',
         ];
+    }
+
+    public static function serviceTitleForSlug(string $slug): string
+    {
+        foreach (self::serviceMatrixQ1() as $row) {
+            if ((string) $row['slug'] === $slug) {
+                return (string) $row['title'];
+            }
+        }
+
+        return $slug;
     }
 
     public static function serviceMatrixQ1(): array

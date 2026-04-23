@@ -425,6 +425,14 @@ final class BlackDuckBootstrap extends Seeder
                     'video_poster' => '',
                     'overlay_dark' => true,
                 ]),
+                $this->sec('works_portfolio', 'works_portfolio', 'Портфолио', 5, [
+                    'heading' => 'Портфолио',
+                    'intro' => '',
+                    'filters' => [],
+                    'gallery_items' => [],
+                    'primary_cta_label' => 'Заявка и расчёт',
+                    'primary_cta_href' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
+                ]),
                 $this->sec('works_before_after', 'before_after_slider', 'До / после', 10, [
                     'heading' => 'До и после',
                     'pairs' => [],

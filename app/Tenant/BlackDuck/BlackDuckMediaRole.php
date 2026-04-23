@@ -5,17 +5,20 @@ declare(strict_types=1);
 namespace App\Tenant\BlackDuck;
 
 /**
- * Роли ассетов в {@see BlackDuckMediaCatalog} (builder-first, не публичные URL в Blade).
+ * Роли ассетов в {@see BlackDuckMediaCatalog} (builder-first, runtime — только локальные logical_path).
  */
 enum BlackDuckMediaRole: string
 {
     case HomeServiceCard = 'home_service_card';
-    case HomeProofFeature = 'home_proof_feature';
-    case WorksFeatured = 'works_featured';
+    case HomeProofBefore = 'home_proof_before';
+    case HomeProofAfter = 'home_proof_after';
+    case WorksFeaturedVideo = 'works_featured_video';
+    case WorksFeaturedPoster = 'works_featured_poster';
     case WorksGallery = 'works_gallery';
+    case WorksBeforeAfterBefore = 'works_before_after_before';
+    case WorksBeforeAfterAfter = 'works_before_after_after';
+    case WorksCaseCard = 'works_case_card';
     case ServiceGallery = 'service_gallery';
-    case BeforeAfterBefore = 'before_after_before';
-    case BeforeAfterAfter = 'before_after_after';
-    case FeaturedVideo = 'featured_video';
-    case VideoPoster = 'video_poster';
+    /** Опционально: видео на посадочной услуги (например PPF), только с постером. */
+    case ServiceFeaturedVideo = 'service_featured_video';
 }

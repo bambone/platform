@@ -13,4 +13,13 @@ class BlackDuckContentConstantsTest extends TestCase
     {
         $this->assertSame('', BlackDuckContentConstants::instagramUrlForPublic());
     }
+
+    public function test_home_service_preview_preserves_constants_order(): void
+    {
+        $slugs = array_map(
+            static fn (array $row): string => (string) $row['slug'],
+            BlackDuckContentConstants::serviceMatrixHomePreview(),
+        );
+        $this->assertSame(BlackDuckContentConstants::HOME_SERVICE_PREVIEW_SLUGS, $slugs);
+    }
 }

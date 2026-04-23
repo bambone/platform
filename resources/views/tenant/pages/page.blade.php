@@ -19,8 +19,16 @@
             ? 'max-w-[min(72rem,calc(100vw-1.5rem))] md:px-10'
             : 'max-w-4xl md:px-8';
     @endphp
+    @php
+        $firstExtra = $extraSections->first();
+        $skipShellH1 = tenant()?->themeKey() === 'black_duck'
+            && $firstExtra !== null
+            && in_array($firstExtra->section_key, ['hero', 'works_hero'], true);
+    @endphp
     <div class="mx-auto px-3 pb-12 pt-24 sm:px-4 sm:pb-16 sm:pt-28 {{ $pageShell }}">
-        <h1 class="mb-6 text-balance text-2xl font-bold leading-tight text-white sm:mb-8 sm:text-3xl md:text-4xl">{{ ($resolvedSeo ?? null)?->h1 ?? $page->name }}</h1>
+        @unless ($skipShellH1)
+            <h1 class="mb-6 text-balance text-2xl font-bold leading-tight text-white sm:mb-8 sm:text-3xl md:text-4xl">{{ ($resolvedSeo ?? null)?->h1 ?? $page->name }}</h1>
+        @endunless
 
         @if($mainSection && is_array($mainSection->data_json) && filled($mainSection->data_json['content'] ?? null))
             <x-tenant.rich-prose variant="default" class="mb-12" :content="$mainSection->data_json['content']" />

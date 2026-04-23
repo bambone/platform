@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "source": "client-export/ppf-card.jpg",
+      "role": "home_service_card",
+      "service_slug": "ppf",
+      "sort_order": 0,
+      "caption": "",
+      "alt": "PPF",
+      "source_ref": "https://yandex.ru/maps/org/example/album/1"
+    },
+    {
+      "source": "client-export/home-before.jpg",
+      "role": "home_proof_before",
+      "before_after_group": "home-main",
+      "sort_order": 0,
+      "caption": "До"
+    },
+    {
+      "source": "client-export/home-after.jpg",
+      "role": "home_proof_after",
+      "before_after_group": "home-main",
+      "sort_order": 0,
+      "caption": "После"
+    },
+    {
+      "source": "client-export/showreel.mp4",
+      "poster_source": "client-export/showreel-cover.jpg",
+      "role": "works_featured_video",
+      "sort_order": 0,
+      "caption": "Работы",
+      "source_ref": "https://disk.yandex.ru/client/disk/video.mp4"
+    }
+  ]
+}

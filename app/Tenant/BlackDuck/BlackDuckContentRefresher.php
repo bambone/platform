@@ -440,6 +440,14 @@ final class BlackDuckContentRefresher
             'video_poster' => '',
             'overlay_dark' => true,
         ]);
+        $ins($pageIdRaboty, 'works_portfolio', 'works_portfolio', 'Портфолио', 5, [
+            'heading' => 'Портфолио',
+            'intro' => '',
+            'filters' => [],
+            'gallery_items' => [],
+            'primary_cta_label' => 'Заявка и расчёт',
+            'primary_cta_href' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
+        ]);
         $ins($pageIdRaboty, 'works_before_after', 'before_after_slider', 'До / после', 10, [
             'heading' => 'До и после',
             'pairs' => [],
@@ -713,12 +721,18 @@ final class BlackDuckContentRefresher
             ]);
     }
 
+    private function isBlackDuckTenant(int $tenantId): bool
+    {
+        return (string) DB::table('tenants')->where('id', $tenantId)->value('theme_key') === 'black_duck';
+    }
+
     private function updateHomeSections(
         int $tenantId,
         bool $force,
         bool $ifPlaceholder,
         ?string $forceSection,
     ): void {
+        $isBlackDuck = $this->isBlackDuckTenant($tenantId);
         $hero = [
             'heading' => 'Black Duck Detailing',
             'subheading' => 'Доверяйте свой автомобиль только профессионалам',
@@ -777,7 +791,12 @@ final class BlackDuckContentRefresher
         foreach (BlackDuckContentConstants::serviceMatrixHomePreview() as $row) {
             $slug = (string) $row['slug'];
             $cta = str_starts_with($slug, '#') ? BlackDuckContentConstants::PRIMARY_LEAD_URL : '/'.$slug;
-            $img = BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
+            if ($isBlackDuck) {
+                $img = BlackDuckMediaCatalog::homeServiceHubImage($tenantId, $slug)
+                    ?? BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
+            } else {
+                $img = BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
+            }
             $sub = (string) ($previewSub[$slug] ?? $row['blurb']);
             $hubItems[] = [
                 'title' => $row['title'],
@@ -796,39 +815,70 @@ final class BlackDuckContentRefresher
             'items' => $hubItems,
         ], $force, $ifPlaceholder, $forceSection);
 
-        $baKeep = $this->readHomeSectionDataArray($tenantId, 'home', 'before_after');
-        $this->updateSectionData($tenantId, 'home', 'before_after', [
-            'heading' => 'Результат в деталях',
-            'proof_works_cta_label' => 'Смотреть работы',
-            'proof_works_cta_href' => BlackDuckContentConstants::WORKS_PAGE_URL,
-            'pairs' => is_array($baKeep['pairs'] ?? null) ? $baKeep['pairs'] : [],
-        ], $force, $ifPlaceholder, $forceSection);
+        if ($isBlackDuck) {
+            $homeBa = BlackDuckMediaCatalog::homeBeforeAfterPairs($tenantId);
+            if ($homeBa !== []) {
+                $this->updateSectionData($tenantId, 'home', 'before_after', [
+                    'heading' => 'Результат в деталях',
+                    'proof_works_cta_label' => 'Смотреть работы',
+                    'proof_works_cta_href' => BlackDuckContentConstants::WORKS_PAGE_URL,
+                    'pairs' => $homeBa,
+                ], $force, $ifPlaceholder, $forceSection);
+                $this->updateSectionData($tenantId, 'home', 'case_cards', [
+                    'heading' => 'Свежие проекты',
+                    'proof_works_cta_label' => 'Смотреть работы',
+                    'proof_works_cta_href' => BlackDuckContentConstants::WORKS_PAGE_URL,
+                    'items' => [],
+                ], $force, $ifPlaceholder, $forceSection);
+            } else {
+                $this->updateSectionData($tenantId, 'home', 'before_after', [
+                    'heading' => 'Результат в деталях',
+                    'proof_works_cta_label' => 'Смотреть работы',
+                    'proof_works_cta_href' => BlackDuckContentConstants::WORKS_PAGE_URL,
+                    'pairs' => [],
+                ], $force, $ifPlaceholder, $forceSection);
+                $this->updateSectionData($tenantId, 'home', 'case_cards', [
+                    'heading' => 'Свежие проекты',
+                    'proof_works_cta_label' => 'Смотреть работы',
+                    'proof_works_cta_href' => BlackDuckContentConstants::WORKS_PAGE_URL,
+                    'items' => BlackDuckMediaCatalog::homeCaseCardItems($tenantId),
+                ], $force, $ifPlaceholder, $forceSection);
+            }
+        } else {
+            $baKeep = $this->readHomeSectionDataArray($tenantId, 'home', 'before_after');
+            $this->updateSectionData($tenantId, 'home', 'before_after', [
+                'heading' => 'Результат в деталях',
+                'proof_works_cta_label' => 'Смотреть работы',
+                'proof_works_cta_href' => BlackDuckContentConstants::WORKS_PAGE_URL,
+                'pairs' => is_array($baKeep['pairs'] ?? null) ? $baKeep['pairs'] : [],
+            ], $force, $ifPlaceholder, $forceSection);
 
-        $this->updateSectionData($tenantId, 'home', 'case_cards', [
-            'heading' => 'Свежие проекты',
-            'proof_works_cta_label' => 'Смотреть работы',
-            'proof_works_cta_href' => BlackDuckContentConstants::WORKS_PAGE_URL,
-            'items' => [
-                [
-                    'vehicle' => 'Кроссовер',
-                    'task' => 'PPF зоны риска + керамика',
-                    'result' => 'Защита ЛКП и устойчивый глянец в зоне работ.',
-                    'duration' => 'по плану',
+            $this->updateSectionData($tenantId, 'home', 'case_cards', [
+                'heading' => 'Свежие проекты',
+                'proof_works_cta_label' => 'Смотреть работы',
+                'proof_works_cta_href' => BlackDuckContentConstants::WORKS_PAGE_URL,
+                'items' => [
+                    [
+                        'vehicle' => 'Кроссовер',
+                        'task' => 'PPF зоны риска + керамика',
+                        'result' => 'Защита ЛКП и устойчивый глянец в зоне работ.',
+                        'duration' => 'по плану',
+                    ],
+                    [
+                        'vehicle' => 'Седан',
+                        'task' => 'Химчистка, кожа, полировка фар',
+                        'result' => 'Свежий салон, прозрачнее оптика, аккуратный кузов.',
+                        'duration' => '1–2 дня',
+                    ],
+                    [
+                        'vehicle' => 'SUV',
+                        'task' => 'Тонировка с подбором плёнки',
+                        'result' => 'Ровные кромки, комфорт в салоне.',
+                        'duration' => 'по смене',
+                    ],
                 ],
-                [
-                    'vehicle' => 'Седан',
-                    'task' => 'Химчистка, кожа, полировка фар',
-                    'result' => 'Свежий салон, прозрачнее оптика, аккуратный кузов.',
-                    'duration' => '1–2 дня',
-                ],
-                [
-                    'vehicle' => 'SUV',
-                    'task' => 'Тонировка с подбором плёнки',
-                    'result' => 'Ровные кромки, комфорт в салоне.',
-                    'duration' => 'по смене',
-                ],
-            ],
-        ], $force, $ifPlaceholder, $forceSection);
+            ], $force, $ifPlaceholder, $forceSection);
+        }
 
         $this->updateSectionData($tenantId, 'home', 'reviews', [
             'heading' => 'Отзывы',
@@ -845,9 +895,15 @@ final class BlackDuckContentRefresher
         ?string $forceSection,
     ): void {
         $items = [];
+        $isBlackDuck = $this->isBlackDuckTenant($tenantId);
         foreach (BlackDuckContentConstants::serviceMatrixQ1() as $row) {
             $slug = (string) $row['slug'];
-            $img = BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
+            if ($isBlackDuck) {
+                $img = BlackDuckMediaCatalog::serviceHubCatalogCover($tenantId, $slug)
+                    ?? BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
+            } else {
+                $img = BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
+            }
             $cta = str_starts_with($slug, '#') ? BlackDuckContentConstants::PRIMARY_LEAD_URL : '/'.$slug;
             $items[] = [
                 'title' => $row['title'],
@@ -913,6 +969,14 @@ final class BlackDuckContentRefresher
                 ?? BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
             if ($bg !== null) {
                 $hero['background_image'] = $bg;
+            }
+            if ($this->isBlackDuckTenant($tenantId)) {
+                $svcVid = BlackDuckMediaCatalog::serviceFeaturedVideoMedia($tenantId, $slug);
+                if ($svcVid !== []) {
+                    $hero['video_src'] = $svcVid['video'];
+                    $hero['video_poster'] = $svcVid['poster'];
+                    $hero['video_deferred'] = true;
+                }
             }
             $this->updateSectionData($tenantId, $slug, 'hero', $hero, $force, $ifPlaceholder, $forceSection);
             $this->updateSectionData($tenantId, $slug, 'body', [
@@ -1009,6 +1073,23 @@ final class BlackDuckContentRefresher
             ->update(['is_visible' => $visible, 'updated_at' => now()]);
     }
 
+    private function updatePageSectionVisibility(
+        int $tenantId,
+        string $pageSlug,
+        string $sectionKey,
+        bool $visible,
+    ): void {
+        $pageId = (int) DB::table('pages')->where('tenant_id', $tenantId)->where('slug', $pageSlug)->value('id');
+        if ($pageId < 1) {
+            return;
+        }
+        DB::table('page_sections')
+            ->where('tenant_id', $tenantId)
+            ->where('page_id', $pageId)
+            ->where('section_key', $sectionKey)
+            ->update(['is_visible' => $visible, 'updated_at' => now()]);
+    }
+
     private function blackDuckStoredVisualExists(int $tenantId, string $stored): bool
     {
         $stored = trim($stored);
@@ -1016,7 +1097,7 @@ final class BlackDuckContentRefresher
             return false;
         }
         if (preg_match('#^https?://#i', $stored) === 1) {
-            return true;
+            return false;
         }
         $ts = TenantStorage::forTrusted($tenantId);
         $path = $stored;
@@ -1047,15 +1128,29 @@ final class BlackDuckContentRefresher
             if ($row === null) {
                 continue;
             }
-            $gallery = BlackDuckMediaCatalog::serviceGalleryImagePaths($tenantId, $slug);
+            $gallery = BlackDuckMediaCatalog::serviceGalleryDisplayItems($tenantId, $slug);
             $items = [];
             foreach ($gallery as $g) {
+                $cap = (string) ($g['caption'] ?? '');
+                $tit = (string) ($g['title'] ?? '');
+                $sum = (string) ($g['summary'] ?? '');
+                $alt = trim((string) ($g['alt'] ?? ''));
+                if ($alt === '') {
+                    $alt = $tit !== '' ? $tit : ($cap !== '' ? $cap : 'Фото работы');
+                }
                 $items[] = [
                     'vehicle' => '',
-                    'task' => (string) ($g['caption'] ?? ''),
+                    'task' => $tit !== '' ? $tit : $cap,
+                    'title' => $tit,
+                    'summary' => $sum,
+                    'caption' => $cap,
                     'result' => '',
                     'duration' => '',
                     'image_url' => (string) $g['logical_path'],
+                    'image_alt' => $alt,
+                    'srcset' => (string) ($g['srcset'] ?? ''),
+                    'sizes' => (string) ($g['sizes'] ?? ''),
+                    'aspect_ratio' => $g['aspect_ratio'] ?? null,
                 ];
             }
             $data = [
@@ -1081,30 +1176,58 @@ final class BlackDuckContentRefresher
         bool $ifPlaceholder,
         ?string $forceSection,
     ): void {
-        $this->updateSectionData($tenantId, 'raboty', 'case_list', [
-            'heading' => 'Кейсы',
-            'items' => [
-                [
-                    'vehicle' => 'SUV, тёмный кузов',
-                    'task' => 'PPF + керамика зоны риска',
-                    'result' => 'Согласованный глянец, защита стыков; отчёт по этапам.',
-                    'duration' => '2–3 дня',
+        $isBlackDuck = $this->isBlackDuckTenant($tenantId);
+        if ($isBlackDuck) {
+            $grid = BlackDuckMediaCatalog::worksPortfolioGridItems($tenantId);
+            $chips = BlackDuckMediaCatalog::worksPortfolioFilterChips($tenantId);
+            $this->updateSectionData($tenantId, 'raboty', 'works_portfolio', [
+                'heading' => 'Портфолио',
+                'intro' => 'Подбор по направлениям. Подробный разбор и сроки — по заявке.',
+                'filters' => $chips,
+                'gallery_items' => $grid,
+                'primary_cta_label' => 'Заявка и расчёт',
+                'primary_cta_href' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
+            ], $force, $ifPlaceholder, $forceSection);
+            if ($this->sectionMatch('works_portfolio', $forceSection)) {
+                $this->updatePageSectionVisibility($tenantId, 'raboty', 'works_portfolio', $grid !== []);
+            }
+
+            $story = BlackDuckMediaCatalog::worksStoryCardItems($tenantId, 12);
+            $this->updateSectionData($tenantId, 'raboty', 'case_list', [
+                'heading' => 'Проекты',
+                'proof_works_cta_label' => '',
+                'proof_works_cta_href' => '',
+                'items' => $story,
+            ], $force, $ifPlaceholder, $forceSection);
+            if ($this->sectionMatch('case_list', $forceSection)) {
+                $this->updatePageSectionVisibility($tenantId, 'raboty', 'case_list', $story !== []);
+            }
+        } else {
+            $this->updateSectionData($tenantId, 'raboty', 'case_list', [
+                'heading' => 'Кейсы',
+                'items' => [
+                    [
+                        'vehicle' => 'SUV, тёмный кузов',
+                        'task' => 'PPF + керамика зоны риска',
+                        'result' => 'Согласованный глянец, защита стыков; отчёт по этапам.',
+                        'duration' => '2–3 дня',
+                    ],
+                    [
+                        'vehicle' => 'Седан',
+                        'task' => 'Сложная химчистка + кожа',
+                        'result' => 'Свежий салон, без «химического» запаха, ровная фактура кожи.',
+                        'duration' => '1–2 дня',
+                    ],
+                    [
+                        'vehicle' => 'Кроссовер',
+                        'task' => 'Тонировка заднего сегмента',
+                        'result' => 'Ровные кромки, комфорт и приватность в ряду с регламентом.',
+                        'duration' => 'по смене',
+                    ],
                 ],
-                [
-                    'vehicle' => 'Седан',
-                    'task' => 'Сложная химчистка + кожа',
-                    'result' => 'Свежий салон, без «химического» запаха, ровная фактура кожи.',
-                    'duration' => '1–2 дня',
-                ],
-                [
-                    'vehicle' => 'Кроссовер',
-                    'task' => 'Тонировка заднего сегмента',
-                    'result' => 'Ровные кромки, комфорт и приватность в ряду с регламентом.',
-                    'duration' => 'по смене',
-                ],
-            ],
-        ], $force, $ifPlaceholder, $forceSection);
-        $vid = BlackDuckMediaCatalog::featuredVideoForPage($tenantId, 'raboty');
+            ], $force, $ifPlaceholder, $forceSection);
+        }
+        $vid = BlackDuckMediaCatalog::worksFeaturedHeroMedia($tenantId);
         $wHero = [
             'variant' => 'full_background',
             'heading' => 'Работы Black Duck',
@@ -1120,12 +1243,17 @@ final class BlackDuckContentRefresher
             $wHero['background_image'] = $bg;
         }
         $this->updateSectionData($tenantId, 'raboty', 'works_hero', $wHero, $force, $ifPlaceholder, $forceSection);
-        $wb = $this->readHomeSectionDataArray($tenantId, 'raboty', 'works_before_after');
+        if ($isBlackDuck) {
+            $wbPairs = BlackDuckMediaCatalog::worksBeforeAfterPairs($tenantId);
+        } else {
+            $wb = $this->readHomeSectionDataArray($tenantId, 'raboty', 'works_before_after');
+            $wbPairs = is_array($wb['pairs'] ?? null) ? $wb['pairs'] : [];
+        }
         $this->updateSectionData($tenantId, 'raboty', 'works_before_after', [
             'heading' => 'До и после',
             'proof_lead_href' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
             'proof_lead_label' => 'Согласовать проект',
-            'pairs' => is_array($wb['pairs'] ?? null) ? $wb['pairs'] : [],
+            'pairs' => is_array($wbPairs) ? $wbPairs : [],
         ], $force, $ifPlaceholder, $forceSection);
         $this->updateSectionData($tenantId, 'raboty', 'works_cta', [
             'content' => '<p class="text-zinc-300">Готовы обсудить работу? <a class="font-medium text-[#36C7FF] underline" href="'.e(BlackDuckContentConstants::PRIMARY_LEAD_URL).'">Оставьте заявку</a> — ответим и согласуем план.</p>',

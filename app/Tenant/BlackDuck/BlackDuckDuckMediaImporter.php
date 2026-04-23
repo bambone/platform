@@ -178,6 +178,9 @@ final class BlackDuckDuckMediaImporter
         if ($orderedKeys === []) {
             return;
         }
+        if (BlackDuckMediaCatalog::hasCuratedManifest($tenantId)) {
+            return;
+        }
         $homeSlots = $homeHubSlotCount ?? count(BlackDuckContentConstants::serviceMatrixHomePreview());
         $uslugiSlots = $uslugiHubSlotCount ?? count(BlackDuckContentConstants::serviceMatrixQ1());
         if ($homeSlots < 1) {

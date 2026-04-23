@@ -11,6 +11,7 @@ use App\PageBuilder\Blueprints\BlackDuck\PackageMatrixBlueprint;
 use App\PageBuilder\Blueprints\BlackDuck\ServiceHubGridBlueprint;
 use App\PageBuilder\Blueprints\BlackDuck\StickyMobileCtaDockBlueprint;
 use App\PageBuilder\Blueprints\BlackDuck\VehicleClassSelectorBlueprint;
+use App\PageBuilder\Blueprints\BlackDuck\WorksPortfolioBlueprint;
 use App\PageBuilder\Blueprints\CardsTeaserBlueprint;
 use App\PageBuilder\Blueprints\ContactInquirySectionBlueprint;
 use App\PageBuilder\Blueprints\ContactsBlueprint;
@@ -124,6 +125,7 @@ final class PageSectionTypeRegistry
             new AvailabilityRibbonBlueprint,
             new VehicleClassSelectorBlueprint,
             new CaseStudyCardsBlueprint,
+            new WorksPortfolioBlueprint,
             new PackageMatrixBlueprint,
             new MessengerCaptureBarBlueprint,
         ];

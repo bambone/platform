@@ -1,18 +1,114 @@
 {
-  "version": 1,
+  "version": 3,
   "assets": [
     {
       "role": "home_service_card",
       "service_slug": "ppf",
-      "logical_path": "site/brand/proof/ppf-cover.jpg",
+      "logical_path": "site/brand/proof/01-ppf-card.jpg",
       "sort_order": 0,
-      "kind": "image"
+      "caption": "",
+      "title": "PPF на карточке главной",
+      "summary": "Короткая подпись для превью.",
+      "service_label": "Антигравий",
+      "tags": ["PPF", "защита"],
+      "aspect_hint": "4 / 3",
+      "show_on_home": true,
+      "show_on_works": false,
+      "alt": "PPF",
+      "source_ref": "https://yandex.ru/maps/org/example/album",
+      "derivatives": [
+        { "w": 640, "logical_path": "site/brand/proof/01-ppf-card-640.webp" },
+        { "w": 960, "logical_path": "site/brand/proof/01-ppf-card-960.webp" }
+      ]
     },
     {
-      "role": "featured_video",
-      "page": "raboty",
-      "logical_path": "site/brand/videos/wrap.mp4",
-      "poster_path": "site/brand/videos/wrap-poster.jpg"
+      "role": "home_proof_before",
+      "before_after_group": "home-1",
+      "logical_path": "site/brand/proof/02-home-before.jpg",
+      "sort_order": 0,
+      "caption": "До обработки",
+      "show_on_home": true
+    },
+    {
+      "role": "home_proof_after",
+      "before_after_group": "home-1",
+      "logical_path": "site/brand/proof/03-home-after.jpg",
+      "sort_order": 0,
+      "caption": "После обработки",
+      "show_on_home": true
+    },
+    {
+      "role": "works_featured_video",
+      "logical_path": "site/brand/proof/04-works.mp4",
+      "poster_logical_path": "site/brand/proof/05-works-poster.jpg",
+      "sort_order": 0,
+      "caption": "Фрагмент работ",
+      "source_ref": "https://disk.yandex.ru/client/disk"
+    },
+    {
+      "role": "works_before_after_before",
+      "before_after_group": "works-1",
+      "logical_path": "site/brand/proof/06-w-before.jpg",
+      "sort_order": 0,
+      "show_on_works": true
+    },
+    {
+      "role": "works_before_after_after",
+      "before_after_group": "works-1",
+      "logical_path": "site/brand/proof/07-w-after.jpg",
+      "sort_order": 0,
+      "show_on_works": true
+    },
+    {
+      "role": "works_case_card",
+      "page_slug": "raboty",
+      "service_slug": "ppf",
+      "logical_path": "site/brand/proof/08-case.jpg",
+      "sort_order": 0,
+      "caption": "PPF зона риска",
+      "title": "Седан: передний сегмент",
+      "summary": "Кромка и зона ПТЗ в работе.",
+      "tags": ["PPF", "кейс"],
+      "display_variant": "card",
+      "badge": "Кейс",
+      "show_on_works": true,
+      "works_group": "Седан"
+    },
+    {
+      "role": "works_gallery",
+      "service_slug": "keramika",
+      "logical_path": "site/brand/proof/09-gallery.jpg",
+      "sort_order": 10,
+      "caption": "Глянец после керамики",
+      "title": "Кроссовер: керамика кузова",
+      "tags": ["керамика", "глянец"],
+      "aspect_hint": "3 / 2",
+      "show_on_works": true
+    },
+    {
+      "role": "works_gallery",
+      "service_slug": "ppf",
+      "logical_path": "site/brand/proof/09b-ppf-grid.jpg",
+      "sort_order": 11,
+      "caption": "Макет PPF",
+      "tags": ["PPF"],
+      "show_on_works": true
+    },
+    {
+      "role": "service_gallery",
+      "service_slug": "ppf",
+      "logical_path": "site/brand/proof/10-ppf-1.jpg",
+      "sort_order": 0,
+      "caption": "Кромка",
+      "show_on_service": true,
+      "is_featured": true
+    },
+    {
+      "role": "service_featured_video",
+      "service_slug": "ppf",
+      "logical_path": "site/brand/proof/11-ppf.mp4",
+      "poster_logical_path": "site/brand/proof/12-ppf-poster.jpg",
+      "sort_order": 0
     }
   ]
 }

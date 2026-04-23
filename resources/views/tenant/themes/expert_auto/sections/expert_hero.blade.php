@@ -14,11 +14,24 @@
     $badges = is_array($data['trust_badges'] ?? null) ? $data['trust_badges'] : [];
     $badges = array_slice($badges, 0, 3);
     $overlay = (bool) ($data['overlay_dark'] ?? true);
+    $isBlackDuck = tenant()?->themeKey() === 'black_duck';
+    $bdHero = [];
+    if ($isBlackDuck && is_array($data['hero_responsive'] ?? null)) {
+        $hr = $data['hero_responsive'];
+        foreach (['w1916' => 'w1916', 'w1600' => 'w1600', 'w900' => 'w900', 'w900_1200' => 'w900_1200', 'jpg' => 'jpg'] as $k => $_) {
+            if (isset($hr[$k]) && is_string($hr[$k]) && trim($hr[$k]) !== '') {
+                $bdHero[$k] = ExpertBrandMediaUrl::resolve(trim($hr[$k]));
+            }
+        }
+    }
+    $useBlackDuckPicture = $isBlackDuck && $bdHero !== [] && (isset($bdHero['jpg']) || isset($bdHero['w1916']) || isset($bdHero['w1600']) || isset($bdHero['w900']) || isset($bdHero['w900_1200']));
     $heroUrl = trim((string) ($data['hero_image_url'] ?? ''));
     if ($heroUrl === '' && isset($data['hero_image_slot']) && is_array($data['hero_image_slot'])) {
         $heroUrl = trim((string) ($data['hero_image_slot']['url'] ?? ''));
     }
-    $isBlackDuck = tenant()?->themeKey() === 'black_duck';
+    if ($useBlackDuckPicture) {
+        $heroUrl = $bdHero['jpg'] ?? $bdHero['w1916'] ?? $bdHero['w1600'] ?? $bdHero['w900'] ?? $heroUrl;
+    }
     if ($isBlackDuck && $heroUrl === '') {
         $heroUrl = trim((string) (\tenant_branding_hero_url() ?? ''));
     }
@@ -30,7 +43,7 @@
     if ($heroAlt === '') {
         $heroAlt = $isBlackDuck ? 'Black Duck Detailing, детейлинг-центр в Челябинске' : 'Марат Афлятунов — инструктор по вождению';
     }
-    $hasPhoto = $heroUrl !== '';
+    $hasPhoto = $useBlackDuckPicture || $heroUrl !== '';
     $videoUrl = ExpertBrandMediaUrl::resolve(trim((string) ($data['hero_video_url'] ?? '')));
     $videoPoster = ExpertBrandMediaUrl::resolve(trim((string) ($data['hero_video_poster_url'] ?? '')));
     $videoTrigger = trim((string) ($data['video_trigger_label'] ?? ''));
@@ -57,8 +70,25 @@
     }
     $heroSectionStyleAttr = $heroSectionStyle !== '' ? ' style="'.e($heroSectionStyle).'"' : '';
 @endphp
+@php
+    $bdLcpPortrait = ! empty($bdHero['w900_1200'] ?? null);
+    $bdLcpMobile = ! empty($bdHero['w900'] ?? null);
+@endphp
 @push('tenant-preload')
-    @if($hasPhoto && $heroUrl !== '')
+    @if($hasPhoto && $useBlackDuckPicture)
+        @if(!empty($bdHero['w1916'] ?? null))
+            <link rel="preload" as="image" type="image/webp" href="{{ e($bdHero['w1916']) }}" media="(min-width: 1024px)" fetchpriority="high">
+        @elseif(!empty($bdHero['w1600'] ?? null))
+            <link rel="preload" as="image" type="image/webp" href="{{ e($bdHero['w1600']) }}" media="(min-width: 1024px)" fetchpriority="high">
+        @endif
+        @if($bdLcpPortrait)
+            <link rel="preload" as="image" type="image/webp" href="{{ e($bdHero['w900_1200']) }}" media="(max-width: 1023px) and (orientation: portrait)" fetchpriority="high">
+        @endif
+        @if($bdLcpMobile)
+            <link rel="preload" as="image" type="image/webp" href="{{ e($bdHero['w900']) }}" media="{{ $bdLcpPortrait ? '(max-width: 1023px) and (orientation: landscape)' : '(max-width: 1023px)' }}" fetchpriority="high">
+        @endif
+    @endif
+    @if($hasPhoto && $heroUrl !== '' && ! $useBlackDuckPicture)
         <link rel="preload" as="image" href="{{ e($heroUrl) }}" fetchpriority="high">
     @endif
 @endpush
@@ -71,14 +101,42 @@
     <div class="expert-hero-cinematic__bleed expert-hero-cinematic__bleed--stage">
         @if($hasPhoto)
             <div class="expert-hero-cinematic__photo-layer">
-                <img
-                    src="{{ e($heroUrl) }}"
-                    alt="{{ e($heroAlt) }}"
-                    class="expert-hero-cinematic__photo"
-                    loading="eager"
-                    fetchpriority="high"
-                    decoding="async"
-                >
+                @if($useBlackDuckPicture)
+                    <picture>
+                        @if(!empty($bdHero['w900_1200'] ?? null))
+                            <source type="image/webp" srcset="{{ e($bdHero['w900_1200']) }}" media="(max-width: 1023px) and (orientation: portrait)">
+                        @endif
+                        @if(!empty($bdHero['w900'] ?? null))
+                            <source type="image/webp" srcset="{{ e($bdHero['w900']) }}" media="(max-width: 1023px)">
+                        @endif
+                        @if(!empty($bdHero['w1916'] ?? null) && !empty($bdHero['w1600'] ?? null))
+                            <source type="image/webp" srcset="{{ e($bdHero['w1916']) }} 1916w, {{ e($bdHero['w1600']) }} 1600w" sizes="100vw" media="(min-width: 1024px)">
+                        @elseif(!empty($bdHero['w1916'] ?? null))
+                            <source type="image/webp" srcset="{{ e($bdHero['w1916']) }}" media="(min-width: 1024px)">
+                        @elseif(!empty($bdHero['w1600'] ?? null))
+                            <source type="image/webp" srcset="{{ e($bdHero['w1600']) }}" media="(min-width: 1024px)">
+                        @endif
+                        <img
+                            src="{{ e($bdHero['jpg'] ?? $bdHero['w1916'] ?? $bdHero['w1600'] ?? $bdHero['w900'] ?? $heroUrl) }}"
+                            alt="{{ e($heroAlt) }}"
+                            class="expert-hero-cinematic__photo"
+                            width="1916"
+                            height="1080"
+                            loading="eager"
+                            fetchpriority="high"
+                            decoding="async"
+                        >
+                    </picture>
+                @else
+                    <img
+                        src="{{ e($heroUrl) }}"
+                        alt="{{ e($heroAlt) }}"
+                        class="expert-hero-cinematic__photo"
+                        loading="eager"
+                        fetchpriority="high"
+                        decoding="async"
+                    >
+                @endif
             </div>
         @endif
 

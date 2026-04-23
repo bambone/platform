@@ -84,7 +84,7 @@ final class BlackDuckBootstrap extends Seeder
         $ownerId = (int) (DB::table('users')->value('id') ?? 0);
 
         $now = now();
-        $tenantId = (int) DB::table('tenants')->insertGetId([
+        $row = [
             'name' => 'Black Duck Detailing',
             'slug' => self::SLUG,
             'brand_name' => 'Black Duck Detailing',
@@ -100,7 +100,19 @@ final class BlackDuckBootstrap extends Seeder
             'scheduling_module_enabled' => true,
             'created_at' => $now,
             'updated_at' => $now,
-        ]);
+        ];
+        $canonical = BlackDuckContentConstants::CANONICAL_TENANT_ID;
+        if (! DB::table('tenants')->where('id', $canonical)->exists()) {
+            DB::table('tenants')->insert(array_merge(['id' => $canonical], $row));
+            $tenantId = $canonical;
+            if (DB::getDriverName() === 'mysql') {
+                $max = (int) (DB::table('tenants')->max('id') ?? 0);
+                $next = max($canonical + 1, $max + 1);
+                DB::statement('ALTER TABLE tenants AUTO_INCREMENT = '.$next);
+            }
+        } else {
+            $tenantId = (int) DB::table('tenants')->insertGetId($row);
+        }
 
         $this->insertDomain($tenantId, $now);
         $this->applyPublicSettings($tenantId);
@@ -280,12 +292,21 @@ final class BlackDuckBootstrap extends Seeder
             $this->defHome(),
             $this->defServiceHub(),
             $this->defServiceLanding('detejling-mojka', 'Детейлинг-мойка', 'Короткая детерминированная услуга: запись онлайн после настройки расписания.'),
-            $this->defServiceLanding('himchistka-salona', 'Химчистка салона', 'Интерьер: сроки и объём согласовываются после осмотра.'),
-            $this->defServiceLanding('polirovka-kuzova', 'Полировка кузова', 'Абразив и финиш — по состоянию ЛКП; длительность планируется по осмотру.'),
-            $this->defServiceLanding('keramika', 'Керамическое покрытие', 'Серия этапов; подтверждение слотов менеджером.'),
-            $this->defServiceLanding('ppf', 'Антигравийная плёнка (PPF)', 'Покрытия зон и плёнка — по осмотру и макету.'),
-            $this->defServiceLanding('tonirovka', 'Тонировка', 'Электронная очередь и согласование вариантов плёнки — через менеджера.'),
+            $this->defServiceLanding('setki-radiatora', 'Установка защитных сеток', 'Сетки на радиатор: подбор по геометрии, монтаж под модель; согласуем сроки.'),
+            $this->defServiceLanding('antidozhd', 'Антидождь', 'Гидрофоб и обзор: составы, слои и срок согласуем письменно при записи.'),
+            $this->defServiceLanding('remont-skolov', 'Ремонт сколов', 'Точка входа: сколы и царапины LKP — план и глубина работ после осмотра.'),
             $this->defServiceLanding('shumka', 'Шумоизоляция', 'Объём работ и длительность — после диагностики на месте.'),
+            $this->defServiceLanding('kozha-keramika', 'Кожа: керамика салона', 'По тесту материалов; серия согласуется, без «слепой» площади.'),
+            $this->defServiceLanding('tonirovka', 'Тонировка / оптика', 'Согласование плёнки и вариантов; оптика — по регламенту ГИБДД при необходимости.'),
+            $this->defServiceLanding('keramika', 'Керамическое покрытие', 'Серия этапов; подтверждение слотов менеджером.'),
+            $this->defServiceLanding('restavratsiya-kozhi', 'Реставрация кожи', 'Сезоны износа, пигментация, шов — план и фиксация цвета в ТЗ.'),
+            $this->defServiceLanding('himchistka-diskov', 'Химчистка дисков', 'Добор до внутриспицев и суппорт-зон — без рисков на ЛКП диска.'),
+            $this->defServiceLanding('bronirovanie-salona', 'Бронирование салона', 'Плёнки на пластик, дисплеи, пороги; приоритизация зон вместе с вами.'),
+            $this->defServiceLanding('himchistka-kuzova', 'Химчистка кузова', 'Деинкрустация, подготовка под LKP и следующий этап (полировка/керамика/PPF).'),
+            $this->defServiceLanding('ppf', 'Антигравийная плёнка (PPF)', 'Покрытия зон и плёнка — по осмотру и макету.'),
+            $this->defServiceLanding('podkapotnaya-himchistka', 'Подкапотное: чистка и консервация', 'Сухо/мокро по вводу, консервация пластиков и снятие/маркировка кожухов по чек-листу.'),
+            $this->defServiceLanding('polirovka-kuzova', 'Полировка кузова', 'Абразив и финиш — по состоянию ЛКП; длительность планируется по осмотру.'),
+            $this->defServiceLanding('himchistka-salona', 'Химчистка салона', 'Интерьер: сроки и объём согласовываются после осмотра.'),
             $this->defServiceLanding('pdr', 'PDR (безпокрасочный ремонт вмятин)', 'Оценка доступа к вмятине и сроки — на осмотре.'),
             $this->defServiceLanding('predprodazhnaya', 'Предпродажная подготовка', 'Комплекс работ под продажу авто: срок и состав — по согласованию.'),
             $this->defCases(),
@@ -362,16 +383,11 @@ final class BlackDuckBootstrap extends Seeder
                     'heading' => $name,
                     'subheading' => $lead,
                     'button_text' => 'Оставить заявку',
-                    'button_url' => '#expert-inquiry',
+                    'button_url' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
                     'overlay_dark' => true,
                 ]),
                 $this->sec('body', 'rich_text', 'Суть', 20, [
                     'content' => '<p>'.e($lead).' Точные сроки и стоимость фиксируем после осмотра или по чек-листу, если применимо.</p>',
-                ]),
-                $this->sec('expert_lead_form', 'expert_lead_form', 'Заявка', 100, [
-                    'heading' => 'Запись или расчёт',
-                    'form_key' => 'expert_lead',
-                    'section_id' => 'expert-inquiry',
                 ]),
             ],
         ];
@@ -551,9 +567,9 @@ final class BlackDuckBootstrap extends Seeder
                 'subheading' => 'Премиальный детейлинг в Челябинске: защита ЛКП, химчистка, PPF, тонировка, запись и расчёт онлайн.',
                 'description' => '',
                 'primary_cta_label' => 'Записаться',
-                'primary_cta_anchor' => '#expert-inquiry',
+                'primary_cta_anchor' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
                 'secondary_cta_label' => 'Получить расчёт',
-                'secondary_cta_anchor' => '#expert-inquiry',
+                'secondary_cta_anchor' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
                 'trust_badges' => [
                     ['text' => 'Работаем по предварительной записи'],
                     ['text' => 'Онлайн-заявка и согласование сложных работ'],
@@ -637,13 +653,8 @@ final class BlackDuckBootstrap extends Seeder
                 'label_messenger' => 'Написать',
                 'label_book' => 'Запись',
                 'label_quote' => 'Расчёт',
-                'book_anchor' => '#expert-inquiry',
-                'quote_anchor' => '#expert-inquiry',
-            ]),
-            $this->sec('expert_lead_form', 'expert_lead_form', 'Заявка', 100, [
-                'heading' => 'Запись и расчёт',
-                'form_key' => 'expert_lead',
-                'section_id' => 'expert-inquiry',
+                'book_anchor' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
+                'quote_anchor' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
             ]),
         ];
     }

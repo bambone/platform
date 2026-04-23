@@ -3,6 +3,9 @@
     $isAdvocateEditorial = tenant()?->themeKey() === 'advocate_editorial';
     $isBlackDuck = tenant()?->themeKey() === 'black_duck';
     $isExpertStyleNav = $isExpertAuto || $isAdvocateEditorial || $isBlackDuck;
+    $expertNavPrimaryLeadHref = $isBlackDuck
+        ? url('/contacts#contact-inquiry')
+        : (route('home').'#expert-inquiry');
     $headerBrandTitle = $site_name ?? config('app.name');
     if ($isExpertAuto && is_string($headerBrandTitle)) {
         $parts = preg_split('/\s*[—–]\s*/u', $headerBrandTitle, 2);
@@ -224,7 +227,7 @@
                 </a>
                 @endif
                 @if($isExpertStyleNav)
-                    <a href="{{ route('home') }}#expert-inquiry" @click="mobileNavOpen = false" class="mt-3 flex min-h-12 items-center justify-center rounded-xl bg-moto-amber px-4 text-[15px] font-bold text-black shadow-lg shadow-moto-amber/15">
+                    <a href="{{ $expertNavPrimaryLeadHref }}" @click="mobileNavOpen = false" class="mt-3 flex min-h-12 items-center justify-center rounded-xl bg-moto-amber px-4 text-[15px] font-bold text-black shadow-lg shadow-moto-amber/15">
                         {{ $isAdvocateEditorial ? 'Связаться' : 'Записаться' }}
                     </a>
                 @endif

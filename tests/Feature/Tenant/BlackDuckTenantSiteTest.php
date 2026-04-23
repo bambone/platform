@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Tenant;
 
 use App\Models\CrmRequest;
+use App\Tenant\BlackDuck\BlackDuckContentConstants;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\Tenant\BlackDuckBootstrap;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,7 +36,7 @@ final class BlackDuckTenantSiteTest extends TestCase
     public function test_public_home_renders_for_black_duck_host(): void
     {
         $tid = (int) DB::table('tenants')->where('slug', BlackDuckBootstrap::SLUG)->value('id');
-        $this->assertGreaterThan(0, $tid);
+        $this->assertSame(BlackDuckContentConstants::CANONICAL_TENANT_ID, $tid);
         $host = (string) DB::table('tenant_domains')->where('tenant_id', $tid)->value('host');
         $this->assertNotSame('', $host);
         $response = $this->call('GET', 'http://'.$host.'/');

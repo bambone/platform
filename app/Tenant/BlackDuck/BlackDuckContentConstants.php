@@ -30,6 +30,11 @@ final class BlackDuckContentConstants
 
     public const CANONICAL_PUBLIC_BASE_URL = 'https://blackduck.rentbase.su';
 
+    /**
+     * Основной CTA «запись / расчёт»: отдельная страница, форма contact_inquiry (не встроенный expert_lead внизу лендинга).
+     */
+    public const PRIMARY_LEAD_URL = '/contacts#contact-inquiry';
+
     public const URL_2GIS = 'https://2gis.ru/chelyabinsk/inside/2111698024786654/query/%D0%B4%D0%B5%D1%82%D0%B5%D0%B9%D0%BB%D0%B8%D0%BD%D0%B3/firm/70000001053335703';
 
     public const URL_YANDEX_MAPS = 'https://yandex.ru/maps/org/black_duck_detailing/13151504118/?ll=61.436037%2C55.162689&z=15';
@@ -44,10 +49,21 @@ final class BlackDuckContentConstants
 
     public const THEME_KEY = 'black_duck';
 
+    /**
+     * Канонический id на production (R2/БД/пути {@code tenants/{id}/...}); локал приводить командой rekey, см. {@see \App\Console\Commands\TenantRekeyIdCommand}.
+     */
+    public const CANONICAL_TENANT_ID = 4;
+
     public const SLUGS = ['blackduck', 'black-duck'];
 
     /** Логотип на диске тенанта после import-assets */
     public const LOGO_LOGICAL = 'site/brand/logo.jpg';
+
+    /**
+     * Базовое имя (без расширения) единого фона hero посадочных услуг: {@code site/brand/service-landing-hero.png}.
+     * Импорт: {@see \App\Console\Commands\BlackDuckImportServiceLandingHeroCommand}; приоритет выше, чем картинка из матрицы услуги.
+     */
+    public const SERVICE_LANDING_HEADER_STEM = 'site/brand/service-landing-hero';
 
     public const SETTING_FINGERPRINT_KEY = 'black_duck.content_refresh_fingerprint';
 
@@ -70,13 +86,22 @@ final class BlackDuckContentConstants
     {
         return [
             ['slug' => 'detejling-mojka', 'title' => 'Детейлинг-мойка', 'blurb' => 'Короткие слоты онлайн после настройки расписания.', 'booking_mode' => 'instant', 'has_landing' => true],
-            ['slug' => 'himchistka-salona', 'title' => 'Химчистка салона', 'blurb' => 'Салон, кожа, текстиль — объём по осмотру.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'polirovka-kuzova', 'title' => 'Полировка кузова', 'blurb' => 'По состоянию ЛКП, абразив и финиш по задаче.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'keramika', 'title' => 'Керамическое покрытие', 'blurb' => 'Серия этапов, согласование плана с мастером.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'ppf', 'title' => 'Антигравий PPF', 'blurb' => 'Защита зон кузова, макет и зоны — по осмотру.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'tonirovka', 'title' => 'Тонировка / оптика', 'blurb' => 'Стёкла и оптика, варианты плёнки — по согласованию.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'setki-radiatora', 'title' => 'Установка защитных сеток', 'blurb' => 'Защита радиатора сетками: подбор и монтаж под модель.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'antidozhd', 'title' => 'Антидождь (гидрофоб)', 'blurb' => 'Обработка стекол для дождливой погоды; уточнить составы у мастера.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'remont-skolov', 'title' => 'Ремонт сколов', 'blurb' => 'Точечный ремонт ЛКП по дефекту, без «лишнего» кузова в работу.', 'booking_mode' => 'confirm', 'has_landing' => true],
             ['slug' => 'shumka', 'title' => 'Шумоизоляция', 'blurb' => 'Объём и сроки после диагностики.', 'booking_mode' => 'confirm', 'has_landing' => true],
-            ['slug' => 'pdr', 'title' => 'PDR', 'blurb' => 'Вмятины без окраса — оценка на месте.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'kozha-keramika', 'title' => 'Кожа: керамика салона', 'blurb' => 'Пропитка/керамика кожи и фактуры — по тесту материалов.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'tonirovka', 'title' => 'Тонировка / оптика', 'blurb' => 'Стёкла и оптика, варианты плёнки — по согласованию.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'keramika', 'title' => 'Керамика кузова', 'blurb' => 'Серия этапов, согласование плана с мастером.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'restavratsiya-kozhi', 'title' => 'Реставрация кожи', 'blurb' => 'Износ, потёртости, цвет — работа по согласованному ТЗ.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'himchistka-diskov', 'title' => 'Химчистка дисков', 'blurb' => 'Очистка суппорт-зон и внутреннего плоскости по доступу.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'bronirovanie-salona', 'title' => 'Бронь элементов салона', 'blurb' => 'Защитные плёнки на пластик, экран, пороги — по плану.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'himchistka-kuzova', 'title' => 'Химчистка кузова', 'blurb' => 'Деинкрустация, обезжиривание, подготовка под LKP.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'ppf', 'title' => 'Антигравий PPF', 'blurb' => 'Защита зон кузова, макет и зоны — по осмотру.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'podkapotnaya-himchistka', 'title' => 'Подкапотное: чистка и консервация', 'blurb' => 'Сухая и мойка-зонально; консервация пластиков и кожухов по задаче.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'polirovka-kuzova', 'title' => 'Полировка кузова', 'blurb' => 'По состоянию ЛКП, абразив и финиш по задаче.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'himchistka-salona', 'title' => 'Химчистка салона', 'blurb' => 'Салон, кожа, текстиль — объём по осмотру.', 'booking_mode' => 'confirm', 'has_landing' => true],
+            ['slug' => 'pdr', 'title' => 'PDR (без покраса)', 'blurb' => 'Вмятины без окраса — оценка на месте.', 'booking_mode' => 'confirm', 'has_landing' => true],
             ['slug' => 'predprodazhnaya', 'title' => 'Предпродажная подготовка', 'blurb' => 'Комплекс под продажу по чек-листу.', 'booking_mode' => 'confirm', 'has_landing' => true],
             ['slug' => '#expert-inquiry', 'title' => 'Виниловая оклейка', 'blurb' => 'Проекты по дизайну; расчёт и сроки — заявка.', 'booking_mode' => 'quote', 'has_landing' => false],
         ];

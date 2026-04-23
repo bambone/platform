@@ -74,6 +74,10 @@ final class BlackDuckContentRefresher
             $this->writeGeneralBranding($id);
         }
 
+        if ($runAll || $onlyBranding) {
+            $this->resyncBrandingAssetPathsIfFilesExist($id);
+        }
+
         $this->applySeo($tenant);
         HomeController::forgetCachedPayloadForTenant($id);
         TenantSetting::setForTenant(
@@ -234,6 +238,70 @@ final class BlackDuckContentRefresher
     }
 
     /**
+     * Копирует единый фон шапки посадочных услуг в {@code site/brand/service-landing-hero.{ext}} и обновляет секции hero.
+     */
+    public function importServiceLandingHeaderFromFile(Tenant $tenant, string $absolutePath, bool $dryRun): ?string
+    {
+        if (! is_file($absolutePath) || ! is_readable($absolutePath)) {
+            return null;
+        }
+        if ($dryRun) {
+            return 'dry-run';
+        }
+        $ext = strtolower((string) pathinfo($absolutePath, PATHINFO_EXTENSION));
+        if (! in_array($ext, ['png', 'jpg', 'jpeg', 'webp', 'avif', 'gif'], true)) {
+            return null;
+        }
+        $bytes = @file_get_contents($absolutePath);
+        if (! is_string($bytes) || $bytes === '') {
+            return null;
+        }
+        $ts = TenantStorage::forTrusted($tenant);
+        $logical = BlackDuckContentConstants::SERVICE_LANDING_HEADER_STEM.'.'.$ext;
+        $contentType = match ($ext) {
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            'avif' => 'image/avif',
+            default => 'image/jpeg',
+        };
+        if (! $ts->putPublic($logical, $bytes, [
+            'ContentType' => $contentType,
+            'visibility' => 'public',
+        ])) {
+            return null;
+        }
+        $this->resyncBrandingAssetPathsIfFilesExist((int) $tenant->id);
+        $this->updateHomeSections((int) $tenant->id, true, false, 'expert_hero');
+        $this->updateServiceLandings((int) $tenant->id, true, false, 'hero');
+        HomeController::forgetCachedPayloadForTenant((int) $tenant->id);
+
+        return $ts->publicPath($logical);
+    }
+
+    /**
+     * WebP+JPEG бандл шапки: {@see BlackDuckHomeHeroBundle::STORAGE_LOGICAL} из каталога с файлами {@code hero-1916.webp}, …
+     *
+     * @return array<string, string> role => logical; пусто при ошибке
+     */
+    public function importHomeHeroWebpBundleFromDirectory(Tenant $tenant, string $absoluteDir, bool $dryRun): array
+    {
+        $out = BlackDuckHomeHeroBundle::importFromDirectory($tenant, $absoluteDir, $dryRun);
+        if ($dryRun) {
+            return $out;
+        }
+        if ($out === []) {
+            return [];
+        }
+        $this->resyncBrandingAssetPathsIfFilesExist((int) $tenant->id);
+        $this->updateHomeSections((int) $tenant->id, true, false, 'expert_hero');
+        $this->updateServiceLandings((int) $tenant->id, true, false, 'hero');
+        HomeController::forgetCachedPayloadForTenant((int) $tenant->id);
+
+        return $out;
+    }
+
+    /**
      * @param  array{force: bool, if_placeholder: bool, only_seo: bool, force_section: ?string, dry_run: bool}  $opts
      */
     public function refreshContent(Tenant $tenant, array $opts): void
@@ -247,6 +315,10 @@ final class BlackDuckContentRefresher
 
         if ($dry) {
             return;
+        }
+
+        if ($force && ! $onlySeo && $tenant->theme_key === 'black_duck') {
+            $this->removeExpertLeadFormSections((int) $tenant->id);
         }
 
         if ($onlySeo) {
@@ -270,8 +342,66 @@ final class BlackDuckContentRefresher
         $this->updateReviewsPage($id, $force, $ifPlaceholder, $forceSection);
         $this->updateContactsPage($id, $force, $ifPlaceholder, $forceSection);
         $this->updatePromoAndPrivacy($id, $force, $ifPlaceholder, $forceSection);
+        $this->resyncBrandingAssetPathsIfFilesExist($id);
         $this->applySeo($tenant);
         HomeController::forgetCachedPayloadForTenant($id);
+    }
+
+    /**
+     * Убирает встроенные expert_lead_form: заявка живёт на /contacts (см. {@see BlackDuckContentConstants::PRIMARY_LEAD_URL}).
+     */
+    private function removeExpertLeadFormSections(int $tenantId): void
+    {
+        DB::table('page_sections')
+            ->where('tenant_id', $tenantId)
+            ->where('section_key', 'expert_lead_form')
+            ->delete();
+    }
+
+    /**
+     * Подставляет branding.logo_path / hero_path по фактическим {@code site/brand/logo.*} и {@code hero-1916.*} / легаси {@code hero.*} (после rekey id или копий на R2).
+     */
+    private function resyncBrandingAssetPathsIfFilesExist(int $tenantId): void
+    {
+        $ts = TenantStorage::forTrusted($tenantId);
+        $this->setTenantSettingIfFileExists(
+            $tenantId,
+            $ts,
+            'branding.logo_path',
+            [
+                'site/brand/logo.jpg', 'site/brand/logo.jpeg', 'site/brand/logo.png', 'site/brand/logo.webp',
+            ],
+        );
+        $this->setTenantSettingIfFileExists(
+            $tenantId,
+            $ts,
+            'branding.hero_path',
+            [
+                'site/brand/hero-1916.jpg',
+                'site/brand/hero-1916.webp',
+                'site/brand/hero.png',
+                'site/brand/hero.jpg',
+                'site/brand/hero.jpeg',
+                'site/brand/hero.webp',
+            ],
+        );
+    }
+
+    /**
+     * @param  list<string>  $candidates
+     */
+    private function setTenantSettingIfFileExists(
+        int $tenantId,
+        TenantStorage $ts,
+        string $setting,
+        array $candidates,
+    ): void {
+        foreach ($candidates as $p) {
+            if ($ts->existsPublic($p)) {
+                TenantSetting::setForTenant($tenantId, $setting, $ts->publicPath($p), 'string');
+                break;
+            }
+        }
     }
 
     private function shouldRunFaqs(int $tenantId, bool $force, bool $ifPlaceholder): bool
@@ -412,6 +542,7 @@ final class BlackDuckContentRefresher
             'Собраны с публичных источников и с сайта',
             'Настоящий текст — заглушка Q1',
             'заглушка Q1',
+            'Доверяйте свой автомобиль только профессионалам', // home expert_hero, чтобы подтягивать hero_image_url без --force
         ];
         foreach ($markers as $m) {
             if (str_contains($json, $m)) {
@@ -472,32 +603,55 @@ final class BlackDuckContentRefresher
             'hero_eyebrow' => 'Детейлинг · Челябинск',
             'hero_image_alt' => 'Black Duck Detailing, детейлинг-центр в Челябинске',
             'primary_cta_label' => 'Записаться',
-            'primary_cta_anchor' => '#expert-inquiry',
+            'primary_cta_anchor' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
             'secondary_cta_label' => 'Получить расчёт',
-            'secondary_cta_anchor' => '#expert-inquiry',
+            'secondary_cta_anchor' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
             'trust_badges' => [
                 ['text' => 'Челябинск, Артиллерийская 117/10'],
                 ['text' => 'Запись и согласование сложных работ'],
                 ['text' => 'Онлайн-заявка и короткие слоты по расписанию'],
             ],
         ];
+        $bundle = BlackDuckHomeHeroBundle::heroSectionFragmentForTenant($tenantId);
+        if ($bundle !== null) {
+            $hero = array_merge($hero, $bundle);
+        } else {
+            $homeHeroLogical = BlackDuckServiceImages::firstHomeExpertHeroLogicalPath($tenantId);
+            if ($homeHeroLogical !== null) {
+                $hero['hero_image_url'] = $homeHeroLogical;
+            }
+        }
         $this->updateSectionData($tenantId, 'home', 'expert_hero', $hero, $force, $ifPlaceholder, $forceSection);
 
         $this->updateSectionData($tenantId, 'home', 'availability_ribbon', [
             'text' => 'Режим: '.BlackDuckContentConstants::HOURS_TEXT.' Сложные работы согласуются заранее; быстрые услуги — по слотам в расписании.',
         ], $force, $ifPlaceholder, $forceSection);
 
+        $this->updateSectionData($tenantId, 'home', 'sticky_cta', [
+            'enabled' => true,
+            'label_call' => 'Позвонить',
+            'label_messenger' => 'Написать',
+            'label_book' => 'Запись',
+            'label_quote' => 'Расчёт',
+            'book_anchor' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
+            'quote_anchor' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
+        ], $force, $ifPlaceholder, $forceSection);
+
         $hubItems = [];
         foreach (BlackDuckContentConstants::serviceMatrixQ1() as $row) {
             $slug = (string) $row['slug'];
-            $cta = str_starts_with($slug, '#') ? $slug : '/'.$slug;
+            $cta = str_starts_with($slug, '#') ? BlackDuckContentConstants::PRIMARY_LEAD_URL : '/'.$slug;
+            $img = BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
             $hubItems[] = [
                 'title' => $row['title'],
+                'card_subtitle' => (string) $row['blurb'],
                 'price_from' => 'по задаче',
                 'duration' => 'по плану',
                 'online_booking' => $row['slug'] === 'detejling-mojka',
                 'needs_confirmation' => $row['slug'] !== 'detejling-mojka',
+                'booking_mode' => (string) $row['booking_mode'],
                 'cta_url' => $cta,
+                'image_url' => $img ?? '',
             ];
         }
         $this->updateSectionData($tenantId, 'home', 'service_hub', [
@@ -544,22 +698,27 @@ final class BlackDuckContentRefresher
         ?string $forceSection,
     ): void {
         $items = [];
-        foreach (array_slice(BlackDuckContentConstants::serviceMatrixQ1(), 0, 8) as $row) {
+        foreach (BlackDuckContentConstants::serviceMatrixQ1() as $row) {
             $slug = (string) $row['slug'];
+            $img = BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
+            $cta = str_starts_with($slug, '#') ? BlackDuckContentConstants::PRIMARY_LEAD_URL : '/'.$slug;
             $items[] = [
                 'title' => $row['title'],
+                'card_subtitle' => (string) $row['blurb'],
                 'price_from' => 'по оценке',
                 'duration' => 'по плану',
                 'online_booking' => $row['slug'] === 'detejling-mojka',
                 'needs_confirmation' => true,
-                'cta_url' => str_starts_with($slug, '#') ? $slug : '/'.$slug,
+                'booking_mode' => (string) $row['booking_mode'],
+                'cta_url' => $cta,
+                'image_url' => $img ?? '',
             ];
         }
         $this->updateSectionData($tenantId, 'uslugi', 'intro', [
             'content' => '<p class="lead">'.e(BlackDuckContentConstants::taglineLong()).'</p>',
         ], $force, $ifPlaceholder, $forceSection);
         $this->updateSectionData($tenantId, 'uslugi', 'service_hub', [
-            'heading' => 'Каталог направлений',
+            'heading' => 'Услуги детейлинга',
             'items' => $items,
         ], $force, $ifPlaceholder, $forceSection);
     }
@@ -572,12 +731,21 @@ final class BlackDuckContentRefresher
     ): void {
         $leads = [
             'detejling-mojka' => 'Короткий цикл: запись в онлайн-расписании при включённых слотах. Длительность зависит от класса кузова и пакета.',
+            'setki-radiatora' => 'Сетки на радиатор: подбор по геометрии, крепёж без вибрации; сроки — по согласованию.',
+            'antidozhd' => 'Покрытия для стёкол с гидрофобным эффектом; составы и срок службы согласуем.',
+            'remont-skolov' => 'Точечный ремонт лаков и сколов, чтобы не тянуть весь кузов «на покрас» раньше времени.',
             'himchistka-salona' => 'Салон, кожа, ткань: сроки и глубина чистки — после осмотра и теста материалов.',
+            'kozha-keramika' => 'Пропитка/керамика по коже после теста и чистки; совместимость с фактурой важнее «универсалки».',
             'polirovka-kuzova' => 'Полировка и финиш по состоянию ЛКП; оценим риск перегрева/остатка дефектов заранее.',
             'keramika' => 'Керамическое покрытие: серия этапов, график согласуем, контроль в инфо-ленте у мастеров.',
+            'restavratsiya-kozhi' => 'Реставрация кожи: пигмент, лак, швы — по плану после осмотра зон.',
+            'himchistka-diskov' => 'Снятие грязи и суппорт-зон; без рисков по ЛКП диска — важно в проёме калипера.',
+            'bronirovanie-salona' => 'Плёнки и защитные наборы на пластик, дисплеи, пороги; расклад по приоритету зон.',
+            'himchistka-kuzova' => 'Наружный хим-чек: деинкрустация и подготовка под план (полировка/керамика/PPF).',
             'ppf' => 'Полиуретановая плёнка: зоны и макет по осмотру, стык и кромка — в фокусе.',
             'tonirovka' => 'Тонировка стёкол и бронеплёнка/тонировка оптики — по согласованной конфигурации и регламенту ГИБДД (при необходимости).',
             'shumka' => 'Шумоизоляция: план и стоимость — после разборки/диагностики шумовой задачи.',
+            'podkapotnaya-himchistka' => 'Подкапотный блок: сухая/мокрая схема, консервация пластиков, маркировка снятых кожухов.',
             'pdr' => 'PDR: доступ к вмятине, клей/инструмент, иногда частичный съём — обсуждаем до старта.',
             'predprodazhnaya' => 'Предпродажа: внешний вид и документы по чек-листу для уверенного осмотра покупателем.',
         ];
@@ -586,14 +754,20 @@ final class BlackDuckContentRefresher
             if ($name === '') {
                 continue;
             }
-            $this->updateSectionData($tenantId, $slug, 'hero', [
+            $hero = [
                 'variant' => 'full_background',
                 'heading' => $name,
                 'subheading' => $lead,
                 'button_text' => 'Оставить заявку',
-                'button_url' => '#expert-inquiry',
+                'button_url' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
                 'overlay_dark' => true,
-            ], $force, $ifPlaceholder, $forceSection);
+            ];
+            $bg = BlackDuckServiceImages::firstServiceLandingShadePath($tenantId)
+                ?? BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
+            if ($bg !== null) {
+                $hero['background_image'] = $bg;
+            }
+            $this->updateSectionData($tenantId, $slug, 'hero', $hero, $force, $ifPlaceholder, $forceSection);
             $this->updateSectionData($tenantId, $slug, 'body', [
                 'content' => '<p>'.e($lead).' Сроки и стоимость фиксируем после осмотра и согласования плана, без сюрпризов в процессе.</p>',
             ], $force, $ifPlaceholder, $forceSection);
@@ -840,7 +1014,7 @@ final class BlackDuckContentRefresher
         );
 
         $other = [
-            'uslugi' => ['Услуги — Black Duck Detailing', 'Карта направлений: мойка, PPF, керамика, винил, тонировка, химчистка, полировка, предпродажа.'],
+            'uslugi' => ['Услуги — Black Duck Detailing', 'Полный каталог: PPF, керамика, винил, тонировка, мойка, химчистка, полировка, подкапотное, сетки, антидождь, PDR и другое.'],
             'contacts' => ['Контакты — Black Duck Detailing', BlackDuckContentConstants::PHONE_DISPLAY.' · '.BlackDuckContentConstants::EMAIL],
             'faq' => ['Вопросы — Black Duck Detailing', 'Запись, сроки, осмотр, гарантийные вопросы.'],
         ];

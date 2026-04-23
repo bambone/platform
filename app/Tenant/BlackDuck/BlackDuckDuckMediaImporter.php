@@ -16,6 +16,9 @@ use Throwable;
 /**
  * Сканирует каталог (например, экспорт с ПК) и копирует jpg/png/webp в {@code site/brand/hub/NN.ext},
  * затем прописывает пути в секциях hub/кейсов/до–после.
+ *
+ * Предпочтительно для Black Duck: {@see importServiceImagesFromDirectory} (по slug матрицы). Generic-импорт — запасной
+ * режим: исключает лого/hero-бандл/именованные сервисы, чтобы не заливать в hub чужие файлы из той же папки.
  */
 final class BlackDuckDuckMediaImporter
 {
@@ -89,7 +92,7 @@ final class BlackDuckDuckMediaImporter
             return [];
         }
 
-        $this->mergeImageKeysIntoPageSections((int) $tenant->id, $outKeys);
+        $this->mergeImageKeysIntoPageSections((int) $tenant->id, $outKeys, count(BlackDuckContentConstants::serviceMatrixQ1()));
         HomeController::forgetCachedPayloadForTenant((int) $tenant->id);
 
         return $outKeys;
@@ -114,6 +117,9 @@ final class BlackDuckDuckMediaImporter
             if (in_array($base, self::EXCLUDED_BASENAMES, true)) {
                 continue;
             }
+            if ($this->isExcludedServiceOrHeroSourceBasename($base)) {
+                continue;
+            }
             $ext = strtolower($f->getExtension());
             if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif'], true)) {
                 continue;
@@ -129,13 +135,41 @@ final class BlackDuckDuckMediaImporter
         return $files;
     }
 
+    private function isExcludedServiceOrHeroSourceBasename(string $baseLower): bool
+    {
+        foreach (BlackDuckHomeHeroBundle::expectedSourceBasenames() as $b) {
+            if ($baseLower === strtolower($b)) {
+                return true;
+            }
+        }
+        if (str_starts_with($baseLower, 'blackduck-hero-')) {
+            return true;
+        }
+        if (str_starts_with($baseLower, 'service-landing-hero.')) {
+            return true;
+        }
+        if (str_starts_with($baseLower, 'hero-') && preg_match('/\.(webp|jpg|jpeg)$/i', $baseLower) === 1) {
+            return true;
+        }
+        $named = array_map('strtolower', array_values(BlackDuckServiceImages::sourceBasenameByMatrixSlug()));
+        if (in_array($baseLower, $named, true)) {
+            return true;
+        }
+
+        return false;
+    }
+
     /**
      * @param  list<string>  $orderedKeys  Логические ключи (site/brand/hub/01.jpg, …) по порядку
      */
-    public function mergeImageKeysIntoPageSections(int $tenantId, array $orderedKeys): void
+    public function mergeImageKeysIntoPageSections(int $tenantId, array $orderedKeys, ?int $serviceHubSlotCount = null): void
     {
         if ($orderedKeys === []) {
             return;
+        }
+        $hubSlots = $serviceHubSlotCount ?? count(BlackDuckContentConstants::serviceMatrixQ1());
+        if ($hubSlots < 1) {
+            $hubSlots = 1;
         }
         $pick = static function (int $i) use ($orderedKeys): string {
             $n = count($orderedKeys);
@@ -147,14 +181,14 @@ final class BlackDuckDuckMediaImporter
             $tenantId,
             'home',
             'service_hub',
-            10,
+            $hubSlots,
             $pick,
         );
         $this->mergeServiceHub(
             $tenantId,
             'uslugi',
             'service_hub',
-            8,
+            $hubSlots,
             $pick,
         );
         for ($c = 0; $c < 3; $c++) {
@@ -302,5 +336,168 @@ final class BlackDuckDuckMediaImporter
         }
 
         return [];
+    }
+
+    /**
+     * Именованные картинки из папки «Услуги» → {@code site/brand/services/{key}.ext}, затем обновление hub и hero посадочных.
+     *
+     * @return array<string, string> slug матрицы (в т.ч. {@code #expert-inquiry}) → логический путь
+     */
+    public function importServiceImagesFromDirectory(Tenant $tenant, string $absoluteDir): array
+    {
+        $dir = rtrim($absoluteDir, DIRECTORY_SEPARATOR);
+        if (! is_dir($dir)) {
+            return [];
+        }
+
+        $ts = TenantStorage::forTrusted($tenant);
+        $map = BlackDuckServiceImages::sourceBasenameByMatrixSlug();
+        $out = [];
+        foreach ($map as $matrixSlug => $basename) {
+            $candidates = BlackDuckServiceImages::sourceBasenameCandidatesForMatrixSlug($matrixSlug);
+            if ($candidates === []) {
+                $candidates = [$basename];
+            }
+            $abs = null;
+            foreach ($candidates as $cand) {
+                $abs = $this->findFileCaseInsensitiveInDirectory($dir, $cand);
+                if ($abs !== null && is_readable($abs)) {
+                    break;
+                }
+            }
+            if ($abs === null || ! is_readable($abs)) {
+                continue;
+            }
+            $ext = strtolower((string) pathinfo($abs, PATHINFO_EXTENSION));
+            if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif'], true)) {
+                continue;
+            }
+            $key = BlackDuckServiceImages::storageKeyForMatrixSlug($matrixSlug);
+            $logical = BlackDuckServiceImages::PUBLIC_PREFIX.'/'.$key.'.'.$ext;
+            $bytes = @file_get_contents($abs);
+            if (! is_string($bytes) || $bytes === '') {
+                continue;
+            }
+            $contentType = match ($ext) {
+                'png' => 'image/png',
+                'webp' => 'image/webp',
+                'gif' => 'image/gif',
+                'avif' => 'image/avif',
+                default => 'image/jpeg',
+            };
+            if (! $ts->putPublic($logical, $bytes, [
+                'ContentType' => $contentType,
+                'visibility' => 'public',
+            ])) {
+                throw new RuntimeException('Не удалось записать: '.$logical);
+            }
+            $out[$matrixSlug] = $logical;
+        }
+
+        if ($out !== []) {
+            $this->applyServiceImagesToPageSections((int) $tenant->id, $out);
+            HomeController::forgetCachedPayloadForTenant((int) $tenant->id);
+        }
+
+        return $out;
+    }
+
+    private function findFileCaseInsensitiveInDirectory(string $dir, string $basename): ?string
+    {
+        $direct = $dir.DIRECTORY_SEPARATOR.$basename;
+        if (is_file($direct)) {
+            return $direct;
+        }
+        $lower = strtolower($basename);
+        foreach (scandir($dir) ?: [] as $f) {
+            if ($f === '.' || $f === '..') {
+                continue;
+            }
+            if (strtolower((string) $f) === $lower && is_file($dir.DIRECTORY_SEPARATOR.$f)) {
+                return $dir.DIRECTORY_SEPARATOR.$f;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, string>  $slugToLogical
+     */
+    private function applyServiceImagesToPageSections(int $tenantId, array $slugToLogical): void
+    {
+        $this->mergeServiceHubImagesBySlug($tenantId, 'home', 'service_hub', $slugToLogical);
+        $this->mergeServiceHubImagesBySlug($tenantId, 'uslugi', 'service_hub', $slugToLogical);
+        $skipPerPageHero = BlackDuckServiceImages::firstServiceLandingShadePath($tenantId) !== null;
+        foreach ($slugToLogical as $matrixSlug => $path) {
+            if (str_starts_with($matrixSlug, '#')) {
+                continue;
+            }
+            if ($skipPerPageHero) {
+                continue;
+            }
+            $pageSlug = BlackDuckServiceImages::storageKeyForMatrixSlug($matrixSlug);
+            $this->mergeHeroBackground($tenantId, $pageSlug, $path);
+        }
+    }
+
+    /**
+     * @param  array<string, string>  $slugToLogical
+     */
+    private function mergeServiceHubImagesBySlug(
+        int $tenantId,
+        string $pageSlug,
+        string $sectionKey,
+        array $slugToLogical,
+    ): void {
+        $row = $this->findSection($tenantId, $pageSlug, $sectionKey);
+        if ($row === null) {
+            return;
+        }
+        $data = $this->decodeDataJson($row->data_json);
+        $items = is_array($data['items'] ?? null) ? $data['items'] : [];
+        foreach ($items as $i => $it) {
+            if (! is_array($it)) {
+                continue;
+            }
+            $slug = $this->matrixSlugFromHubItemCta($it);
+            if ($slug !== null && isset($slugToLogical[$slug])) {
+                $items[$i]['image_url'] = $slugToLogical[$slug];
+            }
+        }
+        $data['items'] = $items;
+        $this->updateSectionById((int) $row->id, $data);
+    }
+
+    /**
+     * @return ?string Slug в терминах {@see BlackDuckContentConstants::serviceMatrixQ1()} (например {@code detejling-mojka} или {@code #expert-inquiry})
+     */
+    private function matrixSlugFromHubItemCta(array $it): ?string
+    {
+        $cta = trim((string) ($it['cta_url'] ?? ''));
+        if ($cta === '') {
+            return null;
+        }
+        if (str_starts_with($cta, '/')) {
+            $s = trim($cta, '/');
+
+            return $s === '' ? null : $s;
+        }
+        if (str_starts_with($cta, '#')) {
+            return $cta;
+        }
+
+        return null;
+    }
+
+    private function mergeHeroBackground(int $tenantId, string $pageSlug, string $logicalPath): void
+    {
+        $row = $this->findSection($tenantId, $pageSlug, 'hero');
+        if ($row === null) {
+            return;
+        }
+        $data = $this->decodeDataJson($row->data_json);
+        $data['background_image'] = $logicalPath;
+        $this->updateSectionById((int) $row->id, $data);
     }
 }

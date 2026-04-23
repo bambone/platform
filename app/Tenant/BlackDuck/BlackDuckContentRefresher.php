@@ -392,6 +392,25 @@ final class BlackDuckContentRefresher
     }
 
     /**
+     * Секция {@code messenger_capture_bar} (ключ messenger) дублирует футер; на главной не показываем.
+     */
+    private function hideHomeMessengerCaptureBarSection(int $tenantId): void
+    {
+        $pageId = (int) DB::table('pages')
+            ->where('tenant_id', $tenantId)
+            ->where('slug', 'home')
+            ->value('id');
+        if ($pageId < 1) {
+            return;
+        }
+        DB::table('page_sections')
+            ->where('tenant_id', $tenantId)
+            ->where('page_id', $pageId)
+            ->where('section_key', 'messenger')
+            ->update(['is_visible' => false, 'updated_at' => now()]);
+    }
+
+    /**
      * Добавляет новые page_sections на /raboty и service_proof на приоритетных лендингах (существующие тенанты после --force).
      */
     private function ensureBlackDuckStructuralPageSections(int $tenantId): void
@@ -943,17 +962,7 @@ final class BlackDuckContentRefresher
             'quote_anchor' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
         ], $force, $ifPlaceholder, $forceSection);
 
-        $this->updateSectionData($tenantId, 'home', 'messenger', [
-            'title' => 'Связь с центром',
-            'subheading' => 'Заявка или звонок — согласуем осмотр и окно. Мессенджеры для коротких вопросов.',
-            'show_whatsapp' => true,
-            'show_telegram' => true,
-            'show_call' => true,
-            'primary_lead_label' => 'Заявка на сайте',
-            'primary_lead_href' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
-            'works_cta_label' => 'Смотреть работы',
-            'works_cta_href' => BlackDuckContentConstants::WORKS_PAGE_URL,
-        ], $force, $ifPlaceholder, $forceSection);
+        $this->hideHomeMessengerCaptureBarSection($tenantId);
 
         $previewSub = BlackDuckContentConstants::homeServiceCardPreviewSubtitlesBySlug();
         $hubItems = [];

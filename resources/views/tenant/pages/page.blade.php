@@ -24,8 +24,9 @@
         $skipShellH1 = tenant()?->themeKey() === 'black_duck'
             && $firstExtra !== null
             && in_array($firstExtra->section_key, ['hero', 'works_hero'], true);
+        $isBlackDuckHome = tenant()?->themeKey() === 'black_duck' && ($page->slug ?? '') === 'home';
     @endphp
-    <div class="mx-auto px-3 pb-12 pt-24 sm:px-4 sm:pb-16 sm:pt-28 {{ $pageShell }}">
+    <div class="mx-auto px-3 pt-24 sm:px-4 sm:pt-28 {{ $isBlackDuckHome ? 'pb-6 sm:pb-8' : 'pb-12 sm:pb-16' }} {{ $pageShell }}">
         @if (tenant()?->themeKey() === 'black_duck' && request()->boolean('book'))
             @php
                 $bdBookReg = \App\Tenant\BlackDuck\BlackDuckServiceRegistry::rowBySlug((string) $page->slug);

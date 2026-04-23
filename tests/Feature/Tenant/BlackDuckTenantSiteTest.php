@@ -78,6 +78,7 @@ final class BlackDuckTenantSiteTest extends TestCase
         $response->assertOk();
         $response->assertSee('Black Duck', false);
         $response->assertSee('912', false);
+        $response->assertDontSee('Связь с центром', false);
     }
 
     public function test_home_does_not_include_pruned_or_inline_lead_form_sections(): void

@@ -702,17 +702,7 @@ final class BlackDuckBootstrap extends Seeder
                 'section_heading' => 'Частые вопросы',
                 'source' => 'faqs_table',
             ]),
-            $this->sec('messenger', 'messenger_capture_bar', 'Каналы', 85, [
-                'title' => 'Связь с центром',
-                'subheading' => 'Заявка — основной путь. Быстрые ответы в мессенджерах.',
-                'show_whatsapp' => true,
-                'show_telegram' => true,
-                'show_call' => true,
-                'primary_lead_label' => 'Заявка на сайте',
-                'primary_lead_href' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
-                'works_cta_label' => 'Смотреть работы',
-                'works_cta_href' => BlackDuckContentConstants::WORKS_PAGE_URL,
-            ]),
+            // messenger_capture_bar не на главной: телефон и мессенджеры уже в футере — без дубля и «пустого» острова перед футером.
             $this->sec('sticky_cta', 'sticky_mobile_cta_dock', 'Моб. CTA', 88, [
                 'enabled' => true,
                 'label_call' => 'Позвонить',

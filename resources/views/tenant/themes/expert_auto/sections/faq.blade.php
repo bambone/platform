@@ -25,9 +25,18 @@
     $faqIdPrefix = (isset($section) && $section instanceof \App\Models\PageSection && (int) $section->id > 0)
         ? 'expert-faq-ps-'.(int) $section->id
         : 'expert-faq-'.substr(hash('sha256', json_encode($items, JSON_UNESCAPED_UNICODE)."\n".($h ?? '')), 0, 12);
+    $sectionVisualVariant = $sectionVisualVariant ?? null;
+    $isBdHomePreFooter = $sectionVisualVariant === 'bd_home_pre_footer';
 @endphp
 @if(count($items) > 0)
-<section class="expert-faq-mega relative mb-14 min-w-0 sm:mb-20 lg:mb-28" data-expert-faq-scope>
+<section
+    @class([
+        'expert-faq-mega relative min-w-0',
+        'mb-6 sm:mb-8' => $isBdHomePreFooter,
+        'mb-14 sm:mb-20 lg:mb-28' => ! $isBdHomePreFooter,
+    ])
+    data-expert-faq-scope
+>
     @if(filled($h))
         <h2 class="expert-section-title mb-8 max-w-4xl text-balance text-[clamp(1.65rem,4vw,3rem)] font-bold leading-[1.12] tracking-tight text-white/95 sm:mb-10 sm:leading-[1.1] lg:mb-12 lg:w-2/3">{{ $h }}</h2>
     @endif
@@ -65,6 +74,11 @@
             </div>
         @endforeach
     </dl>
+    @if($isBdHomePreFooter)
+        <div class="mx-auto mt-6 max-w-5xl sm:mt-8" aria-hidden="true">
+            <div class="h-px w-full bg-gradient-to-r from-transparent via-[#36C7FF]/30 to-transparent shadow-[0_0_20px_rgba(54,199,255,0.12)]"></div>
+        </div>
+    @endif
 </section>
 
 @once('expert-faq-accordion')

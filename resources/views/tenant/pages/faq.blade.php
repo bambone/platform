@@ -13,8 +13,9 @@
         <div class="mx-auto px-3 sm:px-4 {{ $__faqShell }}">
             <h1 class="text-balance text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl md:text-4xl">{{ ($resolvedSeo ?? null)?->h1 ?? 'Часто задаваемые вопросы' }}</h1>
             <p class="tenant-page-faq__lead mt-4 max-w-2xl text-sm leading-relaxed text-silver sm:text-base">
-                Кратко о записи, сроках и порядке работ. Точный план и смета по вашему авто — после осмотра или согласованной заявки.
-                Написать и договориться о визите можно в <a href="{{ route('contacts') }}" class="font-semibold text-moto-amber underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber">разделе «Контакты»</a>.
+                {{ $faqPageIntroLine1 ?? 'Краткие ответы на частые вопросы по срокам, гарантии и записи.' }}
+                Связаться и уточнить детали можно в
+                <a href="{{ route('contacts') }}" class="font-semibold text-moto-amber underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber">разделе «Контакты»</a>.
             </p>
         </div>
     </section>

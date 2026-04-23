@@ -17,7 +17,7 @@
             <p class="fade-reveal mx-auto mt-3 max-w-2xl text-pretty text-base leading-relaxed text-slate-600 sm:text-lg" style="transition-delay: 100ms;">{!! str_replace([' для ', ' с ', ' в ', ' и ', ' — '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;', '&nbsp;— '], $pm['cases_sub'] ?? '') !!}</p>
         </div>
 
-        <div class="mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
+        <div class="mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-2 md:gap-5 xl:grid-cols-4">
             @foreach($casesList as $index => $case)
                 @php
                     $caseIsLink = !empty($case['url']) && !empty($case['real']);
@@ -40,6 +40,7 @@
                     $iconWrapClass = match ($iconKey) {
                         'driving' => 'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-50 via-white to-orange-50 text-amber-900 shadow-sm ring-1 ring-amber-200/80 transition-colors group-hover:from-amber-100 group-hover:to-orange-50/90',
                         'legal' => 'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-100 via-white to-sky-50 text-slate-800 shadow-sm ring-1 ring-slate-200/90 transition-colors group-hover:from-slate-50 group-hover:to-sky-50/80',
+                        'detailing' => 'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-800 via-slate-900 to-cyan-950 text-cyan-200 shadow-sm ring-1 ring-cyan-500/20 transition-colors group-hover:from-slate-700 group-hover:via-slate-800 group-hover:to-cyan-900',
                         default => 'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100 transition-colors group-hover:bg-indigo-100/80',
                     };
                 @endphp
@@ -90,6 +91,17 @@
                                         <path d="M12 7.75V5.5M8.2 9.1 6.9 7.1M15.8 9.1 17.1 7.1"/>
                                         <path d="M5 21h14" stroke-width="1.5" opacity="0.45"/>
                                         <path d="M8 21v-1.5M12 21v-2M16 21v-1.5" stroke-width="1.25" opacity="0.35"/>
+                                    </svg>
+                                    @break
+                                @case('detailing')
+                                    {{-- Детейлинг: силуэт кузова + блик --}}
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M4 16.5V14l1.2-2.2a2.2 2.2 0 0 1 2-1.3h11.6a2.2 2.2 0 0 1 2 1.3L20 14v2.5" opacity="0.9"/>
+                                        <path d="M3.5 16.5h17" />
+                                        <circle cx="7.5" cy="16.5" r="1.6"/>
+                                        <circle cx="16.5" cy="16.5" r="1.6"/>
+                                        <path d="M5.2 10.5h2.1l1.4-2.3h6.6l1.4 2.3h2.1" />
+                                        <path d="M9 8.2c1.2-1.1 2.6-1.5 3-1.5h.2c.4 0 1.8.4 3 1.5" opacity="0.7"/>
                                     </svg>
                                     @break
                                 @case('academic')

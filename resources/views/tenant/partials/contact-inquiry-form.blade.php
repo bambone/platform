@@ -97,14 +97,8 @@
         : 'font-serif text-[clamp(1.35rem,2.4vw,1.75rem)] font-semibold leading-snug tracking-tight text-[rgb(22_25_30)]';
     $textareaMinClass = ($compact && $variant === 'advocate') ? 'min-h-[7.5rem] max-h-[10rem]' : 'min-h-[6rem]';
     $submitWrapPt = ($compact && $variant === 'advocate') ? 'pt-0' : 'pt-2';
-    $prefillMessage = trim((string) ($data['prefill_message'] ?? ''));
-    $inquiryServiceSlug = trim((string) request()->query('service', ''));
-    if ($prefillMessage === '' && $inquiryServiceSlug !== '' && $tenant->theme_key === 'black_duck') {
-        $reg = \App\Tenant\BlackDuck\BlackDuckServiceRegistry::rowBySlug($inquiryServiceSlug);
-        if ($reg !== null) {
-            $prefillMessage = 'Запись на услугу: «'.(string) ($reg['title'] ?? $inquiryServiceSlug).'».'."\n\n";
-        }
-    }
+    $inquiry = app(\App\Services\PublicSite\ContactInquiryFormPresenter::class)->present($section, $data, $tenant);
+    $prefillMessage = (string) ($inquiry['prefill_message'] ?? '');
 @endphp
 <section id="{{ e($sectionId) }}" class="rb-contact-inquiry w-full min-w-0 {{ $compact ? 'scroll-mt-20' : 'scroll-mt-24' }}" data-page-section-type="contact_inquiry">
     <div id="rb-ci-root-{{ $section->id }}" data-rb-contact-inquiry-root>
@@ -268,6 +262,27 @@
                     </div>
                 @else
                     <input type="hidden" name="preferred_contact_channel" value="phone">
+                @endif
+
+                @if($inquiry['show_service_field'] ?? false)
+                    @if(($inquiry['prefilled_service_slug'] ?? '') !== '')
+                        <input type="hidden" name="inquiry_service_slug" value="{{ e($inquiry['prefilled_service_slug']) }}">
+                    @else
+                        <div data-rb-public-field="inquiry_service_slug" class="min-w-0">
+                            <label for="rb-ci-svc-{{ $section->id }}" class="{{ $labelClass }}">Услуга <span class="{{ $variant === 'advocate' ? 'text-[rgb(154_123_79)]' : 'text-moto-amber' }}">*</span></label>
+                            <select
+                                id="rb-ci-svc-{{ $section->id }}"
+                                name="inquiry_service_slug"
+                                required
+                                class="{{ $inputClass }}"
+                            >
+                                <option value="" selected disabled>Выберите направление</option>
+                                @foreach (($inquiry['service_options'] ?? []) as $opt)
+                                    <option value="{{ e($opt['slug']) }}">{{ e($opt['title']) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                 @endif
 
                 <div data-rb-public-field="message" class="min-w-0">

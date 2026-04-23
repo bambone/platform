@@ -7,6 +7,7 @@ use App\Models\Page;
 use App\Models\PageSection;
 use App\Models\TenantSetting;
 use App\PageBuilder\PageSectionTypeRegistry;
+use App\Tenant\BlackDuck\BlackDuckServiceRegistry;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
@@ -170,5 +171,99 @@ class ContactInquiryPublicFormTest extends TestCase
         }
 
         $this->postJson('http://'.$h.'/api/tenant/contact-inquiry', $payload)->assertStatus(429);
+    }
+
+    public function test_black_duck_contact_inquiry_requires_service_only_when_section_flag_set(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('ci-bd-svc', ['theme_key' => 'black_duck']);
+        $page = Page::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Контакты',
+            'slug' => 'contacts',
+            'template' => 'default',
+            'status' => 'published',
+            'published_at' => now(),
+            'show_in_main_menu' => false,
+            'main_menu_sort_order' => 0,
+        ]);
+        $defaults = app(PageSectionTypeRegistry::class)->get('contact_inquiry')->defaultData();
+        $defaults['requires_service_selector'] = true;
+        $section = PageSection::query()->create([
+            'tenant_id' => $tenant->id,
+            'page_id' => $page->id,
+            'section_key' => 'contacts_inquiry',
+            'section_type' => 'contact_inquiry',
+            'title' => 'Форма',
+            'data_json' => $defaults,
+            'sort_order' => 10,
+            'is_visible' => true,
+            'status' => 'published',
+        ]);
+        $h = $this->host('ci-bd-svc');
+        $payload = [
+            'page_section_id' => $section->id,
+            'name' => 'Иван',
+            'phone' => '+79991112233',
+            'message' => 'Вопрос по условиям достаточной длины',
+            'preferred_contact_channel' => 'phone',
+        ];
+        $this->postJson('http://'.$h.'/api/tenant/contact-inquiry', $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['inquiry_service_slug']);
+
+        $slug = (string) (BlackDuckServiceRegistry::inquiryFormLandingOptions()[0]['slug'] ?? '');
+        $this->assertNotSame('', $slug);
+
+        $this->postJson('http://'.$h.'/api/tenant/contact-inquiry', array_merge($payload, [
+            'inquiry_service_slug' => $slug,
+        ]))->assertOk()->assertJsonPath('success', true);
+
+        $crm = CrmRequest::query()->where('request_type', 'contact_page_inquiry')->first();
+        $this->assertNotNull($crm);
+        $pj = $crm->payload_json;
+        $this->assertIsArray($pj);
+        $this->assertSame($slug, $pj['inquiry_service_slug'] ?? null);
+    }
+
+    public function test_black_duck_contact_inquiry_without_flag_does_not_require_service_slug_in_payload(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('ci-bd-optout', ['theme_key' => 'black_duck']);
+        $page = Page::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Контакты',
+            'slug' => 'contacts',
+            'template' => 'default',
+            'status' => 'published',
+            'published_at' => now(),
+            'show_in_main_menu' => false,
+            'main_menu_sort_order' => 0,
+        ]);
+        $defaults = app(PageSectionTypeRegistry::class)->get('contact_inquiry')->defaultData();
+        $defaults['requires_service_selector'] = false;
+        $section = PageSection::query()->create([
+            'tenant_id' => $tenant->id,
+            'page_id' => $page->id,
+            'section_key' => 'inquiry_min',
+            'section_type' => 'contact_inquiry',
+            'title' => 'Форма',
+            'data_json' => $defaults,
+            'sort_order' => 10,
+            'is_visible' => true,
+            'status' => 'published',
+        ]);
+        $h = $this->host('ci-bd-optout');
+        $this->postJson('http://'.$h.'/api/tenant/contact-inquiry', [
+            'page_section_id' => $section->id,
+            'name' => 'Иван',
+            'phone' => '+79991112233',
+            'message' => 'Короткое тестовое обращение без привязки к услуге',
+            'preferred_contact_channel' => 'phone',
+        ])->assertOk();
+
+        $crm = CrmRequest::query()->where('request_type', 'contact_page_inquiry')->first();
+        $this->assertNotNull($crm);
+        $pj = $crm->payload_json;
+        $this->assertIsArray($pj);
+        $this->assertArrayNotHasKey('inquiry_service_slug', $pj);
     }
 }

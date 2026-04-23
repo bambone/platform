@@ -357,12 +357,12 @@ final class BlackDuckBootstrap extends Seeder
                 $this->sec('service_hub', 'service_hub_grid', 'Карта услуг', 10, [
                     'heading' => 'Ключевые направления',
                     'items' => [
-                        ['title' => 'Детейлинг-мойка', 'price_from' => 'от —', 'duration' => '1–2 ч', 'online_booking' => true, 'needs_confirmation' => false, 'cta_url' => '/detejling-mojka'],
-                        ['title' => 'Химчистка', 'price_from' => 'от —', 'duration' => 'по оценке', 'online_booking' => false, 'needs_confirmation' => true, 'cta_url' => '/himchistka-salona'],
-                        ['title' => 'Полировка', 'price_from' => 'по ЛКП', 'duration' => '1–2 дня', 'online_booking' => false, 'needs_confirmation' => true, 'cta_url' => '/polirovka-kuzova'],
-                        ['title' => 'Керамика', 'price_from' => 'по пакету', 'duration' => 'по плану', 'online_booking' => false, 'needs_confirmation' => true, 'cta_url' => '/keramika'],
-                        ['title' => 'PPF', 'price_from' => 'по осмотру', 'duration' => 'по плану', 'online_booking' => false, 'needs_confirmation' => true, 'cta_url' => '/ppf'],
-                        ['title' => 'Тонировка', 'price_from' => 'от —', 'duration' => 'по смене', 'online_booking' => false, 'needs_confirmation' => true, 'cta_url' => '/tonirovka'],
+                        ['title' => 'Детейлинг-мойка', 'price_from' => 'от —', 'duration' => '1–2 ч', 'online_booking' => true, 'needs_confirmation' => false, 'cta_url' => '/detejling-mojka', 'book_url' => BlackDuckContentConstants::contactsInquiryUrlForServiceSlug('detejling-mojka')],
+                        ['title' => 'Химчистка', 'price_from' => 'от —', 'duration' => 'по оценке', 'online_booking' => false, 'needs_confirmation' => true, 'cta_url' => '/himchistka-salona', 'book_url' => BlackDuckContentConstants::contactsInquiryUrlForServiceSlug('himchistka-salona')],
+                        ['title' => 'Полировка', 'price_from' => 'по ЛКП', 'duration' => '1–2 дня', 'online_booking' => false, 'needs_confirmation' => true, 'cta_url' => '/polirovka-kuzova', 'book_url' => BlackDuckContentConstants::contactsInquiryUrlForServiceSlug('polirovka-kuzova')],
+                        ['title' => 'Керамика', 'price_from' => 'по пакету', 'duration' => 'по плану', 'online_booking' => false, 'needs_confirmation' => true, 'cta_url' => '/keramika', 'book_url' => BlackDuckContentConstants::contactsInquiryUrlForServiceSlug('keramika')],
+                        ['title' => 'PPF', 'price_from' => 'по осмотру', 'duration' => 'по плану', 'online_booking' => false, 'needs_confirmation' => true, 'cta_url' => '/ppf', 'book_url' => BlackDuckContentConstants::contactsInquiryUrlForServiceSlug('ppf')],
+                        ['title' => 'Тонировка', 'price_from' => 'от —', 'duration' => 'по смене', 'online_booking' => false, 'needs_confirmation' => true, 'cta_url' => '/tonirovka', 'book_url' => BlackDuckContentConstants::contactsInquiryUrlForServiceSlug('tonirovka')],
                     ],
                 ]),
             ],
@@ -572,6 +572,7 @@ final class BlackDuckBootstrap extends Seeder
                     'section_id' => 'contact-inquiry',
                     'submit_label' => 'Отправить',
                     'success_message' => 'Сообщение получено. Ответим в рабочее время.',
+                    'requires_service_selector' => true,
                 ]),
                 $this->sec('contact_faq', 'content_faq', 'Короткий FAQ', 40, [
                     'title' => 'Частые вопросы',
@@ -646,6 +647,9 @@ final class BlackDuckBootstrap extends Seeder
                 'needs_confirmation' => $slug !== 'detejling-mojka',
                 'booking_mode' => (string) $row['booking_mode'],
                 'cta_url' => $cta,
+                'book_url' => str_starts_with($slug, '#')
+                    ? BlackDuckContentConstants::PRIMARY_LEAD_URL
+                    : BlackDuckContentConstants::contactsInquiryUrlForServiceSlug($slug),
                 'image_url' => '',
             ];
         }

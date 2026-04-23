@@ -297,6 +297,12 @@ function validateClientSide(form, meta, consentRequired) {
         }
     }
 
+    const serviceSelect = form.querySelector('select[name="inquiry_service_slug"]');
+    if (serviceSelect && (serviceSelect.value === '' || serviceSelect.value === null)) {
+        setFieldError(form, 'inquiry_service_slug', 'Выберите услугу.');
+        ok = false;
+    }
+
     if (!ok) {
         const wraps = [...form.querySelectorAll('[data-rb-public-field]')];
         const firstBad = wraps.find((w) => w.querySelector('.rb-ci-field-error'));

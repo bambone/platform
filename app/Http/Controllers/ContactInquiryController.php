@@ -11,6 +11,7 @@ use App\Models\PageSection;
 use App\Product\CRM\Actions\CreateCrmRequestFromPublicForm;
 use App\Product\CRM\DTO\PublicInboundContext;
 use App\Product\CRM\DTO\PublicInboundSubmission;
+use App\Services\PublicSite\ContactInquiryFormPresenter;
 use App\Terminology\DomainTermKeys;
 use App\Terminology\TenantTerminologyService;
 use Illuminate\Http\JsonResponse;
@@ -47,6 +48,7 @@ final class ContactInquiryController extends Controller
             ->firstOrFail();
 
         $cfg = is_array($section->data_json) ? $section->data_json : [];
+        $requireServiceForPayload = ContactInquiryFormPresenter::sectionRequiresServiceSelector($cfg, $tenant);
         $successMessage = trim((string) ($cfg['success_message'] ?? ''));
         if ($successMessage === '') {
             $successMessage = 'Спасибо! Мы получили ваше сообщение и свяжемся с вами.';
@@ -93,11 +95,14 @@ final class ContactInquiryController extends Controller
             message: $validated['message'],
             source: 'contacts_page',
             channel: 'web',
-            payloadJson: [
+            payloadJson: array_filter([
                 'source_type' => 'contacts_form',
                 'source_path' => '/contacts',
                 'page_section_id' => $section->id,
-            ],
+                'inquiry_service_slug' => ($requireServiceForPayload && filled($validated['inquiry_service_slug'] ?? null))
+                    ? (string) $validated['inquiry_service_slug']
+                    : null,
+            ], static fn ($v) => $v !== null),
             utmSource: $validated['utm_source'] ?? null,
             utmMedium: $validated['utm_medium'] ?? null,
             utmCampaign: $validated['utm_campaign'] ?? null,

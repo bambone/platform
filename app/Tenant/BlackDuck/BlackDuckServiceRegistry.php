@@ -75,6 +75,34 @@ final class BlackDuckServiceRegistry
     }
 
     /**
+     * Услуги с посадочной — для выпадающего списка в форме «Контакты» (публичный запрос без ?service=).
+     *
+     * @return list<array{slug: string, title: string}>
+     */
+    public static function inquiryFormLandingOptions(): array
+    {
+        $rows = array_values(array_filter(
+            self::all(),
+            static fn (array $r): bool => ($r['has_landing'] ?? false) === true,
+        ));
+        usort(
+            $rows,
+            static fn (array $a, array $b): int => ((int) ($a['service_sort'] ?? 0)) <=> ((int) ($b['service_sort'] ?? 0))
+                ?: ((string) ($a['title'] ?? '')) <=> ((string) ($b['title'] ?? '')),
+        );
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'slug' => (string) $r['slug'],
+                'title' => (string) $r['title'],
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
      * Услуги из ТЗ без посадочных страниц в текущей матрице: при появлении в {@see rowsInner()}
      * добавить bootstrap/меню/booking и строку здесь при необходимости.
      *

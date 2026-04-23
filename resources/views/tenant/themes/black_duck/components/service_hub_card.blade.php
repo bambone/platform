@@ -1,3 +1,4 @@
+{{-- book_url: заявка с префиллом направления в форме /contacts; cta_url — посадочная. На карточке «Запись» ведём сразу в форму (а не ?book=1 на услуге). --}}
 @php
     $it = is_array($it ?? null) ? $it : [];
     $img = \App\Tenant\Expert\ExpertBrandMediaUrl::resolve($it['image_url'] ?? '');

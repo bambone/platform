@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\PageBuilder\Blueprints;
 
 use App\PageBuilder\PageSectionCategory;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -59,6 +60,7 @@ final class ContactInquirySectionBlueprint extends AbstractPageSectionBlueprint
             'show_preferred_channel' => true,
             'consent_enabled' => false,
             'consent_label' => 'Я согласен(на) на обработку персональных данных.',
+            'requires_service_selector' => false,
         ];
     }
 
@@ -109,6 +111,12 @@ final class ContactInquirySectionBlueprint extends AbstractPageSectionBlueprint
             Toggle::make('data_json.consent_enabled')
                 ->label('Чекбокс согласия')
                 ->default(false),
+            Toggle::make('data_json.requires_service_selector')
+                ->label('Обязательный выбор услуги (направление в заявке)')
+                ->helperText('Для Black Duck: заявка не принимается без выбора направления. Для других витрин оставьте выключенным, чтобы в футере и доп. формах не требовать поле.')
+                ->default(false)
+                ->visible(fn () => (string) (Filament::getTenant()?->theme_key ?? '') === 'black_duck')
+                ->columnSpanFull(),
             Textarea::make('data_json.consent_label')
                 ->label('Текст согласия')
                 ->maxLength(500)

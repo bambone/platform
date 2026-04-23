@@ -79,21 +79,23 @@ final class BlackDuckContentConstants
     }
 
     /**
-     * Slug витринных карточек на home (6–8), без полного каталога. Порядок = порядок на главной.
-     * Включает только сущности с лендингом или осмысленный CTA на заявку.
+     * Slug карточек услуг на главной: полная Q1-матрица в порядке реестра, без псевдо-страниц {@code #…}.
      *
-     * @var list<string>
+     * @return list<string>
      */
-    public const HOME_SERVICE_PREVIEW_SLUGS = [
-        'ppf',
-        'keramika',
-        'himchistka-salona',
-        'polirovka-kuzova',
-        'detejling-mojka',
-        'tonirovka',
-        'pdr',
-        'predprodazhnaya',
-    ];
+    public static function homeServicePreviewSlugs(): array
+    {
+        $slugs = [];
+        foreach (self::serviceMatrixQ1() as $row) {
+            $slug = (string) $row['slug'];
+            if (str_starts_with($slug, '#')) {
+                continue;
+            }
+            $slugs[] = $slug;
+        }
+
+        return $slugs;
+    }
 
     public const URL_2GIS = 'https://2gis.ru/chelyabinsk/inside/2111698024786654/query/%D0%B4%D0%B5%D1%82%D0%B5%D0%B9%D0%BB%D0%B8%D0%BD%D0%B3/firm/70000001053335703';
 
@@ -148,46 +150,20 @@ final class BlackDuckContentConstants
      * @return list<array{slug: string, title: string, blurb: string, booking_mode: string, has_landing: bool}>
      */
     /**
-     * Подмножество {@see serviceMatrixQ1()} для превью на главной: 6–8 сильных направлений.
+     * Карточки услуг на главной: та же последовательность, что {@see serviceMatrixQ1()}, без строк {@code #…}
+     * (полная витрина направлений; см. {@see homeServicePreviewSlugs()}).
      *
      * @return list<array{slug: string, title: string, blurb: string, booking_mode: string, has_landing: bool}>
      */
     public static function serviceMatrixHomePreview(): array
     {
-        $bySlug = [];
-        foreach (self::serviceMatrixQ1() as $row) {
-            $bySlug[(string) $row['slug']] = $row;
-        }
         $out = [];
-        foreach (self::HOME_SERVICE_PREVIEW_SLUGS as $slug) {
-            $reg = BlackDuckServiceRegistry::rowBySlug($slug);
-            if ($reg !== null && ! ($reg['show_on_home'] ?? false)) {
+        foreach (self::serviceMatrixQ1() as $row) {
+            $slug = (string) $row['slug'];
+            if (str_starts_with($slug, '#')) {
                 continue;
             }
-            if (isset($bySlug[$slug])) {
-                $out[] = $bySlug[$slug];
-            }
-        }
-        if ($out === []) {
-            foreach (BlackDuckServiceRegistry::all() as $reg) {
-                $row = [
-                    'slug' => $reg['slug'],
-                    'title' => $reg['title'],
-                    'blurb' => $reg['blurb'],
-                    'booking_mode' => $reg['booking_mode'],
-                    'has_landing' => $reg['has_landing'],
-                ];
-                if (str_starts_with((string) $row['slug'], '#')) {
-                    continue;
-                }
-                if (! ($reg['show_on_home'] ?? false)) {
-                    continue;
-                }
-                $out[] = $row;
-                if (count($out) >= 8) {
-                    break;
-                }
-            }
+            $out[] = $row;
         }
 
         return $out;
@@ -202,13 +178,23 @@ final class BlackDuckContentConstants
     public static function homeServiceCardPreviewSubtitlesBySlug(): array
     {
         return [
+            'detejling-mojka' => 'Быстрые слоты, когда расписание включено.',
+            'himchistka-kuzova' => 'Деинкрустация, обезжиривание, подготовка под LKP.',
+            'himchistka-diskov' => 'Очистка суппорт-зон и внутренней плоскости по доступу.',
+            'antidozhd' => 'Обработка стекол для дождливой погоды; уточнить составы у мастера.',
+            'podkapotnaya-himchistka' => 'Сухая и мойка-зонально; консервация пластиков и кожухов по задаче.',
+            'himchistka-salona' => 'Салон и материалы — после осмотра.',
+            'kozha-keramika' => 'Пропитка/керамика кожи и фактуры — по тесту материалов.',
+            'restavratsiya-kozhi' => 'Износ, потёртости, цвет — работа по согласованному ТЗ.',
+            'bronirovanie-salona' => 'Защитные плёнки на пластик, экран, пороги — по плану.',
+            'polirovka-kuzova' => 'Абразив и финиш по состоянию ЛКП.',
+            'remont-skolov' => 'Точечный ремонт ЛКП по дефекту, без «лишнего» кузова в работу.',
+            'pdr' => 'Вмятины без окраса — оценка на месте.',
             'ppf' => 'Защита ЛКП: зоны и кромка под задачу.',
             'keramika' => 'Глянец и уход: план с мастером.',
-            'himchistka-salona' => 'Салон и материалы — после осмотра.',
-            'polirovka-kuzova' => 'Абразив и финиш по состоянию ЛКП.',
-            'detejling-mojka' => 'Быстрые слоты, когда расписание включено.',
             'tonirovka' => 'Комфорт и внешний вид стёкол/оптики.',
-            'pdr' => 'Вмятины без окраса — оценка на месте.',
+            'setki-radiatora' => 'Защита радиатора сетками: подбор и монтаж под модель.',
+            'shumka' => 'Объём и сроки после диагностики.',
             'predprodazhnaya' => 'Внешний вид под осмотр покупателя.',
         ];
     }

@@ -962,7 +962,9 @@ final class BlackDuckContentRefresher
             'quote_anchor' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
         ], $force, $ifPlaceholder, $forceSection);
 
-        $this->hideHomeMessengerCaptureBarSection($tenantId);
+        if ($this->sectionMatch('messenger', $forceSection)) {
+            $this->hideHomeMessengerCaptureBarSection($tenantId);
+        }
 
         $previewSub = BlackDuckContentConstants::homeServiceCardPreviewSubtitlesBySlug();
         $hubItems = [];
@@ -986,7 +988,7 @@ final class BlackDuckContentRefresher
                 'needs_confirmation' => $row['slug'] !== 'detejling-mojka',
                 'booking_mode' => (string) $row['booking_mode'],
                 'cta_url' => $cta,
-                'book_url' => BlackDuckContentConstants::serviceLandingBookIntentUrl($slug),
+                'book_url' => BlackDuckContentConstants::contactsInquiryUrlForServiceSlug($slug),
                 'service_slug' => $slug,
                 'image_url' => $img ?? '',
             ];
@@ -1103,7 +1105,7 @@ final class BlackDuckContentRefresher
                 'needs_confirmation' => $slug !== 'detejling-mojka',
                 'booking_mode' => (string) $row['booking_mode'],
                 'cta_url' => $cta,
-                'book_url' => BlackDuckContentConstants::serviceLandingBookIntentUrl($slug),
+                'book_url' => BlackDuckContentConstants::contactsInquiryUrlForServiceSlug($slug),
                 'service_slug' => $slug,
                 'image_url' => $img ?? '',
             ];
@@ -1671,6 +1673,11 @@ final class BlackDuckContentRefresher
             'social_note' => $igPublic !== '' ? 'Instagram: '.$igPublic : '',
         ];
         $this->updateSectionData($tenantId, 'contacts', 'contacts', $data, $force, $ifPlaceholder, $forceSection);
+        $inquiry = $this->readHomeSectionDataArray($tenantId, 'contacts', 'contact_inquiry');
+        if ($inquiry !== []) {
+            $inquiry['requires_service_selector'] = true;
+            $this->updateSectionData($tenantId, 'contacts', 'contact_inquiry', $inquiry, $force, $ifPlaceholder, $forceSection);
+        }
         $this->updateSectionData($tenantId, 'contacts', 'contact_faq', [
             'title' => 'Частые вопросы',
             'items' => [

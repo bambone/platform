@@ -14,20 +14,22 @@ class BlackDuckContentConstantsTest extends TestCase
         $this->assertSame('', BlackDuckContentConstants::instagramUrlForPublic());
     }
 
-    public function test_home_service_preview_follows_configured_slugs_in_matrix_order(): void
+    public function test_home_service_preview_is_q1_without_hash_slugs(): void
     {
-        $q1Slugs = [];
+        $expected = [];
         foreach (BlackDuckContentConstants::serviceMatrixQ1() as $row) {
-            $q1Slugs[(string) $row['slug']] = true;
+            $slug = (string) $row['slug'];
+            if (str_starts_with($slug, '#')) {
+                continue;
+            }
+            $expected[] = $slug;
         }
         $slugs = array_map(
             static fn (array $row): string => (string) $row['slug'],
             BlackDuckContentConstants::serviceMatrixHomePreview(),
         );
-        $this->assertSame(BlackDuckContentConstants::HOME_SERVICE_PREVIEW_SLUGS, $slugs);
-        foreach ($slugs as $slug) {
-            $this->assertArrayHasKey($slug, $q1Slugs, 'Каждая карточка превью должна ссылаться на строку Q1-матрицы');
-        }
+        $this->assertSame($expected, $slugs);
+        $this->assertSame($expected, BlackDuckContentConstants::homeServicePreviewSlugs());
     }
 
     public function test_contacts_inquiry_url_includes_service_query(): void

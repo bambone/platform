@@ -52,11 +52,14 @@
 
 После изменений: `php artisan tenant:black-duck:refresh-content blackduck --force`.
 
-## Продакшен: почему «пусто» или старая картинка
+## Продакшен: локально фото есть, на проде нет (или «все картинки как один плейсхолдер»)
 
-1. **Файлы должны быть на том же public-хранилище**, с которого читает приложение: ключи вида `tenants/{id}/public/site/brand/...` на диске `config('tenant_storage.public_disk')` (часто локально это `storage/app/public`, либо R2). Копия только в `C:\OSPanel\home\rentbase-media\...` без зеркала на сервер/бакет **не обновит** сайт.
-2. После заливки: `php artisan tenant:black-duck:refresh-content blackduck --force` на **проде** и сброс кеша пейлоуда главной (команда это делает).
-3. **Hero:** приоритет отображения — `hero-1916.webp` (и прочие WebP слайса), **не** `hero-1916.jpg`. Старый JPEG на проде раньше перекрывал WebP в разметке; исправлено в `BlackDuckHomeHeroBundle` и `expert_hero.blade.php`. Всё равно удобно удалить устаревший `hero-1916.jpg`, если он не нужен для превью.
+Публичные URL для `/raboty` собирает `ExpertBrandMediaUrl` + `TenantPublicAssetResolver` из **object key** вроде `site/brand/proof/wg-*.webp`. Подписи к карточкам идут из `data_json` / `media-catalog.json`; **сами файлы** должны быть в публичном storage тенанта **на проде** (R2, CDN или `MEDIA_LOCAL_ROOT` + nginx `/media/…`), а не только на машине разработчика.
+
+1. **Диагностика на сервере:** `php artisan tenant:black-duck:verify-public-media blackduck` — сравнит `media-catalog.json` с `exists` на primary/replica-диске. С `--strict` ненулевой код выхода, если чего-то нет. Узко по портфолио: `--role=works_gallery`.
+2. **Исправление:** выложить тот же набор, что даёт `scripts/black-duck/publish-media-tenant4.ps1` (в шапке скрипта: зеркало → **загрузка в R2**), при необходимости `tenant-media:backfill-from-r2` — см. [tenant-media-local-mirror.md](../operations/tenant-media-local-mirror.md). Затем на проде: `php artisan tenant:black-duck:refresh-content blackduck --force`.
+3. **Инвариант:** ключи `tenants/{id}/public/site/brand/...` должны существовать в хранилище, с которым сконфигурировано приложение. Каталог **только** в `C:\OSPanel\home\rentbase-media\...` без синхронизации в бакет/зерко **не сделает** картинки на боевом домене.
+4. **Hero:** приоритет — `hero-1916.webp` (и WebP слайса), **не** `hero-1916.jpg`. Старый JPEG на проде мог мешать; при желании удалите дубликат в storage.
 
 ## Проверка содержимого файла
 

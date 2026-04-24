@@ -16,6 +16,11 @@ use Illuminate\Support\Facades\Storage;
 /**
  * Собирает множество логических путей {@code site/brand/...}, на которые ссылается рантайм/БД/секции,
  * чтобы безопасно находить кандидатов в «сиротских» файлах под {@code site/brand/}.
+ *
+ * Важно: при DB-first {@see BlackDuckMediaCatalog::loadOrEmpty} читает каталог из SQL; файл
+ * {@code site/brand/media-catalog.json} в public storage — артефакт/импорт и на проде может содержать
+ * больше ассетов, чем строк в {@code tenant_media_assets}. Прун **всегда** добавляет пути из JSON-файла
+ * на диске (если он есть), иначе при рассинхроне «узкая БД + полный JSON» удалялись бы нужные байты.
  */
 final class BlackDuckBrandReferencedPathIndex
 {
@@ -39,6 +44,7 @@ final class BlackDuckBrandReferencedPathIndex
 
         self::addCatalogAndDbAssets($tenantId, $add);
         $add(BlackDuckMediaCatalog::CATALOG_LOGICAL, 'media catalog file');
+        self::addMediaCatalogJsonFileOnDisk($tenantId, $add);
 
         self::addServicePrograms($tenantId, $add);
         self::addPageAndSeoText($tenantId, $add);
@@ -98,6 +104,52 @@ final class BlackDuckBrandReferencedPathIndex
                 $lp = trim((string) ($d['logical_path'] ?? ''));
                 if ($lp !== '') {
                     $add($lp, 'tenant_media_assets.derivatives_json');
+                }
+            }
+        }
+    }
+
+    /**
+     * Пути из физического {@see BlackDuckMediaCatalog::CATALOG_LOGICAL} (не из merge с БД), чтобы ретенция
+     * не расходилась с артефактом на диске.
+     *
+     * @param  callable(string, string): void  $add
+     */
+    private static function addMediaCatalogJsonFileOnDisk(int $tenantId, callable $add): void
+    {
+        $ts = TenantStorage::forTrusted($tenantId);
+        if (! $ts->existsPublic(BlackDuckMediaCatalog::CATALOG_LOGICAL)) {
+            return;
+        }
+        $raw = $ts->getPublic(BlackDuckMediaCatalog::CATALOG_LOGICAL);
+        if (! is_string($raw) || trim($raw) === '') {
+            return;
+        }
+        $data = json_decode($raw, true);
+        if (! is_array($data) || ! is_array($data['assets'] ?? null)) {
+            return;
+        }
+        $label = 'media-catalog.json (on-disk file; retention vs DB)';
+        foreach ($data['assets'] as $a) {
+            if (! is_array($a)) {
+                continue;
+            }
+            $main = trim((string) ($a['logical_path'] ?? ''));
+            if ($main !== '') {
+                $add($main, $label);
+            }
+            $poster = trim((string) ($a['poster_logical_path'] ?? ''));
+            if ($poster !== '') {
+                $add($poster, $label);
+            }
+            $deriv = is_array($a['derivatives'] ?? null) ? $a['derivatives'] : [];
+            foreach ($deriv as $d) {
+                if (! is_array($d)) {
+                    continue;
+                }
+                $lp = trim((string) ($d['logical_path'] ?? ''));
+                if ($lp !== '') {
+                    $add($lp, $label);
                 }
             }
         }

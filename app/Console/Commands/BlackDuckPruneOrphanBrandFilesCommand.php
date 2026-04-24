@@ -25,7 +25,7 @@ final class BlackDuckPruneOrphanBrandFilesCommand extends Command
                             {--yes : Подтвердить удаление без запроса (с --force; для CI/скриптов)}
                             {--limit=0 : Максимум удалений за один запуск (0 = без лимита)}';
 
-    protected $description = 'Black Duck: сиротские файлы под site/brand/ (сверка с каталогом, БД, секциями)';
+    protected $description = 'Black Duck: сиротские файлы под site/brand/ (каталог БД + секции + пути из media-catalog.json на диске)';
 
     public function handle(TenantPublicMediaWriter $writer): int
     {

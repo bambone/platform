@@ -78,3 +78,4 @@ docs/tenants_tz/*
 /scripts/export-changed-files-dumps/
 
 rclone.conf
+scripts/tmp/*

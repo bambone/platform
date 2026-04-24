@@ -197,6 +197,47 @@ final class BlackDuckTenantSiteTest extends TestCase
         $this->assertStringNotContainsString('<video', $html);
     }
 
+    public function test_raboty_works_hero_video_gets_poster_from_brand_shade_when_catalog_has_no_poster(): void
+    {
+        $tid = (int) DB::table('tenants')->where('slug', BlackDuckBootstrap::SLUG)->value('id');
+        $host = (string) DB::table('tenant_domains')->where('tenant_id', $tid)->value('host');
+        $jpg = self::minimalJpegBytes();
+        $this->assertNotSame('', $jpg);
+        $ts = TenantStorage::forTrusted($tid);
+        $this->assertTrue($ts->putPublic('site/brand/hero-1600.webp', $jpg, ['ContentType' => 'image/webp', 'visibility' => 'public']));
+        $stubMp4 = "00000018\x66\x74\x79\x70\x69\x73\x6F\x6D\x00\x00\x02\x00\x69\x73\x6F\x6D\x69\x73\x6F\x32\x6D\x70\x34\x31";
+        $this->assertTrue($ts->putPublic('site/brand/proof/t-works-noposter.mp4', $stubMp4, ['ContentType' => 'video/mp4', 'visibility' => 'public']));
+        $assets = [
+            [
+                'role' => BlackDuckMediaRole::WorksFeaturedVideo->value,
+                'logical_path' => 'site/brand/proof/t-works-noposter.mp4',
+                'sort_order' => 0,
+            ],
+        ];
+        $this->assertTrue(BlackDuckMediaCatalog::saveCatalog($tid, BlackDuckMediaCatalog::SCHEMA_VERSION, $assets));
+        Artisan::call('tenant:black-duck:import-media-catalog-to-db', [
+            'tenant' => BlackDuckBootstrap::SLUG,
+            '--wipe' => true,
+        ]);
+        Artisan::call('tenant:black-duck:refresh-content', [
+            'tenant' => BlackDuckBootstrap::SLUG,
+            '--force' => true,
+        ]);
+
+        $rabotyPageId = (int) DB::table('pages')->where('tenant_id', $tid)->where('slug', 'raboty')->value('id');
+        $heroJson = DB::table('page_sections')
+            ->where('tenant_id', $tid)->where('page_id', $rabotyPageId)->where('section_key', 'works_hero')
+            ->value('data_json');
+        $heroData = is_string($heroJson) ? json_decode($heroJson, true) : $heroJson;
+        $this->assertIsArray($heroData);
+        $this->assertSame('site/brand/hero-1600.webp', $heroData['video_poster'] ?? null);
+        $this->assertSame('site/brand/hero-1600.webp', $heroData['background_image'] ?? null);
+
+        $html = (string) $this->call('GET', 'http://'.$host.'/raboty')->getContent();
+        $this->assertStringContainsString('<video', $html);
+        $this->assertStringContainsString('poster="', $html);
+    }
+
     public function test_home_proof_and_ppf_service_proof_with_curated_local_catalog(): void
     {
         $tid = (int) DB::table('tenants')->where('slug', BlackDuckBootstrap::SLUG)->value('id');

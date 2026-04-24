@@ -905,6 +905,25 @@ final class BlackDuckContentRefresher
         return is_array($d) ? $d : [];
     }
 
+    /**
+     * Карточки «Проекты» на /raboty, заполненные вне медиакаталога (Filament, fill-case-study-cards): не затирать пустым {@see BlackDuckMediaCatalog::worksStoryCardItems} при --force.
+     *
+     * @param  list<mixed>  $items
+     */
+    private function rabotyCaseListItemsLookEditorial(array $items): bool
+    {
+        foreach ($items as $it) {
+            if (! is_array($it)) {
+                continue;
+            }
+            if (trim((string) ($it['image_url'] ?? '')) !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function updateSectionData(
         int $tenantId,
         string $pageSlug,
@@ -1820,29 +1839,44 @@ final class BlackDuckContentRefresher
     ): void {
         $isBlackDuck = $this->isBlackDuckTenant($tenantId);
         if ($isBlackDuck) {
+            $prevPortfolio = $this->readHomeSectionDataArray($tenantId, 'raboty', 'works_portfolio');
+            $prevGalleryItems = is_array($prevPortfolio['gallery_items'] ?? null) ? $prevPortfolio['gallery_items'] : [];
+            $prevCaseList = $this->readHomeSectionDataArray($tenantId, 'raboty', 'case_list');
+            $prevCaseItems = is_array($prevCaseList['items'] ?? null) ? $prevCaseList['items'] : [];
+
             $grid = BlackDuckMediaCatalog::worksPortfolioGridItems($tenantId);
             $chips = BlackDuckMediaCatalog::worksPortfolioFilterChips($tenantId);
-            $this->updateSectionData($tenantId, 'raboty', 'works_portfolio', [
-                'heading' => 'Портфолио',
-                'intro' => 'Подбор по направлениям. Подробный разбор и сроки — по заявке.',
-                'filters' => $chips,
-                'gallery_items' => $grid,
-                'primary_cta_label' => 'Заявка и расчёт',
-                'primary_cta_href' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
-            ], $force, $ifPlaceholder, $forceSection);
-            if ($this->sectionMatch('works_portfolio', $forceSection)) {
-                $this->updatePageSectionVisibility($tenantId, 'raboty', 'works_portfolio', $grid !== [], $forceSection);
+            $preservePortfolio = $grid === [] && $prevGalleryItems !== [];
+            if (! $preservePortfolio) {
+                $this->updateSectionData($tenantId, 'raboty', 'works_portfolio', [
+                    'heading' => 'Портфолио',
+                    'intro' => 'Подбор по направлениям. Подробный разбор и сроки — по заявке.',
+                    'filters' => $chips,
+                    'gallery_items' => $grid,
+                    'primary_cta_label' => 'Заявка и расчёт',
+                    'primary_cta_href' => BlackDuckContentConstants::PRIMARY_LEAD_URL,
+                ], $force, $ifPlaceholder, $forceSection);
+                if ($this->sectionMatch('works_portfolio', $forceSection)) {
+                    $this->updatePageSectionVisibility($tenantId, 'raboty', 'works_portfolio', $grid !== [], $forceSection);
+                }
+            } elseif ($this->sectionMatch('works_portfolio', $forceSection)) {
+                $this->updatePageSectionVisibility($tenantId, 'raboty', 'works_portfolio', true, $forceSection);
             }
 
             $story = BlackDuckMediaCatalog::worksStoryCardItems($tenantId, 12);
-            $this->updateSectionData($tenantId, 'raboty', 'case_list', [
-                'heading' => 'Проекты',
-                'proof_works_cta_label' => '',
-                'proof_works_cta_href' => '',
-                'items' => $story,
-            ], $force, $ifPlaceholder, $forceSection);
-            if ($this->sectionMatch('case_list', $forceSection)) {
-                $this->updatePageSectionVisibility($tenantId, 'raboty', 'case_list', $story !== [], $forceSection);
+            $preserveCaseList = $story === [] && $this->rabotyCaseListItemsLookEditorial($prevCaseItems);
+            if (! $preserveCaseList) {
+                $this->updateSectionData($tenantId, 'raboty', 'case_list', [
+                    'heading' => 'Проекты',
+                    'proof_works_cta_label' => '',
+                    'proof_works_cta_href' => '',
+                    'items' => $story,
+                ], $force, $ifPlaceholder, $forceSection);
+                if ($this->sectionMatch('case_list', $forceSection)) {
+                    $this->updatePageSectionVisibility($tenantId, 'raboty', 'case_list', $story !== [], $forceSection);
+                }
+            } elseif ($this->sectionMatch('case_list', $forceSection)) {
+                $this->updatePageSectionVisibility($tenantId, 'raboty', 'case_list', true, $forceSection);
             }
         } else {
             $this->updateSectionData($tenantId, 'raboty', 'case_list', [
@@ -1881,8 +1915,14 @@ final class BlackDuckContentRefresher
             'overlay_dark' => true,
         ];
         $bg = BlackDuckServiceImages::firstServiceLandingShadePath($tenantId);
-        if ($bg !== null && (($vid['video'] ?? '') === '')) {
-            $wHero['background_image'] = $bg;
+        $hasWorksVideo = ($vid['video'] ?? '') !== '';
+        if ($bg !== null) {
+            if (! $hasWorksVideo) {
+                $wHero['background_image'] = $bg;
+            } elseif (($wHero['video_poster'] ?? '') === '') {
+                $wHero['video_poster'] = $bg;
+                $wHero['background_image'] = $bg;
+            }
         }
         $this->updateSectionData($tenantId, 'raboty', 'works_hero', $wHero, $force, $ifPlaceholder, $forceSection);
         if ($isBlackDuck) {

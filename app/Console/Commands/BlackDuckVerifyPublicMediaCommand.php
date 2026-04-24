@@ -7,7 +7,6 @@ namespace App\Console\Commands;
 use App\Console\Commands\Concerns\ResolvesTenantArgument;
 use App\Tenant\BlackDuck\BlackDuckContentConstants;
 use App\Tenant\BlackDuck\BlackDuckMediaCatalog;
-use App\Tenant\BlackDuck\BlackDuckMediaRole;
 use App\Tenant\Expert\ExpertBrandMediaUrl;
 use Illuminate\Console\Command;
 
@@ -51,6 +50,12 @@ final class BlackDuckVerifyPublicMediaCommand extends Command
 
             return (bool) $this->option('strict') ? self::FAILURE : self::SUCCESS;
         }
+
+        $catVersion = (int) ($cat['version'] ?? 0);
+        $catAssetCount = count($cat['assets'] ?? []);
+        $this->line(
+            'Файл '.BlackDuckMediaCatalog::CATALOG_LOGICAL.': version='.$catVersion.', записей assets='.$catAssetCount.' (сравните с `database/data/black_duck_tenant4_media_catalog.json` в репозитории).',
+        );
 
         $roleFilter = trim((string) $this->option('role'));
         if ($roleFilter === '') {

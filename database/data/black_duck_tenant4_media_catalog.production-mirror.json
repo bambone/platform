@@ -1,0 +1,141 @@
+{
+    "version": 3,
+    "assets": [
+        {
+            "role": "home_proof_before",
+            "before_after_group": "t1",
+            "logical_path": "site/brand/proof/00-home-before.png",
+            "sort_order": 0,
+            "caption": "До"
+        },
+        {
+            "role": "home_proof_after",
+            "before_after_group": "t1",
+            "logical_path": "site/brand/proof/01-home-after.png",
+            "sort_order": 0,
+            "caption": "После"
+        },
+        {
+            "role": "home_service_card",
+            "service_slug": "ppf",
+            "logical_path": "site/brand/proof/02-card-ppf.png",
+            "sort_order": 0
+        },
+        {
+            "role": "service_gallery",
+            "service_slug": "ppf",
+            "logical_path": "site/brand/proof/23-service-gallery-ppf.png",
+            "sort_order": 0,
+            "caption": "Кромка"
+        },
+        {
+            "role": "works_featured_video",
+            "logical_path": "site/brand/proof/08-works-hero.mp4",
+            "poster_logical_path": "site/brand/proof/1008-works-hero-poster.png",
+            "sort_order": 0
+        },
+        {
+            "role": "service_featured_video",
+            "service_slug": "ppf",
+            "logical_path": "site/brand/proof/08-works-hero.mp4",
+            "poster_logical_path": "site/brand/proof/1008-works-hero-poster.png",
+            "sort_order": 0
+        },
+        {
+            "role": "works_gallery",
+            "service_slug": "ppf",
+            "logical_path": "site/brand/proof/11-gallery-01.png",
+            "sort_order": 10,
+            "caption": "PPF: зона работ",
+            "tags": ["PPF", "Антигравий PPF"]
+        },
+        {
+            "role": "works_gallery",
+            "service_slug": "ppf",
+            "logical_path": "site/brand/proof/12-gallery-02.png",
+            "sort_order": 20,
+            "caption": "Кромка и подступ",
+            "tags": ["PPF"]
+        },
+        {
+            "role": "works_gallery",
+            "service_slug": "ppf",
+            "logical_path": "site/brand/proof/13-gallery-03.png",
+            "sort_order": 30,
+            "caption": "Оклейка элемента",
+            "tags": ["Антигравий PPF"]
+        },
+        {
+            "role": "works_gallery",
+            "service_slug": "keramika",
+            "logical_path": "site/brand/proof/14-gallery-04.png",
+            "sort_order": 40,
+            "caption": "Керамика: подготовка",
+            "tags": ["PPF"]
+        },
+        {
+            "role": "works_gallery",
+            "service_slug": "keramika",
+            "logical_path": "site/brand/proof/15-gallery-05.png",
+            "sort_order": 50,
+            "caption": "Глянец после этапа",
+            "tags": ["PPF"]
+        },
+        {
+            "role": "works_gallery",
+            "service_slug": "polirovka-kuzova",
+            "logical_path": "site/brand/proof/16-gallery-06.png",
+            "sort_order": 60,
+            "caption": "Полировка: дефект",
+            "tags": ["PPF"]
+        },
+        {
+            "role": "works_gallery",
+            "service_slug": "himchistka-salona",
+            "logical_path": "site/brand/proof/17-gallery-07.png",
+            "sort_order": 70,
+            "caption": "Салон: текстиль",
+            "tags": ["Антигравий PPF"]
+        },
+        {
+            "role": "works_gallery",
+            "service_slug": "himchistka-salona",
+            "logical_path": "site/brand/proof/18-gallery-08.png",
+            "sort_order": 80,
+            "caption": "Химчистка: деталь",
+            "tags": ["PPF"]
+        },
+        {
+            "role": "works_gallery",
+            "service_slug": "ppf",
+            "logical_path": "site/brand/proof/19-gallery-09.png",
+            "sort_order": 90,
+            "caption": "PPF: стык",
+            "tags": ["PPF", "Антигравий PPF"]
+        },
+        {
+            "role": "works_gallery",
+            "service_slug": "ppf",
+            "logical_path": "site/brand/proof/20-gallery-10.png",
+            "sort_order": 100,
+            "caption": "Фрагмент кузова",
+            "tags": ["PPF"]
+        },
+        {
+            "role": "works_gallery",
+            "service_slug": "tonirovka",
+            "logical_path": "site/brand/proof/21-gallery-11.png",
+            "sort_order": 110,
+            "caption": "Тонировка: кромка",
+            "tags": ["Антигравий PPF"]
+        },
+        {
+            "role": "works_gallery",
+            "service_slug": "pdr",
+            "logical_path": "site/brand/proof/22-gallery-12.png",
+            "sort_order": 120,
+            "caption": "PDR: доступ",
+            "tags": ["PPF"]
+        }
+    ]
+}

@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Console\Commands\Concerns\ResolvesTenantArgument;
 use App\Tenant\BlackDuck\BlackDuckContentRefresher;
+use App\Tenant\BlackDuck\BlackDuckTenantRuntimeHealth;
 use Illuminate\Console\Command;
 
 /**
@@ -45,6 +46,18 @@ final class BlackDuckRefreshContentCommand extends Command
             $this->error('Указан тенант не black_duck.');
 
             return self::FAILURE;
+        }
+
+        $tid = (int) $tenant->id;
+        if (BlackDuckTenantRuntimeHealth::isMediaRuntimeEmptyInDatabase($tid)) {
+            $this->warn(
+                'ВНИМАНИЕ: tenant_media_assets пуста — публичный каталог читает БД; /raboty, proof и т.п. останутся пустыми, пока не выполните: php artisan tenant:black-duck:import-media-catalog-to-db',
+            );
+        }
+        if (BlackDuckTenantRuntimeHealth::isServiceCatalogDegradedForInquiryForm($tid)) {
+            $this->warn(
+                'ВНИМАНИЕ: нет видимых программ/услуг в tenant_service_programs — форма контактов не покажет селектор направлений, inquiry не привязывается к услуге.',
+            );
         }
 
         $rawP = $this->option('if-placeholder');

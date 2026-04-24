@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace App\Tenant\BlackDuck;
 
+use App\Models\TenantMediaAsset;
 use App\Support\Storage\TenantStorage;
 use App\Support\Storage\TenantStorageDisks;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
- * JSON {@code site/brand/media-catalog.json}: единый curated-манифест. Внешние URL недопустимы в logical_path для proof.
+ * Curated media catalog for Black Duck.
+ *
+ * Источник правды: БД `tenant_media_assets` (редактируется через админку). Файл {@code site/brand/media-catalog.json}
+ * поддерживается как fallback/артефакт для импорта и bootstrap.
  *
  * @phpstan-type DerivativeRow array{w: int, logical_path: string}
  * @phpstan-type AssetRow array{
@@ -49,6 +55,9 @@ final class BlackDuckMediaCatalog
     public const CATALOG_LOGICAL = 'site/brand/media-catalog.json';
 
     /**
+     * Дефолтный набор, пока `tenant_service_programs` ещё пуст: до DB-first сидов и импорта.
+     * При {@see \App\Tenant\BlackDuck\BlackDuckServiceProgramCatalog::databaseHasCatalog} используйте {@see \App\Tenant\BlackDuck\BlackDuckServiceProgramCatalog::serviceProofTargetLandingSlugs()}.
+     *
      * @var list<string>
      */
     public const SERVICE_PROOF_LANDING_SLUGS = [
@@ -61,10 +70,24 @@ final class BlackDuckMediaCatalog
     ];
 
     /**
+     * @return list<string> Только при отсутствии импортированного каталога услуг в БД.
+     */
+    public static function defaultServiceProofSlugsForLegacy(): array
+    {
+        return self::SERVICE_PROOF_LANDING_SLUGS;
+    }
+
+    /**
      * @return array{version: int, assets: list<AssetRow>}
      */
     public static function loadOrEmpty(int $tenantId): array
     {
+        $fromDb = self::loadFromDbIfAvailable($tenantId);
+        if ($fromDb !== null) {
+            return $fromDb;
+        }
+        // Таблицы нет — до DB-first, читаем JSON в public storage.
+
         $ts = TenantStorage::forTrusted($tenantId);
         if (! $ts->existsPublic(self::CATALOG_LOGICAL)) {
             return ['version' => self::SCHEMA_VERSION, 'assets' => []];
@@ -95,6 +118,87 @@ final class BlackDuckMediaCatalog
         return [
             'version' => max(1, (int) ($d['version'] ?? 1)),
             'assets' => $normalized,
+        ];
+    }
+
+    /**
+     * Один критерий с {@link loadOrEmpty}: при true каталог с фронта читается из БД, JSON в public — не источник правды
+     * (тот же путь, что {@see loadFromDbIfAvailable} вместо null). При false — читаем JSON, пока схема без таблицы.
+     *
+     * Сейчас это схема-уровня (таблица в БД), без per-tenant feature flags; при появлении gating — менять в одном месте.
+     */
+    public static function isCatalogSourcedFromDatabaseForLoadPath(): bool
+    {
+        try {
+            return Schema::hasTable('tenant_media_assets');
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * @return array{version: int, assets: list<AssetRow>}|null
+     *         null = таблицы ещё нет → вызывать {@see loadOrEmpty} может читать JSON-файл;
+     *         не-null при существующей таблице, в т.ч. 0 записей = осознанно пустой каталог, без fallback в файл.
+     */
+    private static function loadFromDbIfAvailable(int $tenantId): ?array
+    {
+        if (! self::isCatalogSourcedFromDatabaseForLoadPath()) {
+            return null;
+        }
+
+        $rows = TenantMediaAsset::query()
+            ->where('tenant_id', $tenantId)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return [
+                'version' => self::SCHEMA_VERSION,
+                'assets' => [],
+            ];
+        }
+
+        $assets = [];
+        foreach ($rows as $m) {
+            /** @var TenantMediaAsset $m */
+            $a = [
+                'role' => (string) ($m->role ?? ''),
+                'service_slug' => $m->service_slug,
+                'page_slug' => $m->page_slug,
+                'sort_order' => (int) ($m->sort_order ?? 0),
+                'is_featured' => (bool) ($m->is_featured ?? false),
+                'caption' => (string) ($m->caption ?? ''),
+                'alt' => (string) ($m->alt ?? ''),
+                'before_after_group' => $m->before_after_group,
+                'logical_path' => (string) ($m->logical_path ?? ''),
+                'poster_logical_path' => $m->poster_logical_path,
+                'source_ref' => $m->source_ref,
+                'kind' => (string) ($m->kind ?? ''),
+                'title' => (string) ($m->title ?? ''),
+                'summary' => (string) ($m->summary ?? ''),
+                'service_label' => (string) ($m->service_label ?? ''),
+                'tags' => is_array($m->tags_json) ? array_values(array_filter(array_map('strval', $m->tags_json))) : [],
+                'aspect_hint' => $m->aspect_hint,
+                'display_variant' => (string) ($m->display_variant ?? ''),
+                'badge' => (string) ($m->badge ?? ''),
+                'cta_label' => (string) ($m->cta_label ?? ''),
+                'show_on_home' => $m->show_on_home,
+                'show_on_works' => $m->show_on_works,
+                'show_on_service' => $m->show_on_service,
+                'works_group' => $m->works_group,
+                'derivatives' => is_array($m->derivatives_json) ? $m->derivatives_json : [],
+            ];
+            $row = self::normalizeAssetRow($a, $tenantId);
+            if ($row !== null) {
+                $assets[] = $row;
+            }
+        }
+
+        return [
+            'version' => self::SCHEMA_VERSION,
+            'assets' => $assets,
         ];
     }
 
@@ -144,6 +248,48 @@ final class BlackDuckMediaCatalog
     public static function looksLikeRemoteUrl(string $v): bool
     {
         return preg_match('#^https?://#i', trim($v)) === 1;
+    }
+
+    /**
+     * Трёхсостояние для JSON/импорта: null = «не задано», true/false — явно. Строки 'false'/'0' и т.д. — через filter_var, не через (bool).
+     */
+    public static function optionalBoolFromRowValue(mixed $v): ?bool
+    {
+        if ($v === null) {
+            return null;
+        }
+        if (is_bool($v)) {
+            return $v;
+        }
+        if (is_int($v) || is_float($v)) {
+            return (bool) $v;
+        }
+        if (is_string($v)) {
+            $t = trim($v);
+            if ($t === '') {
+                return null;
+            }
+
+            $b = filter_var($t, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+            return $b;
+        }
+
+        return null;
+    }
+
+    /**
+     * Флаги видимости в v3 трёхсостояные (null = по умолчанию роли). Из БД приходит null; (bool) null давало false и отсекало строки.
+     *
+     * @param  array<string, mixed>  $raw
+     */
+    private static function coerceOptionalBool(array $raw, string $key): ?bool
+    {
+        if (! array_key_exists($key, $raw)) {
+            return null;
+        }
+
+        return self::optionalBoolFromRowValue($raw[$key]);
     }
 
     /**
@@ -217,9 +363,9 @@ final class BlackDuckMediaCatalog
         $ctaLabel = trim((string) ($raw['cta_label'] ?? ''));
         $worksGroup = isset($raw['works_group']) ? trim((string) $raw['works_group']) : '';
         $worksGroup = $worksGroup !== '' ? $worksGroup : null;
-        $showOnHome = array_key_exists('show_on_home', $raw) ? (bool) $raw['show_on_home'] : null;
-        $showOnWorks = array_key_exists('show_on_works', $raw) ? (bool) $raw['show_on_works'] : null;
-        $showOnService = array_key_exists('show_on_service', $raw) ? (bool) $raw['show_on_service'] : null;
+        $showOnHome = self::coerceOptionalBool($raw, 'show_on_home');
+        $showOnWorks = self::coerceOptionalBool($raw, 'show_on_works');
+        $showOnService = self::coerceOptionalBool($raw, 'show_on_service');
         $derivatives = self::normalizeDerivatives(
             (int) ($tenantId ?? 0),
             $raw['derivatives'] ?? null,
@@ -264,7 +410,6 @@ final class BlackDuckMediaCatalog
         if (! is_array($raw)) {
             return [];
         }
-        $ts = $validateFiles && $tenantId > 0 ? TenantStorage::forTrusted($tenantId) : null;
         $out = [];
         foreach ($raw as $d) {
             if (! is_array($d)) {
@@ -276,7 +421,7 @@ final class BlackDuckMediaCatalog
                 continue;
             }
             $p = self::normalizeLogicalKey($p);
-            if ($ts !== null && ! $ts->existsPublic($p)) {
+            if ($validateFiles && $tenantId > 0 && ! self::logicalPathIsUsable($tenantId, $p)) {
                 continue;
             }
             $out[] = ['w' => $w, 'logical_path' => $p];
@@ -554,7 +699,7 @@ final class BlackDuckMediaCatalog
         }
         $chips = [['value' => 'all', 'label' => 'Все']];
         $slugOrdered = [];
-        foreach (BlackDuckContentConstants::serviceMatrixQ1() as $row) {
+        foreach (BlackDuckServiceProgramCatalog::legacyMatrixQ1ForTenant($tenantId) as $row) {
             $s = trim((string) ($row['slug'] ?? ''));
             if ($s !== '' && ! str_starts_with($s, '#') && isset($slugSet[$s])) {
                 $slugOrdered[] = $s;
@@ -565,7 +710,7 @@ final class BlackDuckMediaCatalog
         foreach (array_merge($slugOrdered, $slugExtras) as $slug) {
             $chips[] = [
                 'value' => 'service:'.$slug,
-                'label' => BlackDuckContentConstants::serviceTitleForSlug($slug),
+                'label' => BlackDuckServiceProgramCatalog::serviceTitleForSlug($tenantId, $slug),
             ];
         }
         $tagLabels = array_keys($tagSet);
@@ -852,10 +997,21 @@ final class BlackDuckMediaCatalog
     }
 
     /**
+     * Пишет только JSON в public storage. Если таблица {@code tenant_media_assets} существует,
+     * {@see loadOrEmpty} читает БД, а не файл — публичный каталог на сайте не обновится, пока не импортируют в БД или не правят через админку. При необходимости: {@code tenant:black-duck:import-media-catalog-to-db}.
+     *
      * @param  list<AssetRow>  $assets
+     * @return array{wrote_to_disk: bool, public_site_reads_database: bool, public_site_will_see_these_changes: bool}
+     *         {@code public_site_reads_database} совпадает с {@see isCatalogSourcedFromDatabaseForLoadPath()} (тот же переключатель, что {@see loadOrEmpty}).
      */
-    public static function saveCatalog(int $tenantId, int $version, array $assets): bool
+    public static function saveCatalogWithOutcome(int $tenantId, int $version, array $assets): array
     {
+        $publicSiteReadsDatabase = self::isCatalogSourcedFromDatabaseForLoadPath();
+        if ($publicSiteReadsDatabase) {
+            Log::warning('BlackDuckMediaCatalog::saveCatalog wrote media-catalog.json only; DB-first site reads tenant_media_assets. Import or use Filament to apply changes.', [
+                'tenant_id' => $tenantId,
+            ]);
+        }
         $ts = TenantStorage::forTrusted($tenantId);
         $payload = json_encode([
             'version' => $version,
@@ -863,12 +1019,31 @@ final class BlackDuckMediaCatalog
         ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
         if ($payload === false) {
-            return false;
+            return [
+                'wrote_to_disk' => false,
+                'public_site_reads_database' => $publicSiteReadsDatabase,
+                'public_site_will_see_these_changes' => false,
+            ];
         }
 
-        return $ts->putPublic(self::CATALOG_LOGICAL, $payload, [
+        $wrote = $ts->putPublic(self::CATALOG_LOGICAL, $payload, [
             'ContentType' => 'application/json',
             'visibility' => 'public',
         ]);
+
+        return [
+            'wrote_to_disk' => $wrote,
+            'public_site_reads_database' => $publicSiteReadsDatabase,
+            'public_site_will_see_these_changes' => $wrote && ! $publicSiteReadsDatabase,
+        ];
+    }
+
+    /**
+     * @param  list<AssetRow>  $assets
+     * @see self::saveCatalogWithOutcome() — возвращает полный отчёт, если публичный сайт не подхватит JSON.
+     */
+    public static function saveCatalog(int $tenantId, int $version, array $assets): bool
+    {
+        return self::saveCatalogWithOutcome($tenantId, $version, $assets)['wrote_to_disk'];
     }
 }

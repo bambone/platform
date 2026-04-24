@@ -29,7 +29,7 @@
     <div class="mx-auto px-3 pt-24 sm:px-4 sm:pt-28 {{ $isBlackDuckHome ? 'pb-6 sm:pb-8' : 'pb-12 sm:pb-16' }} {{ $pageShell }}">
         @if (tenant()?->themeKey() === 'black_duck' && request()->boolean('book'))
             @php
-                $bdBookReg = \App\Tenant\BlackDuck\BlackDuckServiceRegistry::rowBySlug((string) $page->slug);
+                $bdBookReg = \App\Tenant\BlackDuck\BlackDuckServiceProgramCatalog::rowBySlug((int) tenant()->id, (string) $page->slug);
                 $bdBookInquiry = $bdBookReg !== null
                     ? \App\Tenant\BlackDuck\BlackDuckContentConstants::contactsInquiryUrlForServiceSlug((string) $page->slug)
                     : \App\Tenant\BlackDuck\BlackDuckContentConstants::PRIMARY_LEAD_URL;

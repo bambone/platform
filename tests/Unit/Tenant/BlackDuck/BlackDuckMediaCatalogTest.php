@@ -13,6 +13,18 @@ use Tests\TestCase;
 
 final class BlackDuckMediaCatalogTest extends TestCase
 {
+    public function test_optional_bool_from_row_value_parses_strings_defensively(): void
+    {
+        $this->assertNull(BlackDuckMediaCatalog::optionalBoolFromRowValue(null));
+        $this->assertTrue(BlackDuckMediaCatalog::optionalBoolFromRowValue(true));
+        $this->assertFalse(BlackDuckMediaCatalog::optionalBoolFromRowValue(false));
+        $this->assertFalse(BlackDuckMediaCatalog::optionalBoolFromRowValue('false'));
+        $this->assertFalse(BlackDuckMediaCatalog::optionalBoolFromRowValue('0'));
+        $this->assertTrue(BlackDuckMediaCatalog::optionalBoolFromRowValue('true'));
+        $this->assertTrue(BlackDuckMediaCatalog::optionalBoolFromRowValue('1'));
+        $this->assertNull(BlackDuckMediaCatalog::optionalBoolFromRowValue('not-a-bool'));
+    }
+
     public function test_normalize_asset_row_v2_shape_gets_v3_defaults(): void
     {
         $raw = [

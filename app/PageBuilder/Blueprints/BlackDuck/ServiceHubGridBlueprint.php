@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\PageBuilder\Blueprints\BlackDuck;
 
 use App\PageBuilder\PageSectionCategory;
-use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
+use Illuminate\Support\HtmlString;
 
 final class ServiceHubGridBlueprint extends BlackDuckSectionBlueprint
 {
@@ -23,7 +23,7 @@ final class ServiceHubGridBlueprint extends BlackDuckSectionBlueprint
 
     public function description(): string
     {
-        return 'Карточки услуг с ценой «от», сроком и метками. Для тенанта Black Duck группы на /uslugi наполняет refresh-content из BlackDuckServiceRegistry; структура хаба в Filament (поле groups) в MVP не является источником правды — см. runbook.';
+        return 'Сетка карточек **генерируется** при сохранении каталога услуг (БД) и командой `tenant:black-duck:refresh-content` из `tenant_service_programs`. Список и группы ниже в редакторе **не** задают витрину: правки — в «Программах/услугах».';
     }
 
     public function icon(): string
@@ -48,39 +48,19 @@ final class ServiceHubGridBlueprint extends BlackDuckSectionBlueprint
     public function formComponents(): array
     {
         return [
+            Placeholder::make('bd_service_hub_source_notice')
+                ->label('')
+                ->content(
+                    new HtmlString(
+                        '<p class="text-sm text-zinc-600 dark:text-zinc-400">Карточки и <strong>группы</strong> на /uslugi и главной подставляются из каталога в БД. Поля <code>items</code> / <code>groups</code> в JSON не редактируются здесь, чтобы не путать с витриной — «Программы/услуги» и автоматическое обновление после сохранения.</p>'
+                    )
+                )
+                ->columnSpanFull(),
             TextInput::make('data_json.heading')
                 ->label('Заголовок секции')
-                ->helperText('Black Duck: бизнес-группы и порядок карточек на /uslugi задаёт `tenant:black-duck:refresh-content` и PHP-реестр услуг; «Карточки» ниже — независимый плоский список для других сценариев, не путайте с группами хаба.')
+                ->helperText('Виден на сайте; сетка карточек берётся из каталога услуг, не из прежнего «репитера».')
                 ->maxLength(255)
                 ->columnSpanFull(),
-            Repeater::make('data_json.items')
-                ->label('Карточки')
-                ->schema([
-                    TextInput::make('title')
-                        ->label('Название')
-                        ->maxLength(255),
-                    TextInput::make('price_from')
-                        ->label('Цена «от»')
-                        ->maxLength(64),
-                    TextInput::make('duration')
-                        ->label('Срок')
-                        ->maxLength(64),
-                    Toggle::make('online_booking')
-                        ->label('Онлайн-запись')
-                        ->default(false),
-                    Toggle::make('needs_confirmation')
-                        ->label('По подтверждению')
-                        ->default(false),
-                    TextInput::make('cta_url')
-                        ->label('Ссылка CTA')
-                        ->maxLength(2048),
-                    TextInput::make('image_url')
-                        ->label('URL изображения (или путь site/brand/… в хранилище тенанта)')
-                        ->maxLength(2048),
-                ])
-                ->columnSpanFull()
-                ->defaultItems(0)
-                ->collapsible(),
         ];
     }
 

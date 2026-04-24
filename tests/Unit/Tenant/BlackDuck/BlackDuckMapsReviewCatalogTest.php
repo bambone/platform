@@ -15,21 +15,32 @@ final class BlackDuckMapsReviewCatalogTest extends TestCase
         $pool = BlackDuckMapsReviewCatalog::pool();
         $slugs = BlackDuckMapsReviewCatalog::landingSlugOrder();
         $this->assertNotEmpty($slugs);
+        $this->assertNotEmpty($pool);
         $n = count($slugs);
-        $expected = count($pool);
-        $base = intdiv($expected, $n);
-        $rem = $expected % $n;
-        $this->assertSame($expected, $rem * ($base + 1) + ($n - $rem) * $base);
+        $pn = count($pool);
+        $counts = array_fill(0, $n, intdiv($pn, $n));
+        $rem = $pn % $n;
+        for ($i = 0; $i < $rem; $i++) {
+            $counts[$i]++;
+        }
+        if (in_array(0, $counts, true) && $pn > 0) {
+            foreach ($counts as $i => $c) {
+                if ($c === 0) {
+                    $counts[$i] = 1;
+                }
+            }
+        }
+        $expected = array_sum($counts);
         $rows = BlackDuckMapsReviewCatalog::rowsForDatabaseSeed();
         $this->assertCount($expected, $rows);
-        foreach ($slugs as $slug) {
+        foreach ($slugs as $ix => $slug) {
             $c = 0;
             foreach ($rows as $r) {
                 if (($r['category_key'] ?? '') === $slug) {
                     $c++;
                 }
             }
-            $this->assertContains($c, [$base, $base + 1]);
+            $this->assertSame($counts[$ix], $c, 'slug '.$slug);
         }
     }
 

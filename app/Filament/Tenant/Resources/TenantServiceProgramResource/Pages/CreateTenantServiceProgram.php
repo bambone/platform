@@ -4,6 +4,7 @@ namespace App\Filament\Tenant\Resources\TenantServiceProgramResource\Pages;
 
 use App\Filament\Tenant\Resources\TenantServiceProgramResource;
 use App\Filament\Tenant\Resources\TenantServiceProgramResource\Concerns\NormalizesProgramListJsonForForm;
+use App\Filament\Tenant\Resources\TenantServiceProgramResource\Concerns\RefreshesBlackDuckTenantPublicContent;
 use App\Livewire\Concerns\InteractsWithTenantPublicFilePicker;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Contracts\View\View;
@@ -13,6 +14,7 @@ class CreateTenantServiceProgram extends CreateRecord
 {
     use InteractsWithTenantPublicFilePicker;
     use NormalizesProgramListJsonForForm;
+    use RefreshesBlackDuckTenantPublicContent;
     use WithFileUploads;
 
     protected static string $resource = TenantServiceProgramResource::class;
@@ -29,5 +31,11 @@ class CreateTenantServiceProgram extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         return $this->normalizeProgramJsonListsForSave($data);
+    }
+
+    protected function afterCreate(): void
+    {
+        parent::afterCreate();
+        $this->afterBlackDuckServiceProgramMutation($this->getRecord());
     }
 }

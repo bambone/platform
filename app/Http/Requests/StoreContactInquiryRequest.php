@@ -7,9 +7,10 @@ namespace App\Http\Requests;
 use App\ContactChannels\ContactChannelType;
 use App\ContactChannels\TenantContactChannelsStore;
 use App\Models\PageSection;
+use App\Models\TenantServiceProgram;
 use App\Services\PublicSite\ContactInquiryFormPresenter;
 use App\Support\Phone\IntlPhoneNormalizer;
-use App\Tenant\BlackDuck\BlackDuckServiceRegistry;
+use App\Tenant\BlackDuck\BlackDuckServiceProgramCatalog;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -55,7 +56,7 @@ class StoreContactInquiryRequest extends FormRequest
                 'integer',
                 Rule::exists('page_sections', 'id')->where('tenant_id', $tenantId),
             ],
-            'inquiry_service_slug' => ['nullable', 'string', 'max:64'],
+            'inquiry_service_slug' => ['nullable', 'string', 'max:'.TenantServiceProgram::SLUG_MAX_LENGTH],
             'name' => ['required', 'string', 'max:255'],
             'phone' => [
                 'required',
@@ -124,10 +125,25 @@ class StoreContactInquiryRequest extends FormRequest
                 $v->errors()->add('consent_accepted', 'Нужно согласие на обработку данных.');
             }
 
+            if (filled($this->input('inquiry_service_slug'))) {
+                $raw = (string) $this->input('inquiry_service_slug');
+                $n = TenantServiceProgram::normalizePublicSlugForStorage($raw);
+                if ($n === '' || ! TenantServiceProgram::isPublicInquirySlugFormat($n)) {
+                    $v->errors()->add('inquiry_service_slug', 'Некорректный идентификатор услуги.');
+                }
+            }
+
             $requiresService = ContactInquiryFormPresenter::sectionRequiresServiceSelector($data, $tenant);
             if ($requiresService && $tenant->theme_key === 'black_duck') {
-                $slugs = array_column(BlackDuckServiceRegistry::inquiryFormLandingOptions(), 'slug');
+                $slugs = array_column(BlackDuckServiceProgramCatalog::inquiryFormServiceOptions((int) $tenant->id), 'slug');
                 if ($slugs === []) {
+                    if (filled($this->input('inquiry_service_slug'))) {
+                        $v->errors()->add(
+                            'inquiry_service_slug',
+                            'Сейчас в форме нет доступных направлений — не указывайте услугу вручную.',
+                        );
+                    }
+
                     return;
                 }
                 $slug = $this->input('inquiry_service_slug');

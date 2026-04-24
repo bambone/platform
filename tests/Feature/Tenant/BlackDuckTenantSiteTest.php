@@ -265,6 +265,11 @@ final class BlackDuckTenantSiteTest extends TestCase
             ],
         ];
         $this->assertTrue(BlackDuckMediaCatalog::saveCatalog($tid, BlackDuckMediaCatalog::SCHEMA_VERSION, $assets));
+        // DB-first: curated каталог читается из tenant_media_assets; подтянуть JSON в БД после записи файла.
+        Artisan::call('tenant:black-duck:import-media-catalog-to-db', [
+            'tenant' => BlackDuckBootstrap::SLUG,
+            '--wipe' => true,
+        ]);
         Artisan::call('tenant:black-duck:refresh-content', [
             'tenant' => BlackDuckBootstrap::SLUG,
             '--force' => true,
@@ -293,7 +298,7 @@ final class BlackDuckTenantSiteTest extends TestCase
 
         $raboty = (string) $this->call('GET', 'http://'.$host.'/raboty')->getContent();
         $this->assertStringContainsString('<video', $raboty);
-        $this->assertStringContainsString('data-bd-portfolio-root', $raboty);
+        $this->assertStringContainsString('bd-works-portfolio-wrap-', $raboty);
         $this->assertStringContainsString('data-bd-portfolio-filter="tag:PPF"', $raboty);
         $this->assertStringContainsString('bd-works-lightbox', $raboty);
         $this->assertStringContainsString('data-bd-lightbox-open=', $raboty);

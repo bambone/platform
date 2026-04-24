@@ -26,7 +26,9 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Arr;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -121,10 +123,12 @@ class TenantServiceProgramResource extends Resource
 
     private static function coverUploadSubdirectory(Get $get): string
     {
-        $slug = trim((string) ($get('slug') ?: 'draft'));
+        $raw = trim((string) ($get('slug') ?? ''));
+        $normalized = $raw !== '' ? TenantServiceProgram::normalizePublicSlugForStorage($raw) : '';
+        $segment = $normalized !== '' ? $normalized : 'draft';
         $prefix = self::isBlackDuckTheme() ? 'site/service-programs' : 'expert_auto/programs';
 
-        return $prefix.'/'.$slug;
+        return $prefix.'/'.$segment;
     }
 
     /**
@@ -195,8 +199,15 @@ class TenantServiceProgramResource extends Resource
                                         TextInput::make('slug')
                                             ->label('URL-идентификатор')
                                             ->required()
-                                            ->maxLength(128)
-                                            ->helperText('Короткий адрес в ссылке, без пробелов. Уникален внутри клиента.'),
+                                            ->maxLength(TenantServiceProgram::SLUG_MAX_LENGTH)
+                                            ->live(onBlur: true)
+                                            ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                                $n = TenantServiceProgram::normalizePublicSlugForStorage((string) ($state ?? ''));
+                                                if ($n !== (string) ($state ?? '')) {
+                                                    $set('slug', $n);
+                                                }
+                                            })
+                                            ->helperText('Kebab-case (a–z, 0–9, дефис), уникален внутри клиента. Согласуется с публичной формой (service=…, inquiry_service_slug); при вводе лишние символы убираются на blur, перед сохранением — полная проверка. Смена slug меняет ссылки (/contacts, посадочные, реклама) и папку загрузки обложек — уже загруженные файлы в старом префиксе не переносятся автоматически; ref в БД остаётся валидным, пока файл на месте.'),
                                         TextInput::make('title')
                                             ->label('Название')
                                             ->required()
@@ -244,6 +255,54 @@ class TenantServiceProgramResource extends Resource
                                             ->numeric()
                                             ->default(0),
                                     ])->columns(2),
+                                Section::make('Каталог (Black Duck)')
+                                    ->visible(fn (): bool => self::isBlackDuckTheme())
+                                    ->description('Поля для /uslugi и генерации посадочных через refresh-content. Источник правды — БД.')
+                                    ->schema([
+                                        TextInput::make('catalog_meta_json.group_key')
+                                            ->label('Ключ группы')
+                                            ->maxLength(128)
+                                            ->placeholder('Например: ppf, salon, ceramic'),
+                                        TextInput::make('catalog_meta_json.group_title')
+                                            ->label('Название группы')
+                                            ->maxLength(255),
+                                        TextInput::make('catalog_meta_json.group_blurb')
+                                            ->label('Интро группы')
+                                            ->maxLength(255)
+                                            ->columnSpanFull(),
+                                        TextInput::make('catalog_meta_json.group_sort')
+                                            ->label('Порядок группы')
+                                            ->numeric()
+                                            ->default(0),
+                                        Select::make('catalog_meta_json.booking_mode')
+                                            ->label('Режим записи (карточка)')
+                                            ->options([
+                                                'instant' => 'instant — онлайн-слоты, «Запись» на карточке',
+                                                'confirm' => 'confirm — согласование сменой (по умолчанию)',
+                                                'quote' => 'quote — расчёт/заявка без фикс-слота',
+                                            ])
+                                            ->native(false)
+                                            ->placeholder('confirm')
+                                            ->helperText('Влияет на подписи «онлайн/подтверждение» на карточках после refresh-content.'),
+                                        Toggle::make('catalog_meta_json.has_landing')
+                                            ->label('Есть посадочная'),
+                                        Toggle::make('catalog_meta_json.show_on_home')
+                                            ->label('Показывать на главной'),
+                                        Toggle::make('catalog_meta_json.show_in_catalog')
+                                            ->label('Показывать в каталоге /uslugi')
+                                            ->default(true),
+                                        TextInput::make('catalog_meta_json.public_price_anchor')
+                                            ->label('Публичная цена «от …» (карточки)')
+                                            ->maxLength(64)
+                                            ->placeholder('например: от 10 000 ₽')
+                                            ->helperText('Пусто — как в запасном реестре (если задан) или «по оценке».'),
+                                        TextInput::make('catalog_meta_json.home_card_subtitle')
+                                            ->label('Подзаголовок на главной')
+                                            ->maxLength(500)
+                                            ->columnSpanFull()
+                                            ->helperText('Короткий маркетинговый подзаголовок витрины на home; пусто — подставляется краткое описание (teaser).'),
+                                    ])
+                                    ->columns(2),
                                 Section::make(self::cardCopySectionTitle())
                                     ->schema([
                                         Repeater::make('audience_json')
@@ -502,7 +561,6 @@ class TenantServiceProgramResource extends Resource
                         ->minValue(0)
                         ->maxValue(100)
                         ->step(0.1)
-                        ->required()
                         ->live(onBlur: true),
                     TextInput::make('cover_presentation.viewport_focal_map.tablet.y')
                         ->label('Y %')
@@ -511,7 +569,6 @@ class TenantServiceProgramResource extends Resource
                         ->minValue(0)
                         ->maxValue(100)
                         ->step(0.1)
-                        ->required()
                         ->live(onBlur: true),
                     TextInput::make('cover_presentation.viewport_focal_map.tablet.scale')
                         ->label('Zoom (множитель)')
@@ -520,7 +577,6 @@ class TenantServiceProgramResource extends Resource
                         ->minValue(ServiceProgramCardPresentationProfile::FRAMING_SCALE_MIN)
                         ->maxValue(ServiceProgramCardPresentationProfile::FRAMING_SCALE_MAX)
                         ->step(ServiceProgramCardPresentationProfile::FRAMING_SCALE_STEP)
-                        ->required()
                         ->live(onBlur: true)
                         ->helperText(sprintf(
                             '%.2f–%.2f, шаг %.2f.',

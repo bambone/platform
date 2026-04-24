@@ -14,7 +14,7 @@ final class BlackDuckProofDisplay
     /**
      * Alt: manifest alt → title → caption → service_label → название услуги по slug → безопасный fallback.
      */
-    public static function altForItem(array $item, ?string $serviceSlug = null): string
+    public static function altForItem(array $item, ?string $serviceSlug = null, ?int $tenantId = null): string
     {
         $alt = trim((string) ($item['alt'] ?? ''));
         if ($alt !== '') {
@@ -28,7 +28,9 @@ final class BlackDuckProofDisplay
         }
         $slug = trim((string) ($item['service_slug'] ?? $serviceSlug ?? ''));
         if ($slug !== '' && ! str_starts_with($slug, '#')) {
-            $title = BlackDuckContentConstants::serviceTitleForSlug($slug);
+            $title = $tenantId !== null && $tenantId > 0
+                ? BlackDuckServiceProgramCatalog::serviceTitleForSlug($tenantId, $slug)
+                : BlackDuckContentConstants::serviceTitleForSlug($slug);
 
             return 'Работа: '.$title;
         }

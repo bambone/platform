@@ -5,9 +5,11 @@ namespace Tests\Feature\Tenant;
 use App\Models\CrmRequest;
 use App\Models\Page;
 use App\Models\PageSection;
+use App\Models\TenantServiceProgram;
 use App\Models\TenantSetting;
 use App\PageBuilder\PageSectionTypeRegistry;
-use App\Tenant\BlackDuck\BlackDuckServiceRegistry;
+use App\Tenant\BlackDuck\BlackDuckServiceProgramCatalog;
+use App\Tenant\Expert\ServiceProgramType;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
@@ -31,7 +33,7 @@ class ContactInquiryPublicFormTest extends TestCase
         return $this->tenancyHostForSlug($slug);
     }
 
-    private function makeContactsPageWithInquirySection(int $tenantId): PageSection
+    private function makeContactsPageWithInquirySection(int $tenantId, array $dataJsonOverrides = []): PageSection
     {
         $page = Page::query()->create([
             'tenant_id' => $tenantId,
@@ -45,6 +47,7 @@ class ContactInquiryPublicFormTest extends TestCase
         ]);
 
         $defaults = app(PageSectionTypeRegistry::class)->get('contact_inquiry')->defaultData();
+        $data = array_merge($defaults, $dataJsonOverrides);
 
         return PageSection::query()->create([
             'tenant_id' => $tenantId,
@@ -52,7 +55,7 @@ class ContactInquiryPublicFormTest extends TestCase
             'section_key' => 'contacts_inquiry',
             'section_type' => 'contact_inquiry',
             'title' => 'Форма',
-            'data_json' => $defaults,
+            'data_json' => $data,
             'sort_order' => 10,
             'is_visible' => true,
             'status' => 'published',
@@ -176,6 +179,21 @@ class ContactInquiryPublicFormTest extends TestCase
     public function test_black_duck_contact_inquiry_requires_service_only_when_section_flag_set(): void
     {
         $tenant = $this->createTenantWithActiveDomain('ci-bd-svc', ['theme_key' => 'black_duck']);
+        TenantServiceProgram::query()->create([
+            'tenant_id' => (int) $tenant->id,
+            'slug' => 'ppf',
+            'title' => 'PPF',
+            'teaser' => 't',
+            'description' => 'd',
+            'program_type' => ServiceProgramType::Program->value,
+            'is_visible' => true,
+            'is_featured' => false,
+            'sort_order' => 0,
+            'catalog_meta_json' => [
+                'has_landing' => true,
+                'booking_mode' => 'confirm',
+            ],
+        ]);
         $page = Page::query()->create([
             'tenant_id' => $tenant->id,
             'name' => 'Контакты',
@@ -211,8 +229,10 @@ class ContactInquiryPublicFormTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors(['inquiry_service_slug']);
 
-        $slug = (string) (BlackDuckServiceRegistry::inquiryFormLandingOptions()[0]['slug'] ?? '');
-        $this->assertNotSame('', $slug);
+        $options = BlackDuckServiceProgramCatalog::inquiryFormServiceOptions((int) $tenant->id);
+        $this->assertNotSame([], $options, 'DB-first список услуг для формы — из tenant_service_programs');
+        $this->assertContains('ppf', array_column($options, 'slug'));
+        $slug = 'ppf';
 
         $this->postJson('http://'.$h.'/api/tenant/contact-inquiry', array_merge($payload, [
             'inquiry_service_slug' => $slug,
@@ -265,5 +285,44 @@ class ContactInquiryPublicFormTest extends TestCase
         $pj = $crm->payload_json;
         $this->assertIsArray($pj);
         $this->assertArrayNotHasKey('inquiry_service_slug', $pj);
+    }
+
+    public function test_black_duck_rejects_forged_service_slug_when_no_visible_programs_in_db_catalog(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('ci-bd-empty-svc', ['theme_key' => 'black_duck']);
+        TenantServiceProgram::query()->create([
+            'tenant_id' => (int) $tenant->id,
+            'slug' => 'hidden-only',
+            'title' => 'Скрытая',
+            'teaser' => 't',
+            'description' => 'd',
+            'program_type' => ServiceProgramType::Program->value,
+            'is_visible' => false,
+            'is_featured' => false,
+            'sort_order' => 0,
+            'catalog_meta_json' => [
+                'has_landing' => false,
+                'booking_mode' => 'confirm',
+            ],
+        ]);
+        $section = $this->makeContactsPageWithInquirySection((int) $tenant->id, [
+            'requires_service_selector' => true,
+        ]);
+        $h = $this->host('ci-bd-empty-svc');
+        $base = [
+            'page_section_id' => $section->id,
+            'name' => 'Иван',
+            'phone' => '+79991112233',
+            'message' => 'Сообщение достаточной длины для валидации',
+            'preferred_contact_channel' => 'phone',
+        ];
+        $this->postJson('http://'.$h.'/api/tenant/contact-inquiry', $base)
+            ->assertOk()
+            ->assertJsonPath('success', true);
+        $this->postJson('http://'.$h.'/api/tenant/contact-inquiry', array_merge($base, [
+            'inquiry_service_slug' => 'ppf',
+        ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['inquiry_service_slug']);
     }
 }

@@ -6,7 +6,7 @@ namespace App\Services\PublicSite;
 
 use App\Models\PageSection;
 use App\Models\Tenant;
-use App\Tenant\BlackDuck\BlackDuckServiceRegistry;
+use App\Tenant\BlackDuck\BlackDuckServiceProgramCatalog;
 use Illuminate\Http\Request;
 
 /**
@@ -44,18 +44,19 @@ final class ContactInquiryFormPresenter
         $requires = self::sectionRequiresServiceSelector($data, $tenant);
         $prefillMessage = trim((string) ($data['prefill_message'] ?? ''));
         $isBlackDuck = $tenant?->theme_key === 'black_duck';
-        $options = ($isBlackDuck && $requires)
-            ? BlackDuckServiceRegistry::inquiryFormLandingOptions()
+        $options = ($isBlackDuck && $requires && $tenant !== null)
+            ? BlackDuckServiceProgramCatalog::inquiryFormServiceOptions((int) $tenant->id)
             : [];
         $prefilledServiceSlug = '';
-        if ($requires && $isBlackDuck && $options !== []) {
+        if ($requires && $isBlackDuck && $options !== [] && $tenant !== null) {
+            $allowed = array_fill_keys(array_column($options, 'slug'), true);
             $q = trim((string) $this->request->query('service', ''));
-            if ($q !== '' && BlackDuckServiceRegistry::rowBySlug($q) !== null) {
+            if ($q !== '' && isset($allowed[$q])) {
                 $prefilledServiceSlug = $q;
             }
         }
-        if ($prefillMessage === '' && $prefilledServiceSlug !== '') {
-            $reg = BlackDuckServiceRegistry::rowBySlug($prefilledServiceSlug);
+        if ($prefillMessage === '' && $prefilledServiceSlug !== '' && $tenant !== null) {
+            $reg = BlackDuckServiceProgramCatalog::rowBySlug((int) $tenant->id, $prefilledServiceSlug);
             if ($reg !== null) {
                 $prefillMessage = 'Запись на услугу: «'.(string) ($reg['title'] ?? $prefilledServiceSlug).'».'."\n\n";
             }

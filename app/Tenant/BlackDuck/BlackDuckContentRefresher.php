@@ -11,12 +11,14 @@ use App\Http\Controllers\HomeController;
 use App\Models\Page;
 use App\Models\SeoMeta;
 use App\Models\Tenant;
+use App\Models\TenantServiceProgram;
 use App\Models\TenantSetting;
 use App\PageBuilder\Contacts\MapDisplayMode;
 use App\PageBuilder\Contacts\MapInputMode;
 use App\PageBuilder\Contacts\MapProvider;
 use App\Support\Storage\TenantStorage;
 use App\TenantSiteSetup\BookingNotificationsQuestionnaireRepository;
+use Closure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -343,6 +345,10 @@ final class BlackDuckContentRefresher
             $this->seedBlackDuckMapsCuratedReviews($id);
         }
 
+        if ($this->isBlackDuckTenant($id)) {
+            (new BlackDuckServicePageSync)->syncForTenant($id);
+        }
+
         $this->updateHomeSections($id, $force, $ifPlaceholder, $forceSection);
         if ($tenant->theme_key === 'black_duck') {
             $this->syncHomeResultsSections($id, $force, $ifPlaceholder, $forceSection);
@@ -411,38 +417,25 @@ final class BlackDuckContentRefresher
     }
 
     /**
-     * Добавляет новые page_sections на /raboty и service_proof на приоритетных лендингах (существующие тенанты после --force).
+     * Добавляет недостающие page_sections на /raboty и на посадочных услуг (существующие тенанты после --force).
      */
     private function ensureBlackDuckStructuralPageSections(int $tenantId): void
     {
         $now = now();
+        $ins = $this->blackDuckStructuralSectionInserter($tenantId, $now);
+        $this->ensureBlackDuckRabotyStructuralPageSections($tenantId, $ins, $now);
+        $this->ensureBlackDuckServiceLandingStructuralPageSections($tenantId, $ins);
+    }
+
+    /**
+     * @param  \Closure(int, string, string, string, int, array): void  $ins
+     */
+    private function ensureBlackDuckRabotyStructuralPageSections(int $tenantId, Closure $ins, $now): void
+    {
         $pageIdRaboty = (int) DB::table('pages')->where('tenant_id', $tenantId)->where('slug', 'raboty')->value('id');
         if ($pageIdRaboty < 1) {
             return;
         }
-        $ins = function (int $pId, string $key, string $type, string $title, int $sort, array $data) use ($tenantId, $now): void {
-            $ex = DB::table('page_sections')
-                ->where('tenant_id', $tenantId)
-                ->where('page_id', $pId)
-                ->where('section_key', $key)
-                ->exists();
-            if ($ex) {
-                return;
-            }
-            DB::table('page_sections')->insert([
-                'page_id' => $pId,
-                'tenant_id' => $tenantId,
-                'section_key' => $key,
-                'section_type' => $type,
-                'title' => $title,
-                'sort_order' => $sort,
-                'data_json' => json_encode($data, JSON_UNESCAPED_UNICODE) ?: '{}',
-                'is_visible' => true,
-                'status' => 'published',
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
-        };
         $needWorks = ! DB::table('page_sections')
             ->where('tenant_id', $tenantId)
             ->where('page_id', $pageIdRaboty)
@@ -480,7 +473,14 @@ final class BlackDuckContentRefresher
         $ins($pageIdRaboty, 'works_cta', 'rich_text', 'Связь', 40, [
             'content' => '<p class="text-zinc-300">Готовы обсудить работу? <a class="font-medium text-[#36C7FF] underline" href="'.e(BlackDuckContentConstants::PRIMARY_LEAD_URL).'">Оставьте заявку</a> — ответим и согласуем план.</p>',
         ]);
-        foreach (BlackDuckMediaCatalog::SERVICE_PROOF_LANDING_SLUGS as $slug) {
+    }
+
+    /**
+     * @param  \Closure(int, string, string, string, int, array): void  $ins
+     */
+    private function ensureBlackDuckServiceLandingStructuralPageSections(int $tenantId, Closure $ins): void
+    {
+        foreach (BlackDuckServiceProgramCatalog::serviceProofTargetLandingSlugs($tenantId) as $slug) {
             $pId = (int) DB::table('pages')->where('tenant_id', $tenantId)->where('slug', $slug)->value('id');
             if ($pId < 1) {
                 continue;
@@ -490,7 +490,7 @@ final class BlackDuckContentRefresher
                 'items' => [],
             ]);
         }
-        foreach (BlackDuckServiceRegistry::all() as $reg) {
+        foreach (BlackDuckServiceProgramCatalog::asRegistryShapedRows($tenantId) as $reg) {
             if (! $reg['has_landing'] || str_starts_with((string) $reg['slug'], '#')) {
                 continue;
             }
@@ -530,6 +530,33 @@ final class BlackDuckContentRefresher
                 'content' => '<p class="text-zinc-300">Нужен расчёт или запись? <a class="font-medium text-[#36C7FF] underline" href="'.e(BlackDuckContentConstants::PRIMARY_LEAD_URL).'">Оставьте заявку</a> — согласуем детали.</p>',
             ]);
         }
+    }
+
+    private function blackDuckStructuralSectionInserter(int $tenantId, $now): Closure
+    {
+        return function (int $pId, string $key, string $type, string $title, int $sort, array $data) use ($tenantId, $now): void {
+            $ex = DB::table('page_sections')
+                ->where('tenant_id', $tenantId)
+                ->where('page_id', $pId)
+                ->where('section_key', $key)
+                ->exists();
+            if ($ex) {
+                return;
+            }
+            DB::table('page_sections')->insert([
+                'page_id' => $pId,
+                'tenant_id' => $tenantId,
+                'section_key' => $key,
+                'section_type' => $type,
+                'title' => $title,
+                'sort_order' => $sort,
+                'data_json' => json_encode($data, JSON_UNESCAPED_UNICODE) ?: '{}',
+                'is_visible' => true,
+                'status' => 'published',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        };
     }
 
     /**
@@ -634,7 +661,7 @@ final class BlackDuckContentRefresher
     {
         $now = now();
         $prioritySlugs = array_flip(BlackDuckServiceRegistry::priorityLandingSlugsForRichFaq());
-        foreach (BlackDuckServiceRegistry::all() as $row) {
+        foreach (BlackDuckServiceProgramCatalog::asRegistryShapedRows($tenantId) as $row) {
             if (! $row['has_landing'] || str_starts_with((string) $row['slug'], '#')) {
                 continue;
             }
@@ -784,7 +811,7 @@ final class BlackDuckContentRefresher
             ->where('tenant_id', $tenantId)
             ->where('source', BlackDuckMapsReviewCatalog::SOURCE)
             ->delete();
-        $rows = BlackDuckMapsReviewCatalog::rowsForDatabaseSeed();
+        $rows = BlackDuckMapsReviewCatalog::rowsForDatabaseSeed($tenantId);
         if ($rows === []) {
             return;
         }
@@ -823,6 +850,12 @@ final class BlackDuckContentRefresher
         }
 
         return $this->jsonContainsBootstrapMarker($dataJson);
+    }
+
+    private function bypassForBlackDuckServiceCatalogDerived(int $tenantId): bool
+    {
+        return $this->isBlackDuckTenant($tenantId)
+            && BlackDuckServiceProgramCatalog::databaseHasCatalog($tenantId);
     }
 
     private function jsonContainsBootstrapMarker(string $json): bool
@@ -880,6 +913,7 @@ final class BlackDuckContentRefresher
         bool $force,
         bool $ifPlaceholder,
         ?string $forceSection,
+        bool $bypassJsonPlaceholderHeuristic = false,
     ): void {
         if (! $this->sectionMatch($sectionKey, $forceSection)) {
             return;
@@ -898,7 +932,9 @@ final class BlackDuckContentRefresher
         }
         $enc = json_encode($data, JSON_UNESCAPED_UNICODE) ?: '{}';
         $cur = (string) $row->data_json;
-        if (! $this->shouldUpdateJson($cur, $force, $ifPlaceholder)) {
+        $doUpdate = $bypassJsonPlaceholderHeuristic
+            || $this->shouldUpdateJson($cur, $force, $ifPlaceholder);
+        if (! $doUpdate) {
             return;
         }
         DB::table('page_sections')
@@ -966,37 +1002,72 @@ final class BlackDuckContentRefresher
             $this->hideHomeMessengerCaptureBarSection($tenantId);
         }
 
-        $previewSub = BlackDuckContentConstants::homeServiceCardPreviewSubtitlesBySlug();
+        $bypassServiceDerived = $this->bypassForBlackDuckServiceCatalogDerived($tenantId);
         $hubItems = [];
-        foreach (BlackDuckContentConstants::serviceMatrixHomePreview() as $row) {
-            $slug = (string) $row['slug'];
-            $cta = str_starts_with($slug, '#') ? BlackDuckContentConstants::PRIMARY_LEAD_URL : '/'.$slug;
-            if ($isBlackDuck) {
-                $img = BlackDuckServiceImages::firstServiceHubCardPublicPath($tenantId, $slug);
-            } else {
-                $img = BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
+        if ($isBlackDuck && BlackDuckServiceProgramCatalog::databaseHasCatalog($tenantId)) {
+            foreach (BlackDuckServiceProgramCatalog::homePreviewRowsExcludingPseudopages($tenantId) as $row) {
+                $slug = (string) $row['slug'];
+                $hasLanding = (bool) ($row['has_landing'] ?? true);
+                $cta = BlackDuckServiceProgramCatalog::primaryCardCtaUrl($slug, $hasLanding);
+                $img = BlackDuckServiceProgramCatalog::publicServiceHubCardImageLogicalPath($tenantId, $slug);
+                $blurb = (string) ($row['blurb'] ?? '');
+                $sub = BlackDuckServiceProgramCatalog::homeCardSubtitle($tenantId, $slug, $blurb);
+                $anchor = BlackDuckServiceProgramCatalog::publicPriceAnchorForSlug($tenantId, $slug);
+                $priceFrom = $anchor ?? (str_starts_with($slug, '#') ? 'по запросу' : 'по оценке');
+                $bm = (string) ($row['booking_mode'] ?? '');
+                [$online, $needsConf] = BlackDuckServiceProgramCatalog::bookingUIFromMode($bm);
+                $hubItems[] = [
+                    'title' => $row['title'],
+                    'card_subtitle' => $sub,
+                    'price_from' => $priceFrom,
+                    'duration' => 'по плану',
+                    'online_booking' => $online,
+                    'needs_confirmation' => $needsConf,
+                    'booking_mode' => $bm,
+                    'cta_url' => $cta,
+                    'book_url' => BlackDuckContentConstants::contactsInquiryUrlForServiceSlug($slug),
+                    'service_slug' => $slug,
+                    'image_url' => $img ?? '',
+                ];
             }
-            $sub = (string) ($previewSub[$slug] ?? $row['blurb']);
-            $anchor = BlackDuckServiceRegistry::publicPriceAnchorForSlug($slug);
-            $priceFrom = $anchor ?? (str_starts_with($slug, '#') ? 'по запросу' : 'по оценке');
-            $hubItems[] = [
-                'title' => $row['title'],
-                'card_subtitle' => $sub,
-                'price_from' => $priceFrom,
-                'duration' => 'по плану',
-                'online_booking' => $row['slug'] === 'detejling-mojka',
-                'needs_confirmation' => $row['slug'] !== 'detejling-mojka',
-                'booking_mode' => (string) $row['booking_mode'],
-                'cta_url' => $cta,
-                'book_url' => BlackDuckContentConstants::contactsInquiryUrlForServiceSlug($slug),
-                'service_slug' => $slug,
-                'image_url' => $img ?? '',
-            ];
+        } else {
+            $previewSub = BlackDuckContentConstants::homeServiceCardPreviewSubtitlesBySlug();
+            foreach (BlackDuckContentConstants::serviceMatrixHomePreview() as $row) {
+                $slug = (string) $row['slug'];
+                if ($isBlackDuck) {
+                    $img = BlackDuckServiceProgramCatalog::publicServiceHubCardImageLogicalPath($tenantId, $slug);
+                } else {
+                    $img = BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
+                }
+                $sub = (string) ($previewSub[$slug] ?? $row['blurb']);
+                $anchor = BlackDuckServiceRegistry::publicPriceAnchorForSlug($slug);
+                $priceFrom = $anchor ?? (str_starts_with($slug, '#') ? 'по запросу' : 'по оценке');
+                $bm = (string) $row['booking_mode'];
+                [$online, $needsConf] = BlackDuckServiceProgramCatalog::bookingUIFromMode($bm);
+                $hasLanding = (bool) ($row['has_landing'] ?? true);
+                $cta = BlackDuckServiceProgramCatalog::primaryCardCtaUrl($slug, $hasLanding);
+                $hubItems[] = [
+                    'title' => $row['title'],
+                    'card_subtitle' => $sub,
+                    'price_from' => $priceFrom,
+                    'duration' => 'по плану',
+                    'online_booking' => $online,
+                    'needs_confirmation' => $needsConf,
+                    'booking_mode' => $bm,
+                    'cta_url' => $cta,
+                    'book_url' => BlackDuckContentConstants::contactsInquiryUrlForServiceSlug($slug),
+                    'service_slug' => $slug,
+                    'image_url' => $img ?? '',
+                ];
+            }
         }
         $this->updateSectionData($tenantId, 'home', 'service_hub', [
             'heading' => 'Услуги детейлинга',
             'items' => $hubItems,
-        ], $force, $ifPlaceholder, $forceSection);
+        ], $force, $ifPlaceholder, $forceSection, $bypassServiceDerived);
+        if ($isBlackDuck && BlackDuckServiceProgramCatalog::databaseHasCatalog($tenantId) && $this->sectionMatch('service_hub', $forceSection)) {
+            $this->applyBlackDuckServiceHubEmptyVisibility($tenantId, 'home', $hubItems === []);
+        }
 
         if ($isBlackDuck) {
             $homeBa = BlackDuckMediaCatalog::homeBeforeAfterPairs($tenantId);
@@ -1085,15 +1156,41 @@ final class BlackDuckContentRefresher
         ?string $forceSection,
     ): void {
         $isBlackDuck = $this->isBlackDuckTenant($tenantId);
+        $hasCatalog = $isBlackDuck && BlackDuckServiceProgramCatalog::databaseHasCatalog($tenantId);
+        $bypass = $this->bypassForBlackDuckServiceCatalogDerived($tenantId);
+        $dbPrograms = $hasCatalog
+            ? BlackDuckServiceProgramCatalog::visibleProgramsOrdered($tenantId)
+            : collect();
+
+        $rowFromProgram = static function (TenantServiceProgram $p): array {
+            $meta = is_array($p->catalog_meta_json) ? $p->catalog_meta_json : [];
+
+            return [
+                'slug' => (string) $p->slug,
+                'title' => (string) $p->title,
+                'blurb' => (string) ($p->teaser ?? ''),
+                'booking_mode' => (string) ($meta['booking_mode'] ?? ''),
+                'has_landing' => (bool) ($meta['has_landing'] ?? true),
+                '_group_key' => trim((string) ($meta['group_key'] ?? '')),
+                '_group_title' => trim((string) ($meta['group_title'] ?? 'Услуги')),
+                '_group_blurb' => trim((string) ($meta['group_blurb'] ?? '')),
+                '_group_sort' => (int) ($meta['group_sort'] ?? 0),
+                '_show_in_catalog' => (bool) ($meta['show_in_catalog'] ?? true),
+            ];
+        };
+
         $buildCard = function (array $row) use ($tenantId, $isBlackDuck): array {
             $slug = (string) $row['slug'];
             if ($isBlackDuck) {
-                $img = BlackDuckServiceImages::firstServiceHubCardPublicPath($tenantId, $slug);
+                $img = BlackDuckServiceProgramCatalog::publicServiceHubCardImageLogicalPath($tenantId, $slug);
             } else {
                 $img = BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
             }
-            $cta = str_starts_with($slug, '#') ? BlackDuckContentConstants::PRIMARY_LEAD_URL : '/'.$slug;
-            $anchor = BlackDuckServiceRegistry::publicPriceAnchorForSlug($slug);
+            $hasLanding = (bool) ($row['has_landing'] ?? true);
+            $cta = BlackDuckServiceProgramCatalog::primaryCardCtaUrl($slug, $hasLanding);
+            $bm = (string) ($row['booking_mode'] ?? '');
+            [$online, $needsConf] = BlackDuckServiceProgramCatalog::bookingUIFromMode($bm);
+            $anchor = BlackDuckServiceProgramCatalog::publicPriceAnchorForSlug($tenantId, $slug);
             $priceFrom = $anchor ?? (str_starts_with($slug, '#') ? 'по запросу' : 'по оценке');
 
             return [
@@ -1101,9 +1198,9 @@ final class BlackDuckContentRefresher
                 'card_subtitle' => (string) $row['blurb'],
                 'price_from' => $priceFrom,
                 'duration' => 'по плану',
-                'online_booking' => $slug === 'detejling-mojka',
-                'needs_confirmation' => $slug !== 'detejling-mojka',
-                'booking_mode' => (string) $row['booking_mode'],
+                'online_booking' => $online,
+                'needs_confirmation' => $needsConf,
+                'booking_mode' => $bm,
                 'cta_url' => $cta,
                 'book_url' => BlackDuckContentConstants::contactsInquiryUrlForServiceSlug($slug),
                 'service_slug' => $slug,
@@ -1111,7 +1208,31 @@ final class BlackDuckContentRefresher
             ];
         };
         $groupsPayload = [];
-        if ($isBlackDuck) {
+        if ($hasCatalog) {
+            $byGroup = [];
+            foreach ($dbPrograms as $p) {
+                $r = $rowFromProgram($p);
+                if (! $r['_show_in_catalog']) {
+                    continue;
+                }
+                $gk = $r['_group_key'] !== '' ? $r['_group_key'] : 'services';
+                if (! isset($byGroup[$gk])) {
+                    $byGroup[$gk] = [
+                        'group_key' => $gk,
+                        'title' => $r['_group_title'] !== '' ? $r['_group_title'] : 'Услуги',
+                        'intro' => $r['_group_blurb'],
+                        '_sort' => (int) $r['_group_sort'],
+                        'items' => [],
+                    ];
+                }
+                $byGroup[$gk]['items'][] = $buildCard($r);
+            }
+            uasort($byGroup, static fn (array $a, array $b): int => ((int) $a['_sort']) <=> ((int) $b['_sort']));
+            foreach ($byGroup as $g) {
+                unset($g['_sort']);
+                $groupsPayload[] = $g;
+            }
+        } elseif ($isBlackDuck) {
             foreach (BlackDuckServiceRegistry::catalogGroupsWithPlaceholderItems() as $g) {
                 $cards = [];
                 foreach ($g['items'] as $meta) {
@@ -1138,12 +1259,22 @@ final class BlackDuckContentRefresher
             }
         }
         $items = [];
-        foreach (BlackDuckContentConstants::serviceMatrixQ1() as $row) {
-            $items[] = $buildCard($row);
+        if ($hasCatalog) {
+            foreach ($dbPrograms as $p) {
+                $r = $rowFromProgram($p);
+                if (! $r['_show_in_catalog']) {
+                    continue;
+                }
+                $items[] = $buildCard($r);
+            }
+        } else {
+            foreach (BlackDuckContentConstants::serviceMatrixQ1() as $row) {
+                $items[] = $buildCard($row);
+            }
         }
         $this->updateSectionData($tenantId, 'uslugi', 'intro', [
             'content' => '<p class="lead">'.e(BlackDuckContentConstants::taglineLong()).'</p>',
-        ], $force, $ifPlaceholder, $forceSection);
+        ], $force, $ifPlaceholder, $forceSection, $bypass);
         $hubData = [
             'heading' => 'Услуги детейлинга',
             'items' => $items,
@@ -1151,7 +1282,125 @@ final class BlackDuckContentRefresher
         if ($groupsPayload !== []) {
             $hubData['groups'] = $groupsPayload;
         }
-        $this->updateSectionData($tenantId, 'uslugi', 'service_hub', $hubData, $force, $ifPlaceholder, $forceSection);
+        $this->updateSectionData($tenantId, 'uslugi', 'service_hub', $hubData, $force, $ifPlaceholder, $forceSection, $bypass);
+        if ($hasCatalog && $this->sectionMatch('service_hub', $forceSection)) {
+            $empty = $items === [] && $groupsPayload === [];
+            $this->applyBlackDuckServiceHubEmptyVisibility($tenantId, 'uslugi', $empty);
+        }
+    }
+
+    /**
+     * {@see BlackDuckServicePageSync} прячет саму страницу; сюда снимаем публичные секции, чтобы «висячий» URL не тянул старый визуал/отзывы.
+     *
+     * Саму страницу (404/redirect) и прямой GET по /slug без этого синка не гарантируйте: если sync страниц пропустили, остаётся риск «пустой живой» URL. Поведение public route — в синке/роутинге.
+     *
+     * @param  ?string  $forceSection  при непустом значении, как в {@see updatePageSectionVisibility}, трогаем только ключи, для которых {@see sectionMatch} — чтобы узкий refresh не менял visibility чужих секций.
+     */
+    private function concealPublicSectionsForDeactivatedServiceLandings(int $tenantId, ?string $forceSection = null): void
+    {
+        if (! $this->isBlackDuckTenant($tenantId) || ! BlackDuckServiceProgramCatalog::databaseHasCatalog($tenantId)) {
+            return;
+        }
+        $sectionKeys = [
+            'service_proof',
+            'service_review_feed',
+            'service_faq',
+            'hero',
+            'body_intro',
+            'service_included',
+            'body',
+            'service_final_cta',
+        ];
+        if ($forceSection !== null && $forceSection !== '') {
+            $sectionKeys = array_values(array_filter(
+                $sectionKeys,
+                fn (string $k): bool => $this->sectionMatch($k, $forceSection),
+            ));
+            if ($sectionKeys === []) {
+                return;
+            }
+        }
+        foreach (BlackDuckServiceProgramCatalog::allProgramsOrdered($tenantId) as $p) {
+            $slug = (string) $p->slug;
+            if (str_starts_with($slug, '#')) {
+                continue;
+            }
+            $meta = is_array($p->catalog_meta_json) ? $p->catalog_meta_json : [];
+            $hasLanding = (bool) ($meta['has_landing'] ?? true);
+            if ($p->is_visible && $hasLanding) {
+                continue;
+            }
+            $pageId = (int) DB::table('pages')
+                ->where('tenant_id', $tenantId)
+                ->where('slug', $slug)
+                ->value('id');
+            if ($pageId < 1) {
+                continue;
+            }
+            DB::table('page_sections')
+                ->where('tenant_id', $tenantId)
+                ->where('page_id', $pageId)
+                ->whereIn('section_key', $sectionKeys)
+                ->update(['is_visible' => false, 'updated_at' => now()]);
+        }
+    }
+
+    /**
+     * После {@see concealPublicSectionsForDeactivatedServiceLandings} при реактивации услуги `updateSectionData` не трогает is_visible;
+     * возвращаем видимость только always-on структурных секций (по одному ключу, с {@see sectionMatch} для {@code forceSection}).
+     */
+    private function restoreAlwaysOnStructuralSectionVisibilityForActiveServiceLanding(
+        int $tenantId,
+        string $pageSlug,
+        ?string $forceSection,
+    ): void {
+        if (! $this->isBlackDuckTenant($tenantId) || ! BlackDuckServiceProgramCatalog::databaseHasCatalog($tenantId)) {
+            return;
+        }
+        $structuralKeys = ['hero', 'body_intro', 'service_included', 'service_final_cta'];
+        $pageId = (int) DB::table('pages')
+            ->where('tenant_id', $tenantId)
+            ->where('slug', $pageSlug)
+            ->value('id');
+        if ($pageId < 1) {
+            return;
+        }
+        foreach ($structuralKeys as $sectionKey) {
+            if (! $this->sectionMatch($sectionKey, $forceSection)) {
+                continue;
+            }
+            DB::table('page_sections')
+                ->where('tenant_id', $tenantId)
+                ->where('page_id', $pageId)
+                ->where('section_key', $sectionKey)
+                ->update(['is_visible' => true, 'updated_at' => now()]);
+        }
+    }
+
+    /**
+     * На /home и /uslugi: при пустой витрине скрывает секцию {@code service_hub}.
+     * Вызывать только при {@see sectionMatch}('service_hub', $forceSection), иначе узкий refresh затирает visibility.
+     */
+    private function applyBlackDuckServiceHubEmptyVisibility(int $tenantId, string $pageSlug, bool $hubIsEmpty): void
+    {
+        if (! $this->isBlackDuckTenant($tenantId) || ! BlackDuckServiceProgramCatalog::databaseHasCatalog($tenantId)) {
+            return;
+        }
+        $pageId = (int) DB::table('pages')
+            ->where('tenant_id', $tenantId)
+            ->where('slug', $pageSlug)
+            ->value('id');
+        if ($pageId < 1) {
+            return;
+        }
+        DB::table('page_sections')
+            ->where('tenant_id', $tenantId)
+            ->where('page_id', $pageId)
+            ->where('section_key', 'service_hub')
+            ->update([
+                'is_visible' => $hubIsEmpty ? false : true,
+                'updated_at' => now(),
+            ]);
     }
 
     private function updateServiceLandings(
@@ -1161,12 +1410,40 @@ final class BlackDuckContentRefresher
         ?string $forceSection,
     ): void {
         if ($this->isBlackDuckTenant($tenantId)) {
-            foreach (BlackDuckServiceRegistry::all() as $reg) {
-                if (! $reg['has_landing']) {
+            $hasCatalog = BlackDuckServiceProgramCatalog::databaseHasCatalog($tenantId);
+            $bypassL = $this->bypassForBlackDuckServiceCatalogDerived($tenantId);
+            $programs = $hasCatalog
+                ? BlackDuckServiceProgramCatalog::visibleProgramsOrdered($tenantId)
+                : collect();
+
+            $registry = $hasCatalog ? [] : BlackDuckServiceRegistry::all();
+            $iter = $hasCatalog ? $programs : $registry;
+
+            foreach ($iter as $entry) {
+                $reg = $hasCatalog
+                    ? (function (TenantServiceProgram $p): array {
+                        $meta = is_array($p->catalog_meta_json) ? $p->catalog_meta_json : [];
+
+                        return [
+                            'slug' => (string) $p->slug,
+                            'title' => (string) $p->title,
+                            'blurb' => (string) ($p->teaser ?? ''),
+                            'body_intro' => (string) ($p->description ?? ''),
+                            'booking_mode' => (string) ($meta['booking_mode'] ?? ''),
+                            'has_landing' => (bool) ($meta['has_landing'] ?? true),
+                            'included_items' => is_array($meta['included_items'] ?? null) ? $meta['included_items'] : [],
+                        ];
+                    })($entry)
+                    : $entry;
+
+                if (! ($reg['has_landing'] ?? false)) {
                     continue;
                 }
                 $slug = (string) $reg['slug'];
                 $name = (string) DB::table('pages')->where('tenant_id', $tenantId)->where('slug', $slug)->value('name');
+                if ($name === '' && $hasCatalog) {
+                    $name = (string) ($reg['title'] ?? '');
+                }
                 if ($name === '') {
                     continue;
                 }
@@ -1181,8 +1458,7 @@ final class BlackDuckContentRefresher
                     'secondary_button_url' => BlackDuckContentConstants::serviceLandingBookIntentUrl($slug),
                     'overlay_dark' => true,
                 ];
-                $bg = BlackDuckServiceImages::firstServiceLandingShadePath($tenantId)
-                    ?? BlackDuckServiceImages::firstExistingPublicPath($tenantId, $slug);
+                $bg = BlackDuckServiceProgramCatalog::serviceLandingHeroBackgroundLogicalPath($tenantId, $slug);
                 if ($bg !== null) {
                     $hero['background_image'] = $bg;
                 }
@@ -1192,13 +1468,13 @@ final class BlackDuckContentRefresher
                     $hero['video_poster'] = $svcVid['poster'];
                     $hero['video_deferred'] = true;
                 }
-                $this->updateSectionData($tenantId, $slug, 'hero', $hero, $force, $ifPlaceholder, $forceSection);
+                $this->updateSectionData($tenantId, $slug, 'hero', $hero, $force, $ifPlaceholder, $forceSection, $bypassL);
                 $intro = trim((string) $reg['body_intro']);
                 $this->updateSectionData($tenantId, $slug, 'body_intro', [
                     'content' => $intro !== ''
                         ? '<p class="text-pretty leading-relaxed text-zinc-200 sm:text-base">'.e($intro).'</p>'
                         : '<p class="text-pretty leading-relaxed text-zinc-200 sm:text-base">'.e($lead).'</p>',
-                ], $force, $ifPlaceholder, $forceSection);
+                ], $force, $ifPlaceholder, $forceSection, $bypassL);
                 $incl = [];
                 foreach ($reg['included_items'] as $it) {
                     if (! is_array($it)) {
@@ -1215,17 +1491,17 @@ final class BlackDuckContentRefresher
                     'items' => $incl !== [] ? $incl : [
                         ['title' => 'Согласование', 'text' => 'Объём и срок после осмотра или заявки.'],
                     ],
-                ], $force, $ifPlaceholder, $forceSection);
+                ], $force, $ifPlaceholder, $forceSection, $bypassL);
                 $this->updateSectionData($tenantId, $slug, 'body', [
                     'content' => '',
-                ], $force, $ifPlaceholder, $forceSection);
+                ], $force, $ifPlaceholder, $forceSection, $bypassL);
                 $this->updatePageSectionVisibility($tenantId, $slug, 'body', false, $forceSection);
                 $this->updateSectionData($tenantId, $slug, 'service_faq', [
                     'section_heading' => 'Вопросы по услуге',
                     'source' => 'faqs_table_service',
                     'faq_category' => $slug,
                     'items' => [],
-                ], $force, $ifPlaceholder, $forceSection);
+                ], $force, $ifPlaceholder, $forceSection, $bypassL);
                 $faqN = (int) DB::table('faqs')
                     ->where('tenant_id', $tenantId)
                     ->where('category', $slug)
@@ -1242,7 +1518,7 @@ final class BlackDuckContentRefresher
                     'maps_link_2gis' => BlackDuckContentConstants::URL_2GIS_REVIEWS_TAB,
                     'maps_link_yandex' => BlackDuckContentConstants::URL_YANDEX_MAPS_REVIEWS_TAB,
                     'show_maps_cta' => true,
-                ], $force, $ifPlaceholder, $forceSection);
+                ], $force, $ifPlaceholder, $forceSection, $bypassL);
                 $mapsRevN = (int) DB::table('reviews')
                     ->where('tenant_id', $tenantId)
                     ->where('category_key', $slug)
@@ -1252,8 +1528,18 @@ final class BlackDuckContentRefresher
                 $this->updatePageSectionVisibility($tenantId, $slug, 'service_review_feed', $mapsRevN > 0, $forceSection);
                 $inquiry = BlackDuckContentConstants::contactsInquiryUrlForServiceSlug($slug);
                 $this->updateSectionData($tenantId, $slug, 'service_final_cta', [
-                    'content' => '<p class="text-zinc-300">Нужен расчёт или запись? <a class="font-medium text-[#36C7FF] underline" href="'.e($inquiry).'">Оставьте заявку</a> — в форме уже будет выбрана услуга «'.e($name).'».</p>',
-                ], $force, $ifPlaceholder, $forceSection);
+                    'content' => '<p class="text-zinc-300">Нужен расчёт или запись? <a class="font-medium text-[#36C7FF] underline" href="'.e($inquiry).'">Оставьте заявку</a> — в форме можно выбрать услугу «'.e($name).'».</p>',
+                ], $force, $ifPlaceholder, $forceSection, $bypassL);
+                if ($hasCatalog) {
+                    $this->restoreAlwaysOnStructuralSectionVisibilityForActiveServiceLanding(
+                        $tenantId,
+                        $slug,
+                        $forceSection,
+                    );
+                }
+            }
+            if ($hasCatalog) {
+                $this->concealPublicSectionsForDeactivatedServiceLandings($tenantId, $forceSection);
             }
 
             return;
@@ -1451,15 +1737,19 @@ final class BlackDuckContentRefresher
         if (preg_match('#^https?://#i', $stored) === 1) {
             return false;
         }
-        $ts = TenantStorage::forTrusted($tenantId);
         $path = $stored;
         if (! str_starts_with($path, 'site/')) {
             $path = 'site/brand/'.ltrim($path, '/');
         }
 
-        return $ts->existsPublic($path);
+        return BlackDuckMediaCatalog::logicalPathIsUsable($tenantId, $path);
     }
 
+    /**
+     * Медиа-каталог — источник правды: если в каталоге есть элементы, секцию обновляем даже когда
+     * {@see shouldUpdateJson} отказала бы (не заглушка, не --force), чтобы публичный block не оставался
+     * со старым инвентарём. Пустой каталог: прежняя защита — не трогать, если плейсхолдер и пусто.
+     */
     private function syncServiceProofGalleries(
         int $tenantId,
         bool $force,
@@ -1469,7 +1759,7 @@ final class BlackDuckContentRefresher
         if ($forceSection !== null && $forceSection !== '' && ! $this->sectionMatch('service_proof', $forceSection)) {
             return;
         }
-        foreach (BlackDuckMediaCatalog::SERVICE_PROOF_LANDING_SLUGS as $slug) {
+        foreach (BlackDuckServiceProgramCatalog::serviceProofTargetLandingSlugs($tenantId) as $slug) {
             $row = DB::table('page_sections as ps')
                 ->join('pages as p', 'p.id', '=', 'ps.page_id')
                 ->where('p.tenant_id', $tenantId)
@@ -1673,11 +1963,7 @@ final class BlackDuckContentRefresher
             'social_note' => $igPublic !== '' ? 'Instagram: '.$igPublic : '',
         ];
         $this->updateSectionData($tenantId, 'contacts', 'contacts', $data, $force, $ifPlaceholder, $forceSection);
-        $inquiry = $this->readHomeSectionDataArray($tenantId, 'contacts', 'contact_inquiry');
-        if ($inquiry !== []) {
-            $inquiry['requires_service_selector'] = true;
-            $this->updateSectionData($tenantId, 'contacts', 'contact_inquiry', $inquiry, $force, $ifPlaceholder, $forceSection);
-        }
+        // requires_service_selector не перезаписываем: явный false в data_json сохраняется; дефолт для black_duck — в {@see \App\Services\PublicSite\ContactInquiryFormPresenter::sectionRequiresServiceSelector}.
         $this->updateSectionData($tenantId, 'contacts', 'contact_faq', [
             'title' => 'Частые вопросы',
             'items' => [

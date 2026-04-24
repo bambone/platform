@@ -6,6 +6,7 @@ namespace App\Tenant\BlackDuck;
 
 use App\Models\Tenant;
 use App\Support\Storage\TenantStorage;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -204,9 +205,14 @@ final class BlackDuckCuratedProofImporter
         $merged = $force
             ? $incomingNormalized
             : $this->mergeCatalogAssetsKeepUnmatched($catalog['assets'], $incomingNormalized);
-        $ok = BlackDuckMediaCatalog::saveCatalog($tid, BlackDuckMediaCatalog::SCHEMA_VERSION, $merged);
-        if (! $ok) {
+        $outcome = BlackDuckMediaCatalog::saveCatalogWithOutcome($tid, BlackDuckMediaCatalog::SCHEMA_VERSION, $merged);
+        if (! $outcome['wrote_to_disk']) {
             throw new RuntimeException('Не удалось сохранить media-catalog.json.');
+        }
+        if (! $outcome['public_site_will_see_these_changes']) {
+            Log::warning('Curated proof: media-catalog.json обновлён, публичный сайт читает tenant_media_assets — для применения на сайте выполните tenant:black-duck:import-media-catalog-to-db.', [
+                'tenant_id' => $tid,
+            ]);
         }
 
         return ['imported_files' => $importedFiles, 'catalog_assets' => count($incomingNormalized)];

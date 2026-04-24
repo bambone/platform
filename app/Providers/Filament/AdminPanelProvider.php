@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Tenant\Pages\TenantDashboard;
 use App\Filament\Tenant\Pages\TenantLogin;
 use App\Filament\Tenant\Pages\TenantProductChangelogPage;
+use App\Filament\Tenant\Widgets\BlackDuckDbFirstHealthWidget;
 use App\Filament\Tenant\Widgets\SiteReadinessWidget;
 use App\Filament\Tenant\Widgets\StatsOverviewWidget;
 use App\Http\Controllers\Filament\TenantSpatieMediaStreamController;
@@ -171,6 +172,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Tenant/Widgets'), for: 'App\\Filament\\Tenant\\Widgets')
             ->widgets([
+                BlackDuckDbFirstHealthWidget::class,
                 SiteReadinessWidget::class,
                 StatsOverviewWidget::class,
             ])

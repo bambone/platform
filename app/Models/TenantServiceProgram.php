@@ -11,12 +11,75 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class TenantServiceProgram extends Model
 {
     use BelongsToTenant;
 
+    /**
+     * Единый лимит для slug в админке, публичных ссылках (/contacts?service=…), prefill и {@see \App\Http\Requests\StoreContactInquiryRequest}.
+     * Колонка в БД может быть шире; публичный контракт — не длиннее этого значения.
+     */
+    public const SLUG_MAX_LENGTH = 64;
+
+    /**
+     * Публичный контракт: service=…, inquiry_service_slug, пути в URL и предсказуемые сегменты в storage.
+     * Latin lowercase, цифры, дефис; без пробелов, слэшей, кириллицы. Нормализация: {@see self::normalizePublicSlugForStorage()}.
+     */
+    public const string PUBLIC_INQUIRY_SLUG_PCRE = '/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/';
+
     protected $table = 'tenant_service_programs';
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $m): void {
+            $slug = self::normalizePublicSlugForStorage((string) ($m->slug ?? ''));
+            if ($slug === '') {
+                throw new \InvalidArgumentException('Укажите URL-идентификатор (slug).');
+            }
+            if (mb_strlen($slug, 'UTF-8') > self::SLUG_MAX_LENGTH) {
+                throw new \InvalidArgumentException(
+                    'URL-идентификатор (slug) не длиннее '.self::SLUG_MAX_LENGTH.' символов (публичные ссылки и поле заявки inquiry_service_slug).',
+                );
+            }
+            if (! self::isPublicInquirySlugFormat($slug)) {
+                throw new \InvalidArgumentException(
+                    'URL-идентификатор: только латиница в стиле kebab-case, цифры и дефис (например: ppf, ppf-ceramic).',
+                );
+            }
+            if (self::query()
+                ->where('tenant_id', (int) $m->tenant_id)
+                ->where('slug', $slug)
+                ->when(
+                    $m->exists,
+                    fn (Builder $q) => $q->whereKeyNot((int) $m->id),
+                )
+                ->exists()
+            ) {
+                throw new \InvalidArgumentException('URL-идентификатор уже используется для другой программы/услуги в этом клиенте.');
+            }
+            $m->slug = $slug;
+            $meta = is_array($m->catalog_meta_json) ? $m->catalog_meta_json : [];
+            $mode = trim((string) ($meta['booking_mode'] ?? ''));
+            if ($mode === '' || ! in_array($mode, ['instant', 'confirm', 'quote'], true)) {
+                $meta['booking_mode'] = 'confirm';
+            } else {
+                $meta['booking_mode'] = $mode;
+            }
+            if (! array_key_exists('has_landing', $meta)) {
+                $meta['has_landing'] = true;
+            }
+            if (! array_key_exists('show_in_catalog', $meta)) {
+                $meta['show_in_catalog'] = true;
+            }
+            if (! array_key_exists('show_on_home', $meta)) {
+                $meta['show_on_home'] = true;
+            }
+            $m->catalog_meta_json = $meta;
+        });
+    }
 
     protected $fillable = [
         'tenant_id',
@@ -31,6 +94,7 @@ class TenantServiceProgram extends Model
         'cover_image_alt',
         'cover_object_position',
         'cover_presentation_json',
+        'catalog_meta_json',
         'duration_label',
         'price_amount',
         'price_prefix',
@@ -47,6 +111,7 @@ class TenantServiceProgram extends Model
             'audience_json' => 'array',
             'outcomes_json' => 'array',
             'cover_presentation_json' => PresentationDataCast::class,
+            'catalog_meta_json' => 'array',
             'is_featured' => 'boolean',
             'is_visible' => 'boolean',
         ];
@@ -222,5 +287,59 @@ class TenantServiceProgram extends Model
         }
 
         return array_values(array_unique($out));
+    }
+
+    /**
+     * Сегменты пути в public storage, query-параметры; должен совпадать с {@see self::assertPublicInquirySlugForFormSave()}.
+     */
+    public static function normalizePublicSlugForStorage(string $raw): string
+    {
+        $trimmed = trim($raw);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        return Str::slug($trimmed, '-', 'en');
+    }
+
+    public static function isPublicInquirySlugFormat(string $slug): bool
+    {
+        if ($slug === '' || mb_strlen($slug, 'UTF-8') > self::SLUG_MAX_LENGTH) {
+            return false;
+        }
+
+        return (bool) preg_match(self::PUBLIC_INQUIRY_SLUG_PCRE, $slug);
+    }
+
+    /**
+     * @return non-empty-string
+     *
+     * @throws ValidationException
+     */
+    public static function normalizedPublicInquirySlugOrFailForTenant(string $raw, int $tenantId, ?int $ignoreServiceProgramId): string
+    {
+        $slug = self::normalizePublicSlugForStorage($raw);
+        if ($slug === '') {
+            throw ValidationException::withMessages(['slug' => 'Укажите URL-идентификатор.']);
+        }
+        if (mb_strlen($slug, 'UTF-8') > self::SLUG_MAX_LENGTH) {
+            throw ValidationException::withMessages(['slug' => 'URL-идентификатор: не длиннее '.self::SLUG_MAX_LENGTH.' символов.']);
+        }
+        if (! self::isPublicInquirySlugFormat($slug)) {
+            throw ValidationException::withMessages(['slug' => 'Только латиница, цифры и дефис (kebab-case), например ppf, ppf-ceramic, без слэшей и пробелов.']);
+        }
+        if (self::query()
+            ->where('tenant_id', $tenantId)
+            ->where('slug', $slug)
+            ->when(
+                $ignoreServiceProgramId !== null,
+                fn (Builder $q) => $q->whereKeyNot($ignoreServiceProgramId),
+            )
+            ->exists()
+        ) {
+            throw ValidationException::withMessages(['slug' => 'Такой URL-идентификатор уже используется в этом клиенте.']);
+        }
+
+        return $slug;
     }
 }

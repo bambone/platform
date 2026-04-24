@@ -20,12 +20,14 @@ use App\Scheduling\Enums\SchedulingScope;
 use App\Scheduling\Enums\TentativeEventsPolicy;
 use App\Scheduling\Enums\UnconfirmedRequestsPolicy;
 use App\Tenant\BlackDuck\BlackDuckContentConstants;
+use App\Tenant\BlackDuck\BlackDuckContentRefresher;
 use App\Tenant\BlackDuck\BlackDuckMapsReviewCatalog;
-use App\Tenant\BlackDuck\BlackDuckMediaCatalog;
 use App\Tenant\StorageQuota\TenantStorageQuotaService;
 use App\TenantSiteSetup\BookingNotificationsQuestionnaireRepository;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -56,7 +58,96 @@ final class BlackDuckBootstrap extends Seeder
         $tid = (int) (DB::table('tenants')->where('theme_key', 'black_duck')->value('id')
             ?: DB::table('tenants')->whereIn('slug', [self::SLUG, 'black-duck'])->value('id'));
         if ($tid > 0) {
+            $this->syncDbFirstCatalog($tid);
             HomeController::forgetCachedPayloadForTenant($tid);
+        }
+    }
+
+    /**
+     * Импорт в БД с {@code --only-missing}: не затирает правки в существующих строках. Новые/изменённые defaults в сидах
+     * подтягиваются только вручную (полный re-import без only-missing или отдельный sync) — это осознанная политика DB-first.
+     */
+    private function syncDbFirstCatalog(int $tenantId): void
+    {
+        if (! Schema::hasTable('tenant_service_programs') || $tenantId <= 0) {
+            return;
+        }
+        $tenant = Tenant::query()->find($tenantId);
+        if ($tenant === null) {
+            Log::warning('BlackDuckBootstrap: tenant not found for DB-first import', ['tenant_id' => $tenantId]);
+
+            return;
+        }
+        $tid = (int) $tenant->id;
+
+        try {
+            $exit = Artisan::call('tenant:black-duck:import-services-to-db', [
+                'tenant' => self::SLUG,
+                '--only-missing' => true,
+            ]);
+            if ($exit !== 0) {
+                Log::error('BlackDuckBootstrap: import-services-to-db returned non-zero', [
+                    'tenant_id' => $tid,
+                    'exit' => $exit,
+                    'output' => Artisan::output(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('BlackDuckBootstrap: import-services-to-db failed', [
+                'tenant_id' => $tid,
+                'message' => $e->getMessage(),
+            ]);
+            if ($this->command) {
+                $this->command->error('Black Duck import-services-to-db: '.$e->getMessage());
+            }
+        }
+        if (Schema::hasTable('tenant_media_assets')) {
+            try {
+                $exitM = Artisan::call('tenant:black-duck:import-media-catalog-to-db', [
+                    'tenant' => self::SLUG,
+                    '--only-missing' => true,
+                ]);
+                if ($exitM !== 0) {
+                    Log::error('BlackDuckBootstrap: import-media-catalog-to-db returned non-zero', [
+                        'tenant_id' => $tid,
+                        'exit' => $exitM,
+                        'output' => Artisan::output(),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('BlackDuckBootstrap: import-media-catalog-to-db failed', [
+                    'tenant_id' => $tid,
+                    'message' => $e->getMessage(),
+                ]);
+                if ($this->command) {
+                    $this->command->error('Black Duck import-media-catalog-to-db: '.$e->getMessage());
+                }
+            }
+        }
+
+        if (Schema::hasTable('reviews')) {
+            DB::table('reviews')
+                ->where('tenant_id', $tid)
+                ->where('source', BlackDuckMapsReviewCatalog::SOURCE)
+                ->delete();
+        }
+
+        try {
+            app(BlackDuckContentRefresher::class)->refreshContent($tenant, [
+                'force' => false,
+                'if_placeholder' => true,
+                'only_seo' => false,
+                'force_section' => null,
+                'dry_run' => false,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('BlackDuckBootstrap: refresh-content after import failed', [
+                'tenant_id' => $tid,
+                'message' => $e->getMessage(),
+            ]);
+            if ($this->command) {
+                $this->command->error('Black Duck refresh-content: '.$e->getMessage());
+            }
         }
     }
 
@@ -416,12 +507,10 @@ final class BlackDuckBootstrap extends Seeder
                 'show_maps_cta' => true,
             ]),
         ];
-        if (in_array($slug, BlackDuckMediaCatalog::SERVICE_PROOF_LANDING_SLUGS, true)) {
-            $sections[] = $this->sec('service_proof', 'case_study_cards', 'На фото', 40, [
-                'heading' => 'На фото',
-                'items' => [],
-            ]);
-        }
+        $sections[] = $this->sec('service_proof', 'case_study_cards', 'На фото', 40, [
+            'heading' => 'На фото',
+            'items' => [],
+        ]);
         $inquiry = BlackDuckContentConstants::contactsInquiryUrlForServiceSlug($slug);
         $sections[] = $this->sec('service_final_cta', 'rich_text', 'Заявка', 50, [
             'content' => '<p class="text-zinc-300">Нужен расчёт или запись? <a class="font-medium text-[#36C7FF] underline" href="'.e($inquiry).'">Оставьте заявку</a> — в форме уже будет выбрана услуга «'.e($name).'».</p>',
@@ -875,7 +964,7 @@ final class BlackDuckBootstrap extends Seeder
         if ((int) DB::table('reviews')->where('tenant_id', $tenantId)->where('source', BlackDuckMapsReviewCatalog::SOURCE)->count() > 0) {
             return;
         }
-        $batch = BlackDuckMapsReviewCatalog::rowsForDatabaseSeed();
+        $batch = BlackDuckMapsReviewCatalog::rowsForDatabaseSeed($tenantId);
         if ($batch === []) {
             return;
         }

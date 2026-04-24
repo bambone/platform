@@ -14,6 +14,7 @@
     $ctaLabel = trim((string) ($d['primary_cta_label'] ?? 'Заявка и расчёт'));
     $ctaHref = trim((string) ($d['primary_cta_href'] ?? BlackDuckContentConstants::PRIMARY_LEAD_URL));
     $showFilters = count($filters) > 1;
+    $wrapId = 'bd-works-portfolio-wrap-'.(int) ($section->id ?? 0);
     $dialogId = 'bd-works-lightbox-'.(int) ($section->id ?? 0);
 
     $items = [];
@@ -28,18 +29,19 @@
         $path = trim((string) ($it['image_url'] ?? ''));
         $slides[] = [
             'src' => ExpertBrandMediaUrl::resolve($path),
-            'alt' => BlackDuckProofDisplay::altForItem($it),
+            'alt' => BlackDuckProofDisplay::altForItem($it, null, tenant()?->id),
             'title' => trim((string) ($it['title'] ?? '')),
             'caption' => trim((string) ($it['summary'] ?? $it['task'] ?? $it['caption'] ?? '')),
         ];
     }
+    $slidesJson = json_encode($slides, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
 @endphp
 @if ($items === [] || $slides === [])
 @else
-<section class="bd-section" aria-labelledby="bd-works-portfolio-h" data-bd-portfolio-root data-bd-lightbox-root-id="{{ e($dialogId) }}">
+<section id="{{ e($wrapId) }}" class="bd-section" aria-labelledby="{{ e($wrapId) }}-h" data-bd-lightbox-root-id="{{ e($dialogId) }}">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-            <h2 id="bd-works-portfolio-h" class="text-2xl font-semibold text-[var(--ex-ink)]">{{ $heading }}</h2>
+            <h2 id="{{ e($wrapId) }}-h" class="text-2xl font-semibold text-[var(--ex-ink)]">{{ $heading }}</h2>
             @if ($intro !== '')
                 <p class="mt-2 max-w-2xl text-sm text-zinc-400 sm:text-base">{{ $intro }}</p>
             @endif
@@ -81,7 +83,7 @@
                 $fkStr = e(implode(' ', $fk));
                 $aspect = $it['aspect_ratio'] ?? null;
                 $aspectCss = is_string($aspect) && $aspect !== '' ? $aspect : '4 / 3';
-                $altItem = BlackDuckProofDisplay::altForItem($it);
+                $altItem = BlackDuckProofDisplay::altForItem($it, null, tenant()?->id);
                 $srcset = trim((string) ($it['srcset'] ?? ''));
                 $sizes = trim((string) ($it['sizes'] ?? ''));
                 $title = trim((string) ($it['title'] ?? ''));
@@ -148,12 +150,12 @@
         </div>
     </dialog>
 
-    <script type="application/json" id="{{ $dialogId }}-slides">{!! json_encode($slides, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}</script>
+    <script type="application/json" id="{{ $dialogId }}-slides">@php echo $slidesJson; @endphp</script>
 
     @push('tenant-scripts')
         <script>
             (function () {
-                var root = document.querySelector('[data-bd-portfolio-root]');
+                var root = document.getElementById('{{ e($wrapId) }}');
                 if (!root) return;
                 var dialogId = root.getAttribute('data-bd-lightbox-root-id') || '';
                 if (!dialogId) return;

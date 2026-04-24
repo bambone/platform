@@ -7,6 +7,8 @@ use App\MediaPresentation\PresentationData;
 use App\MediaPresentation\Profiles\ServiceProgramCardPresentationProfile;
 use App\MediaPresentation\ViewportFraming;
 use App\MediaPresentation\ViewportKey;
+use App\Models\TenantServiceProgram;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Конвертация audience_json / outcomes_json между форматом БД (список строк)
@@ -35,11 +37,39 @@ trait NormalizesProgramListJsonForForm
      */
     protected function normalizeProgramJsonListsForSave(array $data): array
     {
+        $data = $this->applyServiceProgramPublicSlugToFormDataForSave($data);
+
         foreach (['audience_json', 'outcomes_json'] as $key) {
             $data[$key] = $this->repeaterStateToJsonLines($data[$key] ?? null);
         }
 
         return $this->normalizeCoverPresentationForSave($data);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function applyServiceProgramPublicSlugToFormDataForSave(array $data): array
+    {
+        if (! array_key_exists('slug', $data)) {
+            return $data;
+        }
+        $tenantId = (int) (currentTenant()?->id ?? 0);
+        if ($tenantId < 1) {
+            throw ValidationException::withMessages(['slug' => 'Контекст клиента не определён.']);
+        }
+        $ignore = null;
+        if (method_exists($this, 'getRecord') && $this->getRecord() !== null) {
+            $ignore = (int) $this->getRecord()->getKey();
+        }
+        $data['slug'] = TenantServiceProgram::normalizedPublicInquirySlugOrFailForTenant(
+            (string) $data['slug'],
+            $tenantId,
+            $ignore,
+        );
+
+        return $data;
     }
 
     /**

@@ -23,13 +23,14 @@
     $gridGap = $compactGallery
         ? 'mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3'
         : 'mt-6 space-y-6';
+    $casesHeadingId = 'bd-cases-h-'.(int) ($section->id ?? 0);
 @endphp
 @if (count($visualItems) < 1)
 @else
-<section class="bd-section" aria-labelledby="bd-cases-heading">
+<section class="bd-section" aria-labelledby="{{ e($casesHeadingId) }}">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div class="min-w-0">
-            <h2 id="bd-cases-heading" class="text-2xl font-semibold text-[var(--ex-ink)]">{{ $heading }}</h2>
+            <h2 id="{{ e($casesHeadingId) }}" class="text-2xl font-semibold text-[var(--ex-ink)]">{{ $heading }}</h2>
             @if ($subheading !== '')
                 <p class="mt-1 max-w-prose text-sm text-zinc-400">{{ $subheading }}</p>
             @endif
@@ -42,7 +43,7 @@
         @foreach ($visualItems as $it)
             @php
                 $path = trim((string) ($it['image_url'] ?? ''));
-                $altT = BlackDuckProofDisplay::altForItem($it);
+                $altT = BlackDuckProofDisplay::altForItem($it, null, tenant()?->id);
                 $srcset = trim((string) ($it['srcset'] ?? ''));
                 $sizes = trim((string) ($it['sizes'] ?? ''));
                 $ar = isset($it['aspect_ratio']) && is_string($it['aspect_ratio']) && $it['aspect_ratio'] !== ''

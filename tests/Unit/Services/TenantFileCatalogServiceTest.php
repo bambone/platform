@@ -47,4 +47,36 @@ class TenantFileCatalogServiceTest extends TestCase
         $this->assertTrue($svc->isAllowedObjectKey(3, $ok));
         $this->assertFalse($svc->isAllowedObjectKey(3, $bad));
     }
+
+    public function test_themes_path_is_listed_allowed_but_not_deletable(): void
+    {
+        $svc = new TenantFileCatalogService;
+        $themes = TenantStorage::forTrusted(5)->publicPath('themes/moto/hero.png');
+
+        $this->assertTrue($svc->isAllowedObjectKey(5, $themes));
+        $this->assertTrue($svc->isThemesObjectKey(5, $themes));
+        $this->assertFalse($svc->isDeletableObjectKey(5, $themes));
+
+        $site = TenantStorage::forTrusted(5)->publicPath('site/brand/x.png');
+        $this->assertTrue($svc->isDeletableObjectKey(5, $site));
+    }
+
+    public function test_hydrate_file_metadata_graceful_when_object_disappeared(): void
+    {
+        Storage::fake(TenantStorageDisks::publicDiskName());
+
+        $disk = TenantStorageDisks::publicDiskName();
+        $path = TenantStorage::forTrusted(1)->publicPath('site/brand/vanish.jpg');
+        Storage::disk($disk)->put($path, 'ok');
+
+        $svc = new TenantFileCatalogService;
+        $rows = $svc->listLightForTenant(1, TenantFileCatalogService::FILTER_ALL);
+        $this->assertCount(1, $rows);
+        Storage::disk($disk)->delete($path);
+
+        $hydrated = $svc->hydrateFileMetadata(1, $rows);
+        $this->assertCount(1, $hydrated);
+        $this->assertSame(0, $hydrated[0]['size']);
+        $this->assertNull($hydrated[0]['last_modified']);
+    }
 }

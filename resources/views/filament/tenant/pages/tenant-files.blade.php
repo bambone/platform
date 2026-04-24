@@ -30,7 +30,7 @@
             </div>
         @endif
         <p class="text-sm text-gray-600 dark:text-gray-400">
-            {{ __('Файлы в зонах site, themes и media текущего клиента. Одинаковые имена в колонке «Путь» — это разные папки (например обложки программ: expert_auto/programs/…/card-cover-desktop.webp). Список разбит на страницы: метаданные запрашиваются только для текущей порции.') }}
+            {{ __('Файлы в зонах site, themes и media. Папка themes — только просмотр. Удаление (site и media) проверяет ссылки в БД (страницы, услуги, настройки, каталог медиа) и требует права «Файлы в storage». Метаданные подгружаются порциями по странице списка.') }}
         </p>
         <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div class="min-w-0 flex-1">
@@ -52,6 +52,7 @@
                 >
                     <option value="{{ \App\Services\TenantFiles\TenantFileCatalogService::FILTER_ALL }}">{{ __('Все') }}</option>
                     <option value="{{ \App\Services\TenantFiles\TenantFileCatalogService::FILTER_IMAGES }}">{{ __('Изображения') }}</option>
+                    <option value="{{ \App\Services\TenantFiles\TenantFileCatalogService::FILTER_VIDEOS }}">{{ __('Видео') }}</option>
                     <option value="{{ \App\Services\TenantFiles\TenantFileCatalogService::FILTER_DOCUMENTS }}">{{ __('Документы') }}</option>
                     <option value="{{ \App\Services\TenantFiles\TenantFileCatalogService::FILTER_THEMES }}">{{ __('Тема') }}</option>
                     <option value="{{ \App\Services\TenantFiles\TenantFileCatalogService::FILTER_MEDIA }}">{{ __('Медиа') }}</option>
@@ -126,6 +127,20 @@
                                             rel="noopener noreferrer"
                                             class="text-xs font-medium text-gray-600 hover:underline dark:text-gray-300"
                                         >{{ __('Открыть') }}</a>
+                                    @endif
+                                    @if ($this->isCatalogRowDeletable($row['path']))
+                                        <button
+                                            type="button"
+                                            class="text-xs font-medium text-red-600 hover:underline disabled:opacity-40 dark:text-red-400"
+                                            wire:click="deleteFile({{ \Illuminate\Support\Js::from($row['path']) }})"
+                                            wire:confirm="{{ e(__('Окончательно удалить файл? Если путь нигде не используется (проверка при удалении) — он исчезнет; иначе удаление будет отклонено.')) }}"
+                                            wire:loading.attr="disabled"
+                                        >{{ __('Удалить') }}</button>
+                                    @else
+                                        <span
+                                            class="text-xs text-gray-400"
+                                            title="{{ e(__('Папка темы: только просмотр.')) }}"
+                                        >{{ __('Только просмотр') }}</span>
                                     @endif
                                 </div>
                             </td>

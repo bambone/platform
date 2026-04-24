@@ -177,4 +177,6 @@
             @endif
         </div>
     </x-filament::section>
+@else
+    <x-filament-widgets::widget class="hidden"></x-filament-widgets::widget>
 @endif

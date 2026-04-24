@@ -3,11 +3,17 @@
 namespace App\Filament\Tenant\Pages;
 
 use App\Filament\Tenant\Support\TenantPanelHintHeaderAction;
+use App\Jobs\RecalculateTenantStorageUsageJob;
 use App\Services\TenantFiles\TenantFileCatalogService;
+use App\Services\TenantFiles\TenantPublicFileReferenceFinder;
+use App\Support\Storage\TenantPublicMediaWriter;
 use App\Tenant\StorageQuota\TenantStorageQuotaData;
 use App\Tenant\StorageQuota\TenantStorageQuotaService;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
 use UnitEnum;
 
@@ -41,9 +47,7 @@ class TenantFilesPage extends Page
             return false;
         }
 
-        return Gate::allows('manage_pages')
-            || Gate::allows('manage_homepage')
-            || Gate::allows('manage_settings');
+        return Gate::allows('manage_tenant_files');
     }
 
     protected function getHeaderActions(): array
@@ -53,8 +57,9 @@ class TenantFilesPage extends Page
                 'tenantFilesWhatIs',
                 [
                     'Каталог файлов в публичном хранилище тенанта: поиск, фильтр по типу, постраничный просмотр.',
-                    '',
-                    'Учитывайте квоту при удалении или загрузке крупных медиа.',
+                    'Доступ и удаление — только с правом «Файлы в storage»; папка темы (themes) только для просмотра, из UI не удаляется.',
+                    'Перед удалением проверяются ссылки в настройках, секциях страниц, услугах и каталоге медиа в БД; при совпадениях удаление блокируется.',
+                    'Пересчёт квоты после удаления выполняется в фоне; цифры в мониторинге могут обновиться с задержкой.',
                 ],
                 'Справка по файлам сайта',
             ),
@@ -145,5 +150,129 @@ class TenantFilesPage extends Page
         $this->filePage = 1;
         unset($this->lightCatalogRows);
         unset($this->catalogRows);
+    }
+
+    /**
+     * Только Gate + логика префикса на диске; без БД. Не добавлять сюда тяжёлые проверки — вызывается на каждую строку таблицы.
+     */
+    public function isCatalogRowDeletable(string $objectKey): bool
+    {
+        $t = \currentTenant();
+        if ($t === null) {
+            return false;
+        }
+        if (! Gate::allows('manage_tenant_files')) {
+            return false;
+        }
+
+        return app(TenantFileCatalogService::class)->isDeletableObjectKey((int) $t->id, $objectKey);
+    }
+
+    public function deleteFile(string $objectKey): void
+    {
+        $t = \currentTenant();
+        if ($t === null) {
+            return;
+        }
+        if (! Gate::allows('manage_tenant_files')) {
+            Notification::make()
+                ->title(__('Нет доступа'))
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $objectKey = str_replace('\\', '/', trim($objectKey));
+        if ($objectKey === '' || str_contains($objectKey, '..')) {
+            Notification::make()
+                ->title(__('Некорректный путь'))
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        if (! app(TenantFileCatalogService::class)->isAllowedObjectKey((int) $t->id, $objectKey)) {
+            Notification::make()
+                ->title(__('Удаление этого пути запрещено'))
+                ->body(__('Разрешены только зоны site, themes и media в публичном хранилище тенанта.'))
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        if (! app(TenantFileCatalogService::class)->isDeletableObjectKey((int) $t->id, $objectKey)) {
+            Notification::make()
+                ->title(__('Удаление из этой папки недоступно'))
+                ->body(__('Ассеты темы (themes) в интерфейсе только для просмотра. Удаляйте через релиз/деплой или обратитесь к разработчику.'))
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $refs = app(TenantPublicFileReferenceFinder::class)->findReferenceLabels((int) $t->id, $objectKey);
+        if ($refs !== []) {
+            $body = collect($refs)->take(12)->implode("\n");
+            if (count($refs) > 12) {
+                $body .= "\n…";
+            }
+            Notification::make()
+                ->title(__('Удаление отменено: файл используется'))
+                ->body($body)
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $ok = app(TenantPublicMediaWriter::class)->deletePublicObjectKey((int) $t->id, $objectKey);
+        $userId = Auth::id();
+        $userId = $userId === null ? null : (int) $userId;
+        if ($ok) {
+            Log::info('tenant_public_file_deleted', [
+                'tenant_id' => (int) $t->id,
+                'user_id' => $userId,
+                'object_key' => $objectKey,
+                'result' => 'deleted',
+            ]);
+            try {
+                RecalculateTenantStorageUsageJob::dispatch((int) $t->id);
+            } catch (\Throwable $e) {
+                Log::warning('tenant_storage_quota_recalculate_dispatch_failed', [
+                    'tenant_id' => (int) $t->id,
+                    'user_id' => $userId,
+                    'after_object_key' => $objectKey,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        } else {
+            Log::info('tenant_public_file_deleted', [
+                'tenant_id' => (int) $t->id,
+                'user_id' => $userId,
+                'object_key' => $objectKey,
+                'result' => 'failed',
+            ]);
+        }
+
+        unset($this->lightCatalogRows, $this->catalogRows, $this->fileCatalogTotal, $this->fileCatalogLastPage, $this->storageQuota);
+
+        if ($ok) {
+            Notification::make()
+                ->title(__('Файл удалён'))
+                ->body(__('Квота в мониторинге обновится в фоне (обычно в течение короткого времени).'))
+                ->success()
+                ->send();
+
+            $this->filePage = min($this->filePage, max(1, $this->fileCatalogLastPage));
+        } else {
+            Notification::make()
+                ->title(__('Не удалось удалить'))
+                ->body(__('Повторите попытку или проверьте лог; при dual-write с R2 удаление могло поставить задачу в очередь репликации.'))
+                ->danger()
+                ->send();
+        }
     }
 }

@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\PageBuilder\Blueprints\BlackDuck;
 
+use App\Filament\Forms\Components\TenantPublicImagePicker;
+use App\Filament\Tenant\PageBuilder\TeleportedEditorRepeater;
 use App\PageBuilder\PageSectionCategory;
-use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\TextInput;
+use Illuminate\Support\HtmlString;
 
 final class CaseStudyCardsBlueprint extends BlackDuckSectionBlueprint
 {
@@ -46,12 +49,21 @@ final class CaseStudyCardsBlueprint extends BlackDuckSectionBlueprint
     public function formComponents(): array
     {
         return [
+            Placeholder::make('bd_case_study_source_notice')
+                ->label('')
+                ->content(
+                    new HtmlString(
+                        '<p class="text-sm text-zinc-600 dark:text-zinc-400">Кейсы <strong>редактируются здесь</strong> (секция page builder). Сетка «Работы» и curated proof из БД/импорта — <strong>отдельный</strong> поток: <code>refresh-content</code> и каталог не заменяют эти поля, пока не меняется сама страница.</p>'
+                    )
+                )
+                ->columnSpanFull(),
             TextInput::make('data_json.heading')
                 ->label('Заголовок')
                 ->maxLength(200)
                 ->columnSpanFull(),
-            Repeater::make('data_json.items')
+            TeleportedEditorRepeater::make('data_json.items')
                 ->label('Кейсы')
+                ->addActionLabel('Добавить кейс')
                 ->schema([
                     TextInput::make('vehicle')
                         ->label('Авто')
@@ -65,9 +77,10 @@ final class CaseStudyCardsBlueprint extends BlackDuckSectionBlueprint
                     TextInput::make('result')
                         ->label('Результат')
                         ->maxLength(400),
-                    TextInput::make('image_url')
-                        ->label('URL фото')
-                        ->maxLength(2048),
+                    TenantPublicImagePicker::make('image_url')
+                        ->label('Фото')
+                        ->uploadPublicSiteSubdirectory('site/uploads/page-builder/case-study')
+                        ->columnSpanFull(),
                 ])
                 ->columnSpanFull()
                 ->defaultItems(0)

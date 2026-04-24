@@ -37,4 +37,6 @@
             </ul>
         </div>
     </x-filament-widgets::widget>
+@else
+    <x-filament-widgets::widget class="hidden"></x-filament-widgets::widget>
 @endif

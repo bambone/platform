@@ -41,6 +41,7 @@ final class TenantAbilityRegistry
             'manage_faq' => 'FAQ',
             'manage_contacts' => 'Контакты',
             'manage_media' => 'Медиа',
+            'manage_tenant_files' => 'Файлы в storage (просмотр и удаление)',
             'manage_integrations' => 'Интеграции',
             'manage_notifications' => 'Уведомления (настройки и каналы)',
             'view_notification_history' => 'История уведомлений',

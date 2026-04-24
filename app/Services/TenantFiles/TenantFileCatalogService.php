@@ -65,11 +65,13 @@ final class TenantFileCatalogService
                 continue;
             }
 
-            if (! $disk->exists($rootPrefix)) {
+            try {
+                $paths = $disk->allFiles($rootPrefix);
+            } catch (\Throwable) {
                 continue;
             }
 
-            foreach ($disk->allFiles($rootPrefix) as $path) {
+            foreach ($paths as $path) {
                 $path = (string) $path;
                 if (! $this->isUnderAllowedRoot($path, $roots)) {
                     continue;
@@ -149,14 +151,19 @@ final class TenantFileCatalogService
         $out = [];
         foreach ($lightRows as $row) {
             $path = $row['path'];
-            $size = (int) ($disk->size($path) ?: 0);
-            $lastModified = $disk->lastModified($path);
+            $size = 0;
+            $lastModified = null;
+            try {
+                $size = (int) ($disk->size($path) ?: 0);
+                $lastModified = $disk->lastModified($path) ?: null;
+            } catch (\Throwable) {
+            }
             $out[] = [
                 'path' => $path,
                 'name' => $row['name'],
                 'path_under_zone' => (string) ($row['path_under_zone'] ?? ''),
                 'size' => $size,
-                'last_modified' => $lastModified ?: null,
+                'last_modified' => $lastModified,
                 'segment' => $row['segment'],
                 'is_image' => $row['is_image'],
                 'public_url' => $row['public_url'],
@@ -201,6 +208,38 @@ final class TenantFileCatalogService
         }
 
         return false;
+    }
+
+    /**
+     * Удаление из UI разрешено только вне иерархии {@code themes/} (тема — read-only: листинг без delete).
+     */
+    public function isDeletableObjectKey(int $tenantId, string $path): bool
+    {
+        if (! $this->isAllowedObjectKey($tenantId, $path)) {
+            return false;
+        }
+        $path = str_replace('\\', '/', trim($path));
+        $ts = TenantStorage::forTrusted($tenantId);
+        $themes = rtrim($ts->publicPath('themes'), '/');
+
+        if ($path === $themes) {
+            return false;
+        }
+
+        if (str_starts_with($path, $themes.'/')) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function isThemesObjectKey(int $tenantId, string $path): bool
+    {
+        $path = str_replace('\\', '/', trim($path));
+        $ts = TenantStorage::forTrusted($tenantId);
+        $themes = rtrim($ts->publicPath('themes'), '/');
+
+        return $path === $themes || str_starts_with($path, $themes.'/');
     }
 
     /**

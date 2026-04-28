@@ -76,9 +76,19 @@
                     tryPlay(dlg);
                 }
             });
+            document.addEventListener('click', function (e) {
+                var tb = e.target.closest('[data-expert-review-text-open]');
+                if (!tb) return;
+                var tid = tb.getAttribute('data-expert-review-text-open');
+                if (!tid) return;
+                var tdlg = document.getElementById(tid);
+                if (tdlg && typeof tdlg.showModal === 'function') {
+                    tdlg.showModal();
+                }
+            });
             document.addEventListener('click', function (ev) {
                 var t = ev.target;
-                if (t && t.tagName === 'DIALOG' && t.classList.contains('expert-video-dialog')) {
+                if (t && t.tagName === 'DIALOG' && (t.classList.contains('expert-video-dialog'))) {
                     t.close();
                 }
             });

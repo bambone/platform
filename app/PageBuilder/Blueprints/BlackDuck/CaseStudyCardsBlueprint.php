@@ -7,6 +7,8 @@ namespace App\PageBuilder\Blueprints\BlackDuck;
 use App\Filament\Forms\Components\TenantPublicImagePicker;
 use App\Filament\Tenant\PageBuilder\TeleportedEditorRepeater;
 use App\PageBuilder\PageSectionCategory;
+use App\Tenant\BlackDuck\BlackDuckRabotyCaseListContentSource;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Support\HtmlString;
@@ -42,6 +44,7 @@ final class CaseStudyCardsBlueprint extends BlackDuckSectionBlueprint
     {
         return [
             'heading' => 'Работы',
+            'content_source' => BlackDuckRabotyCaseListContentSource::MANUAL_DB,
             'items' => [],
         ];
     }
@@ -53,10 +56,13 @@ final class CaseStudyCardsBlueprint extends BlackDuckSectionBlueprint
                 ->label('')
                 ->content(
                     new HtmlString(
-                        '<p class="text-sm text-zinc-600 dark:text-zinc-400">Кейсы <strong>редактируются здесь</strong> (секция page builder). Сетка «Работы» и curated proof из БД/импорта — <strong>отдельный</strong> поток: <code>refresh-content</code> и каталог не заменяют эти поля, пока не меняется сама страница.</p>'
+                        '<p class="text-sm text-zinc-600 dark:text-zinc-400">Кейсы <strong>редактируются здесь</strong>. Команда <code>tenant:black-duck:refresh-content</code> <strong>не подменяет</strong> эту секцию из медиакаталога, пока в данных не стоит источник «каталог» или пока явно не передан флаг <code>--overwrite-editorial-case-list</code>.</p>'
                     )
                 )
                 ->columnSpanFull(),
+            Hidden::make('data_json.content_source')
+                ->default(BlackDuckRabotyCaseListContentSource::MANUAL_DB)
+                ->dehydrated(true),
             TextInput::make('data_json.heading')
                 ->label('Заголовок')
                 ->maxLength(200)

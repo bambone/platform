@@ -46,4 +46,36 @@ final class TenantPublicReviewsTest extends TestCase
         $json->assertJsonPath('data.0.name', 'Visible');
         $json->assertJsonCount(1, 'data');
     }
+
+    public function test_reviews_page_shows_excerpt_and_read_more_button_for_long_text(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('pubrev-long');
+        $host = $this->tenancyHostForSlug('pubrev-long');
+
+        $tail = 'TAIL_UNIQUE_'.uniqid('', true);
+
+        Review::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Long Author',
+            'text_long' => str_repeat('слово ', 80).$tail,
+            'text_short' => null,
+            'rating' => 5,
+            'status' => 'published',
+            'sort_order' => 0,
+        ]);
+
+        $saved = Review::query()->withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->where('name', 'Long Author')
+            ->firstOrFail();
+
+        // Карточка — выдержка без «хвоста» в конце длинного текста.
+        $this->assertStringNotContainsString($tail, $saved->publicCardExcerpt());
+
+        $response = $this->call('GET', 'http://'.$host.'/reviews');
+        $response->assertOk();
+        $response->assertSee('Читать полностью', false);
+        // Полный текст рендерится в <dialog> (off-screen до открытия), поэтому хвост ищется в HTML.
+        $response->assertSee($tail, false);
+    }
 }

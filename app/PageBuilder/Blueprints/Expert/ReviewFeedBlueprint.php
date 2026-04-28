@@ -51,10 +51,7 @@ final class ReviewFeedBlueprint extends ExpertSectionBlueprint
         return [
             TextInput::make('data_json.heading')->label('Заголовок')->maxLength(255)->columnSpanFull(),
             Textarea::make('data_json.subheading')->label('Подзаголовок (social proof)')->rows(2)->columnSpanFull(),
-            TextInput::make('data_json.section_id')
-                ->label('HTML id секции (якорь)')
-                ->maxLength(64)
-                ->helperText('Например reviews — для ссылки /#reviews'),
+            static::makeSectionHtmlIdTextInput(),
             TextInput::make('data_json.limit')->numeric()->label('Лимит')->minValue(1)->maxValue(24)->default(9),
             Select::make('data_json.layout')
                 ->label('Вид')

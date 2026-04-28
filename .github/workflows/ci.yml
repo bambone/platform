@@ -540,6 +540,15 @@ jobs:
             exit 1
           fi
 
+          # Лог дописывается между деплоями: смотрим последнюю сводку artisan (failed должен быть 0).
+          last_summary="$(grep -E '^Processed: ' "$LOG" 2>/dev/null | tail -n 1 || true)"
+          if [ -n "$last_summary" ] && echo "$last_summary" | grep -qE 'failed: [1-9][0-9]*'; then
+            echo "media-backfill: backfill reported object failures: $last_summary"
+            echo "media-backfill: typical fix — write access to MEDIA_ROOT (e.g. GitHub var MEDIA_BACKFILL_AS_WWW_DATA=1 + passwordless sudo -u www-data for SSH user), see docs/operations/tenant-media-local-mirror.md"
+            tail -n 200 "$LOG" 2>/dev/null || true
+            exit 1
+          fi
+
           echo "media-backfill: finished (log: $LOG)"
           echo "media-backfill: tail of log"
           tail -n 50 "$LOG" || true

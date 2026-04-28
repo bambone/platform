@@ -336,6 +336,7 @@ final class BlackDuckCaseStudyCardsFiller
 
         $mergedData = is_array($existingData) ? $existingData : [];
         $mergedData['items'] = $items;
+        $mergedData['content_source'] = BlackDuckRabotyCaseListContentSource::MANUAL_DB;
         if (! isset($mergedData['heading']) || trim((string) $mergedData['heading']) === '') {
             $mergedData['heading'] = 'Примеры работ';
         }

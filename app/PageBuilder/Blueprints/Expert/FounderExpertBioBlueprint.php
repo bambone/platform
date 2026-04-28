@@ -74,10 +74,7 @@ final class FounderExpertBioBlueprint extends ExpertSectionBlueprint
                 ->label('Alt портрета')
                 ->maxLength(255)
                 ->columnSpanFull(),
-            TextInput::make('data_json.section_id')
-                ->label('HTML id секции (якорь)')
-                ->maxLength(64)
-                ->helperText('Например about — для ссылки /#about'),
+            static::makeSectionHtmlIdTextInput(),
             TeleportedEditorRepeater::make('data_json.trust_points')
                 ->label('Маркеры доверия')
                 ->addActionLabel('Добавить маркер')

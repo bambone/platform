@@ -49,7 +49,7 @@ final class EnrollmentCtaStripBlueprint extends ExpertSectionBlueprint
     public function formComponents(): array
     {
         return [
-            TextInput::make('data_json.section_id')->label('HTML id секции')->maxLength(64),
+            static::makeSectionHtmlIdTextInput(),
             TextInput::make('data_json.heading')->label('Заголовок')->maxLength(255)->columnSpanFull(),
             Textarea::make('data_json.lead')->label('Подзаголовок')->rows(2)->columnSpanFull(),
             TextInput::make('data_json.button_label')->label('Текст кнопки')->maxLength(120),

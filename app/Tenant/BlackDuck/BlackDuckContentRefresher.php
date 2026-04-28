@@ -16,6 +16,7 @@ use App\Models\TenantSetting;
 use App\PageBuilder\Contacts\MapDisplayMode;
 use App\PageBuilder\Contacts\MapInputMode;
 use App\PageBuilder\Contacts\MapProvider;
+use App\Support\Storage\TenantPublicStoredPathNormalizer;
 use App\Support\Storage\TenantStorage;
 use App\TenantSiteSetup\BookingNotificationsQuestionnaireRepository;
 use Closure;
@@ -304,7 +305,7 @@ final class BlackDuckContentRefresher
     }
 
     /**
-     * @param  array{force: bool, if_placeholder: bool, only_seo: bool, force_section: ?string, dry_run: bool}  $opts
+     * @param  array{force: bool, if_placeholder: bool, only_seo: bool, force_section: ?string, dry_run: bool, overwrite_editorial_case_list?: bool, overwrite_reviews?: bool}  $opts
      */
     public function refreshContent(Tenant $tenant, array $opts): void
     {
@@ -314,6 +315,8 @@ final class BlackDuckContentRefresher
         $onlySeo = (bool) ($opts['only_seo'] ?? false);
         $forceSection = isset($opts['force_section']) ? (string) $opts['force_section'] : null;
         $dry = (bool) ($opts['dry_run'] ?? false);
+        $overwriteEditorialCaseList = (bool) ($opts['overwrite_editorial_case_list'] ?? false);
+        $overwriteReviews = (bool) ($opts['overwrite_reviews'] ?? false);
 
         if ($dry) {
             return;
@@ -338,10 +341,10 @@ final class BlackDuckContentRefresher
             $this->seedServiceLandingFaqStubs($id);
         }
 
-        if ($this->shouldRunReviews($id, $force, $ifPlaceholder)) {
+        if ($this->shouldRunReviews($id, $force, $ifPlaceholder, $overwriteReviews)) {
             $this->replaceReviews($id);
         }
-        if ($this->shouldSeedBlackDuckMapsCuratedReviews($id, $force)) {
+        if ($this->shouldSeedBlackDuckMapsCuratedReviews($id, $force, $overwriteReviews)) {
             $this->seedBlackDuckMapsCuratedReviews($id);
         }
 
@@ -358,7 +361,7 @@ final class BlackDuckContentRefresher
         if ($tenant->theme_key === 'black_duck') {
             $this->syncServiceProofGalleries($id, $force, $ifPlaceholder, $forceSection);
         }
-        $this->updateRabotyPage($id, $force, $ifPlaceholder, $forceSection);
+        $this->updateRabotyPage($id, $force, $ifPlaceholder, $forceSection, $overwriteEditorialCaseList);
         $this->updateReviewsPage($id, $force, $ifPlaceholder, $forceSection);
         $this->updateContactsPage($id, $force, $ifPlaceholder, $forceSection);
         $this->updatePromoAndPrivacy($id, $force, $ifPlaceholder, $forceSection);
@@ -729,15 +732,20 @@ final class BlackDuckContentRefresher
         }
     }
 
-    private function shouldRunReviews(int $tenantId, bool $force, bool $ifPlaceholder): bool
+    private function shouldRunReviews(int $tenantId, bool $force, bool $ifPlaceholder, bool $overwriteReviews): bool
     {
         if (! Schema::hasTable('reviews')) {
             return false;
         }
-        if ($force) {
+        $count = (int) DB::table('reviews')->where('tenant_id', $tenantId)->count();
+
+        if ($overwriteReviews) {
             return true;
         }
-        $count = (int) DB::table('reviews')->where('tenant_id', $tenantId)->count();
+        if ($force) {
+            // Одного --force недостаточно: можно затереть реальные отзывы из кабинета. На пустом тенанте — начальный набор.
+            return $count < 1;
+        }
         if ($count < 1) {
             return true;
         }
@@ -787,19 +795,25 @@ final class BlackDuckContentRefresher
         }
     }
 
-    private function shouldSeedBlackDuckMapsCuratedReviews(int $tenantId, bool $force): bool
+    private function shouldSeedBlackDuckMapsCuratedReviews(int $tenantId, bool $force, bool $overwriteReviews): bool
     {
         if (! $this->isBlackDuckTenant($tenantId) || ! Schema::hasTable('reviews')) {
             return false;
         }
-        if ($force) {
-            return true;
-        }
-
-        return (int) DB::table('reviews')
+        $mapsCount = (int) DB::table('reviews')
             ->where('tenant_id', $tenantId)
             ->where('source', BlackDuckMapsReviewCatalog::SOURCE)
-            ->count() < 1;
+            ->count();
+
+        if ($overwriteReviews) {
+            return true;
+        }
+        if ($force) {
+            // При --force не перезаписываем отзывы с карт без явного --overwrite-reviews; на пустом слоте — как при первичном сеоде.
+            return $mapsCount < 1;
+        }
+
+        return $mapsCount < 1;
     }
 
     private function seedBlackDuckMapsCuratedReviews(int $tenantId): void
@@ -906,17 +920,34 @@ final class BlackDuckContentRefresher
     }
 
     /**
-     * Карточки «Проекты» на /raboty, заполненные вне медиакаталога (Filament, fill-case-study-cards): не затирать пустым {@see BlackDuckMediaCatalog::worksStoryCardItems} при --force.
+     * Не подменять {@code case_list} данными из {@see BlackDuckMediaCatalog::worksStoryCardItems} без явного {@code overwrite_editorial_case_list}.
      *
-     * @param  list<mixed>  $items
+     * @param  array<string, mixed>  $prevCaseListRoot
+     * @param  list<mixed>  $prevCaseItems
      */
-    private function rabotyCaseListItemsLookEditorial(array $items): bool
-    {
-        foreach ($items as $it) {
+    private function rabotyCaseListShouldSkipCatalogMerge(
+        int $tenantId,
+        array $prevCaseListRoot,
+        array $prevCaseItems,
+        bool $overwriteEditorialCaseList,
+    ): bool {
+        if ($overwriteEditorialCaseList) {
+            return false;
+        }
+        if (($prevCaseListRoot['content_source'] ?? '') === BlackDuckRabotyCaseListContentSource::MANUAL_DB) {
+            return true;
+        }
+        $prefix = BlackDuckCaseStudyCardsFiller::CASE_STUDY_UPLOAD_PREFIX;
+        foreach ($prevCaseItems as $it) {
             if (! is_array($it)) {
                 continue;
             }
-            if (trim((string) ($it['image_url'] ?? '')) !== '') {
+            $raw = trim((string) ($it['image_url'] ?? ''));
+            if ($raw === '') {
+                continue;
+            }
+            $logical = TenantPublicStoredPathNormalizer::toLogicalSitePath($raw, $tenantId);
+            if ($logical !== null && str_starts_with($logical, $prefix)) {
                 return true;
             }
         }
@@ -1756,9 +1787,9 @@ final class BlackDuckContentRefresher
         if (preg_match('#^https?://#i', $stored) === 1) {
             return false;
         }
-        $path = $stored;
-        if (! str_starts_with($path, 'site/')) {
-            $path = 'site/brand/'.ltrim($path, '/');
+        $path = TenantPublicStoredPathNormalizer::toLogicalSitePath($stored, $tenantId);
+        if ($path === null || $path === '') {
+            return false;
         }
 
         return BlackDuckMediaCatalog::logicalPathIsUsable($tenantId, $path);
@@ -1836,6 +1867,7 @@ final class BlackDuckContentRefresher
         bool $force,
         bool $ifPlaceholder,
         ?string $forceSection,
+        bool $overwriteEditorialCaseList = false,
     ): void {
         $isBlackDuck = $this->isBlackDuckTenant($tenantId);
         if ($isBlackDuck) {
@@ -1864,19 +1896,23 @@ final class BlackDuckContentRefresher
             }
 
             $story = BlackDuckMediaCatalog::worksStoryCardItems($tenantId, 12);
-            $preserveCaseList = $story === [] && $this->rabotyCaseListItemsLookEditorial($prevCaseItems);
-            if (! $preserveCaseList) {
+            $skipCaseListCatalogMerge = $this->rabotyCaseListShouldSkipCatalogMerge(
+                $tenantId,
+                $prevCaseList,
+                $prevCaseItems,
+                $overwriteEditorialCaseList,
+            );
+            if (! $skipCaseListCatalogMerge) {
                 $this->updateSectionData($tenantId, 'raboty', 'case_list', [
                     'heading' => 'Проекты',
                     'proof_works_cta_label' => '',
                     'proof_works_cta_href' => '',
+                    'content_source' => BlackDuckRabotyCaseListContentSource::CATALOG,
                     'items' => $story,
                 ], $force, $ifPlaceholder, $forceSection);
                 if ($this->sectionMatch('case_list', $forceSection)) {
                     $this->updatePageSectionVisibility($tenantId, 'raboty', 'case_list', $story !== [], $forceSection);
                 }
-            } elseif ($this->sectionMatch('case_list', $forceSection)) {
-                $this->updatePageSectionVisibility($tenantId, 'raboty', 'case_list', true, $forceSection);
             }
         } else {
             $this->updateSectionData($tenantId, 'raboty', 'case_list', [

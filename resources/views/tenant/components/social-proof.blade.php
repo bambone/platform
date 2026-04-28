@@ -27,15 +27,25 @@
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/></svg>
                                 @endfor
                             </div>
-                            <p class="text-white/95 text-[15px] sm:text-base leading-relaxed mb-8 font-medium">«{{ $review->text }}»</p>
+                            <div class="mb-8">
+                                @include('tenant.components.review-quote-and-expand', [
+                                    'review' => $review,
+                                    'scopeId' => 0,
+                                    'quoteClass' => 'text-white/95 text-[15px] sm:text-base leading-relaxed font-medium',
+                                    'openMark' => '«',
+                                    'closeMark' => '»',
+                                    'readMoreClass' => 'text-sm font-semibold text-moto-amber underline-offset-4 hover:text-moto-amber/90 hover:underline',
+                                ])
+                            </div>
                         </div>
                         <div class="border-t border-white/5 pt-5 flex items-center gap-4">
+                            @php $avatarUrl = $review->publicAvatarUrl(); @endphp
                             <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-white/10 shrink-0 shadow-lg flex items-center justify-center bg-moto-amber/20">
-                                @if($review->publicAvatarUrl())
-                                    <img src="{{ $review->publicAvatarUrl() }}" alt="{{ $review->name }}" class="w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+                                @if($avatarUrl)
+                                    <img src="{{ $avatarUrl }}" alt="{{ $review->name }}" class="w-full h-full object-cover" loading="lazy" decoding="async" fetchpriority="low" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
                                 @endif
                                 @php $initials = strtoupper(collect(explode(' ', $review->name ?? '?'))->take(2)->map(fn($s) => mb_substr($s, 0, 1))->implode('')); @endphp
-                                <span class="text-moto-amber font-bold text-sm {{ $review->publicAvatarUrl() ? 'hidden' : '' }}">{{ $initials ?: '?' }}</span>
+                                <span class="text-moto-amber font-bold text-sm {{ $avatarUrl ? 'hidden' : '' }}">{{ $initials ?: '?' }}</span>
                             </div>
                             <div>
                                 <span class="block text-white font-bold text-sm">{{ $review->name }}</span>
@@ -128,4 +138,7 @@
             @endif
         </div>
     </div>
+    @if($useReviews)
+        @include('tenant.partials.expert-video-dialog-script')
+    @endif
 </section>

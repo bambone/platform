@@ -97,10 +97,7 @@ final class ExpertLeadFormBlueprint extends ExpertSectionBlueprint
                 ->required()
                 ->maxLength(64)
                 ->default('expert_lead'),
-            TextInput::make('data_json.section_id')
-                ->label('HTML id блока (якорь)')
-                ->maxLength(64)
-                ->default('expert-inquiry'),
+            static::makeSectionHtmlIdTextInput('HTML id блока (якорь)')->default('expert-inquiry'),
             TextInput::make('data_json.sticky_cta_label')
                 ->label('Текст плавающей кнопки (mobile)')
                 ->maxLength(64),

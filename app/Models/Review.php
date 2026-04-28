@@ -21,6 +21,9 @@ class Review extends Model implements HasMedia
 {
     use BelongsToTenant, InteractsWithMedia;
 
+    /** Лимит символов для текста карточки на публичном сайте (выдержка до «Читать полностью»). */
+    public const PUBLIC_CARD_EXCERPT_MAX_CHARS = 220;
+
     protected $fillable = [
         'tenant_id',
         'name',
@@ -62,25 +65,116 @@ class Review extends Model implements HasMedia
     {
         static::saving(function (Review $review): void {
             $long = trim((string) ($review->text_long ?? ''));
+            $legacy = trim((string) ($review->text ?? ''));
             $short = trim((string) ($review->text_short ?? ''));
-            if ($short === '' && $long !== '') {
-                $plain = trim(preg_replace('/\s+/', ' ', strip_tags($long)) ?? '');
-                $review->text_short = Str::limit($plain, 240, '…');
+
+            // Полный текст: актуальный long → legacy `text` → только потом краткий.
+            $full = $long !== '' ? $long : $legacy;
+
+            if ($short === '' && $full !== '') {
+                $plain = trim(preg_replace('/\s+/u', ' ', strip_tags($full)) ?? '');
+                $review->text_short = Str::limit($plain, self::PUBLIC_CARD_EXCERPT_MAX_CHARS, '…');
+                $short = trim((string) $review->text_short);
             }
-            $short = trim((string) ($review->text_short ?? ''));
-            $review->text = $long !== '' ? $long : $short;
+
+            // Legacy `text` храним как полную формулировку, чтобы не терять контент после миграций.
+            $review->text = $full !== '' ? $full : $short;
         });
     }
 
-    public function getDisplayBodyAttribute(): string
+    /**
+     * Полнота текста без приоритета «краткого»: {@see text_long} → legacy {@see text} → {@see text_short}.
+     */
+    public function publicFullTextRaw(): string
     {
         $long = trim((string) ($this->text_long ?? ''));
         if ($long !== '') {
             return $long;
         }
-        $short = trim((string) ($this->text_short ?? ''));
 
-        return $short !== '' ? $short : (string) ($this->text ?? '');
+        $legacy = trim((string) ($this->text ?? ''));
+        if ($legacy !== '') {
+            return $legacy;
+        }
+
+        return trim((string) ($this->text_short ?? ''));
+    }
+
+    public function getDisplayBodyAttribute(): string
+    {
+        return $this->publicFullTextRaw();
+    }
+
+    /**
+     * Плоский текст полного отзыва для сайта и сравнения длины карточка/полный текст.
+     */
+    public function publicBodyPlain(): string
+    {
+        $raw = $this->publicFullTextRaw();
+
+        return trim(preg_replace('/\s+/u', ' ', strip_tags($raw)) ?? '');
+    }
+
+    /**
+     * Текст в карточке: явный {@see text_short} или выдержка из полного текста.
+     */
+    public function publicCardExcerpt(int $maxChars = self::PUBLIC_CARD_EXCERPT_MAX_CHARS): string
+    {
+        $maxChars = max(32, $maxChars);
+        $explicit = trim((string) ($this->text_short ?? ''));
+
+        if ($explicit !== '') {
+            $plain = trim(preg_replace('/\s+/u', ' ', strip_tags($explicit)) ?? '');
+
+            return $plain !== '' ? Str::limit($plain, $maxChars, '…') : '';
+        }
+
+        $full = $this->publicBodyPlain();
+
+        return $full !== '' ? Str::limit($full, $maxChars, '…') : '';
+    }
+
+    /**
+     * Нужна ли кнопка «Читать полностью»: полный текст длиннее хранимого краткого или лимита карточки.
+     */
+    public function publicWantsReadMore(int $maxChars = self::PUBLIC_CARD_EXCERPT_MAX_CHARS): bool
+    {
+        $maxChars = max(32, $maxChars);
+        $full = $this->publicBodyPlain();
+        if ($full === '') {
+            return false;
+        }
+
+        $shortAttr = trim((string) ($this->text_short ?? ''));
+        if ($shortAttr !== '') {
+            $plainShort = trim(preg_replace('/\s+/u', ' ', strip_tags($shortAttr)) ?? '');
+            if ($plainShort === '') {
+                return mb_strlen($full) > $maxChars;
+            }
+            if (mb_strlen($full) > mb_strlen($plainShort)) {
+                return true;
+            }
+
+            return mb_strlen($plainShort) > $maxChars;
+        }
+
+        return mb_strlen($full) > $maxChars;
+    }
+
+    /**
+     * Короткая подпись источника для публичной витрины: служебные значения (`site`, `import`) не показываем.
+     */
+    public function publicSourceLabel(): ?string
+    {
+        $src = trim((string) ($this->source ?? ''));
+
+        return match ($src) {
+            'maps_curated' => 'Отзывы с карт',
+            'yandex' => 'Яндекс Карты',
+            '2gis' => '2ГИС',
+            'site', 'import', '' => null,
+            default => null,
+        };
     }
 
     public function motorcycle(): BelongsTo
@@ -144,9 +238,6 @@ class Review extends Model implements HasMedia
     }
 
     /**
-     * Аватар для публичного сайта с учётом delivery=local (переписывание CDN → /media/…).
-     */
-    /**
      * Дата для строки «город · дата» на публичной карточке: сначала `date`, иначе `submitted_at`.
      * Каст полей в модели может кинуть при битом значении в БД — тогда смотрим следующее поле. Итог — пустая строка, если ничего нельзя отформатировать.
      */
@@ -175,6 +266,9 @@ class Review extends Model implements HasMedia
         return '';
     }
 
+    /**
+     * Аватар для публичного сайта с учётом delivery=local (переписывание CDN → /media/…).
+     */
     public function publicAvatarUrl(): ?string
     {
         $raw = $this->avatar_url;

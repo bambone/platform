@@ -17,6 +17,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -55,197 +58,220 @@ class ReviewResource extends Resource
         );
 
         return $schema
+            ->columns(1)
             ->components([
-                Section::make('Основное')
-                    ->description('Поля попадают в блок отзывов на сайте (секция «Отзывы» в конструкторе страниц). Публикуйте только опубликованные записи.')
+                Grid::make(['default' => 1, 'lg' => 12])
                     ->schema([
-                        TextInput::make('name')
-                            ->label('Имя на сайте')
-                            ->required()
-                            ->maxLength(255)
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Как будет подписан автор на карточке отзыва.',
-                                'Имя или имя + контекст.',
-                            )),
-                        TextInput::make('city')
-                            ->label('Город')
-                            ->maxLength(255)
-                            ->placeholder('Например, Челябинск')
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Необязательно.',
-                                'Показывается рядом с именем, если тема выводит город.',
-                            )),
-                        TextInput::make('contact_email')
-                            ->label('Email отправителя')
-                            ->email()
-                            ->maxLength(255)
-                            ->helperText('Если отзыв пришёл с сайта и вы запросили email — не публикуется на витрине.'),
-                        TextInput::make('headline')
-                            ->label('Заголовок / лид')
-                            ->maxLength(255)
-                            ->placeholder('Короткая тема отзыва')
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Одна строка над текстом: тема или эмоция («Контраварийка и зима»).',
-                                'На сайте может идти бейджем или подзаголовком.',
-                            )),
-                        TextInput::make('category_key')
-                            ->label('Ключ темы (программа)')
-                            ->maxLength(64)
-                            ->placeholder('counter-emergency')
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Связь с программой или темой для фильтра/бейджа на сайте.',
-                                'Обычно slug из «Каталог → Программы» (например single-session, city-driving, counter-emergency).',
-                                'Короткие ключи для бейджа: parking, city, winter-driving, confidence, motorsport.',
-                                'Тема black_duck: для отзыва на посадочной услуге укажите slug страницы (ppf, predprodazhnaya, …); для блока на главной часто используют service.',
-                                'Пусто — отзыв без привязки к теме.',
-                            )),
-                        Textarea::make('text_short')
-                            ->label('Краткий текст')
+                        Section::make('Тексты и связи')
+                            ->description('Эти поля попадают в блок «Отзывы» на страницах. Публикация управляется в колонке справа.')
+                            ->schema([
+                                TextInput::make('name')
+                                    ->label('Имя на сайте')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->hintIcon('heroicon-o-information-circle')
+                                    ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                        'Как будет подписан автор на карточке отзыва.',
+                                        'Имя или имя + контекст.',
+                                    )),
+                                TextInput::make('city')
+                                    ->label('Город')
+                                    ->maxLength(255)
+                                    ->placeholder('Например, Челябинск')
+                                    ->hintIcon('heroicon-o-information-circle')
+                                    ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                        'Необязательно.',
+                                        'Показывается рядом с именем, если тема выводит город.',
+                                    )),
+                                TextInput::make('contact_email')
+                                    ->label('Email отправителя')
+                                    ->email()
+                                    ->maxLength(255)
+                                    ->helperText('Если отзыв пришёл с сайта и вы запросили email — не публикуется на витрине.')
+                                    ->columnSpanFull(),
+                                TextInput::make('headline')
+                                    ->label('Заголовок / лид')
+                                    ->maxLength(255)
+                                    ->placeholder('Короткая тема отзыва')
+                                    ->hintIcon('heroicon-o-information-circle')
+                                    ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                        'Одна строка над текстом: тема или эмоция («Контраварийка и зима»).',
+                                        'На сайте может идти бейджем или подзаголовком.',
+                                    )),
+                                TextInput::make('category_key')
+                                    ->label('Ключ темы (программа)')
+                                    ->maxLength(64)
+                                    ->placeholder('counter-emergency')
+                                    ->hintIcon('heroicon-o-information-circle')
+                                    ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                        'Связь с программой или темой для фильтра/бейджа на сайте.',
+                                        'Обычно slug из «Каталог → Программы» (например single-session, city-driving, counter-emergency).',
+                                        'Короткие ключи для бейджа: parking, city, winter-driving, confidence, motorsport.',
+                                        'Тема black_duck: для отзыва на посадочной услуге укажите slug страницы (ppf, predprodazhnaya, …); для блока на главной часто используют service.',
+                                        'Пусто — отзыв без привязки к теме.',
+                                    )),
+                                Textarea::make('text_short')
+                                    ->label('Краткий текст для карточки на сайте')
+                                    ->rows(2)
+                                    ->helperText('Показывается в карточке и сетке отзывов. Если поле пустое, при сохранении задаётся выдержкой из полного текста (до '.Review::PUBLIC_CARD_EXCERPT_MAX_CHARS.' символов с «…» при необходимости).')
+                                    ->hintIcon('heroicon-o-information-circle')
+                                    ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                        'Можете задать вручную короткий тезис; иначе подставится выдержка.',
+                                    ))
+                                    ->columnSpanFull(),
+                                Textarea::make('text_long')
+                                    ->label('Полный текст отзыва')
+                                    ->rows(6)
+                                    ->helperText('Публичная полная формулировка: её открывает кнопка «Читать полностью», если текст не помещается в карточку. Для короткого отзыва достаточно только этого поля.')
+                                    ->hintIcon('heroicon-o-information-circle')
+                                    ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                        'HTML не обязателен — достаточно обычного текста; переносы строк сохраняются.',
+                                        'Без этого поля краткий текст берёт из старого канала `text`.',
+                                    ))
+                                    ->columnSpanFull(),
+                                Select::make('media_type')
+                                    ->label('Тип контента')
+                                    ->options(['text' => 'Только текст', 'video' => 'С видео'])
+                                    ->default('text')
+                                    ->hintIcon('heroicon-o-information-circle')
+                                    ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                        '«С видео» — укажите ниже ссылку.',
+                                        'Для встроенного плеера: прямая ссылка на .mp4 / .webm или страница с плеером.',
+                                    )),
+                                TextInput::make('video_url')
+                                    ->label('Ссылка на видео')
+                                    ->url()
+                                    ->required(fn (Get $get): bool => ($get('media_type') ?? 'text') === 'video')
+                                    ->maxLength(2048)
+                                    ->visible(fn (Get $get): bool => ($get('media_type') ?? 'text') === 'video')
+                                    ->hintIcon('heroicon-o-information-circle')
+                                    ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                        'Обязательно, если выбран тип «С видео».',
+                                        'Иначе поле можно не трогать.',
+                                    )),
+                                Select::make('motorcycle_id')
+                                    ->label('Модель в каталоге аренды')
+                                    ->relationship('motorcycle', 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->visible($showMotorcycleCatalogLink)
+                                    ->hintIcon('heroicon-o-information-circle')
+                                    ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                        'Только для витрин с каталогом мотоциклов в прокат.',
+                                        'Для детейлинга, expert и других тем поле скрыто.',
+                                    )),
+                            ])
+                            ->columns(2)
+                            ->columnSpan(['default' => 1, 'lg' => 8]),
+
+                        Group::make()
+                            ->columnSpan(['default' => 1, 'lg' => 4])
+                            ->extraAttributes([
+                                'class' => 'lg:sticky lg:top-6 lg:z-10 lg:self-start',
+                            ])
+                            ->schema([
+                                Section::make('Публикация и медиа')
+                                    ->description('Компактно: статус, порядок, оценка, дата, аватар.')
+                                    ->schema([
+                                        Select::make('status')
+                                            ->label('Статус публикации')
+                                            ->options(Review::statuses())
+                                            ->required()
+                                            ->default('published')
+                                            ->hintIcon('heroicon-o-information-circle')
+                                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                                'На сайте попадают только отзывы в статусе «Опубликован».',
+                                                'Черновик и «Скрыт» — только в админке.',
+                                            )),
+                                        TextInput::make('sort_order')
+                                            ->label('Порядок в списке')
+                                            ->numeric()
+                                            ->default(0)
+                                            ->hintIcon('heroicon-o-information-circle')
+                                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                                'Меньшее число — выше в списке внутри своей группы.',
+                                                'Избранные и обычные сортируются отдельно на сайте.',
+                                            )),
+                                        Toggle::make('is_featured')
+                                            ->label('Крупная карточка (спотлайт)')
+                                            ->default(false)
+                                            ->hintIcon('heroicon-o-information-circle')
+                                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                                'Включите для 1–3 главных отзывов: крупный блок и бейдж на лендинге.',
+                                                'Остальные — без этой отметки.',
+                                            )),
+                                        TextInput::make('rating')
+                                            ->label('Оценка')
+                                            ->numeric()
+                                            ->minValue(1)
+                                            ->maxValue(5)
+                                            ->default(5)
+                                            ->hintIcon('heroicon-o-information-circle')
+                                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                                'Число от 1 до 5.',
+                                                'На сайте может отображаться звёздами, если блок это поддерживает.',
+                                            )),
+                                        DatePicker::make('date')
+                                            ->label('Дата отзыва')
+                                            ->native(false)
+                                            ->displayFormat('d.m.Y')
+                                            ->hintIcon('heroicon-o-information-circle')
+                                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                                'Дата для сортировки и отображения («когда оставлен отзыв»).',
+                                                'Можно поставить дату публикации.',
+                                            )),
+                                        TextInput::make('source')
+                                            ->label('Источник (служебно)')
+                                            ->maxLength(255)
+                                            ->placeholder('site, yandex, …')
+                                            ->hintIcon('heroicon-o-information-circle')
+                                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                                'Метка для себя: откуда пришёл отзыв.',
+                                                'На публичный сайт обычно не выводится.',
+                                            )),
+                                        TenantSpatieMediaLibraryFileUpload::make('avatar')
+                                            ->collection('avatar')
+                                            ->disk(config('media-library.disk_name'))
+                                            ->visibility('public')
+                                            ->conversionsDisk(config('media-library.disk_name'))
+                                            ->image()
+                                            ->imagePreviewHeight('64')
+                                            ->avatar()
+                                            ->label('Фото (аватар)')
+                                            ->hintIcon('heroicon-o-information-circle')
+                                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                                'Квадратное или портретное фото лица; отображение на сайте — до ~48×48 в карточке.',
+                                                'Если задан URL ниже — файл важнее для вывода.',
+                                            )),
+                                        TextInput::make('meta_json.avatar_external_url')
+                                            ->label('URL аватара (внешний)')
+                                            ->url()
+                                            ->maxLength(2048)
+                                            ->placeholder('https://…')
+                                            ->hintIcon('heroicon-o-information-circle')
+                                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
+                                                'Необязательно: лицо с публичного профиля (например Яндекс/2ГИС).',
+                                                'На сайте подгружается лениво (loading=lazy), без обязательного файла в медиатеке.',
+                                            )),
+                                    ]),
+                            ]),
+                    ]),
+
+                Section::make('Совместимость (legacy)')
+                    ->description('Единое поле `text` из старых проектов. Обычно не заполняют: при сохранении подставится из полного или краткого текста. Редактируйте «Полный текст» выше.')
+                    ->collapsed()
+                    ->schema([
+                        Textarea::make('text')
+                            ->label('Объединённый текст (legacy)')
                             ->rows(2)
                             ->hintIcon('heroicon-o-information-circle')
                             ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Анонс или первые предложения: для карточек и списков.',
-                                'Если пусто, при сохранении может быть сгенерирован из полного текста.',
+                                'Для миграции и редких случаев вручную.',
                             )),
-                        Textarea::make('text_long')
-                            ->label('Полный текст отзыва')
-                            ->rows(5)
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Основной текст на странице.',
-                                'HTML не обязателен — достаточно обычного текста; переносы строк сохраняются.',
-                            )),
-                        Textarea::make('text')
-                            ->label('Текст (единое поле, legacy)')
-                            ->rows(3)
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Для совместимости со старыми данными.',
-                                'Если оставить пустым, при сохранении подставится полный или краткий текст.',
-                                'Редактировать удобнее «Полный текст» — это основной источник.',
-                            ))
-                            ->helperText('Обычно не заполняют вручную: заполнится из «Полный» / «Краткий», если пусто.'),
-                        TextInput::make('rating')
-                            ->label('Оценка')
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(5)
-                            ->default(5)
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Число от 1 до 5.',
-                                'На сайте может отображаться звёздами, если блок это поддерживает.',
-                            )),
-                        Select::make('media_type')
-                            ->label('Тип контента')
-                            ->options(['text' => 'Только текст', 'video' => 'С видео'])
-                            ->default('text')
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                '«С видео» — укажите ниже ссылку.',
-                                'Для встроенного плеера: прямая ссылка на .mp4 / .webm или страница с плеером.',
-                            )),
-                        TextInput::make('video_url')
-                            ->label('Ссылка на видео')
-                            ->url()
-                            ->maxLength(2048)
-                            ->visible(fn (Get $get): bool => ($get('media_type') ?? 'text') === 'video')
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Обязательно, если выбран тип «С видео».',
-                                'Иначе поле можно не трогать.',
-                            )),
-                        Select::make('motorcycle_id')
-                            ->label('Модель в каталоге аренды')
-                            ->relationship('motorcycle', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->visible($showMotorcycleCatalogLink)
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Только для витрин с каталогом мотоциклов в прокат.',
-                                'Для детейлинга, expert и других тем поле скрыто.',
-                            )),
-                        DatePicker::make('date')
-                            ->label('Дата отзыва')
-                            ->native(false)
-                            ->displayFormat('d.m.Y')
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Дата для сортировки и отображения («когда оставлен отзыв»).',
-                                'Можно поставить дату публикации.',
-                            )),
-                        TextInput::make('source')
-                            ->label('Источник (служебно)')
-                            ->maxLength(255)
-                            ->placeholder('site, yandex, …')
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Метка для себя: откуда пришёл отзыв.',
-                                'На публичный сайт обычно не выводится.',
-                            )),
-                    ])->columns(2),
-
-                Section::make('Медиа и статус')
-                    ->schema([
-                        TenantSpatieMediaLibraryFileUpload::make('avatar')
-                            ->collection('avatar')
-                            ->disk(config('media-library.disk_name'))
-                            ->visibility('public')
-                            ->conversionsDisk(config('media-library.disk_name'))
-                            ->image()
-                            ->label('Фото (аватар)')
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Квадратное или портретное фото лица; лучше не меньше 400×400 px.',
-                                'Показывается в карточке отзыва.',
-                                'Если задан URL ниже — файл важнее для вывода.',
-                            )),
-                        TextInput::make('meta_json.avatar_external_url')
-                            ->label('URL аватара (внешний)')
-                            ->url()
-                            ->maxLength(2048)
-                            ->placeholder('https://…')
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Необязательно: лицо с публичного профиля (например Яндекс/2ГИС).',
-                                'На сайте подгружается лениво (loading=lazy), без обязательного файла в медиатеке.',
-                            )),
-                        TextInput::make('sort_order')
-                            ->label('Порядок в списке')
-                            ->numeric()
-                            ->default(0)
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Меньшее число — выше в списке внутри своей группы.',
-                                'Избранные и обычные сортируются отдельно на сайте.',
-                            )),
-                        Select::make('status')
-                            ->label('Статус публикации')
-                            ->options(Review::statuses())
-                            ->required()
-                            ->default('published')
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'На сайте попадают только отзывы в статусе «Опубликован».',
-                                'Черновик и «Скрыт» — только в админке.',
-                            )),
-                        Toggle::make('is_featured')
-                            ->label('Крупная карточка (спотлайт)')
-                            ->default(false)
-                            ->hintIcon('heroicon-o-information-circle')
-                            ->hintIconTooltip(fn () => HintIconTooltip::lines(
-                                'Включите для 1–3 главных отзывов: крупный блок и бейдж на лендинге.',
-                                'Остальные — без этой отметки.',
-                            )),
-                    ])->columns(2),
+                    ]),
 
                 Section::make('Модерация')
-                    ->description('Для отзывов с сайта: дата отправки и заметки. Статус меняйте в блоке «Статус публикации» или кнопками в списке.')
+                    ->description('Для отзывов с сайта: дата отправки и заметки. Статус публикации — в колонке справа или кнопками в списке.')
                     ->schema([
                         DateTimePicker::make('submitted_at')
                             ->label('Отправлено (с сайта)')

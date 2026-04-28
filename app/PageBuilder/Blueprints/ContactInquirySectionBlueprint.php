@@ -98,10 +98,7 @@ final class ContactInquirySectionBlueprint extends AbstractPageSectionBlueprint
                 ->maxLength(500)
                 ->rows(2)
                 ->columnSpanFull(),
-            TextInput::make('data_json.section_id')
-                ->label('HTML id блока (якорь)')
-                ->maxLength(64)
-                ->default('contact-inquiry'),
+            static::makeSectionHtmlIdTextInput('HTML id блока (якорь)')->default('contact-inquiry'),
             Toggle::make('data_json.show_email')
                 ->label('Поле email')
                 ->default(true),

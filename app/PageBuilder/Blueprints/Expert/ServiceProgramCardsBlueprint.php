@@ -59,7 +59,7 @@ final class ServiceProgramCardsBlueprint extends ExpertSectionBlueprint
                 ->maxLength(2000)
                 ->helperText('Пустое поле — на сайте подзаголовок не показывается.')
                 ->columnSpanFull(),
-            TextInput::make('data_json.section_id')->label('HTML id секции')->maxLength(64),
+            static::makeSectionHtmlIdTextInput(),
             TextInput::make('data_json.limit')->numeric()->label('Лимит')->minValue(1)->maxValue(48)->default(12),
             Select::make('data_json.layout')
                 ->label('Сетка')

@@ -62,8 +62,9 @@
                 @php
                     $avatar = $review->publicAvatarUrl();
                     $plat = $platformLabel($review);
+                    $sectionScope = (int) data_get($section ?? [], 'id', 0);
                 @endphp
-                <li class="flex min-h-full gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+                <li class="flex min-h-0 gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
                     <div class="shrink-0">
                         @if(filled($avatar))
                             <img
@@ -88,12 +89,21 @@
                             @endif
                         </div>
                         <span class="mt-1 inline-block rounded-md bg-white/[0.06] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{{ $plat }}</span>
-                        <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-300">«{{ $review->display_body }}»</p>
+                        @include('tenant.components.review-quote-and-expand', [
+                            'review' => $review,
+                            'scopeId' => $sectionScope,
+                            'quoteClass' => 'mt-3 text-pretty text-sm leading-relaxed text-zinc-300',
+                            'openMark' => '«',
+                            'closeMark' => '»',
+                            'readMoreClass' => 'text-[12px] font-semibold text-zinc-200 underline-offset-4 hover:text-white hover:underline',
+                        ])
                     </div>
                 </li>
             @endforeach
         </ul>
     @endif
+
+    @includeWhen($reviews->isNotEmpty(), 'tenant.partials.expert-video-dialog-script')
 
     @if($showMapsCta)
         <div class="mt-6 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-4 sm:p-5">

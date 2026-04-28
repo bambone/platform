@@ -9,6 +9,8 @@ use App\Support\Storage\TenantStorage;
 use App\Support\Storage\TenantStorageDisks;
 use App\Tenant\BlackDuck\BlackDuckCaseStudyCardsFiller;
 use App\Tenant\BlackDuck\BlackDuckMediaCatalog;
+use App\Tenant\BlackDuck\BlackDuckMediaRole;
+use App\Tenant\BlackDuck\BlackDuckRabotyCaseListContentSource;
 use App\Tenant\CurrentTenant;
 use App\Tenant\Expert\ExpertBrandMediaUrl;
 use Database\Seeders\RolePermissionSeeder;
@@ -86,6 +88,7 @@ final class BlackDuckFillCaseStudyCardsCommandTest extends TestCase
         $this->assertCount(10, $data['items'] ?? []);
         $this->assertSame('Тёмный кузов', (string) ($data['items'][0]['vehicle'] ?? ''));
         $this->assertStringContainsString('yandex_maps_172.webp', (string) ($data['items'][0]['image_url'] ?? ''));
+        $this->assertSame(BlackDuckRabotyCaseListContentSource::MANUAL_DB, $data['content_source'] ?? null);
 
         $this->assertNotSame($jsonBefore, json_encode($data, JSON_UNESCAPED_UNICODE));
 
@@ -155,6 +158,82 @@ final class BlackDuckFillCaseStudyCardsCommandTest extends TestCase
             ->where('page_id', $rabotyPageId)
             ->where('section_key', 'case_list')
             ->value('is_visible'));
+    }
+
+    public function test_refresh_content_does_not_replace_manual_case_list_when_catalog_has_story(): void
+    {
+        $tid = (int) DB::table('tenants')->where('slug', BlackDuckBootstrap::SLUG)->value('id');
+        $src = storage_path('framework/testing/bd-case-study-src-'.uniqid());
+        if (! is_dir($src)) {
+            mkdir($src, 0777, true);
+        }
+        $jpg = self::minimalJpegBytes();
+        $ts = TenantStorage::forTrusted($tid);
+        foreach (BlackDuckCaseStudyCardsFiller::PRIMARY_BASENAMES as $base) {
+            $this->assertTrue(file_put_contents($src.DIRECTORY_SEPARATOR.$base, $jpg) > 0);
+            $logical = 'site/uploads/page-builder/case-study/'.$base;
+            $this->assertTrue($ts->putPublic($logical, $jpg, ['ContentType' => 'image/webp', 'visibility' => 'public']));
+        }
+        $this->assertSame(0, Artisan::call('tenant:black-duck:fill-case-study-cards', [
+            'tenant' => BlackDuckBootstrap::SLUG,
+            '--source-dir' => $src,
+            '--apply' => true,
+        ]), Artisan::output());
+
+        $this->assertTrue($ts->putPublic('site/brand/proof/story-card.jpg', $jpg, ['ContentType' => 'image/jpeg', 'visibility' => 'public']));
+        $assets = [
+            [
+                'role' => BlackDuckMediaRole::WorksGallery->value,
+                'logical_path' => 'site/brand/proof/story-card.jpg',
+                'sort_order' => 0,
+                'title' => 'Каталожный кейс',
+                'summary' => 'Из медиакаталога',
+                'page_slug' => 'raboty',
+            ],
+        ];
+        $this->assertTrue(BlackDuckMediaCatalog::saveCatalog($tid, BlackDuckMediaCatalog::SCHEMA_VERSION, $assets));
+        Artisan::call('tenant:black-duck:import-media-catalog-to-db', [
+            'tenant' => BlackDuckBootstrap::SLUG,
+            '--wipe' => true,
+        ]);
+
+        $this->assertSame(0, Artisan::call('tenant:black-duck:refresh-content', [
+            'tenant' => BlackDuckBootstrap::SLUG,
+            '--force' => true,
+        ]), Artisan::output());
+
+        $rabotyPageId = (int) DB::table('pages')->where('tenant_id', $tid)->where('slug', 'raboty')->value('id');
+        $data = json_decode(
+            (string) DB::table('page_sections')
+                ->where('tenant_id', $tid)
+                ->where('page_id', $rabotyPageId)
+                ->where('section_key', 'case_list')
+                ->value('data_json'),
+            true,
+        );
+        $this->assertIsArray($data);
+        $this->assertCount(10, $data['items'] ?? []);
+        $this->assertSame(BlackDuckRabotyCaseListContentSource::MANUAL_DB, $data['content_source'] ?? null);
+        $this->assertStringContainsString('yandex_maps_172.webp', (string) ($data['items'][0]['image_url'] ?? ''));
+
+        $this->assertSame(0, Artisan::call('tenant:black-duck:refresh-content', [
+            'tenant' => BlackDuckBootstrap::SLUG,
+            '--force' => true,
+            '--overwrite-editorial-case-list' => true,
+        ]), Artisan::output());
+
+        $data2 = json_decode(
+            (string) DB::table('page_sections')
+                ->where('tenant_id', $tid)
+                ->where('page_id', $rabotyPageId)
+                ->where('section_key', 'case_list')
+                ->value('data_json'),
+            true,
+        );
+        $this->assertIsArray($data2);
+        $this->assertGreaterThanOrEqual(1, count($data2['items'] ?? []));
+        $this->assertSame(BlackDuckRabotyCaseListContentSource::CATALOG, $data2['content_source'] ?? null);
+        $this->assertSame('Каталожный кейс', (string) (($data2['items'][0] ?? [])['task'] ?? ''));
     }
 
     /**

@@ -62,7 +62,7 @@
     @endphp
 
     @if($heroReview !== null)
-        <div class="expert-reviews-spotlight mb-8 grid min-w-0 gap-4 sm:mb-10 sm:gap-6 lg:mb-12 lg:grid-cols-12 lg:items-stretch lg:gap-8">
+        <div class="expert-reviews-spotlight mb-8 grid min-w-0 gap-4 sm:mb-10 sm:gap-6 lg:mb-12 lg:grid-cols-12 lg:items-start lg:gap-8">
             @php
                 $review = $heroReview;
                 $vUrl = trim((string) ($review->video_url ?? ''));
@@ -72,9 +72,9 @@
                 $ck = $review->category_key ?? null;
                 $tag = $catLabel(is_string($ck) ? $ck : null);
             @endphp
-            <article class="expert-review expert-review--spotlight relative flex min-h-full min-w-0 flex-col overflow-hidden rounded-[1.35rem] border border-moto-amber/30 bg-gradient-to-br from-[#12141c] to-[#0a0c12] p-6 shadow-[0_28px_64px_-20px_rgba(0,0,0,0.72)] ring-1 ring-inset ring-white/[0.06] sm:rounded-[2rem] sm:p-10 {{ $sideFeatured->isEmpty() ? 'lg:col-span-12' : 'lg:col-span-7' }}">
+            <article class="expert-review expert-review--spotlight relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[1.35rem] border border-moto-amber/30 bg-gradient-to-br from-[#12141c] to-[#0a0c12] p-6 shadow-[0_28px_64px_-20px_rgba(0,0,0,0.72)] ring-1 ring-inset ring-white/[0.06] sm:rounded-[2rem] sm:p-10 {{ $sideFeatured->isEmpty() ? 'lg:col-span-12' : 'lg:col-span-7' }}">
                 <div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-transparent"></div>
-                <div class="relative z-10 flex flex-col h-full">
+                <div class="relative z-10 flex min-h-0 flex-col">
                     <span class="mb-6 inline-flex w-fit items-center gap-2 rounded-full bg-moto-amber/10 px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-widest text-moto-amber ring-1 ring-inset ring-moto-amber/30">
                         <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
                         Выбор эксперта
@@ -93,9 +93,13 @@
                     @if($tag)
                         <span class="mt-4 inline-flex w-fit rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-silver/70">{{ $tag }}</span>
                     @endif
-                    
-                    <p class="expert-review__quote mt-8 flex-1 text-[17px] font-medium leading-[1.7] text-white/90 sm:text-[19px]">"{{ $review->display_body }}"</p>
-                    
+
+                    @include('tenant.components.review-quote-and-expand', [
+                        'review' => $review,
+                        'scopeId' => $sid,
+                        'quoteClass' => 'expert-review__quote mt-8 text-[17px] font-medium leading-[1.7] text-white/90 sm:text-[19px]',
+                    ])
+
                     <div class="mt-6 flex flex-col gap-4 border-t border-white/[0.06] pt-6 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
                         <div class="expert-review__stars flex gap-1 text-moto-amber" aria-hidden="true">
                             @for($i = 0; $i < min(5, (int) $review->rating); $i++)
@@ -144,7 +148,7 @@
                             $ck = $review->category_key ?? null;
                             $tag = $catLabel(is_string($ck) ? $ck : null);
                         @endphp
-                        <article class="expert-review expert-review--side flex flex-1 flex-col rounded-[1.5rem] border border-white/[0.08] bg-white/[0.015] p-6 lg:p-8 backdrop-blur-sm transition hover:bg-white/[0.03]">
+                        <article class="expert-review expert-review--side flex min-h-0 flex-col rounded-[1.5rem] border border-white/[0.08] bg-white/[0.015] p-6 lg:p-8 backdrop-blur-sm transition hover:bg-white/[0.03]">
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                     <p class="text-lg font-bold text-white/95">{{ $review->name }}</p>
@@ -156,8 +160,13 @@
                                     <span class="shrink-0 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-silver/70">{{ $tag }}</span>
                                 @endif
                             </div>
-                            <p class="expert-review__quote mt-5 flex-1 text-[14px] leading-[1.65] text-white/80">"{{ $review->display_body }}"</p>
-                            
+                            @include('tenant.components.review-quote-and-expand', [
+                                'review' => $review,
+                                'scopeId' => $sid,
+                                'quoteClass' => 'expert-review__quote mt-5 text-[14px] leading-[1.65] text-white/80',
+                                'readMoreClass' => 'text-[12px] font-semibold text-moto-amber/90 underline-offset-4 hover:text-moto-amber hover:underline',
+                            ])
+
                             <div class="mt-6 flex items-center justify-between border-t border-white/[0.04] pt-4">
                                 <div class="expert-review__stars flex gap-0.5 text-moto-amber/60" aria-hidden="true">
                                     @for($i = 0; $i < min(5, (int) $review->rating); $i++)
@@ -213,7 +222,7 @@
                 $tag = $catLabel(is_string($ck) ? $ck : null);
             @endphp
             <article
-                class="expert-review expert-review--grid flex min-w-0 flex-col rounded-[1.35rem] border border-white/[0.05] bg-white/[0.015] p-4 backdrop-blur-sm transition hover:border-white/[0.08] hover:bg-white/[0.03] sm:rounded-[1.5rem] sm:p-6 lg:p-8"
+                class="expert-review expert-review--grid flex h-full min-h-0 min-w-0 flex-col rounded-[1.35rem] border border-white/[0.05] bg-white/[0.015] p-4 backdrop-blur-sm transition hover:border-white/[0.08] hover:bg-white/[0.03] sm:rounded-[1.5rem] sm:p-6 lg:p-8"
                 @if($reviewGridIdx >= 2)
                     x-bind:class="{ 'max-lg:hidden': !reviewsMore }"
                 @endif
@@ -232,10 +241,15 @@
                 @if($tag)
                     <span class="mt-3 inline-flex w-fit rounded-lg border border-white/[0.04] bg-white/[0.01] px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-silver/60">{{ $tag }}</span>
                 @endif
-                
-                <p class="expert-review__quote mt-5 flex-1 text-[14px] leading-relaxed text-silver/85">"{{ $review->display_body }}"</p>
-                
-                <div class="mt-6 flex items-center justify-between border-t border-white/[0.03] pt-4">
+
+                @include('tenant.components.review-quote-and-expand', [
+                    'review' => $review,
+                    'scopeId' => $sid,
+                    'quoteClass' => 'expert-review__quote mt-5 text-[14px] leading-relaxed text-silver/85',
+                    'readMoreClass' => 'text-[12px] font-semibold text-moto-amber/80 underline-offset-4 hover:text-moto-amber hover:underline',
+                ])
+
+                <div class="mt-auto flex items-center justify-between border-t border-white/[0.03] pt-4">
                     <div class="expert-review__stars flex gap-0.5 text-moto-amber/40" aria-hidden="true">
                         @for($i = 0; $i < min(5, (int) $review->rating); $i++)
                             <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>

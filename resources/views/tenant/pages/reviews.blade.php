@@ -17,7 +17,7 @@
                 @else
                     <ul class="grid gap-6 sm:grid-cols-2 lg:gap-8" role="list">
                         @foreach ($reviews as $review)
-                            <li class="rounded-xl border border-white/10 bg-white/5 p-5 text-silver shadow-sm backdrop-blur-sm sm:p-6">
+                            <li class="flex h-full min-h-0 flex-col rounded-xl border border-white/10 bg-white/5 p-5 text-silver shadow-sm backdrop-blur-sm sm:p-6">
                                 <div class="flex flex-wrap items-start justify-between gap-2">
                                     <div>
                                         <p class="font-semibold text-white">{{ $review->name }}</p>
@@ -34,13 +34,22 @@
                                 @if ($review->motorcycle)
                                     <p class="mt-2 text-xs text-silver/70">{{ $review->motorcycle->name }}</p>
                                 @endif
-                                <p class="mt-3 whitespace-pre-line text-sm leading-relaxed sm:text-base">{{ $review->text }}</p>
-                                <div class="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-silver/60">
+
+                                @include('tenant.components.review-quote-and-expand', [
+                                    'review' => $review,
+                                    'scopeId' => 0,
+                                    'quoteClass' => 'mt-3 whitespace-pre-line text-sm leading-relaxed sm:text-base',
+                                    'openMark' => '«',
+                                    'closeMark' => '»',
+                                    'readMoreClass' => 'text-[13px] font-semibold text-amber-300/95 underline-offset-4 hover:text-amber-200 hover:underline',
+                                ])
+
+                                <div class="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-4 text-xs text-silver/60">
                                     @if ($review->date)
                                         <time datetime="{{ $review->date->toDateString() }}">{{ $review->date->format('d.m.Y') }}</time>
                                     @endif
-                                    @if ($review->source)
-                                        <span>{{ $review->source }}</span>
+                                    @if ($sourceLabel = $review->publicSourceLabel())
+                                        <span>{{ $sourceLabel }}</span>
                                     @endif
                                 </div>
                             </li>
@@ -60,4 +69,5 @@
             {{-- JSON для виджетов: GET /api/tenant/reviews?limit=20 --}}
         </div>
     </section>
+    @include('tenant.partials.expert-video-dialog-script')
 @endsection

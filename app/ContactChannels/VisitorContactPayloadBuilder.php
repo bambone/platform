@@ -2,6 +2,7 @@
 
 namespace App\ContactChannels;
 
+use App\Models\Tenant;
 use App\Support\Phone\IntlPhoneNormalizer;
 use Illuminate\Validation\ValidationException;
 
@@ -15,23 +16,32 @@ final class VisitorContactPayloadBuilder
     ) {}
 
     /**
-     * @param  array{phone: string, preferred_contact_channel: string, preferred_contact_value?: ?string}  $input
+     * @param  array{phone?: string|null, preferred_contact_channel: string, preferred_contact_value?: ?string}  $input
      * @return array{preferred_contact_channel: string, preferred_contact_value: ?string, visitor_contact_channels_json: list<array<string, mixed>>}
      */
     public function build(int $tenantId, array $input): array
     {
-        $phone = IntlPhoneNormalizer::normalizePhone($input['phone'] ?? '');
+        $englishUi = Tenant::query()->where('id', $tenantId)->value('theme_key') === 'expert_pr';
+
+        $phone = IntlPhoneNormalizer::normalizePhone((string) ($input['phone'] ?? ''));
         if ($phone === '' || ! IntlPhoneNormalizer::validatePhone($phone)) {
             throw ValidationException::withMessages([
-                'phone' => 'Укажите корректный телефон в международном формате.',
+                'phone' => $englishUi
+                    ? 'Enter a valid phone number (E.164), or leave phone empty when using email.'
+                    : 'Укажите корректный телефон в международном формате.',
             ]);
         }
 
         $preferred = (string) ($input['preferred_contact_channel'] ?? ContactChannelType::Phone->value);
         $allowed = $this->tenantChannels->allowedPreferredChannelIds($tenantId);
+        if ($englishUi) {
+            $allowed = array_values(array_unique([...$allowed, ContactChannelType::Email->value]));
+        }
         if (! in_array($preferred, $allowed, true)) {
             throw ValidationException::withMessages([
-                'preferred_contact_channel' => 'Выбран недопустимый способ связи.',
+                'preferred_contact_channel' => $englishUi
+                    ? 'Selected contact channel is not available.'
+                    : 'Выбран недопустимый способ связи.',
             ]);
         }
 
@@ -40,7 +50,7 @@ final class VisitorContactPayloadBuilder
         if (ContactChannelRegistry::requiresVisitorValue($preferred)) {
             if ($extraRaw === '') {
                 throw ValidationException::withMessages([
-                    'preferred_contact_value' => PreferredContactValueMessages::requiredRu($preferred),
+                    'preferred_contact_value' => PreferredContactValueMessages::required($preferred, $englishUi),
                 ]);
             }
         }
@@ -67,7 +77,7 @@ final class VisitorContactPayloadBuilder
             $u = VisitorContactNormalizer::normalizeTelegram($extraRaw);
             if ($u === null) {
                 throw ValidationException::withMessages([
-                    'preferred_contact_value' => PreferredContactValueMessages::invalidFormatRu($preferred),
+                    'preferred_contact_value' => PreferredContactValueMessages::invalidFormat($preferred, $englishUi),
                 ]);
             }
             $preferredValue = $u;
@@ -83,7 +93,7 @@ final class VisitorContactPayloadBuilder
             $url = VisitorContactNormalizer::normalizeVk($extraRaw);
             if ($url === null) {
                 throw ValidationException::withMessages([
-                    'preferred_contact_value' => PreferredContactValueMessages::invalidFormatRu($preferred),
+                    'preferred_contact_value' => PreferredContactValueMessages::invalidFormat($preferred, $englishUi),
                 ]);
             }
             $preferredValue = $url;
@@ -96,7 +106,7 @@ final class VisitorContactPayloadBuilder
             $v = VisitorContactNormalizer::normalizeMax($extraRaw);
             if ($v === null) {
                 throw ValidationException::withMessages([
-                    'preferred_contact_value' => PreferredContactValueMessages::invalidFormatRu($preferred),
+                    'preferred_contact_value' => PreferredContactValueMessages::invalidFormat($preferred, $englishUi),
                 ]);
             }
             $preferredValue = $v;
@@ -105,6 +115,18 @@ final class VisitorContactPayloadBuilder
                 $row['raw_value'] = $extraRaw;
             }
             $channels[] = $row;
+        } elseif ($preferred === ContactChannelType::Email->value) {
+            $e = strtolower(trim($extraRaw));
+            if ($e === '' || filter_var($e, FILTER_VALIDATE_EMAIL) === false) {
+                throw ValidationException::withMessages([
+                    'preferred_contact_value' => PreferredContactValueMessages::invalidFormat($preferred, $englishUi),
+                ]);
+            }
+            $preferredValue = $e;
+            $channels[] = [
+                'type' => ContactChannelType::Email->value,
+                'value' => $e,
+            ];
         }
 
         if ($preferredValue === null) {
@@ -121,6 +143,32 @@ final class VisitorContactPayloadBuilder
             'preferred_contact_channel' => $preferred,
             'preferred_contact_value' => $preferredValue,
             'visitor_contact_channels_json' => array_values($channels),
+        ];
+    }
+
+    /**
+     * Expert PR/public: reply path when the visitor leaves email without a phone (CRM still gets a valid contact row).
+     *
+     * @return array{preferred_contact_channel: string, preferred_contact_value: string, visitor_contact_channels_json: list<array<string, mixed>>}
+     */
+    public function buildEmailOnlyPreferred(string $email): array
+    {
+        $e = strtolower(trim($email));
+        if ($e === '' || filter_var($e, FILTER_VALIDATE_EMAIL) === false) {
+            throw ValidationException::withMessages([
+                'contact_email' => 'Enter a valid email address.',
+            ]);
+        }
+
+        return [
+            'preferred_contact_channel' => ContactChannelType::Email->value,
+            'preferred_contact_value' => $e,
+            'visitor_contact_channels_json' => [
+                [
+                    'type' => ContactChannelType::Email->value,
+                    'value' => $e,
+                ],
+            ],
         ];
     }
 }

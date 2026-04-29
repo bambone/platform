@@ -46,6 +46,38 @@ export function preferredContactValueInvalidMessageRu(channelId) {
     }
 }
 
+/**
+ * @param {string} channelId
+ */
+export function preferredContactValueEmptyMessageEn(channelId) {
+    switch (channelId) {
+        case 'vk':
+            return 'Enter your VK username or profile link.';
+        case 'telegram':
+            return 'Enter your Telegram username so we can reach you.';
+        case 'max':
+            return 'Enter your MAX contact.';
+        default:
+            return 'Enter details for your selected channel.';
+    }
+}
+
+/**
+ * @param {string} channelId
+ */
+export function preferredContactValueInvalidMessageEn(channelId) {
+    switch (channelId) {
+        case 'vk':
+            return 'Use a VK profile URL or short name (e.g. vk.com/username).';
+        case 'telegram':
+            return 'Use a Telegram username or a https://t.me/… link.';
+        case 'max':
+            return 'Paste a MAX link or a reachable contact.';
+        default:
+            return 'Check the contact detail for your selected channel.';
+    }
+}
+
 /** Telegram / VK: в поле допускаем только печатный ASCII (ник и URL). */
 export function preferredChannelNeedsAsciiValue(channelId) {
     return channelId === 'telegram' || channelId === 'vk';

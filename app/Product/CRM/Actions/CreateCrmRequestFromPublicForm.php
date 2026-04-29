@@ -43,7 +43,10 @@ final class CreateCrmRequestFromPublicForm
             $crm = CrmRequest::query()->create([
                 'tenant_id' => $context->tenantId,
                 'name' => $submission->name,
-                'phone' => $submission->phone,
+                /** @see PublicInboundSubmission::$phone Email-only эксперт-поток: храним пустую строку вместо null при NOT NULL. */
+                'phone' => ($submission->phone !== null && $submission->phone !== '')
+                    ? $submission->phone
+                    : '',
                 'preferred_contact_channel' => $submission->preferredContactChannel,
                 'preferred_contact_value' => $submission->preferredContactValue,
                 'visitor_contact_channels_json' => $submission->visitorContactChannelsJson,
@@ -180,7 +183,10 @@ final class CreateCrmRequestFromPublicForm
             'tenant_id' => $crm->tenant_id,
             'crm_request_id' => $crm->id,
             'name' => $submission->name,
-            'phone' => $submission->phone,
+            /** @see PublicInboundSubmission::$phone может быть null (email-only эксперт-поток): NOT NULL колонку заполняем пустой строкой. */
+            'phone' => ($submission->phone !== null && $submission->phone !== '')
+                ? $submission->phone
+                : '',
             'preferred_contact_channel' => $submission->preferredContactChannel,
             'preferred_contact_value' => $submission->preferredContactValue,
             'visitor_contact_channels_json' => $submission->visitorContactChannelsJson,

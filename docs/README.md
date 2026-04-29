@@ -2,6 +2,12 @@
 
 Стек: **Laravel 13**, **Filament 5**, **PHP 8.3**. Одно приложение: маркетинг платформы, консоль платформы, публичный сайт клиента и его админка — разделение по **хосту** и **middleware**.
 
+## Тенанты (референс)
+
+| Документ | Содержание |
+|----------|------------|
+| [tenants/magas/v1-brand-domains-and-ops.md](tenants/magas/v1-brand-domains-and-ops.md) | Magas (expert_pr): EN-first бренд, canonical host **sergeymagas.com**, nested `/services/...`, `/contacts`, prelaunch `tenant:magas:bootstrap`, CRM-форма, медиа |
+
 ## Операции
 
 | Документ | Содержание |

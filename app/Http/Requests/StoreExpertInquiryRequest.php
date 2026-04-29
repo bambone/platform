@@ -7,6 +7,8 @@ use App\ContactChannels\TenantContactChannelsStore;
 use App\Support\Phone\IntlPhoneNormalizer;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class StoreExpertInquiryRequest extends FormRequest
@@ -18,6 +20,23 @@ class StoreExpertInquiryRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $honeypot = trim((string) $this->input('website', ''));
+        if ($honeypot !== '') {
+            $t = currentTenant();
+            Log::warning('expert_inquiry_honeypot_triggered', [
+                'tenant_id' => $t?->id,
+                'ip' => $this->ip(),
+                'ua' => $this->userAgent(),
+            ]);
+            $enUi = $t !== null && $t->themeKey() === 'expert_pr';
+            throw new HttpResponseException(response()->json([
+                'success' => true,
+                'message' => $enUi
+                    ? 'Thank you. If this matches your inquiry, we will follow up shortly.'
+                    : 'Спасибо! Заявка отправлена. Мы свяжемся с вами.',
+            ]));
+        }
+
         if ($this->has('phone')) {
             $this->merge([
                 'phone' => IntlPhoneNormalizer::normalizePhone((string) $this->input('phone')),
@@ -32,6 +51,35 @@ class StoreExpertInquiryRequest extends FormRequest
             $this->merge([
                 'preferred_schedule' => trim((string) $this->input('preferred_schedule')),
             ]);
+        }
+
+        $tenantForPr = currentTenant();
+        if ($this->has('contact_email')) {
+            $this->merge([
+                'contact_email' => strtolower(trim((string) $this->input('contact_email'))),
+            ]);
+        }
+
+        if ($this->has('briefing_website')) {
+            $w = trim((string) $this->input('briefing_website'));
+            if ($w !== '' && ! preg_match('#^https?://#i', $w)) {
+                $w = 'https://'.$w;
+            }
+            $this->merge(['briefing_website' => $w]);
+        }
+
+        if ($tenantForPr !== null && $tenantForPr->themeKey() === 'expert_pr') {
+            $phNorm = IntlPhoneNormalizer::normalizePhone((string) ($this->input('phone') ?? ''));
+            $phoneOk = $phNorm !== '' && IntlPhoneNormalizer::validatePhone($phNorm);
+            $em = strtolower(trim((string) ($this->input('contact_email') ?? '')));
+            $emailOk = $em !== '' && filter_var($em, FILTER_VALIDATE_EMAIL) !== false;
+            if (! $phoneOk && $emailOk) {
+                $this->merge([
+                    'preferred_contact_channel' => ContactChannelType::Email->value,
+                    'preferred_contact_value' => $em,
+                    'phone' => '',
+                ]);
+            }
         }
 
         foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as $k) {
@@ -63,10 +111,48 @@ class StoreExpertInquiryRequest extends FormRequest
     public function rules(): array
     {
         $tenant = currentTenant();
+        $isExpertPr = $tenant !== null && $tenant->themeKey() === 'expert_pr';
+
         $allowed = $tenant !== null
             ? app(TenantContactChannelsStore::class)->allowedPreferredChannelIds($tenant->id)
             : [ContactChannelType::Phone->value];
 
+        if ($isExpertPr) {
+            $phNorm = IntlPhoneNormalizer::normalizePhone((string) ($this->input('phone') ?? ''));
+            $phoneOk = $phNorm !== '' && IntlPhoneNormalizer::validatePhone($phNorm);
+            $em = strtolower(trim((string) ($this->input('contact_email') ?? '')));
+            $emailOk = $em !== '' && filter_var($em, FILTER_VALIDATE_EMAIL) !== false;
+            if (! $phoneOk && $emailOk) {
+                $allowed[] = ContactChannelType::Email->value;
+            }
+        }
+
+        $allowed = array_values(array_unique($allowed));
+
+        $phoneRules = $isExpertPr
+            ? [
+                'nullable',
+                'string',
+                'max:28',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+                    if (! is_string($value) || ! IntlPhoneNormalizer::validatePhone($value)) {
+                        $fail('Enter a valid international phone number (E.164), or use email instead.');
+                    }
+                },
+            ]
+            : [
+                'required',
+                'string',
+                'max:16',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! is_string($value) || ! IntlPhoneNormalizer::validatePhone($value)) {
+                        $fail('Укажите корректный телефон в международном формате (например +7 для России).');
+                    }
+                },
+            ];
         $programIdRule = ['nullable', 'integer'];
         if ($tenant !== null) {
             $programIdRule[] = Rule::exists('tenant_service_programs', 'id')->where(
@@ -85,16 +171,10 @@ class StoreExpertInquiryRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
-            'phone' => [
-                'required',
-                'string',
-                'max:16',
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    if (! is_string($value) || ! IntlPhoneNormalizer::validatePhone($value)) {
-                        $fail('Укажите корректный телефон в международном формате (например +7 для России).');
-                    }
-                },
-            ],
+            'phone' => $phoneRules,
+            'contact_email' => $isExpertPr
+                ? ['nullable', 'email', 'max:255']
+                : ['nullable', 'string', 'max:255'],
             'goal_text' => ['required', 'string', 'max:2000'],
             'preferred_schedule' => [
                 'nullable',
@@ -138,7 +218,20 @@ class StoreExpertInquiryRequest extends FormRequest
                 ]),
             ],
             'company' => ['nullable', 'string', 'max:255'],
-            'briefing_website' => ['nullable', 'string', 'max:500'],
+            'briefing_website' => [
+                'nullable',
+                'string',
+                'max:500',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $s = is_string($value) ? trim($value) : '';
+                    if ($s === '') {
+                        return;
+                    }
+                    if (filter_var($s, FILTER_VALIDATE_URL) === false) {
+                        $fail('Enter a full website URL starting with https:// or leave empty.');
+                    }
+                },
+            ],
             'industry' => ['nullable', 'string', 'max:255'],
             'budget_band' => ['nullable', 'string', 'max:120'],
             'timeline_horizon' => ['nullable', 'string', 'max:160'],
@@ -162,6 +255,56 @@ class StoreExpertInquiryRequest extends FormRequest
             'needs_confirmation' => ['nullable', 'boolean'],
             'customer_goal' => ['nullable', 'string', 'max:500'],
         ];
+    }
+
+    public function withValidator(\Illuminate\Contracts\Validation\Validator $validator): void
+    {
+        $validator->after(function (\Illuminate\Contracts\Validation\Validator $v): void {
+            $tenant = currentTenant();
+            if ($tenant === null) {
+                return;
+            }
+
+            if ($tenant->themeKey() === 'expert_pr') {
+                $ph = IntlPhoneNormalizer::normalizePhone((string) ($this->input('phone') ?? ''));
+                $em = strtolower(trim((string) ($this->input('contact_email') ?? '')));
+                $phoneOk = $ph !== '' && IntlPhoneNormalizer::validatePhone($ph);
+                $emailOk = $em !== '' && filter_var($em, FILTER_VALIDATE_EMAIL);
+                if (! $phoneOk && ! $emailOk) {
+                    $v->errors()->add(
+                        'phone',
+                        'Enter a valid phone number or a work email so we can reply.',
+                    );
+                }
+                if ($phoneOk && (string) $this->input('preferred_contact_channel') === ContactChannelType::Email->value) {
+                    $v->errors()->add(
+                        'preferred_contact_channel',
+                        'Choose another channel when a valid phone is provided.',
+                    );
+                }
+            }
+
+            $ps = trim((string) $this->input('program_slug', ''));
+            if ($ps !== '') {
+                $ok = \App\Models\TenantServiceProgram::query()
+                    ->where('tenant_id', (int) $tenant->id)
+                    ->where('slug', $ps)
+                    ->where('is_visible', true)
+                    ->exists();
+                if (! $ok) {
+                    $v->errors()->add('program_slug', 'Selected program is not available.');
+                }
+            }
+
+            if ((string) $this->input('source_type') === 'program_enrollment') {
+                $pidRaw = $this->input('program_id');
+                $hasProgramId = is_numeric($pidRaw) && (int) $pidRaw > 0;
+                $slugTrimmed = trim((string) $this->input('program_slug', ''));
+                if (! $hasProgramId && $slugTrimmed === '') {
+                    $v->errors()->add('program_slug', 'Choose a program.');
+                }
+            }
+        });
     }
 
     /**

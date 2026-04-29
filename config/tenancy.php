@@ -23,11 +23,17 @@ return [
         'provision_script' => env('TENANCY_PROVISION_SCRIPT', '/usr/local/bin/rentbase-provision-domain'),
     ],
 
-    'provision_use_sudo' => (bool) env('TENANCY_PROVISION_USE_SUDO', false),
+    'provision_use_sudo' => filter_var(env('TENANCY_PROVISION_USE_SUDO', false), FILTER_VALIDATE_BOOLEAN),
 
     /*
     | When true, TenantViewResolver logs debug lines (tenant id, theme keys, logical name, resolved view).
     | Prefer explicit flag over APP_DEBUG in production tracing.
     */
-    'log_view_resolution' => (bool) env('TENANCY_LOG_VIEW_RESOLUTION', false),
+    'log_view_resolution' => filter_var(env('TENANCY_LOG_VIEW_RESOLUTION', false), FILTER_VALIDATE_BOOLEAN),
+
+    /*
+    | Production-only: redirect www.{canonical-host} → канонический base из general.domain /
+    | {@see TenantCanonicalPublicBaseUrl}. Локаль и staging обычно не production — редиректа нет.
+    */
+    'redirect_www_to_canonical_apex' => filter_var(env('TENANCY_REDIRECT_WWW_TO_CANONICAL', true), FILTER_VALIDATE_BOOLEAN),
 ];

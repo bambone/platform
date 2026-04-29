@@ -17,7 +17,13 @@ enum ContactChannelType: string
 
     case Max = 'max';
 
+    /** Внутренний канал предпочтения (expert_pr email-only и т.п.); не в {@see allForTenantConfig()} — не отдельная строка в настройках каналов Filament. */
+    case Email = 'email';
+
     /**
+     * Каналы, для которых хранится saved state в настройках тенанта (Filament).
+     * «Email» как preferred channel обрабатывается кодом формы, без отдельного переключателя в UI каналов.
+     *
      * @return list<self>
      */
     public static function allForTenantConfig(): array

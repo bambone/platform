@@ -13,6 +13,7 @@
     $contactChannelOptions = app(\App\ContactChannels\TenantContactChannelsStore::class)->publicFormPreferredOptions((int) $tenant->id);
     $contactChannelCount = count($contactChannelOptions);
     $programs = \App\Models\TenantServiceProgram::query()
+        ->where('tenant_id', (int) $tenant->id)
         ->where('is_visible', true)
         ->orderBy('sort_order')
         ->orderBy('id')

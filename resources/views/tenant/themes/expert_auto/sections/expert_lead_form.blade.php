@@ -21,10 +21,11 @@
     $sectionId = trim((string) ($data['section_id'] ?? 'expert-inquiry')) ?: 'expert-inquiry';
     $stickyLabel = trim((string) ($data['sticky_cta_label'] ?? '')) ?: ($enPr ? 'Brief' : 'Записаться');
     $programs = \App\Models\TenantServiceProgram::query()
+        ->where('tenant_id', (int) $tenant->id)
         ->where('is_visible', true)
         ->orderBy('sort_order')
         ->orderBy('id')
-        ->get(['slug', 'title']);
+        ->get(['id', 'slug', 'title']);
     $successMessage = $config?->success_message ?? ($enPr ? 'Thank you. We will get back to you shortly.' : 'Спасибо! Заявка отправлена.');
     $endpoint = route('api.tenant.expert-inquiry.store');
     $contactChannelOptions = app(\App\ContactChannels\TenantContactChannelsStore::class)->publicFormPreferredOptions((int) $tenant->id);
@@ -72,6 +73,8 @@
         <form id="expert-inquiry-form" class="expert-inquiry-form relative mt-8 space-y-5 sm:mt-10 sm:space-y-5" novalidate
               data-expert-inquiry-form
               data-expert-inquiry-main="1"
+              data-rb-expert-en-ui="{{ $enPr ? '1' : '0' }}"
+              data-rb-expert-phone-optional="{{ $enPr ? '1' : '0' }}"
               data-expert-inquiry-endpoint="{{ e($endpoint) }}"
               data-expert-inquiry-default-success="{{ e($successMessage) }}">
             @csrf
@@ -105,25 +108,34 @@
                            class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors focus:border-moto-amber/50 focus:bg-white/[0.04]">
                 </div>
                 <div data-rb-public-field="phone" class="expert-public-field-wrap min-w-0">
-                    <label for="expert-phone" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">@if($enPr) Phone @else Телефон @endif <span class="text-moto-amber expert-phone-required-star">*</span></label>
+                    <label for="expert-phone" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">@if($enPr) Phone @else Телефон @endif @if(!$enPr)<span class="text-moto-amber expert-phone-required-star">*</span>@endif</label>
                     {{-- data-rb-intl-phone: автоподключение маски из tenant-intl-phone.js (как booking-modal: handleInput + hint) --}}
-                    <input id="expert-phone" name="phone" type="tel" required autocomplete="tel" inputmode="tel"
+                    <input id="expert-phone" name="phone" type="tel" @if(!$enPr) required @endif autocomplete="tel" inputmode="tel"
                            data-rb-expert-phone
                            data-rb-intl-phone="1"
                            aria-describedby="expert-phone-hint"
                            maxlength="28"
-                           placeholder="{{ $enPr ? '+1 415 555 0100' : '+7 (999) 123-45-67' }}"
+                           placeholder="{{ $enPr ? '+44… or +1…' : '+7 (999) 123-45-67' }}"
                            class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors focus:border-moto-amber/50 focus:bg-white/[0.04]">
                     <p id="expert-phone-hint" data-rb-expert-phone-hint class="mt-2 text-[12px] leading-snug text-silver/80 sm:text-[13px]"></p>
                 </div>
             </div>
+
+            @if($enPr)
+            <div data-rb-public-field="contact_email" class="expert-public-field-wrap min-w-0">
+                <label for="expert-contact-email" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">Work email <span class="text-silver/60 text-xs font-semibold">(optional)</span></label>
+                <input id="expert-contact-email" name="contact_email" type="email" inputmode="email" autocomplete="email" maxlength="255"
+                       class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors focus:border-moto-amber/50 focus:bg-white/[0.04]">
+                <p class="mt-2 text-[12px] leading-snug text-silver/70 sm:text-[13px]">If you prefer inbox over phone, add email — either phone <em>or</em> email is enough.</p>
+            </div>
+            @endif
 
             <div data-rb-public-field="preferred_contact_channel" class="expert-public-field-wrap min-w-0">
                 <span class="mb-2 block text-sm font-semibold tracking-wide text-white/90">@if($enPr) Preferred contact @else Как с вами связаться? @endif</span>
                 @if ($contactChannelCount <= 1)
                     @php $onlyId = $contactChannelOptions[0]['id'] ?? 'phone'; @endphp
                     <input type="hidden" name="preferred_contact_channel" value="{{ e($onlyId) }}">
-                    <p class="text-[13px] leading-relaxed text-silver/70">@if($enPr) We will reply using the contacts in this form (phone is required). @else Ответим по контактам, указанным в заявке (телефон обязателен). @endif</p>
+                    <p class="text-[13px] leading-relaxed text-silver/70">@if($enPr) We reply using the phone or email left in this form — one channel is enough. @else Ответим по контактам, указанным в заявке (телефон обязателен). @endif</p>
                 @else
                     <div class="expert-channel-grid flex flex-col gap-2.5 sm:gap-3">
                         @foreach ($contactChannelOptions as $idx => $opt)
@@ -186,12 +198,12 @@
 
             @if($programs->isNotEmpty())
                 <div data-rb-public-field="program_slug" class="expert-public-field-wrap min-w-0">
-                    <label for="expert-program" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">{{ $tenant->themeKey() === 'black_duck' ? 'Пакет / направление (необязательно)' : 'Программа (необязательно)' }}</label>
+                    <label for="expert-program" class="mb-2 block text-sm font-semibold tracking-wide text-white/90">@if ($enPr) Program / service area (optional) @elseif($tenant->themeKey() === 'black_duck') Пакет / направление (необязательно) @else Программа (необязательно) @endif</label>
                     <select id="expert-program" data-rb-expert-program name="program_slug"
                             class="expert-form-input w-full min-h-[3.25rem] rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[15px] text-white outline-none transition-colors focus:border-moto-amber/50 focus:bg-white/[0.04] appearance-none">
                         <option value="" class="bg-black text-white">—</option>
                         @foreach($programs as $p)
-                            <option value="{{ e($p->slug) }}" class="bg-black text-white">{{ e($p->title) }}</option>
+                            <option value="{{ $p->slug }}" data-rb-program-db-id="{{ $p->id }}" class="bg-black text-white">{{ $p->title }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -298,7 +310,7 @@
 @once('expert-sticky-bar')
     <div id="expert-sticky-cta" class="expert-sticky-cta" data-target="{{ e($sectionId) }}" aria-hidden="false">
         <div class="expert-sticky-cta__inner">
-            <a href="#{{ e($sectionId) }}" class="expert-sticky-cta__btn tenant-btn-primary flex w-full justify-center rounded-xl py-3 text-[15px] font-bold shadow-md shadow-black/30 min-h-0">{{ e($stickyLabel) }}</a>
+            <a href="#{{ e($sectionId) }}" class="expert-sticky-cta__btn tenant-btn-primary flex w-full justify-center rounded-xl py-3 text-[15px] font-bold shadow-md shadow-black/30 min-h-0"@if($enPr) aria-label="Jump to brief form"@endif>{{ e($stickyLabel) }}</a>
         </div>
     </div>
 @endonce

@@ -10,6 +10,7 @@ use App\Product\CRM\DTO\PublicInboundSubmission;
 use App\Tenant\Expert\BlackDuckPublicCrmRequestTypeResolver;
 use App\Tenant\Expert\ExpertInquiryIntentResolver;
 use App\Tenant\Expert\TenantEnrollmentCtaConfig;
+use App\Support\Phone\IntlPhoneNormalizer;
 use App\Terminology\DomainTermKeys;
 use App\Terminology\TenantTerminologyService;
 use Illuminate\Http\JsonResponse;
@@ -27,22 +28,7 @@ final class ExpertInquiryController extends Controller
         $tenant = currentTenant();
         abort_if($tenant === null, 404);
 
-        $honeypot = trim((string) $request->input('website', ''));
         $enUi = ($tenant->themeKey() ?? '') === 'expert_pr';
-        if ($honeypot !== '') {
-            Log::warning('expert_inquiry_honeypot_triggered', [
-                'tenant_id' => $tenant->id,
-                'ip' => $request->ip(),
-                'ua' => $request->userAgent(),
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => $enUi
-                    ? 'Thank you. If this matches your inquiry, we will follow up shortly.'
-                    : 'Спасибо! Заявка отправлена. Мы свяжемся с вами.',
-            ]);
-        }
 
         $rateKey = 'expert-inquiry:'.$tenant->id.':'.($request->ip() ?? '0');
         if (RateLimiter::tooManyAttempts($rateKey, 8)) {
@@ -61,11 +47,27 @@ final class ExpertInquiryController extends Controller
 
         $validated = $request->validated();
 
-        $contact = $contactPayloadBuilder->build($tenant->id, [
-            'phone' => $validated['phone'],
-            'preferred_contact_channel' => $validated['preferred_contact_channel'],
-            'preferred_contact_value' => $validated['preferred_contact_value'] ?? null,
-        ]);
+        $normPhone = IntlPhoneNormalizer::normalizePhone((string) ($validated['phone'] ?? ''));
+        $phoneOk = $normPhone !== '' && IntlPhoneNormalizer::validatePhone($normPhone);
+        $contactEmail = strtolower(trim((string) ($validated['contact_email'] ?? '')));
+        $emailOk = $contactEmail !== '' && filter_var($contactEmail, FILTER_VALIDATE_EMAIL) !== false;
+
+        $crmPhone = $phoneOk ? $normPhone : null;
+        $crmEmail = null;
+
+        if ($tenant->themeKey() === 'expert_pr' && ! $phoneOk && $emailOk) {
+            $contact = $contactPayloadBuilder->buildEmailOnlyPreferred($contactEmail);
+            $crmEmail = $contactEmail;
+        } else {
+            $contact = $contactPayloadBuilder->build($tenant->id, [
+                'phone' => $normPhone,
+                'preferred_contact_channel' => $validated['preferred_contact_channel'],
+                'preferred_contact_value' => $validated['preferred_contact_value'] ?? null,
+            ]);
+            if ($tenant->themeKey() === 'expert_pr' && $emailOk) {
+                $crmEmail = $contactEmail;
+            }
+        }
 
         $goal = $validated['goal_text'];
         $comment = trim((string) ($validated['comment'] ?? ''));
@@ -117,6 +119,9 @@ final class ExpertInquiryController extends Controller
                 if (is_string($v) && trim($v) !== '') {
                     $payloadJson[$pk] = trim($v);
                 }
+            }
+            if ($emailOk) {
+                $payloadJson['contact_email'] = $contactEmail;
             }
         }
         if ($tenant->themeKey() === 'black_duck') {
@@ -191,11 +196,29 @@ final class ExpertInquiryController extends Controller
             $requestType = app(BlackDuckPublicCrmRequestTypeResolver::class)->resolve((int) $tenant->id, $validated);
         }
 
+        $srcTypeForPrivacy = (string) ($validated['source_type'] ?? '');
+        $needsPrivacyLegal = in_array($srcTypeForPrivacy, ['program_enrollment', 'enrollment_cta'], true)
+            || $tenant->themeKey() === 'black_duck'
+            || $tenant->themeKey() === 'expert_pr';
+
+        /** @var list<array<string, mixed>>|null $legalAcceptances */
+        $legalAcceptances = null;
+        if ($needsPrivacyLegal && filter_var($validated['privacy_accepted'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $legalAcceptances = [[
+                'type' => 'privacy_policy',
+                'accepted_at' => now()->toIso8601String(),
+                'page_url' => url('/privacy'),
+                'source_page' => $validated['page_url'] ?? $request->header('referer'),
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]];
+        }
+
         $submission = new PublicInboundSubmission(
             requestType: $requestType,
             name: $validated['name'],
-            phone: $validated['phone'],
-            email: null,
+            phone: $crmPhone,
+            email: $crmEmail,
             message: $message,
             source: $inboundSource,
             channel: 'web',
@@ -212,6 +235,7 @@ final class ExpertInquiryController extends Controller
             preferredContactChannel: $contact['preferred_contact_channel'],
             preferredContactValue: $contact['preferred_contact_value'],
             visitorContactChannelsJson: $contact['visitor_contact_channels_json'],
+            legalAcceptancesJson: $legalAcceptances,
         );
 
         $result = $createCrmRequest->handle(PublicInboundContext::tenant($tenant->id), $submission);

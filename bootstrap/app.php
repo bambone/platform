@@ -3,6 +3,7 @@
 require_once __DIR__.'/../app/helpers.php';
 
 use App\Http\Middleware\RedirectMiddleware;
+use App\Http\Middleware\RedirectWwwTenantToCanonicalPublicUrl;
 use App\Http\Middleware\ResolveTenantFromDomain;
 use App\Http\Middleware\UseRequestOriginForUrls;
 use App\Http\Responses\FilamentAccessDeniedRedirect;
@@ -32,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(prepend: [
             ResolveTenantFromDomain::class,
+            RedirectWwwTenantToCanonicalPublicUrl::class,
             RedirectMiddleware::class,
         ]);
     })

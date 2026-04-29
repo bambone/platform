@@ -8,12 +8,19 @@ use App\Http\Controllers\HomeController;
 use App\Models\Page;
 use App\Models\SeoMeta;
 use App\Models\Tenant;
+use App\Models\TenantDomain;
 use App\Models\TenantSetting;
 use App\Tenant\StorageQuota\TenantStorageQuotaService;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Idempotent bootstrap for tenant Sergei Magas (expert PR / Web3 narrative). Manual: {@see \App\Console\Commands\TenantMagasBootstrapCommand}.
+ * Idempotent bootstrap for tenant Sergei Magas (expert PR / Web3 narrative).
+ * Создание недостающих строк (не «refresh» уже существующего контента). Повторный прогон с новыми текстами секций может не заменять данные без отдельного upsert.
+ * Если тенант создался не с выбранным canonical id (из-за AUTO_INCREMENT), см. {@see \App\Console\Commands\TenantMagasReassignCanonicalIdCommand}.
+ *
+ * Manual bootstrap: {@see \App\Console\Commands\TenantMagasBootstrapCommand}.
+ * **Production primary host** для этого тенанта: `sergeymagas.com` (без фиксации по индексу массива).
+ * **Не задавать** канонический id на прод без осознанного `--canonical-id` / controlled slot.
  *
  * Canonical EN spelling: **Sergei Magas** (see TZ). Not registered in {@see \Database\Seeders\DatabaseSeeder}.
  */
@@ -21,20 +28,103 @@ final class MagasExpertBootstrap
 {
     public const SLUG = 'sergey-magas';
 
+    /**
+     * Рекомендуемый id для controlled local seed / reassign tooling; **новая вставка по умолчанию** — обычный AUTO_INCREMENT.
+     * Укажите {@see self::run()} вторым аргументом или CLI `--canonical-id=…`, если нужен конкретный слот.
+     */
+    public const CANONICAL_TENANT_ID = 5;
+
+    /** Production apex; всегда `is_primary` в `tenant_domains` для этого хоста. */
+    private const PRODUCTION_PRIMARY_HOST = 'sergeymagas.com';
+
     public const BRAND = 'Sergei Magas';
 
-    public static function run(): void
+    private static bool $publishBootstrap = false;
+
+    /** With {@see self::$publishBootstrap}: also publish legal/terms, service detail scaffolds and FAQ; default is draft/legal placeholder. */
+    private static bool $allowPlaceholderPublish = false;
+
+    /** When applying page status updates: force draft snapshot (used with or without publish). */
+    private static bool $forceDraftBootstrap = false;
+
+    private static ?int $requestedCanonicalTenantId = null;
+
+    /**
+     * @param  bool  $publishBootstrap  без флагов: новые страницы в draft, индекс запрещён в SEO; существующие published не трогаем
+     * @param  int|null  $canonicalTenantId  только при осознанном выборе слота; null = обычная вставка без фиксированного id
+     * @param  bool  $allowPlaceholderPublish  вместе с publish: опубликовать scaffold (legal, services/*, FAQ)
+     * @param  bool  $forceDraft  при обновлении существующего тенанта принудительно выставить статусы из bootstrap (draft если нет publish)
+     */
+    public static function run(
+        bool $publishBootstrap = false,
+        ?int $canonicalTenantId = null,
+        bool $allowPlaceholderPublish = false,
+        bool $forceDraft = false,
+    ): void {
+        self::$publishBootstrap = $publishBootstrap;
+        self::$requestedCanonicalTenantId = $canonicalTenantId;
+        self::$allowPlaceholderPublish = $allowPlaceholderPublish;
+        self::$forceDraftBootstrap = $forceDraft;
+        try {
+            $tid = (int) DB::table('tenants')->where('slug', self::SLUG)->value('id');
+            if ($tid <= 0) {
+                DB::transaction(static function (): void {
+                    self::createFullTenant();
+                });
+            } else {
+                DB::transaction(static function () use ($tid): void {
+                    self::ensureContent($tid);
+                });
+            }
+            $tid = (int) DB::table('tenants')->where('slug', self::SLUG)->value('id');
+            if ($tid > 0) {
+                HomeController::forgetCachedPayloadForTenant($tid);
+            }
+        } finally {
+            self::$publishBootstrap = false;
+            self::$requestedCanonicalTenantId = null;
+            self::$allowPlaceholderPublish = false;
+            self::$forceDraftBootstrap = false;
+        }
+    }
+
+    private static function canonicalTenantInsertSlot(): ?int
     {
-        $tid = (int) DB::table('tenants')->where('slug', self::SLUG)->value('id');
-        if ($tid <= 0) {
-            self::createFullTenant();
-        } else {
-            self::ensureContent($tid);
+        return self::$requestedCanonicalTenantId;
+    }
+
+    private static function isPlaceholderScaffoldSlug(string $slug): bool
+    {
+        return $slug === 'terms' || str_starts_with($slug, 'services/');
+    }
+
+    /**
+     * @return array{0: string, 1: \Illuminate\Support\Carbon|null}
+     */
+    private static function resolvedPagePublication(string $slug, $now): array
+    {
+        if (! self::$publishBootstrap) {
+            return ['draft', null];
         }
-        $tid = (int) DB::table('tenants')->where('slug', self::SLUG)->value('id');
-        if ($tid > 0) {
-            HomeController::forgetCachedPayloadForTenant($tid);
+        if ($slug === 'privacy') {
+            return ['published', $now];
         }
+        $want = self::$allowPlaceholderPublish || ! self::isPlaceholderScaffoldSlug($slug);
+
+        return $want ? ['published', $now] : ['draft', null];
+    }
+
+    private static function seoShouldIndexPage(string $slug): bool
+    {
+        if (! self::$publishBootstrap) {
+            return false;
+        }
+
+        if ($slug === 'privacy') {
+            return self::$allowPlaceholderPublish;
+        }
+
+        return self::$allowPlaceholderPublish || ! self::isPlaceholderScaffoldSlug($slug);
     }
 
     private static function createFullTenant(): void
@@ -43,7 +133,7 @@ final class MagasExpertBootstrap
         $ownerId = (int) (DB::table('users')->value('id') ?? 0);
         $now = now();
 
-        $tenantId = (int) DB::table('tenants')->insertGetId([
+        $row = [
             'name' => self::BRAND,
             'slug' => self::SLUG,
             'brand_name' => self::BRAND,
@@ -57,16 +147,25 @@ final class MagasExpertBootstrap
             'owner_user_id' => $ownerId > 0 ? $ownerId : null,
             'created_at' => $now,
             'updated_at' => $now,
-        ]);
+        ];
+        $slotId = self::canonicalTenantInsertSlot();
+        if ($slotId !== null && ! DB::table('tenants')->where('id', $slotId)->exists()) {
+            DB::table('tenants')->insert(array_merge(['id' => $slotId], $row));
+            $tenantId = $slotId;
+        } else {
+            $tenantId = (int) DB::table('tenants')->insertGetId($row);
+        }
 
         self::insertDomains($tenantId);
         self::applySettings($tenantId);
         $homeId = self::insertPage($tenantId, 'home', 'Home', false, 0, $now);
         self::insertHomeSections($tenantId, $homeId, $now);
+        self::ensureHomeFaqSection($tenantId, $homeId, $now);
         self::insertInnerPages($tenantId, $now);
-        self::seedFaqs($tenantId, $now);
+        self::ensureFaqs($tenantId, $now);
         self::seedFormConfig($tenantId, $now);
         self::seedHomeSeo($tenantId, $homeId, $now);
+        self::seedInnerPagesSeo($tenantId, $now);
         self::ensureQuota($tenantId);
     }
 
@@ -79,14 +178,14 @@ final class MagasExpertBootstrap
         if (DB::table('page_sections')->where('tenant_id', $tenantId)->where('page_id', $homeId)->doesntExist()) {
             self::insertHomeSections($tenantId, $homeId, $now);
         }
+        self::ensureHomeFaqSection($tenantId, $homeId, $now);
         self::insertInnerPages($tenantId, $now);
-        if (DB::table('faqs')->where('tenant_id', $tenantId)->doesntExist()) {
-            self::seedFaqs($tenantId, $now);
-        }
+        self::ensureFaqs($tenantId, $now);
         if (DB::table('form_configs')->where('tenant_id', $tenantId)->where('form_key', 'expert_lead')->doesntExist()) {
             self::seedFormConfig($tenantId, $now);
         }
         self::seedHomeSeo($tenantId, $homeId, $now);
+        self::seedInnerPagesSeo($tenantId, $now);
         self::ensureQuota($tenantId);
     }
 
@@ -103,28 +202,106 @@ final class MagasExpertBootstrap
      */
     private static function candidateHosts(): array
     {
-        $hosts = ['sergey-magas.rentbase.local', 'sergeymagas.com', 'sergey-magas.local', '127.0.0.1'];
-        $defaultHost = config('app.tenant_default_host');
-        if (is_string($defaultHost) && $defaultHost !== '' && ! in_array($defaultHost, $hosts, true)) {
-            array_unshift($hosts, $defaultHost);
+        $hosts = [self::PRODUCTION_PRIMARY_HOST];
+
+        if (app()->isLocal()) {
+            $hosts[] = 'sergey-magas.rentbase.local';
+            $hosts[] = 'sergey-magas.local';
+            $dh = config('app.tenant_default_host');
+            if (is_string($dh) && $dh !== ''
+                && $dh !== self::PRODUCTION_PRIMARY_HOST && ! in_array($dh, $hosts, true)) {
+                $hosts[] = $dh;
+            }
         }
 
-        return $hosts;
+        /** @var list<string> $out */
+        $out = array_values(array_unique(array_filter($hosts)));
+
+        return $out;
+    }
+
+    /**
+     * Перед любыми апдейтами is_primary: конфликт «чужой tenant» → исключение без частичного состояния.
+     *
+     * @param  list<string>  $hosts
+     */
+    private static function assertCandidateHostsAssignable(int $tenantId, array $hosts): void
+    {
+        foreach ($hosts as $host) {
+            if ($host === '') {
+                continue;
+            }
+            $existing = DB::table('tenant_domains')->where('host', $host)->first();
+            if ($existing === null) {
+                continue;
+            }
+            if ((int) $existing->tenant_id !== $tenantId) {
+                throw new \RuntimeException(
+                    "Bootstrap Magas: host «{$host}» уже привязан к другому клиенту (tenant_id {$existing->tenant_id}). Освободите домен или не запускайте bootstrap на этом окружении."
+                );
+            }
+        }
+    }
+
+    private static function mergeSslDesiredWithExisting(string $currentSsl, string $desiredSsl): string
+    {
+        if (in_array($currentSsl, [
+            TenantDomain::SSL_ISSUED,
+            TenantDomain::SSL_NOT_REQUIRED,
+        ], true)) {
+            return $currentSsl;
+        }
+
+        return $desiredSsl;
     }
 
     private static function insertDomains(int $tenantId): void
     {
-        foreach (self::candidateHosts() as $i => $host) {
-            if ($host === '' || DB::table('tenant_domains')->where('host', $host)->exists()) {
+        $hosts = self::candidateHosts();
+        self::assertCandidateHostsAssignable($tenantId, $hosts);
+
+        DB::table('tenant_domains')->where('tenant_id', $tenantId)->update([
+            'is_primary' => false,
+            'updated_at' => now(),
+        ]);
+
+        $isLocalEnv = app()->isLocal();
+
+        foreach ($hosts as $host) {
+            if ($host === '') {
                 continue;
             }
+            $existing = DB::table('tenant_domains')->where('host', $host)->first();
+            $isPrimary = $host === self::PRODUCTION_PRIMARY_HOST;
+
+            $type = $host === self::PRODUCTION_PRIMARY_HOST
+                ? TenantDomain::TYPE_CUSTOM
+                : TenantDomain::TYPE_SUBDOMAIN;
+            $sslDesired = ($host === self::PRODUCTION_PRIMARY_HOST && ! $isLocalEnv)
+                ? TenantDomain::SSL_PENDING
+                : TenantDomain::SSL_NOT_REQUIRED;
+
+            if ($existing !== null) {
+                $currentSsl = (string) ($existing->ssl_status ?? '');
+                $ssl = self::mergeSslDesiredWithExisting($currentSsl, $sslDesired);
+                DB::table('tenant_domains')->where('id', $existing->id)->update([
+                    'is_primary' => $isPrimary,
+                    'type' => $type,
+                    'ssl_status' => $ssl,
+                    'status' => 'active',
+                    'updated_at' => now(),
+                ]);
+
+                continue;
+            }
+
             DB::table('tenant_domains')->insert([
                 'tenant_id' => $tenantId,
                 'host' => $host,
-                'type' => 'subdomain',
-                'is_primary' => $i === 0,
+                'type' => $type,
+                'is_primary' => $isPrimary,
                 'status' => 'active',
-                'ssl_status' => 'not_required',
+                'ssl_status' => $sslDesired,
                 'verified_at' => now(),
                 'activated_at' => now(),
                 'created_at' => now(),
@@ -133,32 +310,72 @@ final class MagasExpertBootstrap
         }
     }
 
+    private static function tenantSettingKeyMissing(int $tenantId, string $dotKey): bool
+    {
+        $parts = explode('.', $dotKey, 2);
+        $group = $parts[0] ?? 'general';
+        $k = $parts[1] ?? $parts[0];
+
+        return ! TenantSetting::query()
+            ->where('tenant_id', $tenantId)
+            ->where('group', $group)
+            ->where('key', $k)
+            ->exists();
+    }
+
+    private static function setSettingIfMissing(int $tenantId, string $key, mixed $value, string $type): void
+    {
+        if (! self::tenantSettingKeyMissing($tenantId, $key)) {
+            return;
+        }
+        TenantSetting::setForTenant($tenantId, $key, $value, $type);
+    }
+
     private static function applySettings(int $tenantId): void
     {
-        TenantSetting::setForTenant($tenantId, 'general.site_name', self::BRAND.' — B2B PR & narrative for Web3', 'string');
-        TenantSetting::setForTenant(
+        self::setSettingIfMissing($tenantId, 'general.site_name', self::BRAND.' — B2B PR & narrative for Web3', 'string');
+        self::setSettingIfMissing(
             $tenantId,
             'general.short_description',
             'Strategic media relations, narrative and crisis-ready communications for teams building in Web3 and emerging tech.',
             'string',
         );
-        TenantSetting::setForTenant($tenantId, 'general.domain', 'https://sergeymagas.com', 'string');
-        TenantSetting::setForTenant($tenantId, 'branding.primary_color', '#c9a068', 'string');
-        TenantSetting::setForTenant($tenantId, 'contacts.email', 'hello@sergeymagas.com', 'string');
-        TenantSetting::setForTenant($tenantId, 'contacts.telegram', 'sergeimagas', 'string');
-        TenantSetting::setForTenant($tenantId, 'contacts.phone', '+1 415 555 0100', 'string');
+        self::setSettingIfMissing($tenantId, 'general.domain', 'https://sergeymagas.com', 'string');
+        self::setSettingIfMissing($tenantId, 'branding.primary_color', '#c9a068', 'string');
+        self::setSettingIfMissing($tenantId, 'contacts.email', 'hello@sergeymagas.com', 'string');
+        self::setSettingIfMissing($tenantId, 'contacts.telegram', 'sergeimagas', 'string');
+        self::setSettingIfMissing($tenantId, 'contacts.phone', '', 'string');
     }
 
     private static function ensurePage(int $tenantId, string $slug, string $name, bool $menu, int $order, $now): int
     {
         $id = (int) DB::table('pages')->where('tenant_id', $tenantId)->where('slug', $slug)->value('id');
         if ($id > 0) {
-            DB::table('pages')->where('id', $id)->update([
-                'status' => 'published',
+            $existingRow = DB::table('pages')->where('id', $id)->first();
+            $existingStatus = is_object($existingRow) ? (string) ($existingRow->status ?? 'draft') : 'draft';
+            [$stDefault, $pubAtDefault] = self::resolvedPagePublication($slug, $now);
+
+            $update = [
                 'show_in_main_menu' => $menu,
                 'main_menu_sort_order' => $order,
                 'updated_at' => $now,
-            ]);
+            ];
+
+            if (self::$forceDraftBootstrap) {
+                $update['status'] = 'draft';
+                $update['published_at'] = null;
+            } elseif (self::$publishBootstrap) {
+                $wouldDemotePublishedPlaceholder = $existingStatus === 'published'
+                    && self::isPlaceholderScaffoldSlug($slug)
+                    && ! self::$allowPlaceholderPublish;
+
+                if (! $wouldDemotePublishedPlaceholder) {
+                    $update['status'] = $stDefault;
+                    $update['published_at'] = $pubAtDefault;
+                }
+            }
+
+            DB::table('pages')->where('id', $id)->update($update);
 
             return $id;
         }
@@ -168,13 +385,15 @@ final class MagasExpertBootstrap
 
     private static function insertPage(int $tenantId, string $slug, string $name, bool $menu, int $order, $now): int
     {
+        [$status, $publishedAt] = self::resolvedPagePublication($slug, $now);
+
         return (int) DB::table('pages')->insertGetId([
             'tenant_id' => $tenantId,
             'name' => $name,
             'slug' => $slug,
             'template' => 'default',
-            'status' => 'published',
-            'published_at' => $now,
+            'status' => $status,
+            'published_at' => $publishedAt,
             'show_in_main_menu' => $menu,
             'main_menu_sort_order' => $order,
             'created_at' => $now,
@@ -187,6 +406,7 @@ final class MagasExpertBootstrap
      */
     private static function homeSeoPayload(): array
     {
+        $indexable = self::seoShouldIndexPage('home');
         $graph = [
             [
                 '@type' => 'Person',
@@ -204,12 +424,57 @@ final class MagasExpertBootstrap
             'meta_title' => self::BRAND.' — B2B PR, media & narrative for Web3 teams',
             'meta_description' => 'Conversion-focused PR partner: media outreach, narrative, reputation and crisis-ready communications. English-first site; brief form + direct channels.',
             'h1' => self::BRAND,
-            'is_indexable' => true,
-            'is_followable' => true,
+            'is_indexable' => $indexable,
+            'is_followable' => $indexable,
             'og_title' => self::BRAND.' — B2B PR for Web3',
             'og_description' => 'Strategic communications that turn technical depth into trust: coverage, narrative, and calm execution under pressure.',
             'json_ld' => $graph,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $fullUpsertPayload
+     */
+    private static function upsertPageSeoRespectingManualEdits(int $tenantId, int $pageId, array $fullUpsertPayload, $now): void
+    {
+        if ($pageId <= 0) {
+            return;
+        }
+
+        $criteria = [
+            'tenant_id' => $tenantId,
+            'seoable_type' => Page::class,
+            'seoable_id' => $pageId,
+        ];
+        /** @var SeoMeta|null $existing */
+        $existing = SeoMeta::withoutGlobalScope('tenant')->where($criteria)->first();
+
+        $indexable = (bool) ($fullUpsertPayload['is_indexable'] ?? false);
+        $followable = (bool) ($fullUpsertPayload['is_followable'] ?? $indexable);
+
+        if ($existing !== null && self::$forceDraftBootstrap) {
+            $existing->update([
+                'is_indexable' => false,
+                'is_followable' => false,
+                'updated_at' => $now,
+            ]);
+
+            return;
+        }
+
+        if ($existing !== null) {
+            $existing->update([
+                'is_indexable' => $indexable,
+                'is_followable' => $followable,
+                'updated_at' => $now,
+            ]);
+
+            return;
+        }
+
+        $fullUpsertPayload['updated_at'] = $now;
+
+        SeoMeta::withoutGlobalScope('tenant')->updateOrCreate($criteria, $fullUpsertPayload);
     }
 
     private static function seedHomeSeo(int $tenantId, int $homePageId, $now): void
@@ -221,14 +486,230 @@ final class MagasExpertBootstrap
         $graph = $payload['json_ld'];
         unset($payload['json_ld']);
 
-        SeoMeta::withoutGlobalScope('tenant')->updateOrCreate(
-            [
-                'tenant_id' => $tenantId,
-                'seoable_type' => Page::class,
-                'seoable_id' => $homePageId,
+        self::upsertPageSeoRespectingManualEdits($tenantId, $homePageId, array_merge($payload, ['json_ld' => $graph]), $now);
+    }
+
+    private static function seedInnerPagesSeo(int $tenantId, $now): void
+    {
+        foreach (self::innerPageSeoRowTemplates() as $slug => $row) {
+            $pageId = (int) DB::table('pages')->where('tenant_id', $tenantId)->where('slug', $slug)->value('id');
+            $jd = [];
+            if (isset($row['json_ld_builder']) && \is_callable($row['json_ld_builder'])) {
+                $jd = ($row['json_ld_builder'])();
+            }
+            unset($row['json_ld_builder'], $row['json_ld']);
+            $indexable = self::seoShouldIndexPage($slug);
+            $payload = array_merge($row, [
+                'is_indexable' => $indexable,
+                'is_followable' => $indexable,
+                'json_ld' => $jd,
+                'updated_at' => $now,
+            ]);
+
+            self::upsertPageSeoRespectingManualEdits($tenantId, $pageId, $payload, $now);
+        }
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private static function innerPageSeoRowTemplates(): array
+    {
+        $personRef = [
+            '@type' => 'Person',
+            'name' => self::BRAND,
+        ];
+
+        $mkService = static function (string $name, string $desc) use ($personRef): array {
+            return [
+                [
+                    '@type' => 'Service',
+                    'name' => $name,
+                    'description' => $desc,
+                    'provider' => $personRef,
+                ],
+            ];
+        };
+
+        return [
+            'services' => [
+                'meta_title' => 'PR & communications services — '.self::BRAND,
+                'meta_description' => 'Media outreach, PR strategy, reputation, crisis communications and thought leadership — structured landing pages for each lane.',
+                'h1' => 'Services',
+                'og_title' => 'Services — '.self::BRAND,
+                'og_description' => 'Choose a communications lane; each URL is optimized for discovery and brief intake.',
+                'json_ld_builder' => static fn (): array => [
+                    [
+                        '@type' => 'WebPage',
+                        'name' => 'Services — '.self::BRAND,
+                    ],
+                ],
             ],
-            array_merge($payload, ['json_ld' => $graph, 'updated_at' => $now]),
-        );
+            'services/media-outreach' => [
+                'meta_title' => 'Media outreach — '.self::BRAND,
+                'meta_description' => 'Reporter-friendly packaging, milestone sequencing and disciplined pitching for technical B2B and Web3 teams.',
+                'h1' => 'Media outreach',
+                'og_title' => 'Media outreach — '.self::BRAND,
+                'og_description' => 'Earned outreach that respects news cycles — without gimmick stacking.',
+                'json_ld_builder' => static function () use ($mkService): array {
+                    return $mkService(
+                        'Media outreach',
+                        'Packaging milestones for reporters; sequencing that respects news cycles.',
+                    );
+                },
+            ],
+            'services/pr-strategy' => [
+                'meta_title' => 'PR strategy & narrative — '.self::BRAND,
+                'meta_description' => 'Narrative spine, proof assets, channel mix and cadence aligned to your milestones.',
+                'h1' => 'PR strategy',
+                'og_title' => 'PR strategy — '.self::BRAND,
+                'og_description' => 'Coherent storyline across pitch, owned channels and media.',
+                'json_ld_builder' => static function () use ($mkService): array {
+                    return $mkService(
+                        'PR strategy',
+                        'Narrative architecture, proof points, milestones and owned channels.',
+                    );
+                },
+            ],
+            'services/reputation-management' => [
+                'meta_title' => 'Reputation management — '.self::BRAND,
+                'meta_description' => 'Monitoring, escalation paths and counter-lines that hold under scrutiny.',
+                'h1' => 'Reputation management',
+                'og_title' => 'Reputation management — '.self::BRAND,
+                'og_description' => 'Calm response patterns when narrative pressure arrives.',
+                'json_ld_builder' => static function () use ($mkService): array {
+                    return $mkService(
+                        'Reputation management',
+                        'Ongoing monitoring, counter-narrative and calm response patterns.',
+                    );
+                },
+            ],
+            'services/crisis-communications' => [
+                'meta_title' => 'Crisis communications — '.self::BRAND,
+                'meta_description' => 'Fact-first drafts, stakeholder maps, pacing and redundancy for high-stakes moments.',
+                'h1' => 'Crisis communications',
+                'og_title' => 'Crisis communications — '.self::BRAND,
+                'og_description' => 'Playbooks and approvals that keep tone disciplined under heat.',
+                'json_ld_builder' => static function () use ($mkService): array {
+                    return $mkService(
+                        'Crisis communications',
+                        'Playbooks, approvals, facts-first statements and stakeholder maps.',
+                    );
+                },
+            ],
+            'services/thought-leadership' => [
+                'meta_title' => 'Thought leadership — '.self::BRAND,
+                'meta_description' => 'Bylines, long-form, talks and proof assets that compound authority.',
+                'h1' => 'Thought leadership',
+                'og_title' => 'Thought leadership — '.self::BRAND,
+                'og_description' => 'Long-form leverage for analysts and global readers.',
+                'json_ld_builder' => static function () use ($mkService): array {
+                    return $mkService(
+                        'Thought leadership',
+                        'Bylines, long-form, talks and proof assets that compound authority.',
+                    );
+                },
+            ],
+            'cases' => [
+                'meta_title' => 'Cases & outcomes — '.self::BRAND,
+                'meta_description' => 'Illustrative outcome framing when NDAs bind specifics — swap for attributable proof when cleared.',
+                'h1' => 'Cases',
+                'og_title' => 'Cases — '.self::BRAND,
+                'og_description' => 'How proof is articulated under confidentiality constraints.',
+            ],
+            'about' => [
+                'meta_title' => 'About — '.self::BRAND,
+                'meta_description' => 'Operator-led communications for founders and protocol teams building in Web3 and deep tech.',
+                'h1' => 'About',
+                'og_title' => 'About — '.self::BRAND,
+                'og_description' => 'Background, posture and engagement model.',
+            ],
+            'contacts' => [
+                'meta_title' => 'Contacts — '.self::BRAND,
+                'meta_description' => 'Email, Telegram and the project brief — remote-first engagement by appointment.',
+                'h1' => 'Contacts',
+                'og_title' => 'Contacts — '.self::BRAND,
+                'og_description' => 'Reach out with milestone context via the channels you prefer.',
+            ],
+            'privacy' => [
+                'meta_title' => 'Privacy policy — '.self::BRAND,
+                'meta_description' => 'How contact details from forms may be processed; replace with counsel-approved copy before launch.',
+                'h1' => 'Privacy',
+                'og_title' => 'Privacy — draft',
+                'og_description' => 'Draft placeholder pending legal review.',
+            ],
+            'terms' => [
+                'meta_title' => 'Terms of use — '.self::BRAND,
+                'meta_description' => 'Limitation of liability and acceptable use; replace with counsel-approved copy before launch.',
+                'h1' => 'Terms',
+                'og_title' => 'Terms — draft',
+                'og_description' => 'Draft placeholder pending legal review.',
+            ],
+        ];
+    }
+
+    /**
+     * Данные секции FAQ на home (единый источник для первичной вставки и ensure).
+     *
+     * @return array<string, mixed>
+     */
+    private static function faqHomeSectionPresentationData(): array
+    {
+        return [
+            'section_heading' => 'FAQ preview',
+            'source' => 'faqs_table',
+        ];
+    }
+
+    private static function ensureHomeFaqSection(int $tenantId, int $homePageId, $now): void
+    {
+        if ($homePageId <= 0) {
+            return;
+        }
+
+        $shouldShow = self::$publishBootstrap && self::$allowPlaceholderPublish;
+
+        $row = DB::table('page_sections')
+            ->where('tenant_id', $tenantId)
+            ->where('page_id', $homePageId)
+            ->where('section_key', 'faq')
+            ->first();
+
+        $dataJson = json_encode(self::faqHomeSectionPresentationData(), JSON_UNESCAPED_UNICODE);
+
+        if ($row === null) {
+            if (! $shouldShow) {
+                return;
+            }
+
+            $maxSo = (int) (DB::table('page_sections')
+                ->where('tenant_id', $tenantId)
+                ->where('page_id', $homePageId)
+                ->max('sort_order') ?? 0);
+
+            DB::table('page_sections')->insert([
+                'tenant_id' => $tenantId,
+                'page_id' => $homePageId,
+                'section_key' => 'faq',
+                'section_type' => 'faq',
+                'title' => 'FAQ',
+                'data_json' => $dataJson,
+                'sort_order' => $maxSo > 0 ? $maxSo + 10 : 50,
+                'is_visible' => true,
+                'status' => 'published',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            return;
+        }
+
+        DB::table('page_sections')->where('id', $row->id)->update([
+            'is_visible' => $shouldShow,
+            'status' => $shouldShow ? 'published' : 'draft',
+            'data_json' => $dataJson,
+            'updated_at' => $now,
+        ]);
     }
 
     private static function insertHomeSections(int $tenantId, int $pageId, $now): void
@@ -335,11 +816,11 @@ final class MagasExpertBootstrap
                 'cta_goal_prefill' => 'I want a concise PR roadmap for the next milestone.',
                 'cta_repeat_after_trust' => true,
             ], 'Credibility'),
-            $mk('faq', 'faq', [
-                'section_heading' => 'FAQ preview',
-                'source' => 'faqs_table',
-            ]),
-            $mk('expert_lead_form', 'expert_lead_form', [
+        ];
+        if (self::$publishBootstrap && self::$allowPlaceholderPublish) {
+            $sections[] = $mk('faq', 'faq', self::faqHomeSectionPresentationData());
+        }
+        $sections[] = $mk('expert_lead_form', 'expert_lead_form', [
                 'heading' => 'Request a roadmap — or share a tactical brief',
                 'subheading' => 'Prefer Telegram or LinkedIn? Keep them alongside this form — CRM intake stays consistent.',
                 'form_key' => 'expert_lead',
@@ -350,8 +831,7 @@ final class MagasExpertBootstrap
                     ['text' => 'Mapped to CRM payload'],
                     ['text' => 'Privacy checkbox'],
                 ],
-            ], 'Brief form'),
-        ];
+            ], 'Brief form');
 
         foreach ($sections as $row) {
             DB::table('page_sections')->insert($row);
@@ -522,7 +1002,7 @@ final class MagasExpertBootstrap
         return [
             $mk('contacts_block', 'contacts', [
                 'heading' => 'Contacts',
-                'phone' => '+1 415 555 0100',
+                'phone' => '',
                 'email' => 'hello@sergeymagas.com',
                 'telegram' => 'sergeimagas',
                 'vk_url' => '',
@@ -587,6 +1067,11 @@ final class MagasExpertBootstrap
             .'<p>Edit in Filament; keep headings explicit for readability and GEO/AI discovery.</p>';
 
         return [
+            $mk('svc_problems', 'rich_text', [
+                'heading' => 'Where teams feel friction first',
+                'content' => '<p>Positioning drifts, fragmented proof, or coverage that does not compound — map the pain before the deliverable list. Replace with account-specific angles when you finalize copy.</p>'
+                    .'<p>Keep H2/H3 explicit for readers and for assistive/AI summarization.</p>',
+            ], 'Problems'),
             $mk('svc_body', 'rich_text', [
                 'heading' => $title,
                 'content' => $body,
@@ -633,9 +1118,14 @@ final class MagasExpertBootstrap
         };
     }
 
-    private static function seedFaqs(int $tenantId, $now): void
+    /**
+     * Bootstrap-owned FAQ вопросы (для синхронизации статуса без перезаписи ответов из Filament).
+     *
+     * @return list<array{0: string, 1: string}>
+     */
+    private static function faqBootstrapRows(): array
     {
-        $rows = [
+        return [
             ['How fast do you respond to briefs?', 'Typically within one business day for qualified B2B/Web3 inquiries; crisis-adjacent topics are triaged immediately when flagged.'],
             ['Do you work under NDA before we share technical detail?', 'Yes — we align on scope, sensitivity and spokesperson policy before materials circulate.'],
             ['What do you need in a good brief?', 'Milestone date, audience, constraints, evidence you can show, and what success looks like in plain language.'],
@@ -643,19 +1133,57 @@ final class MagasExpertBootstrap
             ['Do you replace an in‑house communicator?', 'We complement core teams — strategy plus execution bursts without forcing a hollow “agency façade”.'],
             ['What analytics will you insist on?', 'Only what aligns to your privacy stance — preferably first‑party lead signals and attributable coverage.'],
         ];
-        $n = 0;
+    }
+
+    private static function ensureFaqs(int $tenantId, $now): void
+    {
+        $rows = self::faqBootstrapRows();
+        $questions = array_map(static fn (array $r): string => $r[0], $rows);
+
+        $n = (int) (DB::table('faqs')->where('tenant_id', $tenantId)->max('sort_order') ?? 0);
+
         foreach ($rows as [$q, $a]) {
+            $exists = DB::table('faqs')->where('tenant_id', $tenantId)->where('question', $q)->exists();
+            if ($exists) {
+                continue;
+            }
             DB::table('faqs')->insert([
                 'tenant_id' => $tenantId,
                 'question' => $q,
                 'answer' => $a,
                 'category' => null,
                 'sort_order' => ($n += 10),
-                'status' => 'published',
-                'show_on_home' => true,
+                'status' => 'draft',
+                'show_on_home' => false,
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+        }
+
+        $shouldPublish = self::$publishBootstrap && self::$allowPlaceholderPublish;
+
+        if (self::$forceDraftBootstrap) {
+            DB::table('faqs')
+                ->where('tenant_id', $tenantId)
+                ->whereIn('question', $questions)
+                ->update([
+                    'status' => 'draft',
+                    'show_on_home' => false,
+                    'updated_at' => $now,
+                ]);
+
+            return;
+        }
+
+        if ($shouldPublish) {
+            DB::table('faqs')
+                ->where('tenant_id', $tenantId)
+                ->whereIn('question', $questions)
+                ->update([
+                    'status' => 'published',
+                    'show_on_home' => true,
+                    'updated_at' => $now,
+                ]);
         }
     }
 

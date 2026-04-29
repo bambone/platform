@@ -23,10 +23,11 @@
     $sectionId = trim((string) ($data['section_id'] ?? 'expert-inquiry')) ?: 'expert-inquiry';
     $stickyLabel = trim((string) ($data['sticky_cta_label'] ?? '')) ?: 'Записаться';
     $programs = \App\Models\TenantServiceProgram::query()
+        ->where('tenant_id', (int) $tenant->id)
         ->where('is_visible', true)
         ->orderBy('sort_order')
         ->orderBy('id')
-        ->get(['slug', 'title']);
+        ->get(['id', 'slug', 'title']);
     $successMessage = $config?->success_message ?? 'Спасибо! Заявка отправлена.';
     $endpoint = route('api.tenant.expert-inquiry.store');
     $contactChannelOptions = app(\App\ContactChannels\TenantContactChannelsStore::class)->publicFormPreferredOptions((int) $tenant->id);
@@ -201,7 +202,7 @@
                             class="expert-form-input w-full min-h-[3.5rem] rounded-xl border border-[rgba(28,31,38,0.22)] bg-white px-4 py-3 text-[17px] text-[rgb(24_27_32)] outline-none transition-colors focus:border-moto-amber/55 focus:ring-2 focus:ring-moto-amber/20 appearance-none">
                         <option value="" class="bg-white text-[rgb(24_27_32)]">—</option>
                         @foreach($programs as $p)
-                            <option value="{{ e($p->slug) }}" class="bg-white text-[rgb(24_27_32)]">{{ e($p->title) }}</option>
+                            <option value="{{ $p->slug }}" data-rb-program-db-id="{{ $p->id }}" class="bg-white text-[rgb(24_27_32)]">{{ $p->title }}</option>
                         @endforeach
                     </select>
                 </div>

@@ -6,7 +6,9 @@ import {
     normalizeTelegramVisitorInput,
     normalizeVkVisitorInput,
     preferredChannelNeedsAsciiValue,
+    preferredContactValueEmptyMessageEn,
     preferredContactValueEmptyMessageRu,
+    preferredContactValueInvalidMessageEn,
     preferredContactValueInvalidMessageRu,
     stripToAsciiContactTyping,
 } from './shared/visitorContactNormalize.js';
@@ -17,6 +19,9 @@ import {
     rbResolvePublicFormSuccessLead,
 } from './shared/publicFormSuccessUi.js';
 
+function expertPublicSuccessTitle(form) {
+    return form?.dataset?.rbExpertEnUi === '1' ? 'Thank you!' : RB_PUBLIC_FORM_SUCCESS_TITLE;
+}
 const EXPERT_PROGRAM_PREFILL_SLUG_KEY = 'rentbase:expert-inquiry-program-slug';
 const EXPERT_PROGRAM_PREFILL_TITLE_KEY = 'rentbase:expert-inquiry-program-title';
 const EXPERT_GOAL_PREFILL_KEY = 'rentbase:expert-inquiry-goal-text';
@@ -47,7 +52,8 @@ function applyExpertProgramPrefill(form, slug, title) {
     }
     const goal = form.querySelector('[name="goal_text"]');
     if (goal && t && goal.value.trim() === '') {
-        goal.value = `Запись на программу: «${t}»`;
+        const enUi = form.dataset.rbExpertEnUi === '1';
+        goal.value = enUi ? `Program enrollment: «${t}»` : `Запись на программу: «${t}»`;
     }
 }
 
@@ -217,6 +223,7 @@ function initPreferredChannelSync(form, meta) {
     const valueInput = form.querySelector('[data-rb-expert-pref-input]');
     const valueHint = form.querySelector('[data-rb-expert-pref-hint]');
     const valueLabel = form.querySelector('[data-rb-expert-pref-label]');
+    const enUi = form.dataset.rbExpertEnUi === '1';
     let prev = null;
 
     const sync = () => {
@@ -234,7 +241,7 @@ function initPreferredChannelSync(form, meta) {
         valueInput.toggleAttribute('required', needValue);
         if (valueLabel) {
             const lb = String(row.value_label ?? '').trim();
-            valueLabel.textContent = lb || 'Контакт для связи';
+            valueLabel.textContent = lb || (enUi ? 'Contact detail' : 'Контакт для связи');
         }
         const ph = String(row.value_placeholder ?? '').trim();
         if (ph) {
@@ -544,29 +551,51 @@ function validateClientSide(form, meta) {
     const name = form.querySelector('[name="name"]');
     const goal = form.querySelector('[name="goal_text"]');
     const phoneInput = form.querySelector('[data-rb-expert-phone]');
+    const emailInput = form.querySelector('[name="contact_email"]');
     const prefId = getSelectedPreferredChannel(form);
     const row = byId.get(prefId);
     const valueInput = form.querySelector('[data-rb-expert-pref-input]');
+    const enUi = form.dataset.rbExpertEnUi === '1';
+    const phoneOptional = form.dataset.rbExpertPhoneOptional === '1';
 
     let ok = true;
-    if (name && name.value.trim() === '') {
-        setFieldError(form, 'name', 'Укажите имя.');
+    const err = (key, ru, en) => {
+        setFieldError(form, key, enUi ? en : ru);
         ok = false;
+    };
+    if (name && name.value.trim() === '') {
+        err('name', 'Укажите имя.', 'Enter your name.');
     }
     if (goal && goal.value.trim() === '') {
-        setFieldError(form, 'goal_text', 'Опишите суть вопроса.');
-        ok = false;
+        err('goal_text', 'Опишите суть вопроса.', 'Briefly describe what you need.');
     }
     if (phoneInput) {
-        if (T) {
-            const norm = T.normalizePhone(phoneInput.value);
-            if (!T.validatePhone(norm)) {
-                setFieldError(form, 'phone', 'Укажите корректный телефон в международном формате (для РФ: +7 …).');
-                ok = false;
+        let phoneOk = false;
+        let norm = '';
+        if (T && typeof T.normalizePhone === 'function' && typeof T.validatePhone === 'function') {
+            norm = T.normalizePhone(phoneInput.value);
+            phoneOk = T.validatePhone(norm);
+        } else {
+            norm = (phoneInput.value || '').trim();
+            phoneOk = norm !== '';
+        }
+        const emailTrim = emailInput ? String(emailInput.value || '').trim() : '';
+        const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim);
+
+        if (phoneOptional) {
+            if (!(phoneOk || emailOk)) {
+                err('phone', 'Укажите телефон или email.', 'Enter a valid phone number or a work email.');
+            }
+        } else if (T) {
+            if (!phoneOk) {
+                err(
+                    'phone',
+                    'Укажите корректный телефон в международном формате (для РФ: +7 …).',
+                    'Enter a valid international phone (E.164).',
+                );
             }
         } else if (phoneInput.value.trim() === '') {
-            setFieldError(form, 'phone', 'Укажите телефон.');
-            ok = false;
+            err('phone', 'Укажите телефон.', 'Enter a phone number.');
         }
     }
     const scheduleSimple = form.querySelector('[data-rb-expert-schedule-simple]');
@@ -615,21 +644,35 @@ function validateClientSide(form, meta) {
 
     if (row?.needs_value && valueInput) {
         const pv = valueInput.value.trim();
+        const emptyRu = preferredContactValueEmptyMessageRu(prefId);
+        const emptyEn = preferredContactValueEmptyMessageEn(prefId);
         if (pv === '') {
-            setFieldError(form, 'preferred_contact_value', preferredContactValueEmptyMessageRu(prefId));
+            setFieldError(form, 'preferred_contact_value', enUi ? emptyEn : emptyRu);
             ok = false;
         } else if (prefId === 'telegram' && normalizeTelegramVisitorInput(pv) === null) {
-            setFieldError(form, 'preferred_contact_value', preferredContactValueInvalidMessageRu('telegram'));
+            setFieldError(
+                form,
+                'preferred_contact_value',
+                enUi ? preferredContactValueInvalidMessageEn('telegram') : preferredContactValueInvalidMessageRu('telegram'),
+            );
             ok = false;
         } else if (prefId === 'vk' && normalizeVkVisitorInput(pv) === null) {
-            setFieldError(form, 'preferred_contact_value', preferredContactValueInvalidMessageRu('vk'));
+            setFieldError(
+                form,
+                'preferred_contact_value',
+                enUi ? preferredContactValueInvalidMessageEn('vk') : preferredContactValueInvalidMessageRu('vk'),
+            );
             ok = false;
         }
     }
 
     const consent = form.querySelector('input[name="privacy_accepted"][type="checkbox"]');
     if (consent && !consent.checked) {
-        setFieldError(form, 'privacy_accepted', 'Нужно согласие на обработку персональных данных.');
+        setFieldError(
+            form,
+            'privacy_accepted',
+            enUi ? 'You must accept the privacy policy to continue.' : 'Нужно согласие на обработку персональных данных.',
+        );
         ok = false;
     }
 
@@ -1038,10 +1081,14 @@ function initExpertInquiryForm(form) {
         const fd = new FormData(form);
         const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         const submitBtnDefaultHtml = submitBtn?.innerHTML ?? '';
+        const submittingLabel = form.dataset.rbExpertEnUi === '1' ? 'Sending…' : 'Отправка…';
+        const networkUnavailable = form.dataset.rbExpertEnUi === '1'
+            ? 'Network unavailable. Try again shortly.'
+            : 'Сеть недоступна. Попробуйте позже.';
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.setAttribute('aria-busy', 'true');
-            submitBtn.innerHTML = 'Отправка…';
+            submitBtn.innerHTML = submittingLabel;
         }
         let submissionOk = false;
         try {
@@ -1073,10 +1120,11 @@ function initExpertInquiryForm(form) {
             }
             submissionOk = true;
             const lead = rbResolvePublicFormSuccessLead(body.message, defaultSuccessMessage);
+            const pubTitle = expertPublicSuccessTitle(form);
             const titleEl = successPanel?.querySelector('[data-rb-public-form-success-title]');
             const leadEl = successPanel?.querySelector('[data-rb-public-form-success-lead]');
             if (successPanel && titleEl && leadEl) {
-                titleEl.textContent = RB_PUBLIC_FORM_SUCCESS_TITLE;
+                titleEl.textContent = pubTitle;
                 leadEl.textContent = lead;
                 successPanel.classList.remove('hidden');
                 form.classList.add('hidden');
@@ -1089,7 +1137,7 @@ function initExpertInquiryForm(form) {
                     endpoint,
                 });
             } else if (alertEl) {
-                alertEl.textContent = `${RB_PUBLIC_FORM_SUCCESS_TITLE} ${lead}`;
+                alertEl.textContent = `${pubTitle} ${lead}`;
                 alertEl.classList.remove('hidden');
             }
             form.reset();
@@ -1104,7 +1152,7 @@ function initExpertInquiryForm(form) {
             }
         } catch {
             if (alertEl) {
-                alertEl.textContent = 'Сеть недоступна. Попробуйте позже.';
+                alertEl.textContent = networkUnavailable;
                 alertEl.classList.remove('hidden');
             }
         } finally {

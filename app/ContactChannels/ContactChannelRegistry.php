@@ -48,15 +48,18 @@ final class ContactChannelRegistry
                 'requires_visitor_value' => true,
                 'filament_action_color' => 'warning',
             ],
+            ContactChannelType::Email->value => [
+                'label' => 'Email',
+                'icon' => 'heroicon-o-envelope',
+                'default_sort' => 45,
+                'requires_visitor_value' => true,
+                'filament_action_color' => 'gray',
+            ],
         ];
     }
 
     public static function label(string $type): string
     {
-        if ($type === 'email') {
-            return 'Email';
-        }
-
         return self::definitions()[$type]['label'] ?? $type;
     }
 

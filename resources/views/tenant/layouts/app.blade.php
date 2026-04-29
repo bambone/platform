@@ -30,7 +30,7 @@
         use App\Themes\ThemeRegistry;
         $tenantFavicon = trim($branding['favicon'] ?? '');
         // expert-brand-favicon.svg — ассет автошколы; advocate без своего favicon. black_duck: не подмешиваем чужой бренд — только загруженный пакет / пусто.
-                    if ($tenantFavicon === '' && in_array(tenant()?->themeKey(), ['expert_auto', 'expert_pr', 'advocate_editorial'], true)) {
+                    if ($tenantFavicon === '' && in_array(tenant()?->themeKey(), ['expert_auto', 'advocate_editorial'], true)) {
             $tenantFavicon = app(ThemeRegistry::class)->assetUrl('expert_auto', 'expert-brand-favicon.svg', tenant());
         }
         $tenantFaviconMime = 'image/png';
@@ -687,6 +687,7 @@
 </head>
 @php
     $__tkBody = tenant()?->themeKey();
+    $__tenantEnPublicUi = ($__tkBody === 'expert_pr');
     $__tenantExpertAuto = $__tkBody === 'expert_auto';
     $__tenantAdvocateEditorial = $__tkBody === 'advocate_editorial';
     $__tenantBlackDuck = $__tkBody === 'black_duck';
@@ -710,7 +711,7 @@
         href="#tenant-main-content"
         class="rb-skip-link"
         onclick="event.preventDefault(); const m=document.getElementById('tenant-main-content'); if(!m){return;} m.scrollIntoView({behavior:'smooth',block:'start'}); try { m.focus({preventScroll:true}); } catch (e) { m.focus(); }"
-    >Перейти к основному содержимому</a>
+    >@if($__tenantEnPublicUi)Skip to main content @else Перейти к основному содержимому @endif</a>
 
     @if($__tenantExpertFamilyBody)
         {{-- Sticky footer: при коротком контенте футер у нижнего края viewport, без «полосы» под блоком футера. --}}
@@ -746,17 +747,17 @@
     @if($__fabEnabled && ($__fabWa || $__fabTg || $__fabVk))
     <div class="tenant-floating-chats fixed z-[35] flex flex-col gap-2 sm:hidden {{ $__tenantExpertFamilyBody ? 'expert-auto-floating-chats right-3' : 'right-4 bottom-[calc(88px+env(safe-area-inset-bottom))]' }}">
         @if($__fabWa)
-        <a href="https://wa.me/{{ $contacts['whatsapp'] }}" target="_blank" rel="noopener noreferrer" class="{{ $__tenantExpertFamilyBody ? 'h-10 w-10 shadow-md' : 'w-12 h-12 shadow-lg' }} bg-[#25D366] text-white flex items-center justify-center rounded-full active:scale-[0.98] transition-transform" aria-label="Написать в WhatsApp">
+        <a href="https://wa.me/{{ $contacts['whatsapp'] }}" target="_blank" rel="noopener noreferrer" class="{{ $__tenantExpertFamilyBody ? 'h-10 w-10 shadow-md' : 'w-12 h-12 shadow-lg' }} bg-[#25D366] text-white flex items-center justify-center rounded-full active:scale-[0.98] transition-transform" aria-label="{{ $__tenantEnPublicUi ? 'Message on WhatsApp' : 'Написать в WhatsApp' }}">
             <svg class="{{ $__tenantExpertFamilyBody ? 'w-5 h-5' : 'w-6 h-6' }}" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
         </a>
         @endif
         @if($__fabTg)
-        <a href="https://t.me/{{ $contacts['telegram'] }}" target="_blank" rel="noopener noreferrer" class="{{ $__tenantExpertFamilyBody ? 'h-10 w-10 shadow-md' : 'w-12 h-12 shadow-lg' }} bg-[#0088cc] text-white flex items-center justify-center rounded-full active:scale-[0.98] transition-transform" aria-label="Написать в Telegram">
+        <a href="https://t.me/{{ $contacts['telegram'] }}" target="_blank" rel="noopener noreferrer" class="{{ $__tenantExpertFamilyBody ? 'h-10 w-10 shadow-md' : 'w-12 h-12 shadow-lg' }} bg-[#0088cc] text-white flex items-center justify-center rounded-full active:scale-[0.98] transition-transform" aria-label="{{ $__tenantEnPublicUi ? 'Message on Telegram' : 'Написать в Telegram' }}">
             <svg class="{{ $__tenantExpertFamilyBody ? 'w-5 h-5' : 'w-6 h-6' }}" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
         </a>
         @endif
         @if($__fabVk)
-        <a href="{{ $contacts['vk_url'] }}" target="_blank" rel="noopener noreferrer" class="{{ $__tenantExpertFamilyBody ? 'h-10 w-10 shadow-md' : 'w-12 h-12 shadow-lg' }} bg-[#0077FF] text-white flex items-center justify-center rounded-full active:scale-[0.98] transition-transform" aria-label="Открыть ВКонтакте">
+        <a href="{{ $contacts['vk_url'] }}" target="_blank" rel="noopener noreferrer" class="{{ $__tenantExpertFamilyBody ? 'h-10 w-10 shadow-md' : 'w-12 h-12 shadow-lg' }} bg-[#0077FF] text-white flex items-center justify-center rounded-full active:scale-[0.98] transition-transform" aria-label="{{ $__tenantEnPublicUi ? 'Open Vkontakte' : 'Открыть ВКонтакте' }}">
             <svg class="{{ $__tenantExpertFamilyBody ? 'w-5 h-5' : 'w-6 h-6' }}" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.408 0 15.684 0zm2.07 16.538h-1.558c-.59 0-.77-.47-1.83-1.54-.92-.89-1.33-1.01-1.56-1.01-.32 0-.41.09-.41.53v1.41c0 .38-.12.6-1.12.6-1.65 0-3.48-1-4.76-2.86-1.22-1.8-1.77-3.84-1.77-4.25 0-.23.09-.44.53-.44h1.56c.39 0 .54.18.69.6.77 2.22 2.06 4.18 2.59 4.18.2 0 .29-.09.29-.59v-2.37c-.06-1.06-.62-1.15-.62-1.52 0-.18.15-.36.39-.36h2.45c.33 0 .45.18.45.57v3.1c0 .33.15.45.24.45.2 0 .36-.12.73-.48 1.12-1.25 1.91-3.17 1.91-3.17.14-.29.33-.44.73-.44h1.56c.47 0 .58.24.47.57-.2.91-2.1 3.08-2.1 3.08-.18.24-.24.35 0 .62.18.24.79.91 1.21 1.59.38.59.73 1.21.48 1.88z"/></svg>
         </a>
         @endif
@@ -774,7 +775,7 @@
         {{-- Если на странице нет секции формы (нет #expert-sticky-cta), показываем ссылку на заявку с главной --}}
         <div id="expert-sticky-cta-fallback" class="expert-sticky-cta hidden" hidden>
             <div class="expert-sticky-cta__inner">
-                <a href="{{ $__tenantBlackDuck ? url(\App\Tenant\BlackDuck\BlackDuckContentConstants::PRIMARY_LEAD_URL) : (route('home').'#expert-inquiry') }}" class="expert-sticky-cta__btn tenant-btn-primary flex w-full justify-center rounded-xl py-3 text-[15px] font-bold shadow-md shadow-black/30">{{ $__tenantAdvocateEditorial ? 'Связаться' : 'Записаться' }}</a>
+                <a href="{{ $__tenantBlackDuck ? url(\App\Tenant\BlackDuck\BlackDuckContentConstants::PRIMARY_LEAD_URL) : (route('home').'#expert-inquiry') }}" class="expert-sticky-cta__btn tenant-btn-primary flex w-full justify-center rounded-xl py-3 text-[15px] font-bold shadow-md shadow-black/30">{{ $__tenantEnPublicUi ? 'Send brief' : ($__tenantAdvocateEditorial ? 'Связаться' : 'Записаться') }}</a>
             </div>
         </div>
         <script>

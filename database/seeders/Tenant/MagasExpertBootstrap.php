@@ -16,6 +16,7 @@ use App\Tenant\Footer\FooterSectionType;
 use App\Tenant\Footer\TenantFooterLinkKind;
 use App\Support\Storage\TenantStorage;
 use App\Support\Storage\TenantStorageArea;
+use App\Tenant\ExpertPr\MagasHeroDefaults;
 use App\Tenant\StorageQuota\TenantStorageQuotaService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -116,7 +117,9 @@ final class MagasExpertBootstrap
 
     private static function isPlaceholderScaffoldSlug(string $slug): bool
     {
-        return $slug === 'terms' || str_starts_with($slug, 'services/');
+        return $slug === 'terms'
+            || $slug === 'cases'
+            || str_starts_with($slug, 'services/');
     }
 
     /**
@@ -141,8 +144,9 @@ final class MagasExpertBootstrap
             return false;
         }
 
-        if ($slug === 'privacy') {
-            return self::$allowPlaceholderPublish;
+        /** Юридические и заготовки кейсов не индексируем из bootstrap — финальный текст задаётся вручную в Filament. */
+        if (in_array($slug, ['privacy', 'terms', 'cases'], true)) {
+            return false;
         }
 
         return self::$allowPlaceholderPublish || ! self::isPlaceholderScaffoldSlug($slug);
@@ -193,6 +197,7 @@ final class MagasExpertBootstrap
         self::seedInnerPagesSeo($tenantId, $now);
         self::ensureQuota($tenantId);
         self::ensureMagasHomeExpertHeroPortrait($tenantId);
+        self::ensureMagasHomeMidCtaStrip($tenantId);
         self::ensureMagasTypedFooterBaseline($tenantId);
     }
 
@@ -219,12 +224,49 @@ final class MagasExpertBootstrap
         self::seedInnerPagesSeo($tenantId, $now);
         self::ensureQuota($tenantId);
         self::ensureMagasHomeExpertHeroPortrait($tenantId);
+        self::ensureMagasHomeMidCtaStrip($tenantId);
         self::ensureMagasTypedFooterBaseline($tenantId);
+    }
+
+    /**
+     * Mid-page CTA между «How we work» и био — для существующих инсталляций без повторной вставки всего home.
+     */
+    private static function ensureMagasHomeMidCtaStrip(int $tenantId): void
+    {
+        $homeId = (int) DB::table('pages')->where('tenant_id', $tenantId)->where('slug', 'home')->value('id');
+        if ($homeId <= 0) {
+            return;
+        }
+        if (DB::table('page_sections')->where('tenant_id', $tenantId)->where('page_id', $homeId)->where('section_key', 'home_mid_cta')->exists()) {
+            return;
+        }
+        $processSo = (int) (DB::table('page_sections')->where('tenant_id', $tenantId)->where('page_id', $homeId)->where('section_key', 'process_steps')->value('sort_order') ?? 0);
+        $founderSo = (int) (DB::table('page_sections')->where('tenant_id', $tenantId)->where('page_id', $homeId)->where('section_key', 'founder_expert_bio')->value('sort_order') ?? 0);
+        $sort = ($processSo > 0 && $founderSo > $processSo)
+            ? (int) floor(($processSo + $founderSo) / 2)
+            : ($founderSo > 0 ? $founderSo - 5 : 55);
+        $now = now();
+        DB::table('page_sections')->insert([
+            'tenant_id' => $tenantId,
+            'page_id' => $homeId,
+            'section_key' => 'home_mid_cta',
+            'section_type' => 'enrollment_cta_strip',
+            'title' => null,
+            'data_json' => json_encode(self::homeMidCtaData(), JSON_UNESCAPED_UNICODE),
+            'sort_order' => $sort,
+            'is_visible' => true,
+            'status' => 'published',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
     }
 
     /**
      * Типизированный подвал Filament-compatible: синхронизируются только секции с префиксом {@code magas_footer_*}
      * (группы ссылок по IA, блок «ответов», нижняя полоса). Другие включённые секции подвала на тенанте сохраняются.
+     *
+     * Секция {@code magas_footer_link_groups_v1} считается **bootstrap-owned**: при каждом прогоне команды ссылки
+     * в ней пересоздаются — ручные правки этой секции в админке следующим bootstrap будут потеряны.
      *
      * @see docs/tenants/magas/v1-brand-domains-and-ops.md
      */
@@ -238,6 +280,26 @@ final class MagasExpertBootstrap
             return;
         }
 
+        TenantFooterSection::query()->updateOrCreate(
+            ['tenant_id' => $tenantId, 'section_key' => 'magas_footer_contacts_v1'],
+            [
+                'type' => FooterSectionType::CONTACTS,
+                'title' => null,
+                'body' => null,
+                'meta_json' => [
+                    'headline' => 'Contact',
+                    'description' => '',
+                    'show_phone' => true,
+                    'show_telegram' => true,
+                    'show_whatsapp' => false,
+                    'show_email' => true,
+                    'show_address' => false,
+                ],
+                'sort_order' => 10,
+                'is_enabled' => true,
+            ],
+        );
+
         $linksSection = TenantFooterSection::query()->updateOrCreate(
             ['tenant_id' => $tenantId, 'section_key' => 'magas_footer_link_groups_v1'],
             [
@@ -247,12 +309,12 @@ final class MagasExpertBootstrap
                 'meta_json' => [
                     'headline' => '',
                     'group_titles' => [
-                        'explore' => 'Services & cases',
+                        'explore' => 'Explore',
                         'company' => 'Company',
-                        'legal' => 'Legal & contact',
+                        'legal' => 'Legal',
                     ],
                 ],
-                'sort_order' => 15,
+                'sort_order' => 20,
                 'is_enabled' => true,
             ],
         );
@@ -407,45 +469,30 @@ final class MagasExpertBootstrap
         }
     }
 
-    /** @internal */
-    private static function resolvedMagasHeroImageUrl(int $tenantId): string
-    {
-        if ($tenantId <= 0) {
-            return self::HERO_PORTRAIT_URL;
-        }
-        $ts = TenantStorage::forTrusted($tenantId);
-        foreach (['site/brand/magas-hero.png', 'site/brand/magas-hero.jpg'] as $rel) {
-            if ($ts->existsPublic($rel)) {
-                return $rel;
-            }
-        }
-
-        return self::HERO_PORTRAIT_URL;
-    }
-
     /**
-     * Портрет с жёлтым фоном: субъект справа — фокус ~76–82% по X; типографика слева уже подложена оверлеями в теме.
+     * Единый контракт секции {@code enrollment_cta_strip} между первичной вставкой главной и {@see self::ensureMagasHomeMidCtaStrip()}.
      *
      * @return array<string, mixed>
      */
-    private static function magasExpertHeroPortraitData(int $tenantId): array
+    private static function homeMidCtaData(): array
     {
         return [
-            'hero_image_url' => self::resolvedMagasHeroImageUrl($tenantId),
-            'hero_image_alt' => self::BRAND.' — B2B PR & narrative portrait',
-            'hero_background_presentation' => [
-                'version' => 2,
-                'viewport_focal_map' => [
-                    'mobile' => ['x' => 80.0, 'y' => 28.0, 'scale' => 1.0],
-                    'tablet' => ['x' => 74.0, 'y' => 17.0, 'scale' => 1.0],
-                    'desktop' => ['x' => 77.0, 'y' => 14.0, 'scale' => 1.02],
-                    'default' => ['x' => 76.0, 'y' => 12.0, 'scale' => 1.0],
-                ],
-            ],
+            'enabled' => true,
+            'section_id' => 'home-mid-cta',
+            'heading' => 'Have a milestone coming up?',
+            'lead' => 'Send a short brief — we\'ll reply with a pragmatic PR sequence.',
+            'button_label' => 'Send a brief',
+            'source_context' => 'home_mid_cta',
+            'goal_prefill' => 'We have a milestone coming up and want a pragmatic PR sequence.',
         ];
     }
 
-    /** Обновляет payload hero главной после импортов TZ / смены URL портрета. */
+    /**
+     * Подтягивает в JSON hero главной недостающие URL/alt/focal — **без перезаписи** уже заданных в админке значений.
+     * Повторный bootstrap таким образом не откатывает ручную смену херо-ассета.
+     *
+     * @see MagasHeroDefaults::mergePortraitDefaultsOnlyMissing()
+     */
     private static function ensureMagasHomeExpertHeroPortrait(int $tenantId): void
     {
         if ($tenantId <= 0) {
@@ -467,12 +514,29 @@ final class MagasExpertBootstrap
         $data = json_decode((string) ($section->data_json ?? ''), true);
         $data = is_array($data) ? $data : [];
 
-        foreach (self::magasExpertHeroPortraitData($tenantId) as $k => $v) {
-            $data[$k] = $v;
+        $merged = app(MagasHeroDefaults::class)->mergePortraitDefaultsOnlyMissing($tenantId, $data);
+
+        $sameUrl = trim((string) ($data['hero_image_url'] ?? '')) === trim((string) ($merged['hero_image_url'] ?? ''));
+        $sameAlt = trim((string) ($data['hero_image_alt'] ?? '')) === trim((string) ($merged['hero_image_alt'] ?? ''));
+        $encodeStable = static function (?array $a): string {
+            if ($a === null || $a === []) {
+                return '';
+            }
+            $j = json_encode($a, JSON_UNESCAPED_UNICODE);
+
+            return is_string($j) ? $j : '';
+        };
+
+        $bgPrev = isset($data['hero_background_presentation']) && is_array($data['hero_background_presentation'])
+            ? $encodeStable($data['hero_background_presentation']) : '';
+        $bgNext = isset($merged['hero_background_presentation']) && is_array($merged['hero_background_presentation'])
+            ? $encodeStable($merged['hero_background_presentation']) : '';
+        if ($sameUrl && $sameAlt && $bgPrev === $bgNext) {
+            return;
         }
 
         DB::table('page_sections')->where('id', (int) $section->id)->update([
-            'data_json' => json_encode($data, JSON_UNESCAPED_UNICODE),
+            'data_json' => json_encode($merged, JSON_UNESCAPED_UNICODE),
             'updated_at' => now(),
         ]);
     }
@@ -485,6 +549,9 @@ final class MagasExpertBootstrap
         $hosts = [self::PRODUCTION_PRIMARY_HOST];
 
         if (app()->isLocal()) {
+            /** OSPanel / project.ini обычно использует apex без дефиса; старые алиасы оставляем для совместимости. */
+            $hosts[] = 'sergeymagas.rentbase.local';
+            $hosts[] = 'sergeymagas.local';
             $hosts[] = 'sergey-magas.rentbase.local';
             $hosts[] = 'sergey-magas.local';
             $dh = config('app.tenant_default_host');
@@ -622,6 +689,11 @@ final class MagasExpertBootstrap
         );
         self::setSettingIfMissing($tenantId, 'general.domain', 'https://sergeymagas.com', 'string');
         self::setSettingIfMissing($tenantId, 'branding.primary_color', '#c9a068', 'string');
+        /**
+         * Резерв для публичного hero, если в секции Hero на главной ещё нет {@code hero_image_url}:
+         * читается в {@see tenant_branding_hero_url()} (редактируется в кабинете, не в Blade).
+         */
+        self::setSettingIfMissing($tenantId, 'branding.hero', self::HERO_PORTRAIT_URL, 'string');
         self::setSettingIfMissing($tenantId, 'contacts.email', 'hello@sergeymagas.com', 'string');
         self::setSettingIfMissing($tenantId, 'contacts.telegram', 'sergeimagas', 'string');
         self::setSettingIfMissing($tenantId, 'contacts.phone', '', 'string');
@@ -1055,7 +1127,7 @@ final class MagasExpertBootstrap
                 'hero_image_slot' => null,
                 'hero_video_url' => '',
                 'hero_video_poster_url' => '',
-            ], self::magasExpertHeroPortraitData($tenantId)), 'Hero'),
+            ], app(MagasHeroDefaults::class)->portraitPresentationPayload($tenantId)), 'Hero'),
             $mk('problem_cards', 'problem_cards', [
                 'section_heading' => 'Where teams feel the pressure first',
                 'section_lead' => 'You are shipping product, managing community pressure, and answering investors — all at once. The site should help the right partners say “yes” faster.',
@@ -1072,13 +1144,14 @@ final class MagasExpertBootstrap
             $mk('services_teaser', 'cards_teaser', [
                 'heading' => 'Core services',
                 'description' => 'Pick a lane; each page expands the deliverables and what “good” looks like.',
+                'card_button_variant' => 'text_link',
                 'cards' => [
-                    ['title' => 'Media outreach', 'text' => 'Targets, sequencing, pitching discipline and reporter-friendly packaging.', 'image' => null, 'button_text' => 'Open', 'button_url' => '/services/media-outreach'],
-                    ['title' => 'PR strategy', 'text' => 'Narrative architecture, proof points, milestones and owned channels.', 'image' => null, 'button_text' => 'Open', 'button_url' => '/services/pr-strategy'],
-                    ['title' => 'Reputation', 'text' => 'Ongoing monitoring, counter-narrative and calm response patterns.', 'image' => null, 'button_text' => 'Open', 'button_url' => '/services/reputation-management'],
-                    ['title' => 'Crisis communications', 'text' => 'Playbooks, approvals, facts-first statements and stakeholder maps.', 'image' => null, 'button_text' => 'Open', 'button_url' => '/services/crisis-communications'],
-                    ['title' => 'Thought leadership', 'text' => 'Bylines, long-form, talks and proof assets that compound authority.', 'image' => null, 'button_text' => 'Open', 'button_url' => '/services/thought-leadership'],
-                    ['title' => 'All services', 'text' => 'IA overview — ideal if you want the map before drilling down.', 'image' => null, 'button_text' => 'View', 'button_url' => '/services'],
+                    ['title' => 'Media outreach', 'text' => 'Targets, sequencing, pitching discipline and reporter-friendly packaging.', 'image' => null, 'button_text' => 'Explore media outreach', 'button_url' => '/services/media-outreach'],
+                    ['title' => 'PR strategy', 'text' => 'Narrative architecture, proof points, milestones and owned channels.', 'image' => null, 'button_text' => 'Shape the narrative', 'button_url' => '/services/pr-strategy'],
+                    ['title' => 'Reputation', 'text' => 'Ongoing monitoring, counter-narrative and calm response patterns.', 'image' => null, 'button_text' => 'Protect reputation', 'button_url' => '/services/reputation-management'],
+                    ['title' => 'Crisis communications', 'text' => 'Playbooks, approvals, facts-first statements and stakeholder maps.', 'image' => null, 'button_text' => 'Prepare crisis response', 'button_url' => '/services/crisis-communications'],
+                    ['title' => 'Thought leadership', 'text' => 'Bylines, long-form, talks and proof assets that compound authority.', 'image' => null, 'button_text' => 'Build authority', 'button_url' => '/services/thought-leadership'],
+                    ['title' => 'All services', 'text' => 'IA overview — ideal if you want the map before drilling down.', 'image' => null, 'button_text' => 'View all services', 'button_url' => '/services'],
                 ],
             ], 'Services preview'),
             $mk('process_steps', 'process_steps', [
@@ -1095,6 +1168,7 @@ final class MagasExpertBootstrap
                     ['title' => 'Learn & tighten', 'body' => 'What moved, what did not — folded into next sprint or launch.'],
                 ],
             ]),
+            $mk('home_mid_cta', 'enrollment_cta_strip', self::homeMidCtaData()),
             $mk('founder_expert_bio', 'founder_expert_bio', [
                 'heading' => 'Operator-led communications',
                 'lead' => 'I work hands-on with founders and core teams — not as a detached agency façade. Expect direct language, pragmatic sequencing, and media behaviour that survives scrutiny.',

@@ -63,6 +63,22 @@ final class ContactChannelRegistry
         return self::definitions()[$type]['label'] ?? $type;
     }
 
+    /**
+     * English labels on public-facing expert forms (`tenant.locale` en*).
+     */
+    public static function labelEnPublic(string $type): string
+    {
+        return match ($type) {
+            ContactChannelType::Phone->value => 'Phone',
+            ContactChannelType::Whatsapp->value => 'WhatsApp',
+            ContactChannelType::Telegram->value => 'Telegram',
+            ContactChannelType::Vk->value => 'VK',
+            ContactChannelType::Max->value => 'MAX',
+            ContactChannelType::Email->value => 'Email',
+            default => self::label($type),
+        };
+    }
+
     public static function defaultSort(string $type): int
     {
         return self::definitions()[$type]['default_sort'] ?? 99;
@@ -71,6 +87,45 @@ final class ContactChannelRegistry
     public static function requiresVisitorValue(string $type): bool
     {
         return self::definitions()[$type]['requires_visitor_value'] ?? false;
+    }
+
+    /**
+     * @see visitorValuePlaceholderRu(); keep Latin examples compatible with Telegram/VK handles.
+     */
+    public static function visitorValuePlaceholderEn(string $type): string
+    {
+        return match ($type) {
+            ContactChannelType::Telegram->value => '@username / t.me/username',
+            ContactChannelType::Vk->value => 'e.g. vk.com/username',
+            ContactChannelType::Max->value => 'MAX link or other contact hint',
+            default => '',
+        };
+    }
+
+    /**
+     * @see visitorValueFieldLabelRu()
+     */
+    public static function visitorValueFieldLabelEn(string $type): string
+    {
+        return match ($type) {
+            ContactChannelType::Vk->value => 'VK profile link or username',
+            ContactChannelType::Telegram->value => 'Telegram link or @username',
+            ContactChannelType::Max->value => 'MAX contact',
+            default => '',
+        };
+    }
+
+    /**
+     * English hints mirroring {@see visitorValueHintRu()}
+     */
+    public static function visitorValueHintEn(string $type): string
+    {
+        return match ($type) {
+            ContactChannelType::Telegram->value => 'Telegram username: latin letters, digits and underscores (typically 5–32 chars), or a https://t.me/… URL. Copy it from Telegram: Settings → Username.',
+            ContactChannelType::Vk->value => 'Paste your VK profile URL or short name. We will normalise it to https://vk.com/…',
+            ContactChannelType::Max->value => 'Add a MAX link if you have one, or short free text explaining how to reach you in MAX.',
+            default => '',
+        };
     }
 
     /**

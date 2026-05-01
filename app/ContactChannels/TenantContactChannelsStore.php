@@ -2,6 +2,7 @@
 
 namespace App\ContactChannels;
 
+use App\Models\Tenant;
 use App\Models\TenantSetting;
 
 /**
@@ -110,6 +111,9 @@ class TenantContactChannelsStore
      */
     public function publicFormPreferredOptions(int $tenantId): array
     {
+        $localeRaw = strtolower(trim((string) Tenant::query()->whereKey($tenantId)->value('locale')));
+        $enForms = str_starts_with($localeRaw, 'en');
+
         $allowed = $this->allowedPreferredChannelIds($tenantId);
         $options = [];
         foreach ($allowed as $id) {
@@ -118,17 +122,29 @@ class TenantContactChannelsStore
                 ContactChannelType::Phone->value,
                 ContactChannelType::Whatsapp->value,
             ], true);
+
+            $label = ($id === ContactChannelType::Phone->value && $enForms)
+                ? 'Phone'
+                : (($id === ContactChannelType::Phone->value && ! $enForms)
+                    ? 'Только телефон'
+                    : ($enForms
+                        ? 'Prefer '.ContactChannelRegistry::labelEnPublic($id)
+                        : 'Предпочитаю: '.ContactChannelRegistry::label($id)));
+
             $options[] = [
                 'id' => $id,
-                'label' => match ($id) {
-                    ContactChannelType::Phone->value => 'Только телефон',
-                    default => 'Предпочитаю: '.ContactChannelRegistry::label($id),
-                },
+                'label' => $label,
                 'needs_value' => $needs,
                 'needs_phone' => $needsPhone,
-                'value_hint' => $needs ? ContactChannelRegistry::visitorValueHintRu($id) : '',
-                'value_placeholder' => $needs ? ContactChannelRegistry::visitorValuePlaceholderRu($id) : '',
-                'value_label' => $needs ? ContactChannelRegistry::visitorValueFieldLabelRu($id) : '',
+                'value_hint' => $needs
+                    ? ($enForms ? ContactChannelRegistry::visitorValueHintEn($id) : ContactChannelRegistry::visitorValueHintRu($id))
+                    : '',
+                'value_placeholder' => $needs
+                    ? ($enForms ? ContactChannelRegistry::visitorValuePlaceholderEn($id) : ContactChannelRegistry::visitorValuePlaceholderRu($id))
+                    : '',
+                'value_label' => $needs
+                    ? ($enForms ? ContactChannelRegistry::visitorValueFieldLabelEn($id) : ContactChannelRegistry::visitorValueFieldLabelRu($id))
+                    : '',
             ];
         }
 

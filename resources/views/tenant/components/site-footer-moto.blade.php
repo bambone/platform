@@ -5,13 +5,25 @@
     $sections = $f['sections'] ?? [];
     $siteName = $f['site_name'] ?? ($site_name ?? '');
     $year = $f['year'] ?? (int) now()->year;
+    $isExpertPrFullFooter = $mode !== 'minimal' && tenant()?->themeKey() === 'expert_pr';
 @endphp
 <footer class="tenant-site-footer-moto relative z-10 mt-6 w-full min-w-0 sm:mt-8 @if($mode === 'minimal') border-t border-moto-amber/20 @else border-t border-white/10 @endif" role="contentinfo" aria-labelledby="tenant-moto-footer-heading">
-    <div class="mx-auto w-full min-w-0 max-w-7xl @if($mode === 'minimal') px-0 pb-0 @else px-3 pb-8 sm:px-4 md:px-8 lg:pb-10 pt-8 lg:pt-10 @endif">
+    <div @class([
+        'w-full min-w-0',
+        'mx-auto max-w-7xl px-3 pb-8 sm:px-4 md:px-8 lg:pb-10 pt-8 lg:pt-10' => $mode !== 'minimal' && ! $isExpertPrFullFooter,
+        'px-0 pb-0' => $mode === 'minimal' || $isExpertPrFullFooter,
+    ])>
         <h2 id="tenant-moto-footer-heading" class="sr-only">{{ tenant()?->themeKey() === 'expert_pr' ? 'Site footer' : 'Подвал сайта' }}</h2>
 
         @if($mode === 'minimal')
             @include('tenant.components.footer-moto.minimal', ['f' => $f])
+        @elseif($isExpertPrFullFooter)
+            @include('tenant.components.footer-moto.expert-pr-full', [
+                'f' => $f,
+                'sections' => $sections,
+                'year' => $year,
+                'siteName' => $siteName,
+            ])
         @else
             @foreach($sections as $block)
                 @php

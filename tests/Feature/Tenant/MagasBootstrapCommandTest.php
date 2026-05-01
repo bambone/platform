@@ -2,12 +2,18 @@
 
 namespace Tests\Feature\Tenant;
 
+use App\Models\Tenant;
+use App\Models\TenantSetting;
+use App\Support\Storage\TenantStorage;
+use App\Tenant\ExpertPr\MagasHeroDefaults;
+use App\Tenant\Footer\FooterSectionType;
+use App\Tenant\Footer\TenantFooterResolver;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\Tenant\MagasExpertBootstrap;
-use App\Models\TenantSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\View;
 use Tests\TestCase;
 
 class MagasBootstrapCommandTest extends TestCase
@@ -57,8 +63,25 @@ class MagasBootstrapCommandTest extends TestCase
             $heroUrl,
         );
 
-        $faviconUrl = TenantSetting::getForTenant($tid, 'branding.favicon', '');
-        $this->assertNotSame('', trim((string) $faviconUrl));
+        $faviconSource = base_path(str_replace('\\', DIRECTORY_SEPARATOR, 'docs/tenants_tz/magas/Prod-eng/favicon.ico'));
+        if (is_file($faviconSource)) {
+            $ts = TenantStorage::forTrusted($tid);
+            $this->assertTrue(
+                $ts->existsPublic('site/brand/favicon.ico'),
+                'Magas bootstrap should copy docs favicon into tenant public storage when the source file exists.',
+            );
+            $url = trim((string) TenantSetting::getForTenant($tid, 'branding.favicon', ''));
+            $path = trim((string) TenantSetting::getForTenant($tid, 'branding.favicon_path', ''));
+            $this->assertTrue(
+                $url !== '' || $path !== '',
+                'Expected branding.favicon or branding.favicon_path after favicon sync.',
+            );
+        }
+
+        $contactsFt = DB::table('tenant_footer_sections')
+            ->where('tenant_id', $tid)->where('section_key', 'magas_footer_contacts_v1')->first();
+        $this->assertNotNull($contactsFt);
+        $this->assertSame(\App\Tenant\Footer\FooterSectionType::CONTACTS, $contactsFt->type);
 
         $linkGrp = DB::table('tenant_footer_sections')
             ->where('tenant_id', $tid)->where('section_key', 'magas_footer_link_groups_v1')->first();
@@ -69,9 +92,58 @@ class MagasBootstrapCommandTest extends TestCase
             ->where('tenant_id', $tid)->where('section_key', 'magas_footer_response_v1')->first();
         $this->assertNotNull($response);
         $this->assertSame(\App\Tenant\Footer\FooterSectionType::CONDITIONS_LIST, $response->type);
+
+        $homeIdAssert = (int) DB::table('pages')->where('tenant_id', $tid)->where('slug', 'home')->value('id');
+        $this->assertGreaterThan(0, $homeIdAssert);
+        $this->assertNotNull(DB::table('page_sections')
+            ->where('tenant_id', $tid)->where('page_id', $homeIdAssert)->where('section_key', 'home_mid_cta')->first());
     }
 
-    public function test_publish_sets_substantive_pages_indexable_not_placeholder_without_flag(): void
+    public function test_publish_keeps_placeholder_pages_noindex(): void
+    {
+        Artisan::call('tenant:magas:bootstrap', [
+            '--publish' => true,
+            '--allow-placeholder-content' => true,
+        ]);
+
+        $tid = (int) DB::table('tenants')->where('slug', MagasExpertBootstrap::SLUG)->value('id');
+
+        foreach (['privacy', 'terms', 'cases'] as $slug) {
+            $pageId = (int) DB::table('pages')
+                ->where('tenant_id', $tid)
+                ->where('slug', $slug)
+                ->value('id');
+            $this->assertGreaterThan(0, $pageId, $slug);
+
+            $seo = DB::table('seo_meta')
+                ->where('tenant_id', $tid)
+                ->where('seoable_type', \App\Models\Page::class)
+                ->where('seoable_id', $pageId)
+                ->first();
+            $this->assertNotNull($seo, $slug);
+            $this->assertSame(0, (int) $seo->is_indexable, $slug);
+            $this->assertSame(0, (int) $seo->is_followable, $slug);
+        }
+    }
+
+    public function test_publish_without_placeholder_keeps_cases_draft(): void
+    {
+        Artisan::call('tenant:magas:bootstrap', [
+            '--publish' => true,
+        ]);
+
+        $tid = (int) DB::table('tenants')->where('slug', MagasExpertBootstrap::SLUG)->value('id');
+
+        $cases = DB::table('pages')
+            ->where('tenant_id', $tid)
+            ->where('slug', 'cases')
+            ->first();
+
+        $this->assertNotNull($cases);
+        $this->assertSame('draft', $cases->status);
+    }
+
+    public function test_publish_indexes_home_but_keeps_privacy_noindex_without_placeholder_flag(): void
     {
         Artisan::call('tenant:magas:bootstrap', [
             '--publish' => true,
@@ -99,6 +171,23 @@ class MagasBootstrapCommandTest extends TestCase
             ->first();
         $this->assertNotNull($seoPrivacy);
         $this->assertSame(0, (int) $seoPrivacy->is_indexable);
+    }
+
+    public function test_magas_footer_resolves_as_full_after_bootstrap(): void
+    {
+        Artisan::call('tenant:magas:bootstrap', []);
+
+        $tenant = Tenant::query()->where('slug', MagasExpertBootstrap::SLUG)->firstOrFail();
+
+        $footer = app(TenantFooterResolver::class)->resolve($tenant);
+
+        $this->assertSame('full', $footer['mode']);
+
+        $types = collect($footer['sections'] ?? [])->pluck('type')->all();
+
+        $this->assertContains(FooterSectionType::CONTACTS, $types);
+        $this->assertContains(FooterSectionType::LINK_GROUPS, $types);
+        $this->assertContains(FooterSectionType::CONDITIONS_LIST, $types);
     }
 
     public function test_sergeymagas_com_is_only_primary_domain(): void
@@ -192,5 +281,90 @@ class MagasBootstrapCommandTest extends TestCase
 
         $tid = (int) DB::table('tenants')->where('slug', MagasExpertBootstrap::SLUG)->value('id');
         $this->assertSame(88, $tid);
+    }
+
+    /** Рендер публичной главной без View not found для typed footer (`expert-pr-full`). */
+    public function test_magas_published_home_renders_full_footer_without_view_errors(): void
+    {
+        Artisan::call('tenant:magas:bootstrap', [
+            '--publish' => true,
+        ]);
+
+        $response = $this->call('GET', 'http://sergeymagas.com/');
+
+        $response->assertOk();
+        $body = $response->getContent();
+        $this->assertStringContainsString('Sergei Magas', $body);
+        $this->assertStringContainsString('Explore', $body);
+        $this->assertStringContainsString('expert-pr-footer__contacts', $body);
+        $this->assertStringContainsString('Response &amp; follow-up', $body);
+    }
+
+    public function test_cards_teaser_text_link_and_button_contract_in_default_partial(): void
+    {
+        $linkHtml = trim(View::make('tenant.themes.default.sections.cards-teaser', [
+            'data' => [
+                'heading' => '',
+                'description' => '',
+                'card_button_variant' => 'text_link',
+                'cards' => [
+                    [
+                        'title' => 'Lane',
+                        'text' => 'Copy',
+                        'image' => null,
+                        'button_text' => 'Explore media outreach',
+                        'button_url' => '/services/media-outreach',
+                    ],
+                ],
+            ],
+        ])->render());
+
+        $this->assertStringContainsString('Explore media outreach', $linkHtml);
+        $this->assertStringContainsString('→', $linkHtml);
+
+        $buttonHtml = trim(View::make('tenant.themes.default.sections.cards-teaser', [
+            'data' => [
+                'heading' => '',
+                'description' => '',
+                'card_button_variant' => 'button',
+                'cards' => [
+                    [
+                        'title' => 'Svc',
+                        'text' => 'Body',
+                        'image' => null,
+                        'button_text' => 'Details',
+                        'button_url' => '/services/foo',
+                    ],
+                ],
+            ],
+        ])->render());
+
+        $this->assertStringContainsString('rounded-lg border', $buttonHtml);
+        $this->assertSame(0, preg_match('#→#u', $buttonHtml));
+    }
+
+    public function test_magas_hero_defaults_fill_persists_once_then_noops_when_already_hydrated(): void
+    {
+        Artisan::call('tenant:magas:bootstrap', []);
+
+        $tid = (int) DB::table('tenants')->where('slug', MagasHeroDefaults::SLUG)->value('id');
+        $this->assertGreaterThan(0, $tid);
+        $homeId = (int) DB::table('pages')->where('tenant_id', $tid)->where('slug', 'home')->value('id');
+        $heroId = (int) DB::table('page_sections')
+            ->where('tenant_id', $tid)->where('page_id', $homeId)->where('section_key', 'expert_hero')
+            ->value('id');
+
+        DB::table('page_sections')->where('id', $heroId)->update([
+            'data_json' => json_encode(array_merge(
+                json_decode((string) DB::table('page_sections')->where('id', $heroId)->value('data_json'), true) ?: [],
+                ['hero_image_url' => '', 'hero_image_alt' => ''],
+            ), JSON_UNESCAPED_UNICODE),
+        ]);
+
+        $changed = app(MagasHeroDefaults::class)->fillMissingHomeHeroImage($tid);
+        $this->assertTrue($changed);
+
+        // Second run: DB already hydrated — no redundant write cycle for callers relying on truthiness.
+        $this->assertFalse(app(MagasHeroDefaults::class)->fillMissingHomeHeroImage($tid));
     }
 }

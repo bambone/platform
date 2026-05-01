@@ -290,38 +290,29 @@ body.expert-auto-theme .tenant-thin-scrollbar::-webkit-scrollbar-thumb:hover {
     }
 
     .expert-hero-cinematic--photo .expert-hero-cinematic__photo {
-        /* Согласовано с превью hero: по высоте секции, боковые поля — через wash на layer (см. ::after). */
+        /* Согласовано с превью hero: по высоте секции; альфа по горизонтали на img — стабильнее с масштабом слоя. */
         object-fit: contain;
         filter: saturate(0.98) contrast(1.02) brightness(1.08);
-    }
-
-    .expert-hero-cinematic--photo .expert-hero-cinematic__photo-layer {
-        transform: scale(calc(var(--expert-hero-base-desktop, 1.03) * var(--expert-hero-scale-desktop, 1)));
-        transform-origin: var(--expert-hero-focal-x-desktop, 76%) var(--expert-hero-focal-y-desktop, 10%);
-        /*
-         * Горизонтальный alpha-mask: боковины (букв-бокс / «коробка» JPG) растворяются в stage-ambient,
-         * без жёсткой вертикали — см. tenant-expert-pr.css для более широкого feather под жёлтый фон.
-         */
         -webkit-mask-image: linear-gradient(
             to right,
             transparent 0%,
-            rgba(0, 0, 0, 0.45) 4%,
-            rgba(0, 0, 0, 0.92) 10%,
-            #000 16%,
-            #000 84%,
-            rgba(0, 0, 0, 0.92) 90%,
-            rgba(0, 0, 0, 0.45) 96%,
+            rgba(0, 0, 0, 0.4) 5%,
+            rgba(0, 0, 0, 0.95) 12%,
+            #000 18%,
+            #000 82%,
+            rgba(0, 0, 0, 0.95) 88%,
+            rgba(0, 0, 0, 0.4) 95%,
             transparent 100%
         );
         mask-image: linear-gradient(
             to right,
             transparent 0%,
-            rgba(0, 0, 0, 0.45) 4%,
-            rgba(0, 0, 0, 0.92) 10%,
-            #000 16%,
-            #000 84%,
-            rgba(0, 0, 0, 0.92) 90%,
-            rgba(0, 0, 0, 0.45) 96%,
+            rgba(0, 0, 0, 0.4) 5%,
+            rgba(0, 0, 0, 0.95) 12%,
+            #000 18%,
+            #000 82%,
+            rgba(0, 0, 0, 0.95) 88%,
+            rgba(0, 0, 0, 0.4) 95%,
             transparent 100%
         );
         -webkit-mask-size: 100% 100%;
@@ -330,9 +321,12 @@ body.expert-auto-theme .tenant-thin-scrollbar::-webkit-scrollbar-thumb:hover {
         mask-repeat: no-repeat;
     }
 
-    /*
-     * Лёгкий цветовой wash только у самых краёв (поверх mask): поджимает остаточный жёлтый к тону подложки.
-     */
+    .expert-hero-cinematic--photo .expert-hero-cinematic__photo-layer {
+        transform: scale(calc(var(--expert-hero-base-desktop, 1.03) * var(--expert-hero-scale-desktop, 1)));
+        transform-origin: var(--expert-hero-focal-x-desktop, 76%) var(--expert-hero-focal-y-desktop, 10%);
+    }
+
+    /* Цветовой wash у кромок (поверх фото): добивает жёлтый к тону stage-ambient. */
     .expert-hero-cinematic--photo .expert-hero-cinematic__photo-layer::after {
         content: "";
         position: absolute;
@@ -343,13 +337,13 @@ body.expert-auto-theme .tenant-thin-scrollbar::-webkit-scrollbar-thumb:hover {
             linear-gradient(
                 90deg,
                 var(--expert-hero-edge-wash-left) 0%,
-                transparent 14%,
+                transparent 20%,
                 transparent 100%
             ),
             linear-gradient(
                 270deg,
                 var(--expert-hero-edge-wash-right) 0%,
-                transparent 14%,
+                transparent 20%,
                 transparent 100%
             );
     }
@@ -368,10 +362,36 @@ body.expert-auto-theme .tenant-thin-scrollbar::-webkit-scrollbar-thumb:hover {
         min-height: 100svh;
     }
 
-    /* Mobile focal: vars from resolver; filter tuned for small screens */
+    /* Mobile focal: vars from resolver; горизонтальный feather жёлтого фона портрета */
     .expert-hero-cinematic--photo .expert-hero-cinematic__photo {
         object-position: var(--expert-hero-focal-x-mobile, 82%) var(--expert-hero-focal-y-mobile, 18%);
         filter: saturate(0.98) contrast(1.04) brightness(1.06);
+        -webkit-mask-image: linear-gradient(
+            to right,
+            transparent 0%,
+            rgba(0, 0, 0, 0.35) 4%,
+            rgba(0, 0, 0, 0.92) 10%,
+            #000 16%,
+            #000 84%,
+            rgba(0, 0, 0, 0.92) 90%,
+            rgba(0, 0, 0, 0.35) 96%,
+            transparent 100%
+        );
+        mask-image: linear-gradient(
+            to right,
+            transparent 0%,
+            rgba(0, 0, 0, 0.35) 4%,
+            rgba(0, 0, 0, 0.92) 10%,
+            #000 16%,
+            #000 84%,
+            rgba(0, 0, 0, 0.92) 90%,
+            rgba(0, 0, 0, 0.35) 96%,
+            transparent 100%
+        );
+        -webkit-mask-size: 100% 100%;
+        mask-size: 100% 100%;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
     }
 
     .expert-hero-cinematic--photo .expert-hero-cinematic__photo-layer {

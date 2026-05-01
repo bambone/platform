@@ -21,6 +21,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -214,9 +215,12 @@ final class ExpertHeroBlueprint extends ExpertSectionBlueprint
                 resolveSyncDefault: fn (Get $get): bool => (bool) ($get('data_json.hero_focal_sync_mobile_desktop') ?? false),
             ),
             Grid::make(['default' => 1, 'lg' => 3])
+                ->extraAttributes([
+                    'data-svc-focal-numeric-extras' => 'true',
+                    'class' => 'svc-hero-focal-numeric-grid items-stretch gap-4 [&_.fi-fieldset]:flex [&_.fi-fieldset]:min-h-0 [&_.fi-fieldset]:h-full [&_.fi-fieldset]:flex-col',
+                ])
                 ->schema([
-                    Section::make('Кадр mobile (узкий экран)')
-                        ->description('До 767px; дублирует превью (фокус + zoom).')
+                    Fieldset::make('Mobile · до 767 px')
                         ->schema([
                             TextInput::make('data_json.hero_background_presentation.viewport_focal_map.mobile.x')
                                 ->label('X %')
@@ -242,9 +246,10 @@ final class ExpertHeroBlueprint extends ExpertSectionBlueprint
                                 ->step(PageHeroCoverPresentationProfile::FRAMING_SCALE_STEP)
                                 ->required()
                                 ->live(debounce: 400),
-                        ])->columns(3),
-                    Section::make('Кадр tablet')
-                        ->description('768–1023px; отдельно от mobile и desktop.')
+                        ])
+                        ->columns(3)
+                        ->compact(),
+                    Fieldset::make('Tablet · 768–1023 px')
                         ->schema([
                             TextInput::make('data_json.hero_background_presentation.viewport_focal_map.tablet.x')
                                 ->label('X %')
@@ -270,9 +275,10 @@ final class ExpertHeroBlueprint extends ExpertSectionBlueprint
                                 ->step(PageHeroCoverPresentationProfile::FRAMING_SCALE_STEP)
                                 ->required()
                                 ->live(debounce: 400),
-                        ])->columns(3),
-                    Section::make('Кадр desktop')
-                        ->description('От 1024px')
+                        ])
+                        ->columns(3)
+                        ->compact(),
+                    Fieldset::make('Desktop · от 1024 px')
                         ->schema([
                             TextInput::make('data_json.hero_background_presentation.viewport_focal_map.desktop.x')
                                 ->label('X %')
@@ -298,7 +304,9 @@ final class ExpertHeroBlueprint extends ExpertSectionBlueprint
                                 ->step(PageHeroCoverPresentationProfile::FRAMING_SCALE_STEP)
                                 ->required()
                                 ->live(debounce: 400),
-                        ])->columns(3),
+                        ])
+                        ->columns(3)
+                        ->compact(),
                 ])
                 ->columnSpanFull(),
             TextInput::make('data_json.hero_image_alt')

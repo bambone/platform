@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Mail\PlatformMarketingContactMail;
 use App\Models\CrmRequest;
+use App\Product\Settings\MarketingContentResolver;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -29,9 +30,12 @@ class PlatformMarketingContactTest extends TestCase
 
     public function test_contact_get_renders_form_on_central_marketing_host(): void
     {
+        $pm = app(MarketingContentResolver::class)->resolved();
+        $contactTitle = (string) (($pm['contact_page']['default_title'] ?? null) ?: 'Напишите нам');
+
         $this->call('GET', 'http://apex.test/contact')
             ->assertOk()
-            ->assertSee('Связаться с RentBase', false)
+            ->assertSee($contactTitle, false)
             ->assertSee('Тема обращения', false);
     }
 

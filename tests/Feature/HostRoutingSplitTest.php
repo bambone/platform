@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Tenant;
 use App\Models\TenantDomain;
+use App\Product\Settings\MarketingContentResolver;
 use App\Tenant\TenantResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -16,6 +17,31 @@ use Tests\TestCase;
 class HostRoutingSplitTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * Mirrors typography in {@see resources/views/platform/marketing/partials/home-hero.blade.php}
+     * ({!! str_replace(...) !!}).
+     */
+    private static function platformMarketingHeroHeadlineForAssert(string $headline): string
+    {
+        return str_replace(
+            [' для ', ' с ', ' в ', ' и '],
+            [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'],
+            $headline,
+        );
+    }
+
+    /**
+     * Mirrors hero subtitle typography in {@see resources/views/platform/marketing/partials/home-hero.blade.php}.
+     */
+    private static function platformMarketingHeroSubtitleForAssert(string $subtitle): string
+    {
+        return str_replace(
+            [' для ', ' с ', ' в ', ' и ', ' — '],
+            [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;', '&nbsp;— '],
+            $subtitle,
+        );
+    }
 
     protected function setUp(): void
     {
@@ -33,12 +59,14 @@ class HostRoutingSplitTest extends TestCase
 
     public function test_central_domain_root_returns_marketing_landing(): void
     {
-        $pm = config('platform_marketing');
+        $pm = app(MarketingContentResolver::class)->resolved();
+        $variant = $pm['hero_variant'] ?? 'c';
+        $headline = $pm['hero'][$variant] ?? $pm['hero']['c'];
 
         $this->getWithHost('apex.test', '/')
             ->assertOk()
-            ->assertSee('Операционная система', false)
-            ->assertSee('бронирования', false)
+            ->assertSee(self::platformMarketingHeroHeadlineForAssert((string) $headline), false)
+            ->assertSee(self::platformMarketingHeroSubtitleForAssert((string) ($pm['hero_subtitle'] ?? '')), false)
             ->assertSee($pm['cta']['primary'], false)
             ->assertSee($pm['cta']['secondary'], false)
             ->assertSee($pm['cta']['discuss'], false);
@@ -107,9 +135,13 @@ class HostRoutingSplitTest extends TestCase
 
         Cache::flush();
 
+        $pm = app(MarketingContentResolver::class)->resolved();
+        $variant = $pm['hero_variant'] ?? 'c';
+        $centralHeroPlain = $pm['hero'][$variant] ?? $pm['hero']['c'];
+
         $this->getWithHost('splitpub.apex.test', '/')
             ->assertOk()
-            ->assertDontSee('Операционная система для бизнеса с бронированиями', false);
+            ->assertDontSee(self::platformMarketingHeroHeadlineForAssert((string) $centralHeroPlain), false);
     }
 
     public function test_tenant_subdomain_admin_login_is_not_404(): void

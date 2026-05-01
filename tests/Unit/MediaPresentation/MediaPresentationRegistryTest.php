@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\MediaPresentation;
 
+use App\MediaPresentation\Contracts\SlotPresentationProfileInterface;
 use App\MediaPresentation\MediaPresentationRegistry;
 use App\MediaPresentation\Profiles\PageHeroCoverPresentationProfile;
 use App\MediaPresentation\Profiles\ServiceProgramCardPresentationProfile;
@@ -29,6 +30,7 @@ class MediaPresentationRegistryTest extends TestCase
     {
         $this->assertTrue(MediaPresentationRegistry::slotExists(PageHeroCoverPresentationProfile::SLOT_ID));
         $p = MediaPresentationRegistry::profile(PageHeroCoverPresentationProfile::SLOT_ID);
+        $this->assertInstanceOf(SlotPresentationProfileInterface::class, $p);
         $this->assertSame(PageHeroCoverPresentationProfile::SLOT_ID, $p->slotId());
     }
 }

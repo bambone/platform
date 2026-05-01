@@ -53,38 +53,42 @@ body.expert-auto-theme.expert-pr-theme .expert-hero-cinematic--photo .expert-her
 @media (min-width: 1024px) {
     body.expert-auto-theme.expert-pr-theme .expert-hero-cinematic--photo .expert-hero-cinematic__photo {
         filter: saturate(1.03) contrast(1.02) brightness(1.08);
-    }
-
-    /* Шире alpha-feather: жёлтый фон портрета плавно уходит в stage-ambient / premium-bg. */
-    body.expert-auto-theme.expert-pr-theme .expert-hero-cinematic--photo .expert-hero-cinematic__photo-layer {
+        /*
+         * Маска только на <img> (см. tenant-expert-auto.css). На .photo-layer маску не вешаем —
+         * иначе двойное клипование даёт «вертикаль» у жёлтого. Здесь — более широкий feather под PR.
+         */
         -webkit-mask-image: linear-gradient(
             to right,
             transparent 0%,
-            rgba(0, 0, 0, 0.35) 5%,
-            rgba(0, 0, 0, 0.88) 12%,
-            #000 22%,
-            #000 78%,
-            rgba(0, 0, 0, 0.88) 88%,
-            rgba(0, 0, 0, 0.35) 95%,
+            rgba(0, 0, 0, 0.42) 6%,
+            rgba(0, 0, 0, 0.92) 14%,
+            #000 24%,
+            #000 76%,
+            rgba(0, 0, 0, 0.92) 86%,
+            rgba(0, 0, 0, 0.42) 94%,
             transparent 100%
         );
         mask-image: linear-gradient(
             to right,
             transparent 0%,
-            rgba(0, 0, 0, 0.35) 5%,
-            rgba(0, 0, 0, 0.88) 12%,
-            #000 22%,
-            #000 78%,
-            rgba(0, 0, 0, 0.88) 88%,
-            rgba(0, 0, 0, 0.35) 95%,
+            rgba(0, 0, 0, 0.42) 6%,
+            rgba(0, 0, 0, 0.92) 14%,
+            #000 24%,
+            #000 76%,
+            rgba(0, 0, 0, 0.92) 86%,
+            rgba(0, 0, 0, 0.42) 94%,
             transparent 100%
         );
+        -webkit-mask-size: 100% 100%;
+        mask-size: 100% 100%;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
     }
 
     body.expert-auto-theme.expert-pr-theme .expert-hero-cinematic--photo .expert-hero-cinematic__photo-layer::after {
         background:
-            linear-gradient(90deg, var(--expert-hero-edge-wash-left) 0%, transparent 18%, transparent 100%),
-            linear-gradient(270deg, var(--expert-hero-edge-wash-right) 0%, transparent 18%, transparent 100%);
+            linear-gradient(90deg, var(--expert-hero-edge-wash-left) 0%, transparent 26%, transparent 100%),
+            linear-gradient(270deg, var(--expert-hero-edge-wash-right) 0%, transparent 26%, transparent 100%);
     }
 }
 

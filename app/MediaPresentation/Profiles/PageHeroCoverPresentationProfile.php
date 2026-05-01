@@ -22,7 +22,8 @@ final class PageHeroCoverPresentationProfile
     /** User zoom: below 1 zooms out (hero: fit portrait height in block); program cards keep min 1 in their profile. */
     public const FRAMING_SCALE_MIN = 0.5;
 
-    public const FRAMING_SCALE_MAX = 1.5;
+    /** Достаточно для «вытянуть» portrait+жёлтый фон почти на всю ширину desktop при height-fit. */
+    public const FRAMING_SCALE_MAX = 3.0;
 
     public const FRAMING_SCALE_STEP = 0.05;
 

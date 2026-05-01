@@ -28,7 +28,7 @@
             <div class="max-w-2xl lg:max-w-xl">
                 <div class="mb-4 inline-flex max-w-full items-center gap-2 rounded-full border border-pm-accent/20 bg-pm-accent/5 px-3 py-1 text-xs font-semibold text-pm-accent fade-reveal sm:mb-5 sm:text-sm [transition-delay:50ms]">
                     <span class="h-2 w-2 shrink-0 rounded-full bg-pm-accent" aria-hidden="true"></span>
-                    {!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $pm['hero_badge'] ?? 'Бронирования и заявки в одном контуре') !!}
+                    {!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $pm['hero_badge'] ?? 'Запись и клиенты в одном окне') !!}
                 </div>
                 <h1 id="hero-heading" class="fade-reveal text-balance text-3xl font-extrabold leading-[1.12] tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl [transition-delay:150ms]">
                     {!! str_replace([' для ', ' с ', ' в ', ' и '], [' для&nbsp;', ' с&nbsp;', ' в&nbsp;', ' и&nbsp;'], $heroHeadline) !!}
@@ -68,7 +68,7 @@
                     @endforeach
                 </div>
                 @endif
-                <p class="fade-reveal mt-4 text-xs text-slate-500 max-sm:mt-3 [transition-delay:480ms]">Покажем демо под вашу нишу — ответим быстро.</p>
+                <p class="fade-reveal mt-4 text-xs text-slate-500 max-sm:mt-3 [transition-delay:480ms]">Подберём показ под вашу нишу — ответим без отписки «спасибо за интерес».</p>
             </div>
 
             {{-- Один макет + одна карточка --}}

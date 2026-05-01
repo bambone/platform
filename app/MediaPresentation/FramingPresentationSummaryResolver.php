@@ -15,7 +15,12 @@ final class FramingPresentationSummaryResolver
      */
     public function summarize(?array $presentationRow, SlotPresentationProfileInterface $profile): array
     {
-        $pd = PresentationData::fromArray($presentationRow);
+        $pd = PresentationData::fromArray(
+            $presentationRow,
+            $profile->framingScaleMin(),
+            $profile->framingScaleMax(),
+            $profile->framingScaleStep(),
+        );
         $map = $pd->viewportFocalMap;
         if ($map === []) {
             return ['label' => 'Кадрирование: значения по умолчанию', 'variant' => 'neutral'];
@@ -23,8 +28,14 @@ final class FramingPresentationSummaryResolver
 
         $slotId = $profile->slotId();
         $defaultsMatch = true;
-        foreach ([ViewportKey::Mobile, ViewportKey::Desktop] as $vk) {
-            $fr = FocalMapViewport::pickFramingFromMap($map, $vk);
+        foreach ([ViewportKey::Mobile, ViewportKey::Tablet, ViewportKey::Desktop] as $vk) {
+            $fr = FocalMapViewport::pickFramingFromMap(
+                $map,
+                $vk,
+                $profile->framingScaleMin(),
+                $profile->framingScaleMax(),
+                $profile->framingScaleStep(),
+            );
             $defF = MediaPresentationRegistry::defaultFocalForSlot($slotId, $vk);
             $defS = $profile->framingScaleDefault();
             if ($fr === null) {
@@ -33,7 +44,12 @@ final class FramingPresentationSummaryResolver
                 break;
             }
             $f = $fr->toFocalPoint();
-            if (abs($f->x - $defF->x) > 0.05 || abs($f->y - $defF->y) > 0.05 || abs($fr->scale - $defS) > 0.001) {
+            if (
+                abs($f->x - $defF->x) > 0.05
+                || abs($f->y - $defF->y) > 0.05
+                || abs($fr->scale - $defS) > 0.001
+                || abs($fr->heightFactor - 1.0) > 0.001
+            ) {
                 $defaultsMatch = false;
 
                 break;

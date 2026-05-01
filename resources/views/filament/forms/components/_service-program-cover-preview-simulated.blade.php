@@ -4,13 +4,14 @@
     $safeArea = $safeArea ?? ['bottomPercent' => 38, 'label' => ''];
     $editorConfig = $editorConfig ?? [];
     $previewKey = $previewKey ?? '';
+    $viewComponentKey = (string) ($viewComponentKey ?? $previewKey ?? '');
     $overlayMobile = $overlayMobile ?? ['svc-program-mask-fade-start' => '78%', 'svc-program-mask-fade-mid' => '90%'];
     $overlayDesktop = $overlayDesktop ?? ['svc-program-mask-fade-start' => '80%', 'svc-program-mask-fade-mid' => '91%'];
     $fieldId = $field->getId();
 @endphp
 
 <div
-    wire:key="svc-cover-preview-{{ $previewKey }}"
+    wire:key="svc-cover-preview-{{ $viewComponentKey }}"
     data-svc-focal-preview
     class="space-y-3 rounded-lg border border-gray-200 bg-gray-50/80 p-3 dark:border-white/10 dark:bg-white/5"
     x-data="serviceProgramCoverFocalEditor(@js($editorConfig))"
@@ -19,7 +20,7 @@
         <div>
             <p class="text-xs font-semibold text-gray-800 dark:text-gray-200">Кадрирование</p>
             <p class="mt-0.5 max-w-xl text-[11px] leading-snug text-gray-500 dark:text-gray-400" title="Подсказка">
-                Перетащите кадр. Zoom — масштаб слоя, Height — высота медиа-зоны. Tablet: только уточняющий preview.
+                Перетащите кадр. Zoom — масштаб слоя (в hero можно ниже 1 — вписать фото по высоте кадра). Height — высота медиа-зоны. Tablet: только уточняющий preview.
             </p>
         </div>
     </div>

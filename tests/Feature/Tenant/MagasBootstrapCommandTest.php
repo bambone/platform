@@ -320,7 +320,7 @@ class MagasBootstrapCommandTest extends TestCase
         ])->render());
 
         $this->assertStringContainsString('Explore media outreach', $linkHtml);
-        $this->assertStringContainsString('→', $linkHtml);
+        $this->assertMatchesRegularExpression('/(→|&rarr;|&#8594;|&#x2192;)/u', $linkHtml, 'text_link CTA должна содержать стрелку в HTML');
 
         $buttonHtml = trim(View::make('tenant.themes.default.sections.cards-teaser', [
             'data' => [

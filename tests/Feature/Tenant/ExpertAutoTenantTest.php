@@ -43,7 +43,15 @@ class ExpertAutoTenantTest extends TestCase
 
     public function test_expert_inquiry_creates_crm_request_with_payload(): void
     {
-        $this->createTenantWithActiveDomain('expertapi', ['theme_key' => 'expert_auto']);
+        $tenant = $this->createTenantWithActiveDomain('expertapi', ['theme_key' => 'expert_auto']);
+        TenantServiceProgram::query()->create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'parking',
+            'title' => 'Парковка',
+            'program_type' => ServiceProgramType::Program->value,
+            'is_visible' => true,
+            'sort_order' => 1,
+        ]);
         $host = $this->tenancyHostForSlug('expertapi');
 
         $this->postJson('http://'.$host.'/api/tenant/expert-inquiry', [

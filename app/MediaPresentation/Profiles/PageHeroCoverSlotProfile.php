@@ -6,6 +6,10 @@ use App\MediaPresentation\Contracts\SlotPresentationProfileInterface;
 use App\MediaPresentation\FocalPoint;
 use App\MediaPresentation\ViewportKey;
 
+/**
+ * Adapter {@see SlotPresentationProfileInterface} для слота page_hero_cover: instance-методы делегируют в
+ * {@see PageHeroCoverPresentationProfile} (static). Регистрация: {@see MediaPresentationRegistry}.
+ */
 final class PageHeroCoverSlotProfile implements SlotPresentationProfileInterface
 {
     public function slotId(): string

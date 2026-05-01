@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\MediaPresentation;
 
+use App\MediaPresentation\Profiles\PageHeroCoverPresentationProfile;
 use App\MediaPresentation\ViewportFraming;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -45,5 +46,24 @@ final class ViewportFramingTest extends TestCase
         $this->assertEqualsWithDelta(44.4, $v2->y, 0.01);
         $this->assertEqualsWithDelta(1.15, $v2->scale, 0.0001);
         $this->assertEqualsWithDelta(1.2, $v2->heightFactor, 0.0001);
+    }
+
+    public function test_from_array_with_hero_bounds_keeps_fractional_scale_below_one(): void
+    {
+        $v = ViewportFraming::fromArray(
+            ['x' => 50, 'y' => 50, 'scale' => 0.72],
+            PageHeroCoverPresentationProfile::FRAMING_SCALE_MIN,
+            PageHeroCoverPresentationProfile::FRAMING_SCALE_MAX,
+            PageHeroCoverPresentationProfile::FRAMING_SCALE_STEP,
+        );
+        $this->assertNotNull($v);
+        $this->assertEqualsWithDelta(0.7, $v->scale, 0.0001);
+    }
+
+    public function test_from_array_default_bounds_clamp_below_one_to_program_minimum(): void
+    {
+        $v = ViewportFraming::fromArray(['x' => 50, 'y' => 50, 'scale' => 0.72]);
+        $this->assertNotNull($v);
+        $this->assertSame(1.0, $v->scale);
     }
 }

@@ -2,9 +2,12 @@
     $meta = $block['meta'] ?? [];
     $lg = $block['link_groups'] ?? [];
     $expertPrLinkGrid = tenant()?->themeKey() === 'expert_pr' && count($lg) >= 2;
+    $sectionHeading = filled($block['title'] ?? '')
+        ? ($block['title'] ?? '')
+        : (string) ($meta['headline'] ?? '');
 @endphp
-@if(filled($block['title'] ?? '') || filled($meta['headline'] ?? ''))
-    <h3 class="mb-4 text-lg font-semibold text-white">{{ $block['title'] ?? $meta['headline'] }}</h3>
+@if(filled($sectionHeading))
+    <h3 class="mb-4 text-lg font-semibold text-white">{{ $sectionHeading }}</h3>
 @endif
 <div @class([
     'tenant-footer-link-groups',

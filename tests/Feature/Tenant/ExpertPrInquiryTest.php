@@ -148,7 +148,7 @@ class ExpertPrInquiryTest extends TestCase
         $this->assertSame('https://www.example.org/path', $payload['briefing_website'] ?? null);
     }
 
-    public function test_expert_pr_rejects_preferred_email_when_phone_valid(): void
+    public function test_expert_pr_allows_email_preference_when_phone_is_also_valid(): void
     {
         $host = $this->host();
 
@@ -156,11 +156,16 @@ class ExpertPrInquiryTest extends TestCase
             'name' => 'Alex',
             'phone' => '+12025550123',
             'contact_email' => 'lead@example.org',
-            'goal_text' => 'Need a call.',
+            'goal_text' => 'Prefer email follow-up.',
             'preferred_contact_channel' => 'email',
-            'preferred_contact_value' => 'other@example.org',
             'privacy_accepted' => true,
-        ])->assertStatus(422)->assertJsonValidationErrors(['preferred_contact_channel']);
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $crm = CrmRequest::query()->where('request_type', 'expert_service_inquiry')->first();
+        $this->assertNotNull($crm);
+        $this->assertSame('email', $crm->preferred_contact_channel);
+        $this->assertSame('lead@example.org', $crm->preferred_contact_value);
+        $this->assertSame('+12025550123', $crm->phone);
     }
 
     public function test_expert_pr_privacy_acceptance_stored_on_lead(): void

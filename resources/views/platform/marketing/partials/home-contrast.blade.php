@@ -112,9 +112,9 @@
                         </div>
                     </div>
                     <ul class="mt-8 flex flex-col gap-3.5 text-left">
-                        <li class="flex items-start gap-3 text-sm font-medium leading-snug text-slate-800 sm:text-base"><span class="shrink-0 text-emerald-600" aria-hidden="true">✅</span> Всё связано в один поток</li>
-                        <li class="flex items-start gap-3 text-sm font-medium leading-snug text-slate-800 sm:text-base"><span class="shrink-0 text-emerald-600" aria-hidden="true">✅</span> Работа за минуты, а не часы</li>
-                        <li class="flex items-start gap-3 text-sm font-medium leading-snug text-slate-800 sm:text-base"><span class="shrink-0 text-emerald-600" aria-hidden="true">✅</span> Прозрачность каждой копейки</li>
+                        <li class="flex items-start gap-3 text-sm font-medium leading-snug text-slate-800 sm:text-base"><span class="shrink-0 text-emerald-600" aria-hidden="true">✅</span> Понятно, кто на какой день записан</li>
+                        <li class="flex items-start gap-3 text-sm font-medium leading-snug text-slate-800 sm:text-base"><span class="shrink-0 text-emerald-600" aria-hidden="true">✅</span> Меньше ручного переноса в тетрадь</li>
+                        <li class="flex items-start gap-3 text-sm font-medium leading-snug text-slate-800 sm:text-base"><span class="shrink-0 text-emerald-600" aria-hidden="true">✅</span> Можно увидеть общую картину за пару кликов</li>
                     </ul>
                 </div>
             </div>

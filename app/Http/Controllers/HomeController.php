@@ -42,10 +42,9 @@ class HomeController extends Controller
     }
 
     /**
+     * Данные главной для «семейства» expert (expert_auto, advocate_editorial, black_duck, expert_pr) — без мото-каталога.
+     *
      * @return array<string, mixed>
-     */
-    /**
-     * Данные главной для «семейства» expert (expert_auto, advocate_editorial, black_duck) — без мото-каталога.
      */
     private function buildExpertFamilyHomeIndexData(): array
     {
@@ -91,9 +90,6 @@ class HomeController extends Controller
         ];
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     /**
      * @return array<string, mixed>
      */
@@ -169,6 +165,7 @@ class HomeController extends Controller
 
     /**
      * @param  BaseCollection<int, PageSection>  $layout
+     * @return Collection<int, Review>
      */
     private function getHomeReviews(BaseCollection $layout): Collection
     {

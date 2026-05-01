@@ -1,6 +1,5 @@
 @php
     use App\MediaPresentation\ExpertHeroBackgroundPresentationResolver;
-    use App\Support\Storage\TenantStorage;
     use App\Support\Typography\RussianTypography;
     use App\Tenant\Expert\ExpertBrandMediaUrl;
     $heading = trim((string) ($data['heading'] ?? ''));
@@ -41,20 +40,11 @@
     if ($isBlackDuck && $heroUrl === '') {
         $heroUrl = trim((string) (\tenant_branding_logo_url() ?? ''));
     }
+    /** expert_pr: только данные секции (page_sections) или fallback из настроек брендинга в БД — без URL в Blade. */
+    if ($isExpertPr && $heroUrl === '') {
+        $heroUrl = trim((string) (\tenant_branding_hero_url() ?? ''));
+    }
     $heroUrl = ExpertBrandMediaUrl::resolve($heroUrl);
-    /** expert_pr: локальный путь строится даже без файла на диске → 404. CDN, пока не лежит {@code site/brand/magas-hero.*}. */
-    $expertPrPortraitFallbackRemote = 'https://sergeymagas.ru/magas.png';
-    if ($isExpertPr && ($tPr = tenant()) !== null) {
-        $tsMagas = TenantStorage::forTrusted((int) $tPr->id);
-        $magasHeroOnDisk = $tsMagas->existsPublic('site/brand/magas-hero.png')
-            || $tsMagas->existsPublic('site/brand/magas-hero.jpg');
-        if (! $magasHeroOnDisk) {
-            $heroUrl = $expertPrPortraitFallbackRemote;
-        }
-    }
-    if ($isExpertPr && trim($heroUrl) === '') {
-        $heroUrl = $expertPrPortraitFallbackRemote;
-    }
     $heroIsRemote = preg_match('#^https?://#i', $heroUrl) === 1;
     $heroAlt = trim((string) ($data['hero_image_alt'] ?? ''));
     if ($heroAlt === '') {
@@ -127,6 +117,7 @@
 >
     <div class="expert-hero-cinematic__bleed expert-hero-cinematic__bleed--stage">
         @if($hasPhoto)
+            <div class="pointer-events-none absolute inset-0 expert-hero-cinematic__stage-ambient" aria-hidden="true"></div>
             <div class="expert-hero-cinematic__photo-layer">
                 @if($useBlackDuckPicture)
                     <picture>
@@ -165,10 +156,6 @@
                         fetchpriority="high"
                         decoding="async"
                         @if($heroIsRemote) referrerpolicy="no-referrer" @endif
-                        @if($isExpertPr && ! $useBlackDuckPicture)
-                            data-pr-hero-remote-fallback="{{ e($expertPrPortraitFallbackRemote) }}"
-                            onerror="var f=this.dataset.prHeroRemoteFallback;if(f&&this.src!==f)this.src=f"
-                        @endif
                     >
                 @endif
             </div>

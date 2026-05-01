@@ -40,6 +40,13 @@
             @change="commitScaleFromSlider()"
         />
         <span class="min-w-[3.5rem] text-xs font-mono text-gray-800 dark:text-gray-100" x-text="(local[activeViewport].s ?? 1).toFixed(2) + '×'"></span>
+        <button
+            type="button"
+            class="fi-btn fi-btn-size-sm fi-color-gray rounded-lg px-2 py-1 text-[11px] leading-none"
+            x-show="showZoomSliderForActive() &amp;&amp; canDrag(activeViewport)"
+            x-cloak
+            @click="fitScaleToFrameHeight(activeViewport)"
+        >По высоте кадра</button>
     </div>
     <div x-show="showHeightSliderForActive()" x-cloak class="flex flex-wrap items-center gap-2">
         <label class="text-xs font-medium text-gray-600 dark:text-gray-400" for="{{ $fieldId }}-focal-height-active">Height</label>

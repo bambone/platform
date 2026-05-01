@@ -3,7 +3,7 @@
 @section('title', 'Возможности')
 
 @section('meta_description')
-RentBase: мультитенантный сайт на своём домене, конструктор страниц и темы оформления, каталог услуг и техники, онлайн-запись и слоты, бронирование, CRM и заявки, отзывы и FAQ, SEO и редиректы, админка для команды, уведомления и интеграции.
+RentBase: свой сайт и домен, календарь записи или брони, каталог услуг или техники, заявки от клиентов и простая админка для команды — без связки десяти подписок.
 @endsection
 
 @php
@@ -14,7 +14,7 @@ RentBase: мультитенантный сайт на своём домене, 
             '@type' => 'WebPage',
             'name' => 'Возможности — '.($pm['brand_name'] ?? 'RentBase'),
             'url' => $base.'/features',
-            'description' => 'Полный обзор модулей RentBase: публичный сайт, запись и бронирование, CRM, маркетинг, SEO, админка тенанта и уведомления.',
+            'description' => 'Подробности по возможностям: сайт, запись и бронь, клиенты, отзывы, домен и поисковые штуки.',
         ],
         [
             '@type' => 'Organization',
@@ -37,34 +37,34 @@ RentBase: мультитенантный сайт на своём домене, 
         <h1 class="scroll-mt-28 text-balance text-[clamp(1.5rem,4vw+0.75rem,2.25rem)] font-bold leading-tight text-slate-900 md:text-4xl">Возможности платформы</h1>
         <p class="mt-4 text-pretty text-lg leading-relaxed text-slate-600">{{ RussianTypography::tiePrepositionsToNextWord((string) ($pm['entity_core'] ?? '')) }}</p>
         <p class="mt-4 text-pretty text-base leading-relaxed text-slate-600">
-            {{ RussianTypography::tiePrepositionsToNextWord('Ниже — не маркетинговый лозунг, а сквозная карта продуктовых модулей: от публичного сайта до CRM, расписания, SEO и уведомлений. Всё работает в одной базе и одной админке тенанта — без «склейки» сторонних сервисов.') }}
+            {{ RussianTypography::tiePrepositionsToNextWord('Ниже — по полочкам и без рекламного тумана: что умеет сайт, как устроена запись, где сидят заявки и как не потеряться в настройках.') }}
         </p>
     </header>
 
     <div class="mt-10 grid gap-5 sm:mt-12 sm:grid-cols-2 sm:gap-6">
         <x-platform.marketing.answer-block :question="RussianTypography::tiePrepositionsToNextWord('Что такое RentBase в одном предложении?')">
-            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Это операционная платформа для сервисного бизнеса: публичный сайт с конструктором страниц, каталог предложений (услуги или техника — по нише), онлайн-запись и бронирование, единая воронка заявок и клиентов, плюс админка для команды и сценарии уведомлений.') }}</p>
+            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Это цельный сервис: наружу — сайт под ваш бренд, внутри — запись или бронирование, список клиентов и понятная панель для сотрудников, плюс письма/SMS, где это настроите.') }}</p>
         </x-platform.marketing.answer-block>
         <x-platform.marketing.answer-block :question="RussianTypography::tiePrepositionsToNextWord('Для каких ниш подходит продукт?')">
-            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Прокат мото- и автотехники, детейлинг и автосервисы по записи, курсы вождения и инструкторы, мастер-классы, студии и мастерские с календарём — везде, где важны слоты, заявки, статусы и история контакта без ручного хаоса в мессенджерах.') }}</p>
+            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Моторентал, каршеринг или прокат авто, детейлинг и простой автосервис по записи, школы вождения и любые курсы, студии и мастерские — везде, где нужно «кто на когда записан» и чтобы это не жило в личке.') }}</p>
         </x-platform.marketing.answer-block>
         <x-platform.marketing.answer-block :question="RussianTypography::tiePrepositionsToNextWord('Чем это отличается от «просто сайта»?')">
-            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Контент страниц связан с расписанием, заявками, каталогом и базой лидов: посетитель записывается или оставляет заявку, команда видит очередь, статусы и контекст в одном месте — без выгрузок и таблиц «на стороне».') }}</p>
+            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Страница не «висячая картинка»: расписание знает, что можно продать, контакты попадают к вам в список — без ручного копипаста из форм в Excel.') }}</p>
         </x-platform.marketing.answer-block>
         <x-platform.marketing.answer-block :question="RussianTypography::tiePrepositionsToNextWord('Есть ли отдельный кабинет для бизнеса?')">
-            <p class="text-pretty">{!! str_replace('Filament', '<span class="font-medium text-slate-800">Filament</span>', RussianTypography::tiePrepositionsToNextWord('Да. У каждого клиентского проекта (тенанта) — своя панель на базе Filament: страницы и секции, настройки сайта и бренда, каталог, расписание, заявки и CRM, отзывы, SEO, согласия, команда и сценарии уведомлений.')) !!}</p>
+            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Да. Свой аккаратный «кабинет», где ваши же люди редактируют страницы, фирменный стиль, каталог или парк техники, расписание, заявки, отзывы и мелочи типа текстов для поисковиков — без необходимости лезть в код.') }}</p>
         </x-platform.marketing.answer-block>
         <x-platform.marketing.answer-block :question="RussianTypography::tiePrepositionsToNextWord('Можно ли свой домен и бренд?')">
-            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Да: подключается собственный домен, в админке настраиваются логотип, цвет, фавикон и публичные медиа. Публичные страницы отдаются в контексте вашего бренда, а не «конструктора в общем виде».') }}</p>
+            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Да — свой домен вида вашсайт.рф, свой логотип и палитра, картинки на первый экран. Клиенту не видно общую «галерею», он видит вас.') }}</p>
         </x-platform.marketing.answer-block>
         <x-platform.marketing.answer-block :question="RussianTypography::tiePrepositionsToNextWord('Как устроена запись и бронирование?')">
-            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Есть настраиваемые услуги с длительностью слота, шагом сетки, буферами и горизонтом бронирования; расчёт доступных слотов; сценарии мгновенного подтверждения и «по согласованию». Каталог может быть связан с техникой (прокат) или только с услугами — в зависимости от темы и бизнес-модели.') }}</p>
+            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Ставится длина приёма, шаг между слотами, отдых между клиентами, «на какой период вперёд открыть календарь». Можно сразу подтверждать автоматически или оставить жёсткий контроль сотруднику. Есть режим каталога мото или авто, есть чистые услуги без техники.') }}</p>
         </x-platform.marketing.answer-block>
         <x-platform.marketing.answer-block :question="RussianTypography::tiePrepositionsToNextWord('Что с заявками и клиентами?')">
-            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Лиды и CRM-заявки с публичных форм, единая карточка контакта, типы заявок, UTM, каналы связи (телефон, мессенджеры), история — чтобы менеджеру не прыгать между почтой и таблицами.') }}</p>
+            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Каждая форма с сайта — отдельная строка: откуда пришёл человек, что написал, как дозвониться. Всё рядом, не надо собирать по папкам почты и чатов.') }}</p>
         </x-platform.marketing.answer-block>
         <x-platform.marketing.answer-block :question="RussianTypography::tiePrepositionsToNextWord('Есть ли SEO и сопровождение трафика?')">
-            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Метаданные и заголовки по страницам, карта сайта, редиректы, human-readable URL, поддержка JSON-LD и материалов для поиска; на стороне платформы — маркетинговые страницы с документацией ниш (прокат, авто, сервисы).') }}</p>
+            <p class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Заголовки и описания для Яндекса/Google, карта сайта, аккуратные адреса страниц, разметка для поиска. Есть и наши поясняющие страницы по видам бизнеса — прокат, авто, запись к мастеру.') }}</p>
         </x-platform.marketing.answer-block>
     </div>
 
@@ -73,7 +73,7 @@ RentBase: мультитенантный сайт на своём домене, 
             <h2 id="feat-site" class="text-pretty text-lg font-bold leading-snug text-slate-900 sm:text-xl">{{ RussianTypography::tiePrepositionsToNextWord('Публичный сайт и контент') }}</h2>
             <ul class="mt-4 list-disc space-y-3 pl-5 text-sm leading-relaxed text-slate-600 marker:text-slate-400 sm:text-base">
                 <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('Конструктор страниц — секции, порядок, предпросмотр; темы оформления под разные ниши (в т.ч. витрины с «техническим» и экспертным контентом).'), 'Конструктор страниц') !!}</li>
-                <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('Медиа и бренд — логотип, hero, галереи и файлы в хранилище тенанта; PWA-манифест и визуальные акценты.'), 'Медиа и бренд') !!}</li>
+                <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('Медиа и бренд — логотип, первый экран, галереи и файлы в вашем каталоге в облаке; при желании — ярлык «добавить на главный экран телефона» и фирменные акценты.'), 'Медиа и бренд') !!}</li>
                 <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('Типовые блоки — герой, ленты, формы заявок, отзывы, FAQ, подвал: гибрид готовых секций и вашего текста.'), 'Типовые блоки') !!}</li>
             </ul>
         </section>
@@ -100,7 +100,7 @@ RentBase: мультитенантный сайт на своём домене, 
             <h2 id="feat-crm" class="text-pretty text-lg font-bold leading-snug text-slate-900 sm:text-xl">{{ RussianTypography::tiePrepositionsToNextWord('Заявки, CRM и коммуникации') }}</h2>
             <ul class="mt-4 list-disc space-y-3 pl-5 text-sm leading-relaxed text-slate-600 marker:text-slate-400 sm:text-base">
                 <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('Публичные формы (заявка, консультация, запись) с валидацией, UTM, контекстом страницы и согласиями — где это требуется.'), 'Публичные формы') !!}</li>
-                <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('CRM-заявки — тип, статус, полезная нагрузка (в т.ч. сценарии для ниш вроде детейлинга или обучения).'), 'CRM-заявки') !!}</li>
+                <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('Входящие запросы из кабинета — с типом услуги, статусом «новая / в работе» и полями под вашу нишу (детейлинг, обучение и т. д.).'), 'Входящие запросы') !!}</li>
                 <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('Каналы — единообразное использование телефона, мессенджеров и почты в подвале и формах.'), 'Каналы') !!}</li>
             </ul>
         </section>
@@ -110,24 +110,24 @@ RentBase: мультитенантный сайт на своём домене, 
             <ul class="mt-4 list-disc space-y-3 pl-5 text-sm leading-relaxed text-slate-600 marker:text-slate-400 sm:text-base">
                 <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('Модерация отзывов, публичные и скрытые статусы, витрина на сайте.'), 'отзывов') !!}</li>
                 <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('FAQ с привязкой к странице или общий пул вопросов.'), 'FAQ') !!}</li>
-                <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('Согласия при брони и заявках (включая сценарии с обязательной политикой) — в одном фреймворке, без сторонних виджетов.'), 'Согласия') !!}</li>
+                <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('Согласия на обработку данных при брони и в формах (включая жёсткий сценарий «сначала ознакомьтесь с офертой») — встроено, без чужих всплывашек.'), 'Согласия') !!}</li>
             </ul>
         </section>
 
         <section aria-labelledby="feat-seo" class="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <h2 id="feat-seo" class="text-pretty text-lg font-bold leading-snug text-slate-900 sm:text-xl">{{ RussianTypography::tiePrepositionsToNextWord('Маркетинг, SEO и инфраструктура тенанта') }}</h2>
+            <h2 id="feat-seo" class="text-pretty text-lg font-bold leading-snug text-slate-900 sm:text-xl">{{ RussianTypography::tiePrepositionsToNextWord('Маркетинг, поиск и надёжность') }}</h2>
             <ul class="mt-4 list-disc space-y-3 pl-5 text-sm leading-relaxed text-slate-600 marker:text-slate-400 sm:text-base">
                 <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('SEO — мета по страницам, карты сайта, редиректы, аналитические настройки.'), 'SEO') !!}</li>
                 <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('Подвал сайта — либо автоматический минимальный (контакты и ссылки), либо настраиваемые секции в админке.'), 'Подвал сайта') !!}</li>
-                <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('Надёжность — квоты и хранилище медиа, изоляция данных по тенантам, сценарии пуш-уведомлений и почтовой рассылки по правилам.'), 'Надёжность') !!}</li>
+                <li class="text-pretty">{!! RussianTypography::wrapPhrase(RussianTypography::tiePrepositionsToNextWord('Надёжность — достаточно места под фото, данные разных клиентов RentBase не смешиваются, письма и напоминания уходят по тем правилам, которые вы включили.'), 'Надёжность') !!}</li>
             </ul>
         </section>
 
         <section aria-labelledby="feat-summary" class="scroll-mt-28 rounded-2xl border border-slate-200 bg-slate-50/90 p-5 sm:p-6">
             <h2 id="feat-summary" class="text-pretty text-lg font-bold text-slate-900 sm:text-xl">{{ RussianTypography::tiePrepositionsToNextWord('Коротко: что получает владелец бизнеса') }}</h2>
             <ul class="mt-4 list-disc space-y-3 pl-5 text-sm leading-relaxed text-slate-600 marker:text-slate-400 sm:text-base">
-                <li class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Один контур: сайт → запись/бронь → заявка → команда — без зоопарка интеграций.') }}</li>
-                <li class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Гибкость ниш: от проката с календарём техники до детейлинга и курсов с формами и CRM.') }}</li>
+                <li class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Одна цепочка: сайт → запись или бронь → заявка у вас на столе — без зоопарка отдельных сервисов.') }}</li>
+                <li class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Гибкость ниш: от проката с календарём техники до детейлинга и школ с формами и списками клиентов.') }}</li>
                 <li class="text-pretty">{{ RussianTypography::tiePrepositionsToNextWord('Прозрачность для сотрудников: заявки, статусы, напоминания, история в одной панели.') }}</li>
             </ul>
         </section>

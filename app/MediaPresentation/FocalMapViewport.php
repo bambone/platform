@@ -19,9 +19,15 @@ final class FocalMapViewport
 
     /**
      * @param  array<string, array<string, mixed>>  $map
+     * @param  ?float  $framingScaleMin  null → program-card bounds
      */
-    public static function pickFramingFromMap(array $map, ViewportKey $viewport): ?ViewportFraming
-    {
+    public static function pickFramingFromMap(
+        array $map,
+        ViewportKey $viewport,
+        ?float $framingScaleMin = null,
+        ?float $framingScaleMax = null,
+        ?float $framingScaleStep = null,
+    ): ?ViewportFraming {
         $order = match ($viewport) {
             ViewportKey::Tablet => ['tablet', 'mobile', 'default'],
             ViewportKey::Mobile => ['mobile', 'default'],
@@ -32,7 +38,7 @@ final class FocalMapViewport
             if (! isset($map[$k])) {
                 continue;
             }
-            $vf = ViewportFraming::fromArray($map[$k]);
+            $vf = ViewportFraming::fromArray($map[$k], $framingScaleMin, $framingScaleMax, $framingScaleStep);
             if ($vf !== null) {
                 return $vf;
             }

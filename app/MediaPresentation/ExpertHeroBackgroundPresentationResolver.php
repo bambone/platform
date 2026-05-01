@@ -16,11 +16,17 @@ final class ExpertHeroBackgroundPresentationResolver
      */
     public function sectionStyleAttribute(array $sectionData): string
     {
-        $presentation = PresentationData::fromArray($sectionData['hero_background_presentation'] ?? null);
+        $presentation = PresentationData::fromArray(
+            $sectionData['hero_background_presentation'] ?? null,
+            PageHeroCoverPresentationProfile::FRAMING_SCALE_MIN,
+            PageHeroCoverPresentationProfile::FRAMING_SCALE_MAX,
+            PageHeroCoverPresentationProfile::FRAMING_SCALE_STEP,
+        );
         $map = $presentation->viewportFocalMap;
         $slotId = PageHeroCoverPresentationProfile::SLOT_ID;
 
         $mobile = $this->resolveFraming($map, ViewportKey::Mobile, $slotId);
+        $tablet = $this->resolveFraming($map, ViewportKey::Tablet, $slotId);
         $desktop = $this->resolveFraming($map, ViewportKey::Desktop, $slotId);
 
         $parts = [
@@ -28,9 +34,12 @@ final class ExpertHeroBackgroundPresentationResolver
             '--expert-hero-base-desktop: '.PageHeroCoverPresentationProfile::BASE_DISPLAY_SCALE_DESKTOP,
             '--expert-hero-focal-x-mobile: '.$mobile['focal']->x.'%',
             '--expert-hero-focal-y-mobile: '.$mobile['focal']->y.'%',
+            '--expert-hero-focal-x-tablet: '.$tablet['focal']->x.'%',
+            '--expert-hero-focal-y-tablet: '.$tablet['focal']->y.'%',
             '--expert-hero-focal-x-desktop: '.$desktop['focal']->x.'%',
             '--expert-hero-focal-y-desktop: '.$desktop['focal']->y.'%',
             '--expert-hero-scale-mobile: '.$mobile['scale'],
+            '--expert-hero-scale-tablet: '.$tablet['scale'],
             '--expert-hero-scale-desktop: '.$desktop['scale'],
         ];
         foreach (PageHeroCoverPresentationProfile::articleOverlayCssVariables() as $name => $value) {
@@ -46,7 +55,13 @@ final class ExpertHeroBackgroundPresentationResolver
      */
     private function resolveFraming(array $map, ViewportKey $viewport, string $slotId): array
     {
-        $framing = FocalMapViewport::pickFramingFromMap($map, $viewport);
+        $framing = FocalMapViewport::pickFramingFromMap(
+            $map,
+            $viewport,
+            PageHeroCoverPresentationProfile::FRAMING_SCALE_MIN,
+            PageHeroCoverPresentationProfile::FRAMING_SCALE_MAX,
+            PageHeroCoverPresentationProfile::FRAMING_SCALE_STEP,
+        );
         if ($framing !== null) {
             return [
                 'focal' => $framing->toFocalPoint(),

@@ -8,6 +8,7 @@ use App\Support\Phone\IntlPhoneNormalizer;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
@@ -80,6 +81,10 @@ class StoreExpertInquiryRequest extends FormRequest
                     'phone' => '',
                 ]);
             }
+            $ch = (string) $this->input('preferred_contact_channel', ContactChannelType::Phone->value);
+            if ($ch === ContactChannelType::Email->value && $emailOk) {
+                $this->merge(['preferred_contact_value' => $em]);
+            }
         }
 
         foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as $k) {
@@ -118,11 +123,9 @@ class StoreExpertInquiryRequest extends FormRequest
             : [ContactChannelType::Phone->value];
 
         if ($isExpertPr) {
-            $phNorm = IntlPhoneNormalizer::normalizePhone((string) ($this->input('phone') ?? ''));
-            $phoneOk = $phNorm !== '' && IntlPhoneNormalizer::validatePhone($phNorm);
             $em = strtolower(trim((string) ($this->input('contact_email') ?? '')));
             $emailOk = $em !== '' && filter_var($em, FILTER_VALIDATE_EMAIL) !== false;
-            if (! $phoneOk && $emailOk) {
+            if ($emailOk) {
                 $allowed[] = ContactChannelType::Email->value;
             }
         }
@@ -276,17 +279,20 @@ class StoreExpertInquiryRequest extends FormRequest
                         'Enter a valid phone number or a work email so we can reply.',
                     );
                 }
-                if ($phoneOk && (string) $this->input('preferred_contact_channel') === ContactChannelType::Email->value) {
+                $chosen = (string) $this->input('preferred_contact_channel');
+                if ($chosen === ContactChannelType::Email->value && ! $emailOk) {
                     $v->errors()->add(
-                        'preferred_contact_channel',
-                        'Choose another channel when a valid phone is provided.',
+                        'contact_email',
+                        'Enter a valid work email so we can reply.',
                     );
                 }
             }
 
             $ps = trim((string) $this->input('program_slug', ''));
             if ($ps !== '') {
-                $ok = \App\Models\TenantServiceProgram::query()
+                // Query table directly: Eloquent global scope follows currentTenant() and must not
+                // desync from $tenant resolved for this host (tests + edge middleware order).
+                $ok = DB::table('tenant_service_programs')
                     ->where('tenant_id', (int) $tenant->id)
                     ->where('slug', $ps)
                     ->where('is_visible', true)

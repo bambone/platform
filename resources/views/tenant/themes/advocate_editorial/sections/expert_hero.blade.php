@@ -67,6 +67,7 @@
 >
     <div class="expert-hero-cinematic__bleed expert-hero-cinematic__bleed--stage">
         @if($hasPhoto)
+            <div class="pointer-events-none absolute inset-0 expert-hero-cinematic__stage-ambient" aria-hidden="true"></div>
             <div class="expert-hero-cinematic__photo-layer">
                 <img
                     src="{{ e($heroUrl) }}"

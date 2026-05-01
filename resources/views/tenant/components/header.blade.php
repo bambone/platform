@@ -46,6 +46,11 @@
     }
     /** advocate_editorial: длинные ФИО + полное меню + телефон — с xl (1280px), иначе бургер; expert_pr часто бывает длинное EN-меню. */
     $expertDesktopNavMinPx = $isAdvocateEditorial ? 1280 : ($isExpertPr ? 1024 : 768);
+    /** С expert_pr совмещаем Tailwind lg (1024px) с {@see $expertDesktopNavMinPx} и Alpine matchMedia на header. */
+    $expertBarNavDesktop = $isExpertPr ? 'hidden lg:flex' : 'hidden md:flex';
+    $expertBarPhoneDesktop = $isExpertPr ? 'hidden lg:block' : 'hidden md:block';
+    $expertBarBurgerMobile = $isExpertPr ? 'lg:hidden' : 'md:hidden';
+    $expertMobilePanelDesktopHide = $isAdvocateEditorial ? '' : ($isExpertPr ? 'lg:hidden' : 'md:hidden');
     $expertHeaderShellHeight = $isAdvocateEditorial
         ? 'min-h-[4rem] md:min-h-[5.25rem] lg:min-h-[5.75rem]'
         : ($isExpertStyleNav ? 'h-[3.75rem] md:h-[5rem] lg:h-[5.5rem]' : 'h-[4.5rem] md:h-[5rem] lg:h-[5.5rem]');
@@ -117,8 +122,8 @@
                     </span>
                 @elseif($isExpertPr && filled($expertPrBrandTagline))
                     <span class="min-w-0 max-w-[min(100%,14rem)] text-left sm:max-w-[min(100%,22rem)] md:max-w-none">
-                        <span class="block truncate text-[15px] font-bold tracking-tight text-white/96 md:text-[16px] lg:text-[17px]">{{ $headerBrandTitle }}</span>
-                        <span class="mt-0.5 block truncate text-[10px] font-semibold uppercase leading-tight tracking-[0.16em] text-white/72 md:text-[11px] md:tracking-[0.14em]">{{ $expertPrBrandTagline }}</span>
+                        <span class="block truncate text-[16px] font-bold tracking-tight text-white/96 md:text-[17px] lg:text-[18px]">{{ $headerBrandTitle }}</span>
+                        <span class="mt-0.5 block truncate text-[11px] font-semibold uppercase leading-tight tracking-[0.14em] text-white/78 md:text-[12px] md:tracking-[0.13em]">{{ $expertPrBrandTagline }}</span>
                     </span>
                 @else
                     <span class="min-w-0 truncate text-[16px] font-bold tracking-wide md:text-[18px] lg:text-[20px] {{ $isAdvocateEditorial ? 'text-stone-900' : 'text-white/95' }}">{{ $headerBrandTitle }}</span>
@@ -140,7 +145,7 @@
                 @endforeach
             </nav>
             @else
-            <nav class="expert-header-bar__nav relative z-20 hidden flex-1 min-w-0 items-center justify-center gap-6 text-[14px] font-semibold tracking-wide md:flex lg:gap-10 lg:text-[15px]" aria-label="Основное меню">
+            <nav class="expert-header-bar__nav relative z-20 flex-1 min-w-0 items-center justify-center gap-6 {{ $isExpertPr ? 'text-[15px]' : 'text-[14px]' }} font-semibold tracking-wide {{ $expertBarNavDesktop }} lg:gap-10 lg:text-[15px]" aria-label="Основное меню">
                 <a href="{{ route('home') }}"
                    @if($isTenantNavHome) aria-current="page" @endif
                    class="shrink-0 rounded-sm px-0.5 py-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber {{ $isTenantNavHome ? 'text-moto-amber' : 'text-white/95 hover:text-moto-amber' }}">{{ $isExpertPr ? 'Home' : 'Главная' }}</a>
@@ -148,7 +153,7 @@
                     @php $navItemActive = $tenantNavPathMatches($navItem['url']); @endphp
                     <a href="{{ $navItem['url'] }}"
                        @if($navItemActive) aria-current="page" @endif
-                       class="shrink-0 rounded-sm px-0.5 py-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber {{ $navItemActive ? 'text-moto-amber' : 'text-silver/80 hover:text-white' }}">{{ $navItem['label'] }}</a>
+                       class="shrink-0 rounded-sm px-0.5 py-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber {{ $navItemActive ? 'text-moto-amber' : ($isExpertPr ? 'text-white/90 hover:text-moto-amber' : 'text-silver/80 hover:text-white') }}">{{ $navItem['label'] }}</a>
                 @endforeach
             </nav>
             @endif
@@ -161,7 +166,7 @@
                        class="relative z-20 whitespace-nowrap rounded-sm text-[16px] font-semibold tracking-wide transition-colors hover:text-moto-amber text-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber"
                        :class="advocateNavInline() ? 'hidden xl:block' : 'hidden'"
                        @else
-                       class="hidden whitespace-nowrap text-[15px] font-semibold tracking-wide transition-colors hover:text-moto-amber md:block text-white/90"
+                       class="whitespace-nowrap text-[15px] font-semibold tracking-wide transition-colors hover:text-moto-amber text-white/90 {{ $expertBarPhoneDesktop }}"
                        @endif
                        aria-label="Позвонить: {{ $contacts['phone'] }}">
                         {{ $contacts['phone'] }}
@@ -172,7 +177,7 @@
                         class="relative z-20 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors text-stone-800 hover:bg-stone-900/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber"
                         :class="advocateNavInline() ? 'xl:hidden' : 'xl:inline-flex'"
                         @else
-                        class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors md:hidden text-white/90 hover:bg-white/[0.05] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber"
+                        class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors text-white/90 hover:bg-white/[0.05] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber {{ $expertBarBurgerMobile }}"
                         @endif
                         @click.stop="mobileNavOpen = !mobileNavOpen"
                         :aria-expanded="mobileNavOpen"
@@ -251,7 +256,7 @@
              x-transition:leave="transition-opacity ease-in duration-150"
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0"
-             class="tenant-mobile-nav-panel absolute inset-x-0 top-full z-[45] -mt-px overflow-y-auto border-b px-3 py-3 shadow-lg {{ $isAdvocateEditorial ? '' : 'md:hidden' }} {{ $isAdvocateEditorial ? 'border-stone-200 bg-[#fbf9f6]' : 'border-white/[0.08] bg-[#080b10]' }} {{ $isExpertStyleNav ? 'max-h-[min(72vh,calc(100dvh-3.75rem))]' : 'max-h-[min(72vh,calc(100dvh-4.5rem))]' }}"
+             class="tenant-mobile-nav-panel absolute inset-x-0 top-full z-[45] -mt-px overflow-y-auto border-b px-3 py-3 shadow-lg {{ $expertMobilePanelDesktopHide }} {{ $isAdvocateEditorial ? 'border-stone-200 bg-[#fbf9f6]' : 'border-white/[0.08] bg-[#080b10]' }} {{ $isExpertStyleNav ? 'max-h-[min(72vh,calc(100dvh-3.75rem))]' : 'max-h-[min(72vh,calc(100dvh-4.5rem))]' }}"
              role="navigation"
              aria-label="Мобильное меню">
             <div class="flex flex-col gap-1">

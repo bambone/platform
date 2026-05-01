@@ -5,9 +5,9 @@
     <div class="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-12 px-3 sm:px-4 md:px-6 lg:flex-row lg:gap-8">
         <!-- Text Content -->
         <div class="w-full lg:w-1/3">
-            <h2 id="control-heading" class="fade-reveal text-balance text-2xl font-bold leading-tight text-white sm:text-3xl md:text-4xl">Единый центр управления</h2>
-            <p class="fade-reveal mt-4 font-semibold leading-relaxed text-white sm:text-lg" style="transition-delay: 80ms;">Вы больше не теряете заявки, клиентов и&nbsp;контроль над загрузкой.</p>
-            <p class="fade-reveal mt-3 text-slate-300 leading-relaxed" style="transition-delay: 100ms;">Вся платформа работает как единый механизм вокруг вашего ядра операций. Без склейки десятка разрозненных сервисов.</p>
+            <h2 id="control-heading" class="fade-reveal text-balance text-2xl font-bold leading-tight text-white sm:text-3xl md:text-4xl">Одно окно вместо пяти закладок</h2>
+            <p class="fade-reveal mt-4 font-semibold leading-relaxed text-white sm:text-lg" style="transition-delay: 80ms;">Меньше «а куда делась эта заявка?» — записи и люди живут там, где их ждать.</p>
+            <p class="fade-reveal mt-3 text-slate-300 leading-relaxed" style="transition-delay: 100ms;">Мы собрали на одном входе то, без чего день салона или проката разваливается: расписание, база клиентов, настройки услуг. Не надо синхронизировать руками между полудюжиной аккаунтов.</p>
             <ul class="fade-reveal mt-8 space-y-4" style="transition-delay: 200ms;">
                 <li class="flex items-center gap-3 text-sm text-slate-300">
                     <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pm-accent/20">
@@ -28,7 +28,7 @@
                     Настройки парка и&nbsp;услуг
                 </li>
             </ul>
-            <p class="fade-reveal mt-8 text-sm font-medium text-slate-200" style="transition-delay: 250ms;">Вся операционка бизнеса&nbsp;— в&nbsp;одном интерфейсе.</p>
+            <p class="fade-reveal mt-8 text-sm font-medium text-slate-200" style="transition-delay: 250ms;">Рабочее место вашей команды — одно, а не три разных «кабинета».</p>
         </div>
 
         <!-- Node Infrastructure UI -->

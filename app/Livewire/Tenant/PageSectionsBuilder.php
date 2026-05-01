@@ -20,6 +20,7 @@ use App\PageBuilder\PageSectionCategory;
 use App\PageBuilder\PageSectionTypeRegistry;
 use App\Services\PageBuilder\PageSectionOperationsService;
 use App\Support\PageRichContent;
+use App\Tenant\ExpertPr\MagasHeroDefaults;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Forms\Components\Select;
@@ -33,14 +34,12 @@ use Filament\Schemas\Schema;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 class PageSectionsBuilder extends Component implements ForcesFullLivewireRender, HasActions, HasSchemas
 {
     use InteractsWithActions;
     use InteractsWithSchemas;
     use InteractsWithTenantPublicFilePicker;
-    use WithFileUploads;
 
     public Page $record;
 
@@ -632,7 +631,17 @@ class PageSectionsBuilder extends Component implements ForcesFullLivewireRender,
         $this->editingSectionId = $section->id;
         $this->insertAfterSectionId = null;
         $blueprint = app(PageSectionTypeRegistry::class)->get($typeId);
+
         $existing = is_array($section->data_json) ? $section->data_json : [];
+        if ($typeId === 'expert_hero') {
+            $tenantCtx = currentTenant();
+            if ($tenantCtx !== null && (string) $tenantCtx->slug === MagasHeroDefaults::SLUG) {
+                $existing = app(MagasHeroDefaults::class)->mergeMissingHeroImageForEditor(
+                    (int) $tenantCtx->id,
+                    $existing,
+                );
+            }
+        }
         $defaults = $blueprint->defaultData();
         if ($typeId === 'data_table') {
             $dataJson = DataTableSectionJsonNormalizer::hydrateForEditor(

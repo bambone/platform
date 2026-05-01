@@ -26,9 +26,14 @@ final class PresentationData implements \JsonSerializable
 
     /**
      * @param  array<string, mixed>|null  $row
+     * @param  ?float  $framingScaleMin  null → program-card bounds (see {@see ViewportFraming::fromArray})
      */
-    public static function fromArray(?array $row): self
-    {
+    public static function fromArray(
+        ?array $row,
+        ?float $framingScaleMin = null,
+        ?float $framingScaleMax = null,
+        ?float $framingScaleStep = null,
+    ): self {
         if ($row === null || $row === []) {
             return self::empty();
         }
@@ -37,7 +42,12 @@ final class PresentationData implements \JsonSerializable
             $row = $row[0];
         }
         $version = (int) ($row['version'] ?? self::CURRENT_VERSION);
-        $map = self::normalizeViewportFramingMap(is_array($row['viewport_focal_map'] ?? null) ? $row['viewport_focal_map'] : []);
+        $map = self::normalizeViewportFramingMap(
+            is_array($row['viewport_focal_map'] ?? null) ? $row['viewport_focal_map'] : [],
+            $framingScaleMin,
+            $framingScaleMax,
+            $framingScaleStep,
+        );
 
         return new self($version !== 0 ? $version : self::CURRENT_VERSION, $map);
     }
@@ -51,8 +61,12 @@ final class PresentationData implements \JsonSerializable
      * @param  array<string, mixed>  $map
      * @return ViewportFramingMap
      */
-    private static function normalizeViewportFramingMap(array $map): array
-    {
+    private static function normalizeViewportFramingMap(
+        array $map,
+        ?float $framingScaleMin = null,
+        ?float $framingScaleMax = null,
+        ?float $framingScaleStep = null,
+    ): array {
         if (isset($map['moblie']) && is_array($map['moblie']) && ! isset($map['mobile'])) {
             $map['mobile'] = $map['moblie'];
         }
@@ -68,7 +82,7 @@ final class PresentationData implements \JsonSerializable
 
                 continue;
             }
-            $vf = ViewportFraming::fromArray($v);
+            $vf = ViewportFraming::fromArray($v, $framingScaleMin, $framingScaleMax, $framingScaleStep);
             if ($vf !== null) {
                 $out[$k] = $vf->toArray();
             }

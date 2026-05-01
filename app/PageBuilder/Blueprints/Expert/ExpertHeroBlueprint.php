@@ -105,21 +105,28 @@ final class ExpertHeroBlueprint extends ExpertSectionBlueprint
         $merged = array_replace_recursive($defaults, $dataJson);
         $hp = is_array($merged['hero_background_presentation'] ?? null) ? $merged['hero_background_presentation'] : [];
         $map = is_array($hp['viewport_focal_map'] ?? null) ? $hp['viewport_focal_map'] : [];
+        $sMin = PageHeroCoverPresentationProfile::FRAMING_SCALE_MIN;
+        $sMax = PageHeroCoverPresentationProfile::FRAMING_SCALE_MAX;
+        $sStep = PageHeroCoverPresentationProfile::FRAMING_SCALE_STEP;
         foreach ([ViewportKey::Mobile->value, ViewportKey::Tablet->value, ViewportKey::Desktop->value] as $vk) {
             $row = $map[$vk] ?? null;
-            $vf = ViewportFraming::fromArray(is_array($row) ? $row : null);
+            $vf = ViewportFraming::fromArray(is_array($row) ? $row : null, $sMin, $sMax, $sStep);
             if ($vf === null) {
                 $def = PageHeroCoverPresentationProfile::defaultFocalForViewport(ViewportKey::from($vk));
                 $vf = ViewportFraming::normalized(
                     $def->x,
                     $def->y,
                     PageHeroCoverPresentationProfile::FRAMING_SCALE_DEFAULT,
+                    null,
+                    $sMin,
+                    $sMax,
+                    $sStep,
                 );
             }
             $map[$vk] = $vf->toArray();
         }
         $hp['viewport_focal_map'] = $map;
-        $merged['hero_background_presentation'] = PresentationData::fromArray($hp)->toArray();
+        $merged['hero_background_presentation'] = PresentationData::fromArray($hp, $sMin, $sMax, $sStep)->toArray();
 
         return $merged;
     }

@@ -13,6 +13,7 @@
  * @property {string} [wirePathPrefix]
  * @property {string} [viewportStorageId] — id для sessionStorage; без него — inst-N на инстанс.
  * @property {string} [previewEngine]
+ * @property {'cover'|'height_fit'} [focalPreviewFit] — для hero desktop: базовая геометрия «по высоте кадра».
  */
 const EPS = 1e-6;
 
@@ -80,9 +81,25 @@ export function coverDisplaySize(iw, ih, frameW, frameH) {
     return { scale, dispW: iw * scale, dispH: ih * scale };
 }
 
-export function translateFromFocal(px, py, frameW, frameH, iw, ih, userScale = 1) {
-    const us = Math.max(1, userScale);
-    const { dispW, dispH } = coverDisplaySize(iw, ih, frameW, frameH);
+/** Базовый масштаб: полная высота изображения = высота кадра (как object-fit:contain по высоте); по ширине может не хватать — края на сайте размываются. */
+export function heightFitDisplaySize(iw, ih, frameW, frameH) {
+    if (iw <= 0 || ih <= 0 || frameW <= 0 || frameH <= 0) {
+        return { scale: 1, dispW: frameW, dispH: frameH };
+    }
+    const scale = frameH / ih;
+    return { scale, dispW: iw * scale, dispH: frameH };
+}
+
+export function previewDisplaySize(iw, ih, frameW, frameH, geometryMode = 'cover') {
+    if (geometryMode === 'height_fit') {
+        return heightFitDisplaySize(iw, ih, frameW, frameH);
+    }
+    return coverDisplaySize(iw, ih, frameW, frameH);
+}
+
+export function translateFromFocal(px, py, frameW, frameH, iw, ih, userScale = 1, minUserScale = 1, geometryMode = 'cover') {
+    const us = Math.max(minUserScale, userScale);
+    const { dispW, dispH } = previewDisplaySize(iw, ih, frameW, frameH, geometryMode);
     const ew = dispW * us;
     const eh = dispH * us;
     const tx = Math.abs(frameW - ew) < EPS ? 0 : (px / 100 - 0.5) * (frameW - ew);
@@ -90,9 +107,9 @@ export function translateFromFocal(px, py, frameW, frameH, iw, ih, userScale = 1
     return { tx, ty };
 }
 
-export function focalFromTranslate(tx, ty, frameW, frameH, iw, ih, userScale = 1) {
-    const us = Math.max(1, userScale);
-    const { dispW, dispH } = coverDisplaySize(iw, ih, frameW, frameH);
+export function focalFromTranslate(tx, ty, frameW, frameH, iw, ih, userScale = 1, minUserScale = 1, geometryMode = 'cover') {
+    const us = Math.max(minUserScale, userScale);
+    const { dispW, dispH } = previewDisplaySize(iw, ih, frameW, frameH, geometryMode);
     const ew = dispW * us;
     const eh = dispH * us;
     let px = Math.abs(frameW - ew) < EPS ? 50 : 50 + (tx / (frameW - ew)) * 100;
@@ -102,9 +119,9 @@ export function focalFromTranslate(tx, ty, frameW, frameH, iw, ih, userScale = 1
     return { x: px, y: py };
 }
 
-export function clampTranslate(tx, ty, frameW, frameH, iw, ih, userScale = 1) {
-    const f = focalFromTranslate(tx, ty, frameW, frameH, iw, ih, userScale);
-    return translateFromFocal(f.x, f.y, frameW, frameH, iw, ih, userScale);
+export function clampTranslate(tx, ty, frameW, frameH, iw, ih, userScale = 1, minUserScale = 1, geometryMode = 'cover') {
+    const f = focalFromTranslate(tx, ty, frameW, frameH, iw, ih, userScale, minUserScale, geometryMode);
+    return translateFromFocal(f.x, f.y, frameW, frameH, iw, ih, userScale, minUserScale, geometryMode);
 }
 
 export function focalForCommit(x, y) {
@@ -417,6 +434,27 @@ function registerServiceProgramCoverFocalEditor() {
             return !!(b && b.wNarrow > 0);
         },
 
+        /** Геометрия drag/zoom: на сайте desktop hero — height-first; mobile/tablet — cover. */
+        geometryModeFor(key) {
+            if (this.config?.focalPreviewFit === 'height_fit' && key === 'desktop') {
+                return 'height_fit';
+            }
+
+            return 'cover';
+        },
+
+        /** Класс object-fit для превью: desktop hero согласован с public CSS (contain + боковой wash). */
+        previewObjectFitClass(key) {
+            if (this.previewShowFullImage) {
+                return 'object-contain';
+            }
+            if (this.geometryModeFor(key) === 'height_fit') {
+                return 'object-contain';
+            }
+
+            return 'object-cover';
+        },
+
         /**
          * Pixel size of preview frame: program cards from mediaBase (см. PHP profile); иначе staticPreviewFrames (hero / Page Builder).
          */
@@ -615,8 +653,10 @@ function registerServiceProgramCoverFocalEditor() {
             }
             const { w, h } = this.frameSize(key);
             const f = this.localFocal(key);
-            const us = Math.max(1, f.s ?? 1);
-            const { dispW, dispH } = coverDisplaySize(n.iw, n.ih, w, h);
+            const b = this.scaleBounds();
+            const us = Math.max(b.min, f.s ?? 1);
+            const mode = this.geometryModeFor(key);
+            const { dispW, dispH } = previewDisplaySize(n.iw, n.ih, w, h, mode);
             const ew = dispW * us;
             const eh = dispH * us;
             const slackX = Math.abs(w - ew) >= EPS;
@@ -625,12 +665,12 @@ function registerServiceProgramCoverFocalEditor() {
                 return '';
             }
             if (!slackX && !slackY) {
-                return 'Нет запаса для сдвига по обеим осям — увеличьте zoom или смените источник.';
+                return 'Нет запаса для сдвига по обеим осям — измените zoom или смените источник.';
             }
             if (!slackX) {
-                return 'По горизонтали нет запаса (после cover-fit) — увеличьте zoom или используйте другой источник.';
+                return 'По горизонтали нет запаса (после cover-fit) — уменьшите или увеличьте zoom, либо другой источник.';
             }
-            return 'По вертикали нет запаса — увеличьте zoom или используйте другой источник.';
+            return 'По вертикали нет запаса — измените zoom или используйте другой источник.';
         },
 
         startDrag(key, ev) {
@@ -664,7 +704,9 @@ function registerServiceProgramCoverFocalEditor() {
             const { w, h } = this.frameSize(key);
             const focal = this.localFocal(key);
             const us = focal.s ?? 1;
-            const { tx, ty } = translateFromFocal(focal.x, focal.y, w, h, n.iw, n.ih, us);
+            const { min } = this.scaleBounds();
+            const mode = this.geometryModeFor(key);
+            const { tx, ty } = translateFromFocal(focal.x, focal.y, w, h, n.iw, n.ih, us, min, mode);
             this.dragging = {
                 key,
                 startX: ev.clientX,
@@ -704,12 +746,14 @@ function registerServiceProgramCoverFocalEditor() {
             const { w, h } = this.frameSize(key);
             const focal = this.localFocal(key);
             const us = focal.s ?? 1;
+            const { min } = this.scaleBounds();
+            const mode = this.geometryModeFor(key);
             let tx = startTx + (clientX - startX);
             let ty = startTy + (clientY - startY);
-            const c = clampTranslate(tx, ty, w, h, n.iw, n.ih, us);
+            const c = clampTranslate(tx, ty, w, h, n.iw, n.ih, us, min, mode);
             tx = c.tx;
             ty = c.ty;
-            const f = focalFromTranslate(tx, ty, w, h, n.iw, n.ih, us);
+            const f = focalFromTranslate(tx, ty, w, h, n.iw, n.ih, us, min, mode);
             const com = focalForCommit(f.x, f.y);
             if (key === 'tablet') {
                 this.local.tablet = { ...this.local.tablet, x: com.x, y: com.y, s: this.local.tablet.s };
@@ -807,7 +851,8 @@ function registerServiceProgramCoverFocalEditor() {
                         continue;
                     }
                     const p = el.getAttribute(name) ?? '';
-                    if (p.includes('viewport_focal_map') && p.includes('cover_presentation')) {
+                    // Hero: hero_background_presentation…; карточки: cover_presentation… — достаточно viewport_focal_map внутри блока extras.
+                    if (p.includes('viewport_focal_map')) {
                         isFocal = true;
                     }
                 }
@@ -1138,6 +1183,46 @@ function registerServiceProgramCoverFocalEditor() {
             return this.queueCommit();
         },
 
+        /** Подобрать zoom так, чтобы после cover-fit высота изображения совпала с высотой кадра превью. */
+        fitScaleToFrameHeight(key) {
+            if (this.previewShowFullImage || !this.canDrag(key)) {
+                return;
+            }
+            const n = this.naturalFor(key);
+            if (!n) {
+                return;
+            }
+            const { w, h } = this.frameSize(key);
+            const mode = this.geometryModeFor(key);
+            const { dispH } = previewDisplaySize(n.iw, n.ih, w, h, mode);
+            const { min, max, step } = this.scaleBounds();
+            let s;
+            if (mode === 'height_fit') {
+                /** Базовый dispH уже равен высоте кадра; user scale 1 = по высоте, >1 — кроп по вертикали. */
+                s = scaleForCommit(1, min, max, step);
+            } else {
+                s = 1;
+                if (dispH > h + EPS) {
+                    s = h / dispH;
+                }
+                s = scaleForCommit(s, min, max, step);
+            }
+            if (key === 'tablet') {
+                this.local.tablet = { ...this.local.tablet, s };
+            } else if (key === 'desktop') {
+                this.local.desktop = { ...this.local.desktop, s };
+                if (this.sync) {
+                    this.local.mobile = { ...this.local.mobile, s };
+                }
+            } else {
+                this.local.mobile = { ...this.local.mobile, s };
+                if (this.sync) {
+                    this.local.desktop = { ...this.local.desktop, s };
+                }
+            }
+            this.queueCommit();
+        },
+
         nudge(key, dpx, dpy, shift) {
             if (this.previewShowFullImage) {
                 return;
@@ -1150,15 +1235,17 @@ function registerServiceProgramCoverFocalEditor() {
             const mult = shift ? 0.05 : 0.01;
             const f = this.localFocal(key);
             const us = f.s ?? 1;
-            const { tx, ty } = translateFromFocal(f.x, f.y, w, h, n.iw, n.ih, us);
+            const { min } = this.scaleBounds();
+            const mode = this.geometryModeFor(key);
+            const { tx, ty } = translateFromFocal(f.x, f.y, w, h, n.iw, n.ih, us, min, mode);
             const dtx = dpx * mult * w;
             const dty = dpy * mult * h;
             let ntx = tx + dtx;
             let nty = ty + dty;
-            const c = clampTranslate(ntx, nty, w, h, n.iw, n.ih, us);
+            const c = clampTranslate(ntx, nty, w, h, n.iw, n.ih, us, min, mode);
             ntx = c.tx;
             nty = c.ty;
-            const nf = focalFromTranslate(ntx, nty, w, h, n.iw, n.ih, us);
+            const nf = focalFromTranslate(ntx, nty, w, h, n.iw, n.ih, us, min, mode);
             if (key === 'tablet') {
                 this.local.tablet = { ...this.local.tablet, x: nf.x, y: nf.y, s: this.local.tablet.s };
             } else if (key === 'desktop') {

@@ -173,7 +173,7 @@
                     $featPosCss = ($featPosRaw !== '' && strlen($featPosRaw) <= 80 && preg_match('/^[-0-9a-zA-Z%+._\s\\/()]+$/', $featPosRaw) === 1)
                         ? $featPosRaw
                         : 'center';
-                    $featFigureStyleAttr = htmlspecialchars('--pm-case-op: '.$featPosCss, ENT_QUOTES, 'UTF-8');
+                    $mediaGrad = ($featuredMediaTone)($category);
                     $initials = '';
                     if (! empty($case['real'])) {
                         $titleForInitials = trim((string) ($case['title'] ?? ''));
@@ -245,12 +245,12 @@
                             @endif
                         </div>
 
-                        @php
-                            $mediaGrad = ($featuredMediaTone)($category);
-                        @endphp
                         <div class="relative z-10 flex min-h-[180px] items-stretch sm:min-h-[200px] xl:min-h-[260px]">
                             @if($featImg !== '')
-                                <figure class="relative w-full overflow-hidden rounded-2xl ring-1 ring-slate-200/80" <?php echo 'style="'.$featFigureStyleAttr.'"'; ?>>
+                                <figure
+                                    class="relative w-full overflow-hidden rounded-2xl ring-1 ring-slate-200/80"
+                                    {{ new \Illuminate\View\ComponentAttributeBag(['style' => '--pm-case-op: '.$featPosCss]) }}
+                                >
                                     <img src="{{ $featImg }}" alt="Снимок главной страницы: {{ strip_tags(trim((string) ($case['title'] ?? ''))) }}" class="h-full max-h-80 w-full object-cover lg:max-h-none" style="object-position: var(--pm-case-op)" loading="lazy" decoding="async" />
                                     <figcaption class="sr-only">{{ $case['title'] ?? '' }}</figcaption>
                                 </figure>
@@ -455,10 +455,10 @@
             <div class="fade-reveal mt-10 flex flex-col items-center gap-4 border-t border-slate-200 pt-10 text-center sm:mt-12 sm:pt-12 [transition-delay:400ms]">
                 <p class="max-w-xl text-base font-semibold text-slate-800">Ваш проект может быть следующим</p>
                 <p class="max-w-xl text-pretty text-base leading-relaxed text-slate-600">
-                    Готовы к&nbsp;такому же контуру заявок и&nbsp;операций&nbsp;— с&nbsp;рабочей системой, а&nbsp;не картинками в&nbsp;портфолио.
+                    Хотите такую же связку сайта и записи с рабочими экранами&nbsp;— без картинки «как мы когда-то сделали».
                 </p>
                 <a href="{{ $casesContactUrl }}" class="inline-flex min-h-12 items-center justify-center rounded-xl bg-pm-accent px-8 py-3 text-base font-bold text-white shadow-premium transition-all hover:-translate-y-0.5 hover:bg-pm-accent-hover" data-pm-event="cta_click" data-pm-cta="primary" data-pm-location="cases_footer">
-                    Запустить свой проект
+                    Хочу обсудить
                 </a>
             </div>
         @endif

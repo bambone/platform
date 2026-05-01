@@ -122,7 +122,7 @@
                             <div class="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                                 <div class="h-full w-[45%] rounded-full bg-gradient-to-r from-indigo-500/80 to-indigo-400/90"></div>
                             </div>
-                            <p class="text-[10px] leading-relaxed text-slate-500 sm:text-[11px]">Фоновая обработка без зависаний</p>
+                            <p class="text-[10px] leading-relaxed text-slate-500 sm:text-[11px]">Тяжёлое считается на сервере — окно не замирает</p>
                         </div>
                     </div>
                     {{-- Панель: домен / SEO сниппет --}}

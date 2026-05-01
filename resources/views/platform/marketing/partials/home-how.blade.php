@@ -4,25 +4,25 @@
 <section id="kak-rabotaet" class="pm-section-anchor pm-section-y border-b border-slate-200 bg-white" aria-labelledby="kak-rabotaet-heading">
     <div class="mx-auto max-w-6xl px-4 md:px-6">
         <h2 id="kak-rabotaet-heading" class="fade-reveal text-balance text-3xl font-extrabold leading-tight text-slate-900 sm:text-4xl">{{ RussianTypography::tiePrepositionsToNextWord('Как это работает') }}</h2>
-        <p class="fade-reveal pm-section-lead max-w-2xl text-pretty text-base leading-relaxed text-slate-700 [transition-delay:100ms] sm:text-lg">{{ RussianTypography::tiePrepositionsToNextWord('Четыре шага от визита на сайт до процесса в админке.') }}</p>
+        <p class="fade-reveal pm-section-lead max-w-2xl text-pretty text-base leading-relaxed text-slate-700 [transition-delay:100ms] sm:text-lg">{{ RussianTypography::tiePrepositionsToNextWord('От «зашёл на страницу» до «понятно, кто записался» — без магии, просто порядок шагов.') }}</p>
 
         <ol class="pm-how-flow relative mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-2 md:gap-5 lg:grid-cols-4">
             @foreach([
                 [
-                    'label' => 'Клиент заходит на ваш сайт',
-                    'sub' => 'Ваш домен, бренд и SEO.',
+                    'label' => 'Человек находит вас в поиске или по прямой ссылке',
+                    'sub' => 'Видит нормальный сайт, ваш бренд, понятное предложение.',
                 ],
                 [
-                    'label' => 'Заявка или слот в календаре',
-                    'sub' => 'Простая запись без лишних полей.',
+                    'label' => 'Выбирает услугу и время сам',
+                    'sub' => 'Без двадцати уточняющих звонков, если базовые поля уже хватает.',
                 ],
                 [
-                    'label' => 'Система делает остальное',
-                    'sub' => 'Слоты, CRM, уведомления — автоматически.',
+                    'label' => 'Вы получаете готовую карточку',
+                    'sub' => 'Слот становится занятым, нужным людям улетают напоминания.',
                 ],
                 [
-                    'label' => 'Вы ведёте бизнес',
-                    'sub' => 'Статусы и клиенты в одном окне.',
+                    'label' => 'Работаете как привыкли — только без бардака',
+                    'sub' => 'Звоните, когда нужно ваше слово — а не когда надо просто записать имя.',
                 ],
             ] as $i => $step)
                 <li @class([

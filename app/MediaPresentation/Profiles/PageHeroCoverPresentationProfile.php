@@ -19,7 +19,8 @@ final class PageHeroCoverPresentationProfile
 
     public const PICTURE_MOBILE_MAX_PX = 1023;
 
-    public const FRAMING_SCALE_MIN = 1.0;
+    /** User zoom: below 1 zooms out (hero: fit portrait height in block); program cards keep min 1 in their profile. */
+    public const FRAMING_SCALE_MIN = 0.5;
 
     public const FRAMING_SCALE_MAX = 1.5;
 

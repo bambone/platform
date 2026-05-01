@@ -33,15 +33,18 @@ final class FramingCoverFocalEditor
         return ViewField::make($name)
             ->hiddenLabel()
             ->view('filament.forms.components.service-program-cover-preview')
-            ->viewData(function (Get $get) use ($profile, $wirePathPrefix, $presentationStateKey, $resolveDesktopImageUrl, $resolveMobileImageUrl, $resolveSyncDefault): array {
+            ->viewData(function (Get $get) use ($name, $profile, $wirePathPrefix, $presentationStateKey, $resolveDesktopImageUrl, $resolveMobileImageUrl, $resolveSyncDefault): array {
                 $t = currentTenant();
                 $frames = $profile->previewFrames();
                 $safeArea = $profile->safeAreaBottomBand();
                 $cover = $get($presentationStateKey) ?? [];
                 $map = is_array($cover['viewport_focal_map'] ?? null) ? $cover['viewport_focal_map'] : [];
-                $mobileFr = ViewportFraming::fromArray(is_array($map['mobile'] ?? null) ? $map['mobile'] : null);
-                $tabletFr = ViewportFraming::fromArray(is_array($map['tablet'] ?? null) ? $map['tablet'] : null);
-                $desktopFr = ViewportFraming::fromArray(is_array($map['desktop'] ?? null) ? $map['desktop'] : null);
+                $sMin = $profile->framingScaleMin();
+                $sMax = $profile->framingScaleMax();
+                $sStep = $profile->framingScaleStep();
+                $mobileFr = ViewportFraming::fromArray(is_array($map['mobile'] ?? null) ? $map['mobile'] : null, $sMin, $sMax, $sStep);
+                $tabletFr = ViewportFraming::fromArray(is_array($map['tablet'] ?? null) ? $map['tablet'] : null, $sMin, $sMax, $sStep);
+                $desktopFr = ViewportFraming::fromArray(is_array($map['desktop'] ?? null) ? $map['desktop'] : null, $sMin, $sMax, $sStep);
                 $defM = $profile->defaultFocalForViewport(ViewportKey::Mobile);
                 $defT = $profile->defaultFocalForViewport(ViewportKey::Tablet);
                 $defD = $profile->defaultFocalForViewport(ViewportKey::Desktop);
@@ -113,16 +116,25 @@ final class FramingCoverFocalEditor
                 $syncDefault = $resolveSyncDefault !== null
                     ? (bool) $resolveSyncDefault($get)
                     : (bool) ($get('data_json.hero_focal_sync_mobile_desktop') ?? false);
-                $previewKey = hash('sha256', (string) json_encode([
-                    $map,
+                /**
+                 * Стабильный ключ DOM / sessionStorage: без focal map и zoom — иначе при каждом commit Livewire
+                 * менял wire:key → полный remount Alpine и вкладка превью слетала на mobile.
+                 */
+                $viewComponentKey = hash('sha256', (string) json_encode([
+                    $tenantId,
+                    $wirePathPrefix,
+                    $name,
+                    $desktopUrl,
+                    $mobileUrl,
                     $syncDefault,
+                ], JSON_UNESCAPED_UNICODE));
+                $previewKey = hash('sha256', (string) json_encode([
+                    $viewComponentKey,
+                    $map,
                     $ms,
                     $ts,
                     $ds,
-                    $desktopUrl,
-                    $mobileUrl,
-                    $wirePathPrefix,
-                ]));
+                ], JSON_UNESCAPED_UNICODE));
 
                 $editorConfig = [
                     'mobile' => ['x' => $mx, 'y' => $my, 's' => $ms, 'heightFactor' => $mhf],
@@ -159,7 +171,9 @@ final class FramingCoverFocalEditor
                     'syncDefault' => $syncDefault,
                     'safeAreaBottomPercent' => (float) ($profile->safeAreaBottomBand()['bottomPercent'] ?? 38),
                     'safeAreaLabel' => (string) ($safeArea['label'] ?? ''),
-                    'viewportStorageId' => $previewKey,
+                    'viewportStorageId' => $viewComponentKey,
+                    /** Desktop: геометрия превью «сначала по высоте кадра», как на сайте (object-fit: contain). */
+                    'focalPreviewFit' => 'height_fit',
                 ];
 
                 return [
@@ -168,6 +182,7 @@ final class FramingCoverFocalEditor
                     'safeArea' => $safeArea,
                     'editorConfig' => $editorConfig,
                     'previewKey' => $previewKey,
+                    'viewComponentKey' => $viewComponentKey,
                     'overlayMobile' => self::overlayMobileForPreview($profile),
                     'overlayDesktop' => self::overlayDesktopForPreview($profile),
                 ];

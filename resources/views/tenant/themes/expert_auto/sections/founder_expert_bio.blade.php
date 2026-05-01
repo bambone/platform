@@ -47,6 +47,9 @@
     $useUnifiedEnrollmentCta = $ctaLabel !== ''
         && in_array((string) (tenant()?->theme_key ?? ''), ['expert_auto', 'advocate_editorial'], true)
         && \App\Tenant\Expert\TenantEnrollmentCtaConfig::forCurrent() !== null;
+    if ((tenant()?->themeKey() ?? '') === 'expert_pr' && ($ctaAnchor === '' || $ctaAnchor === '#expert-inquiry')) {
+        $ctaAnchor = '/contacts#expert-inquiry';
+    }
     $scrollTarget = $ctaAnchor !== '' && str_starts_with($ctaAnchor, '#') ? $ctaAnchor : '#expert-inquiry';
 @endphp
 <section @if($sectionId !== '') id="{{ e($sectionId) }}" @endif class="expert-bio-mega relative mb-14 min-w-0 scroll-mt-24 sm:mb-20 sm:scroll-mt-28 lg:mb-28">

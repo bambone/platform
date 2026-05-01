@@ -4,6 +4,7 @@ namespace Tests\Feature\Tenant;
 
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\Tenant\MagasExpertBootstrap;
+use App\Models\TenantSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,33 @@ class MagasBootstrapCommandTest extends TestCase
             ->first();
         $this->assertNotNull($seo);
         $this->assertSame(0, (int) $seo->is_indexable);
+
+        $hero = DB::table('page_sections')
+            ->where('tenant_id', $tid)
+            ->where('page_id', $homeId)
+            ->where('section_key', 'expert_hero')
+            ->first();
+        $this->assertNotNull($hero);
+        $heroData = json_decode((string) $hero->data_json, true);
+        $this->assertIsArray($heroData);
+        $heroUrl = (string) ($heroData['hero_image_url'] ?? '');
+        $this->assertMatchesRegularExpression(
+            '#^(https://sergeymagas\.(?:ru|com)/magas\.png|site/brand/magas-hero\.(png|jpg))$#',
+            $heroUrl,
+        );
+
+        $faviconUrl = TenantSetting::getForTenant($tid, 'branding.favicon', '');
+        $this->assertNotSame('', trim((string) $faviconUrl));
+
+        $linkGrp = DB::table('tenant_footer_sections')
+            ->where('tenant_id', $tid)->where('section_key', 'magas_footer_link_groups_v1')->first();
+        $this->assertNotNull($linkGrp);
+        $this->assertSame(\App\Tenant\Footer\FooterSectionType::LINK_GROUPS, $linkGrp->type);
+        $this->assertSame(9, (int) DB::table('tenant_footer_links')->where('section_id', $linkGrp->id)->count());
+        $response = DB::table('tenant_footer_sections')
+            ->where('tenant_id', $tid)->where('section_key', 'magas_footer_response_v1')->first();
+        $this->assertNotNull($response);
+        $this->assertSame(\App\Tenant\Footer\FooterSectionType::CONDITIONS_LIST, $response->type);
     }
 
     public function test_publish_sets_substantive_pages_indexable_not_placeholder_without_flag(): void

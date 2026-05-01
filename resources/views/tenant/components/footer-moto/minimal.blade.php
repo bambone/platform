@@ -6,6 +6,7 @@
     $footerTagline = $f['footer_tagline'] ?? '';
     $serviceNote = $f['minimal_service_note'] ?? '';
     $bookingSubline = $f['minimal_booking_subline'] ?? '';
+    $expertPrFoot = (bool) ($f['expert_pr_footer'] ?? false);
 @endphp
 {{-- Слой подвала: полная ширина, без «карточки» по краям; основной блок и нижняя полоса разделены. --}}
 <div class="w-full">
@@ -15,11 +16,11 @@
             <div class="grid gap-12 lg:grid-cols-12 lg:gap-x-14 lg:gap-y-10 xl:gap-x-16">
                 {{-- Левая колонка: каналы (заголовок дружелюбнее «Связь») --}}
                 <div class="min-w-0 lg:col-span-5">
-                    <p class="text-[11px] font-bold uppercase tracking-[0.22em] text-moto-amber/90">На связи</p>
+                    <p class="text-[11px] font-bold uppercase tracking-[0.22em] text-moto-amber/90">{{ $expertPrFoot ? 'Contact' : 'На связи' }}</p>
                     <dl class="mt-5 space-y-6">
                         @if(filled($p['phone_href'] ?? ''))
                             <div>
-                                <dt class="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">Телефон</dt>
+                                <dt class="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">{{ $expertPrFoot ? 'Phone' : 'Телефон' }}</dt>
                                 <dd class="mt-1.5">
                                     <a href="{{ $p['phone_href'] }}" class="inline-flex min-h-10 items-center text-lg font-semibold tracking-tight text-white transition-colors hover:text-moto-amber">{{ $p['phone_display'] ?? '' }}</a>
                                 </dd>
@@ -37,7 +38,7 @@
                             <div>
                                 <dt class="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">WhatsApp</dt>
                                 <dd class="mt-1.5">
-                                    <a href="{{ $p['whatsapp_url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-10 items-center text-base font-semibold text-white/95 underline-offset-4 transition hover:text-moto-amber hover:underline">Написать в WhatsApp</a>
+                                    <a href="{{ $p['whatsapp_url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-10 items-center text-base font-semibold text-white/95 underline-offset-4 transition hover:text-moto-amber hover:underline">{{ $expertPrFoot ? 'WhatsApp' : 'Написать в WhatsApp' }}</a>
                                 </dd>
                             </div>
                         @endif
@@ -53,22 +54,22 @@
                 </div>
 
                 <div class="min-w-0 lg:col-span-3">
-                    <p class="text-[11px] font-bold uppercase tracking-[0.22em] text-moto-amber/90">Разделы сайта</p>
+                    <p class="text-[11px] font-bold uppercase tracking-[0.22em] text-moto-amber/90">{{ $expertPrFoot ? 'Explore' : 'Разделы сайта' }}</p>
                     @if(! empty($systemLinks))
-                        <nav class="mt-5 flex flex-col gap-3" aria-label="Служебные ссылки">
+                        <nav class="mt-5 flex flex-col gap-3" aria-label="{{ $expertPrFoot ? 'Site sections' : 'Служебные ссылки' }}">
                             @foreach($systemLinks as $sl)
                                 <a href="{{ $sl['url'] }}" class="inline-flex min-h-10 items-center text-[15px] font-medium text-white/90 underline-offset-4 transition hover:text-moto-amber hover:underline">{{ $sl['label'] }}</a>
                             @endforeach
                         </nav>
                     @else
-                        <p class="mt-5 text-sm text-white/40">Ссылки появятся, когда маршруты доступны.</p>
+                        <p class="mt-5 text-sm text-white/40">{{ $expertPrFoot ? 'Links appear when routes are available.' : 'Ссылки появятся, когда маршруты доступны.' }}</p>
                     @endif
                 </div>
 
                 {{-- Бронирование: с lg — лёгкий разделитель + inset, чтобы не слипалось со «Разделы сайта». --}}
                 <div class="min-w-0 lg:col-span-4 lg:border-l lg:border-white/[0.06] lg:pl-8 xl:pl-10">
-                    <p class="text-[11px] font-bold uppercase tracking-[0.22em] text-moto-amber/90">Бронирование</p>
-                    <h3 class="mt-2 text-base font-bold leading-snug tracking-tight text-white">Заявка и подтверждение</h3>
+                    <p class="text-[11px] font-bold uppercase tracking-[0.22em] text-moto-amber/90">{{ $expertPrFoot ? 'Briefs' : 'Бронирование' }}</p>
+                    <h3 class="mt-2 text-base font-bold leading-snug tracking-tight text-white">{{ $expertPrFoot ? 'Requests & follow-up' : 'Заявка и подтверждение' }}</h3>
                     @if(filled($serviceNote))
                         <p class="mt-4 max-w-md text-pretty text-[15px] font-normal leading-[1.65] text-white/[0.88]">{{ \App\Support\Typography\RussianTypography::tiePrepositionsToNextWord($serviceNote) }}</p>
                     @endif

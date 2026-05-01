@@ -47,7 +47,9 @@ final class TenantFooterResolver
      *   footer_tagline: string,
      *   minimal_service_note: string,
      *   contact_presentation: array<string, string>,
-     *   system_links: list<array{label: string, url: string}>
+     *   system_links: list<array{label: string, url: string}>,
+     *   minimal_booking_subline?: string,
+     *   expert_pr_footer?: bool,
      * }
      */
     public function resolve(Tenant $tenant): array
@@ -93,19 +95,6 @@ final class TenantFooterResolver
     }
 
     /**
-     * @param  array<string, string>  $presentation
-     * @return array{
-     *   mode: 'minimal',
-     *   sections: list<array<string, mixed>>,
-     *   site_name: string,
-     *   year: int,
-     *   footer_tagline: string,
-     *   minimal_service_note: string,
-     *   contact_presentation: array<string, string>,
-     *   system_links: list<array{label: string, url: string}>
-     * }
-     */
-    /**
      * В minimal подвале мессенджеры управляются {@see TenantPublicSiteContactsService::footerMessengerLinksEnabled}
      * (по умолчанию совпадает с FAB; можно развести в настройках).
      * Full mode, секция «Контакты», использует полный {@see TenantFooterContactPresentation}.
@@ -129,6 +118,21 @@ final class TenantFooterResolver
         ]);
     }
 
+    /**
+     * @param  array<string, string>  $presentation
+     * @return array{
+     *   mode: 'minimal',
+     *   sections: list<array<string, mixed>>,
+     *   site_name: string,
+     *   year: int,
+     *   footer_tagline: string,
+     *   minimal_service_note: string,
+     *   minimal_booking_subline: string,
+     *   contact_presentation: array<string, string>,
+     *   system_links: list<array{label: string, url: string}>,
+     *   expert_pr_footer: bool,
+     * }
+     */
     private function minimalFooter(
         Tenant $tenant,
         string $siteName,
@@ -142,6 +146,13 @@ final class TenantFooterResolver
             $candidates = [
                 ['route' => 'contacts', 'path' => '/contacts', 'label' => 'Контакты'],
                 ['route' => 'privacy', 'path' => '/politika-konfidencialnosti', 'label' => 'Политика конфиденциальности'],
+            ];
+        } elseif ($tenant->themeKey() === 'expert_pr') {
+            /** Slug-страницы Magas (/privacy, /terms), не мото-маршруты usloviya/politika. */
+            $candidates = [
+                ['route' => 'contacts', 'path' => '/contacts', 'label' => 'Contacts'],
+                ['route' => 'page.show', 'path' => '/privacy', 'label' => 'Privacy'],
+                ['route' => 'page.show', 'path' => '/terms', 'label' => 'Terms'],
             ];
         } else {
             $candidates = [
@@ -163,16 +174,23 @@ final class TenantFooterResolver
             }
         }
 
+        $isExpertPrMinimal = $tenant->themeKey() === 'expert_pr';
+
         return [
             'mode' => 'minimal',
             'sections' => [],
             'site_name' => $siteName,
             'year' => $year,
             'footer_tagline' => $footerTagline,
-            'minimal_service_note' => self::DEFAULT_MINIMAL_SERVICE_NOTE,
-            'minimal_booking_subline' => self::DEFAULT_MINIMAL_BOOKING_SUBLINE,
+            'minimal_service_note' => $isExpertPrMinimal
+                ? 'Use the contact brief to outline goals and constraints — we clarify scope before committing to timelines.'
+                : self::DEFAULT_MINIMAL_SERVICE_NOTE,
+            'minimal_booking_subline' => $isExpertPrMinimal
+                ? 'Inbound replies typically within one business day for qualified B2B enquiries; escalation paths exist for reputational urgency.'
+                : self::DEFAULT_MINIMAL_BOOKING_SUBLINE,
             'contact_presentation' => $presentation,
             'system_links' => $systemLinks,
+            'expert_pr_footer' => $isExpertPrMinimal,
         ];
     }
 

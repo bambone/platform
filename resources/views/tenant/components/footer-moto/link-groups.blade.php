@@ -1,11 +1,17 @@
 @php
     $meta = $block['meta'] ?? [];
+    $lg = $block['link_groups'] ?? [];
+    $expertPrLinkGrid = tenant()?->themeKey() === 'expert_pr' && count($lg) >= 2;
 @endphp
 @if(filled($block['title'] ?? '') || filled($meta['headline'] ?? ''))
     <h3 class="mb-4 text-lg font-semibold text-white">{{ $block['title'] ?? $meta['headline'] }}</h3>
 @endif
-@foreach($block['link_groups'] ?? [] as $group)
-    <nav class="mb-6 border-t border-white/[0.06] pt-6 first:border-t-0 first:pt-0" aria-label="{{ $group['title'] ?? 'Ссылки' }}">
+<div @class([
+    'tenant-footer-link-groups',
+    'lg:grid lg:grid-cols-2 lg:gap-x-10 lg:gap-y-8 xl:grid-cols-3' => $expertPrLinkGrid,
+])>
+@foreach($lg as $group)
+    <nav class="mb-6 border-t border-white/[0.06] pt-6 first:border-t-0 first:pt-0 lg:mb-0 lg:border-t-0 lg:pt-0" aria-label="{{ $group['title'] ?? (tenant()?->themeKey() === 'expert_pr' ? 'Links' : 'Ссылки') }}">
         @if(filled($group['title'] ?? ''))
             <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-white/45">{{ $group['title'] }}</p>
         @endif
@@ -16,3 +22,4 @@
         </div>
     </nav>
 @endforeach
+</div>

@@ -1,5 +1,6 @@
 @php
     use App\MediaPresentation\ExpertHeroBackgroundPresentationResolver;
+    use App\Support\Storage\TenantStorage;
     use App\Support\Typography\RussianTypography;
     use App\Tenant\Expert\ExpertBrandMediaUrl;
     $heading = trim((string) ($data['heading'] ?? ''));
@@ -12,9 +13,10 @@
     $p2 = trim((string) ($data['secondary_cta_label'] ?? ''));
     $a2 = trim((string) ($data['secondary_cta_anchor'] ?? ''));
     $badges = is_array($data['trust_badges'] ?? null) ? $data['trust_badges'] : [];
-    $badges = array_slice($badges, 0, 3);
     $overlay = (bool) ($data['overlay_dark'] ?? true);
     $isBlackDuck = tenant()?->themeKey() === 'black_duck';
+    $isExpertPr = tenant()?->themeKey() === 'expert_pr';
+    $badges = array_slice($badges, 0, $isExpertPr ? 4 : 3);
     $bdHero = [];
     if ($isBlackDuck && is_array($data['hero_responsive'] ?? null)) {
         $hr = $data['hero_responsive'];
@@ -40,22 +42,46 @@
         $heroUrl = trim((string) (\tenant_branding_logo_url() ?? ''));
     }
     $heroUrl = ExpertBrandMediaUrl::resolve($heroUrl);
+    /** expert_pr: локальный путь строится даже без файла на диске → 404. CDN, пока не лежит {@code site/brand/magas-hero.*}. */
+    $expertPrPortraitFallbackRemote = 'https://sergeymagas.ru/magas.png';
+    if ($isExpertPr && ($tPr = tenant()) !== null) {
+        $tsMagas = TenantStorage::forTrusted((int) $tPr->id);
+        $magasHeroOnDisk = $tsMagas->existsPublic('site/brand/magas-hero.png')
+            || $tsMagas->existsPublic('site/brand/magas-hero.jpg');
+        if (! $magasHeroOnDisk) {
+            $heroUrl = $expertPrPortraitFallbackRemote;
+        }
+    }
+    if ($isExpertPr && trim($heroUrl) === '') {
+        $heroUrl = $expertPrPortraitFallbackRemote;
+    }
+    $heroIsRemote = preg_match('#^https?://#i', $heroUrl) === 1;
     $heroAlt = trim((string) ($data['hero_image_alt'] ?? ''));
     if ($heroAlt === '') {
-        $heroAlt = $isBlackDuck ? 'Black Duck Detailing, детейлинг-центр в Челябинске' : 'Марат Афлятунов — инструктор по вождению';
+        $heroAlt = $isBlackDuck
+            ? 'Black Duck Detailing, детейлинг-центр в Челябинске'
+            : ($isExpertPr
+                ? (trim((string) (tenant()?->brand_name ?? '')) !== ''
+                    ? trim((string) tenant()->brand_name).' — PR and communications'
+                    : 'PR advisor — strategic communications')
+                : 'Марат Афлятунов — инструктор по вождению');
     }
     $hasPhoto = $useBlackDuckPicture || $heroUrl !== '';
     $videoUrl = ExpertBrandMediaUrl::resolve(trim((string) ($data['hero_video_url'] ?? '')));
     $videoPoster = ExpertBrandMediaUrl::resolve(trim((string) ($data['hero_video_poster_url'] ?? '')));
     $videoTrigger = trim((string) ($data['video_trigger_label'] ?? ''));
     if ($videoTrigger === '') {
-        $videoTrigger = 'Смотреть видео';
+        $videoTrigger = $isExpertPr ? 'Watch video' : 'Смотреть видео';
     }
     $hasVideo = $videoUrl !== '';
     $dialogId = 'expert-hero-video-'.(int) data_get($section ?? [], 'id', 0);
     $eyebrow = trim((string) ($data['hero_eyebrow'] ?? ''));
     if ($eyebrow === '') {
-        $eyebrow = $isBlackDuck ? 'Детейлинг · Челябинск' : 'Инструктор • Челябинск и область';
+        $eyebrow = match (true) {
+            $isBlackDuck => 'Детейлинг · Челябинск',
+            $isExpertPr => 'B2B PR & narrative · Web3 & emerging tech',
+            default => 'Инструктор • Челябинск и область',
+        };
     }
     $headingDisplay = RussianTypography::tiePrepositionsToNextWord($heading);
     $subDisplay = $sub !== '' ? RussianTypography::tiePrepositionsToNextWord($sub) : '';
@@ -133,9 +159,16 @@
                         src="{{ e($heroUrl) }}"
                         alt="{{ e($heroAlt) }}"
                         class="expert-hero-cinematic__photo"
+                        width="2000"
+                        height="1333"
                         loading="eager"
                         fetchpriority="high"
                         decoding="async"
+                        @if($heroIsRemote) referrerpolicy="no-referrer" @endif
+                        @if($isExpertPr && ! $useBlackDuckPicture)
+                            data-pr-hero-remote-fallback="{{ e($expertPrPortraitFallbackRemote) }}"
+                            onerror="var f=this.dataset.prHeroRemoteFallback;if(f&&this.src!==f)this.src=f"
+                        @endif
                     >
                 @endif
             </div>
@@ -230,7 +263,7 @@
                 @endif
 
                 @if(count($badges) > 0)
-                    <ul class="expert-hero-cinematic__trust-mobile mt-3 flex flex-col gap-1 lg:hidden" aria-label="Коротко о формате">
+                    <ul class="expert-hero-cinematic__trust-mobile mt-3 flex flex-col gap-1 lg:hidden" aria-label="{{ $isExpertPr ? 'At a glance' : 'Коротко о формате' }}">
                         @foreach($badges as $b)
                             @php $t = trim((string) ($b['text'] ?? '')); @endphp
                             @if($t !== '')
@@ -259,7 +292,13 @@
         @if(! $hasPhoto)
             <div class="relative z-10 mx-auto w-full max-w-[100rem] px-4 pb-10 pt-0 sm:px-8 lg:px-12">
                 <div class="expert-hero-bg flex min-h-[16rem] items-center justify-center rounded-2xl border border-white/10 sm:min-h-[20rem] lg:min-h-[28rem]">
-                    <p class="text-sm font-medium text-white/60">Добавьте фото в блоке Hero в конструкторе страницы.</p>
+                    <p class="max-w-md px-4 text-center text-sm font-medium leading-relaxed text-white/60">
+                        @if($isExpertPr)
+                            Add a hero portrait or background in Filament (page builder → Hero). Until then this area stays minimal on purpose.
+                        @else
+                            Добавьте фото в блоке Hero в конструкторе страницы.
+                        @endif
+                    </p>
                 </div>
             </div>
         @endif

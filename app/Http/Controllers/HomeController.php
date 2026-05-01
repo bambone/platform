@@ -55,8 +55,18 @@ class HomeController extends Controller
             ->with(['sections' => function ($q): void {
                 $q->where('status', 'published')
                     ->where('is_visible', true)
-                    ->where('section_key', '!=', 'main')
-                    ->orderBy('sort_order')
+                    ->where('section_key', '!=', 'main');
+                /** @see MagasExpertBootstrap: главная expert_pr только контент — форма брифа на /contacts */
+                if ((tenant()?->themeKey() ?? '') === 'expert_pr') {
+                    $q->where(function ($w): void {
+                        $w->where('section_key', '!=', 'expert_lead_form')
+                            ->where(function ($inner): void {
+                                $inner->whereNull('section_type')
+                                    ->orWhere('section_type', '!=', 'expert_lead_form');
+                            });
+                    });
+                }
+                $q->orderBy('sort_order')
                     ->orderBy('id');
             }])
             ->first();

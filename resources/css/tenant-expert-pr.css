@@ -34,3 +34,14 @@ body.expert-auto-theme.expert-pr-theme .tenant-btn-primary:focus-visible {
     outline: 2px solid var(--rb-focus-ring);
     outline-offset: 2px;
 }
+
+/* Hero: светлый жёлтый фон — чуть ярче фильтр для портрета; оверлеи — в tenant-expert-auto.css. */
+body.expert-auto-theme.expert-pr-theme .expert-hero-cinematic--photo .expert-hero-cinematic__photo {
+    filter: saturate(1.02) contrast(1.02) brightness(1.06);
+}
+
+@media (min-width: 1024px) {
+    body.expert-auto-theme.expert-pr-theme .expert-hero-cinematic--photo .expert-hero-cinematic__photo {
+        filter: saturate(1.03) contrast(1.02) brightness(1.08);
+    }
+}

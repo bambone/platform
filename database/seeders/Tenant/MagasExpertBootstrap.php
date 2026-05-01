@@ -9,9 +9,18 @@ use App\Models\Page;
 use App\Models\SeoMeta;
 use App\Models\Tenant;
 use App\Models\TenantDomain;
+use App\Models\TenantFooterLink;
+use App\Models\TenantFooterSection;
 use App\Models\TenantSetting;
+use App\Tenant\Footer\FooterSectionType;
+use App\Tenant\Footer\TenantFooterLinkKind;
+use App\Support\Storage\TenantStorage;
+use App\Support\Storage\TenantStorageArea;
 use App\Tenant\StorageQuota\TenantStorageQuotaService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Idempotent bootstrap for tenant Sergei Magas (expert PR / Web3 narrative).
@@ -36,6 +45,18 @@ final class MagasExpertBootstrap
 
     /** Production apex; всегда `is_primary` в `tenant_domains` для этого хоста. */
     private const PRODUCTION_PRIMARY_HOST = 'sergeymagas.com';
+
+    /**
+     * Портрет в hero кадрируется с фокусом справа (субъект), типографика слева работает поверх однотонной зоны.
+     * Источник: официальный URL с текущего лендинга эксперта.
+     */
+    private const HERO_PORTRAIT_URL = 'https://sergeymagas.ru/magas.png';
+
+    /** Файл в репозитории TZ — кладётся в {@code tenants/{id}/public/site/brand/favicon.ico}. */
+    private const SOURCE_FAVICON_ICO_REL = 'docs/tenants_tz/magas/Prod-eng/favicon.ico';
+
+    /** Портрет hero: локальный файл в TZ перекрывает HTTP; сохраняется как {@code site/brand/magas-hero.png|.jpg}. */
+    private const SOURCE_HERO_MAGAS_REL = 'docs/tenants_tz/magas/Prod-eng/magas.png';
 
     public const BRAND = 'Sergei Magas';
 
@@ -158,15 +179,21 @@ final class MagasExpertBootstrap
 
         self::insertDomains($tenantId);
         self::applySettings($tenantId);
+        self::syncMagasBrandFaviconFromDocs($tenantId);
+        self::applyMagasTenantFaviconFromStorage($tenantId);
+        self::syncMagasHeroPortraitIntoTenantStorage($tenantId);
         $homeId = self::insertPage($tenantId, 'home', 'Home', false, 0, $now);
         self::insertHomeSections($tenantId, $homeId, $now);
         self::ensureHomeFaqSection($tenantId, $homeId, $now);
+        self::removeExpertLeadFormFromHome($tenantId, $homeId);
         self::insertInnerPages($tenantId, $now);
         self::ensureFaqs($tenantId, $now);
         self::seedFormConfig($tenantId, $now);
         self::seedHomeSeo($tenantId, $homeId, $now);
         self::seedInnerPagesSeo($tenantId, $now);
         self::ensureQuota($tenantId);
+        self::ensureMagasHomeExpertHeroPortrait($tenantId);
+        self::ensureMagasTypedFooterBaseline($tenantId);
     }
 
     private static function ensureContent(int $tenantId): void
@@ -174,11 +201,15 @@ final class MagasExpertBootstrap
         $now = now();
         self::insertDomains($tenantId);
         self::applySettings($tenantId);
+        self::syncMagasBrandFaviconFromDocs($tenantId);
+        self::applyMagasTenantFaviconFromStorage($tenantId);
+        self::syncMagasHeroPortraitIntoTenantStorage($tenantId);
         $homeId = self::ensurePage($tenantId, 'home', 'Home', false, 0, $now);
         if (DB::table('page_sections')->where('tenant_id', $tenantId)->where('page_id', $homeId)->doesntExist()) {
             self::insertHomeSections($tenantId, $homeId, $now);
         }
         self::ensureHomeFaqSection($tenantId, $homeId, $now);
+        self::removeExpertLeadFormFromHome($tenantId, $homeId);
         self::insertInnerPages($tenantId, $now);
         self::ensureFaqs($tenantId, $now);
         if (DB::table('form_configs')->where('tenant_id', $tenantId)->where('form_key', 'expert_lead')->doesntExist()) {
@@ -187,6 +218,105 @@ final class MagasExpertBootstrap
         self::seedHomeSeo($tenantId, $homeId, $now);
         self::seedInnerPagesSeo($tenantId, $now);
         self::ensureQuota($tenantId);
+        self::ensureMagasHomeExpertHeroPortrait($tenantId);
+        self::ensureMagasTypedFooterBaseline($tenantId);
+    }
+
+    /**
+     * Типизированный подвал Filament-compatible: синхронизируются только секции с префиксом {@code magas_footer_*}
+     * (группы ссылок по IA, блок «ответов», нижняя полоса). Другие включённые секции подвала на тенанте сохраняются.
+     *
+     * @see docs/tenants/magas/v1-brand-domains-and-ops.md
+     */
+    private static function ensureMagasTypedFooterBaseline(int $tenantId): void
+    {
+        if ($tenantId <= 0 || ! Schema::hasTable('tenant_footer_sections') || ! Schema::hasTable('tenant_footer_links')) {
+            return;
+        }
+        $slug = (string) DB::table('tenants')->where('id', $tenantId)->value('slug');
+        if ($slug !== self::SLUG) {
+            return;
+        }
+
+        $linksSection = TenantFooterSection::query()->updateOrCreate(
+            ['tenant_id' => $tenantId, 'section_key' => 'magas_footer_link_groups_v1'],
+            [
+                'type' => FooterSectionType::LINK_GROUPS,
+                'title' => null,
+                'body' => null,
+                'meta_json' => [
+                    'headline' => '',
+                    'group_titles' => [
+                        'explore' => 'Services & cases',
+                        'company' => 'Company',
+                        'legal' => 'Legal & contact',
+                    ],
+                ],
+                'sort_order' => 15,
+                'is_enabled' => true,
+            ],
+        );
+
+        TenantFooterSection::query()->updateOrCreate(
+            ['tenant_id' => $tenantId, 'section_key' => 'magas_footer_response_v1'],
+            [
+                'type' => FooterSectionType::CONDITIONS_LIST,
+                'title' => null,
+                'body' => null,
+                'meta_json' => [
+                    'headline' => 'Response & follow-up',
+                    'items' => [
+                        'Inbound replies within one business day for qualified B2B enquiries.',
+                        'If the situation is time-sensitive reputational pressure, mention it in your brief—we respond pragmatically.',
+                    ],
+                ],
+                'sort_order' => 45,
+                'is_enabled' => true,
+            ],
+        );
+
+        TenantFooterSection::query()->updateOrCreate(
+            ['tenant_id' => $tenantId, 'section_key' => 'magas_footer_bottom_v1'],
+            [
+                'type' => FooterSectionType::BOTTOM_BAR,
+                'title' => null,
+                'body' => null,
+                'meta_json' => [
+                    'copyright_text' => '',
+                    'secondary_text' => '',
+                ],
+                'sort_order' => 90,
+                'is_enabled' => true,
+            ],
+        );
+
+        TenantFooterLink::query()->where('section_id', $linksSection->id)->delete();
+
+        /** @var list<array{group_key: string, label: string, url: string, sort_order: int}> $nav */
+        $nav = [
+            ['group_key' => 'explore', 'label' => 'Services overview', 'url' => '/services', 'sort_order' => 10],
+            ['group_key' => 'explore', 'label' => 'Cases', 'url' => '/cases', 'sort_order' => 20],
+            ['group_key' => 'explore', 'label' => 'Media outreach program', 'url' => '/services/media-outreach', 'sort_order' => 30],
+            ['group_key' => 'company', 'label' => 'About', 'url' => '/about', 'sort_order' => 10],
+            ['group_key' => 'company', 'label' => 'FAQ', 'url' => '/faq', 'sort_order' => 20],
+            ['group_key' => 'company', 'label' => 'Contact brief', 'url' => '/contacts#expert-inquiry', 'sort_order' => 30],
+            ['group_key' => 'legal', 'label' => 'Contacts', 'url' => '/contacts', 'sort_order' => 10],
+            ['group_key' => 'legal', 'label' => 'Privacy', 'url' => '/privacy', 'sort_order' => 20],
+            ['group_key' => 'legal', 'label' => 'Terms', 'url' => '/terms', 'sort_order' => 30],
+        ];
+
+        foreach ($nav as $row) {
+            TenantFooterLink::query()->create([
+                'section_id' => $linksSection->id,
+                'group_key' => $row['group_key'],
+                'label' => $row['label'],
+                'url' => $row['url'],
+                'link_kind' => TenantFooterLinkKind::Internal,
+                'target' => '_self',
+                'sort_order' => $row['sort_order'],
+                'is_enabled' => true,
+            ]);
+        }
     }
 
     private static function ensureQuota(int $tenantId): void
@@ -195,6 +325,156 @@ final class MagasExpertBootstrap
         if ($t !== null) {
             app(TenantStorageQuotaService::class)->ensureQuotaRecord($t);
         }
+    }
+
+    /**
+     * Копирует {@see self::SOURCE_FAVICON_ICO_REL} в {@code tenants/{id}/public/site/brand/favicon.ico}.
+     */
+    private static function syncMagasBrandFaviconFromDocs(int $tenantId): void
+    {
+        if ($tenantId <= 0) {
+            return;
+        }
+        $path = base_path(str_replace('\\', DIRECTORY_SEPARATOR, self::SOURCE_FAVICON_ICO_REL));
+        if (! is_file($path)) {
+            return;
+        }
+        TenantStorage::forTrusted($tenantId)->putInArea(TenantStorageArea::PublicSite, 'brand/favicon.ico', File::get($path));
+    }
+
+    private static function applyMagasTenantFaviconFromStorage(int $tenantId): void
+    {
+        if ($tenantId <= 0) {
+            return;
+        }
+        $ts = TenantStorage::forTrusted($tenantId);
+        $rel = 'site/brand/favicon.ico';
+        if (! $ts->existsPublic($rel)) {
+            return;
+        }
+        TenantSetting::setForTenant($tenantId, 'branding.favicon_path', $ts->publicPath($rel), 'string');
+        TenantSetting::setForTenant($tenantId, 'branding.favicon', $ts->publicUrl($rel), 'string');
+    }
+
+    /**
+     * Кладём портрет в public storage: файл из TZ или (один раз) HTTP из канонических URL.
+     * Без активного интернета / файла TZ в БД остаётся {@see self::HERO_PORTRAIT_URL}.
+     */
+    private static function syncMagasHeroPortraitIntoTenantStorage(int $tenantId): void
+    {
+        if ($tenantId <= 0) {
+            return;
+        }
+        $storage = TenantStorage::forTrusted($tenantId);
+        $localHero = base_path(str_replace('\\', DIRECTORY_SEPARATOR, self::SOURCE_HERO_MAGAS_REL));
+        if (is_file($localHero)) {
+            $storage->putInArea(TenantStorageArea::PublicSite, 'brand/magas-hero.png', File::get($localHero));
+
+            return;
+        }
+
+        if (app()->environment('testing')) {
+            return;
+        }
+        foreach (['site/brand/magas-hero.png', 'site/brand/magas-hero.jpg'] as $have) {
+            if ($storage->existsPublic($have)) {
+                return;
+            }
+        }
+
+        foreach ([self::HERO_PORTRAIT_URL, 'https://sergeymagas.com/magas.png'] as $url) {
+            try {
+                $r = Http::timeout(22)->retry(2, 800)->connectTimeout(8)->get($url);
+                if (! $r->successful()) {
+                    continue;
+                }
+                $body = $r->body();
+                if (strlen($body) < 1024) {
+                    continue;
+                }
+                $isPng = str_starts_with($body, "\x89PNG");
+                $isJpg = str_starts_with($body, "\xFF\xD8\xFF");
+                if (! $isPng && ! $isJpg) {
+                    continue;
+                }
+                $name = $isPng ? 'magas-hero.png' : 'magas-hero.jpg';
+                $storage->putInArea(TenantStorageArea::PublicSite, 'brand/'.$name, $body);
+
+                break;
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+    }
+
+    /** @internal */
+    private static function resolvedMagasHeroImageUrl(int $tenantId): string
+    {
+        if ($tenantId <= 0) {
+            return self::HERO_PORTRAIT_URL;
+        }
+        $ts = TenantStorage::forTrusted($tenantId);
+        foreach (['site/brand/magas-hero.png', 'site/brand/magas-hero.jpg'] as $rel) {
+            if ($ts->existsPublic($rel)) {
+                return $rel;
+            }
+        }
+
+        return self::HERO_PORTRAIT_URL;
+    }
+
+    /**
+     * Портрет с жёлтым фоном: субъект справа — фокус ~76–82% по X; типографика слева уже подложена оверлеями в теме.
+     *
+     * @return array<string, mixed>
+     */
+    private static function magasExpertHeroPortraitData(int $tenantId): array
+    {
+        return [
+            'hero_image_url' => self::resolvedMagasHeroImageUrl($tenantId),
+            'hero_image_alt' => self::BRAND.' — B2B PR & narrative portrait',
+            'hero_background_presentation' => [
+                'version' => 2,
+                'viewport_focal_map' => [
+                    'mobile' => ['x' => 80.0, 'y' => 28.0, 'scale' => 1.0],
+                    'tablet' => ['x' => 74.0, 'y' => 17.0, 'scale' => 1.0],
+                    'desktop' => ['x' => 77.0, 'y' => 14.0, 'scale' => 1.02],
+                    'default' => ['x' => 76.0, 'y' => 12.0, 'scale' => 1.0],
+                ],
+            ],
+        ];
+    }
+
+    /** Обновляет payload hero главной после импортов TZ / смены URL портрета. */
+    private static function ensureMagasHomeExpertHeroPortrait(int $tenantId): void
+    {
+        if ($tenantId <= 0) {
+            return;
+        }
+        $homeId = (int) DB::table('pages')->where('tenant_id', $tenantId)->where('slug', 'home')->value('id');
+        if ($homeId <= 0) {
+            return;
+        }
+        $section = DB::table('page_sections')
+            ->where('tenant_id', $tenantId)
+            ->where('page_id', $homeId)
+            ->where('section_key', 'expert_hero')
+            ->first();
+        if ($section === null) {
+            return;
+        }
+
+        $data = json_decode((string) ($section->data_json ?? ''), true);
+        $data = is_array($data) ? $data : [];
+
+        foreach (self::magasExpertHeroPortraitData($tenantId) as $k => $v) {
+            $data[$k] = $v;
+        }
+
+        DB::table('page_sections')->where('id', (int) $section->id)->update([
+            'data_json' => json_encode($data, JSON_UNESCAPED_UNICODE),
+            'updated_at' => now(),
+        ]);
     }
 
     /**
@@ -345,6 +625,12 @@ final class MagasExpertBootstrap
         self::setSettingIfMissing($tenantId, 'contacts.email', 'hello@sergeymagas.com', 'string');
         self::setSettingIfMissing($tenantId, 'contacts.telegram', 'sergeimagas', 'string');
         self::setSettingIfMissing($tenantId, 'contacts.phone', '', 'string');
+        self::setSettingIfMissing(
+            $tenantId,
+            'general.footer_tagline',
+            'B2B communications: media relations, narrative, and crisis-ready messaging.',
+            'string',
+        );
     }
 
     private static function ensurePage(int $tenantId, string $slug, string $name, bool $menu, int $order, $now): int
@@ -712,6 +998,23 @@ final class MagasExpertBootstrap
         ]);
     }
 
+    /** У главной только контентные секции — форму оставляем на /contacts (как у других эксперт-тенантов). */
+    private static function removeExpertLeadFormFromHome(int $tenantId, int $homePageId): void
+    {
+        if ($homePageId <= 0) {
+            return;
+        }
+
+        DB::table('page_sections')
+            ->where('tenant_id', $tenantId)
+            ->where('page_id', $homePageId)
+            ->where(function ($q): void {
+                $q->where('section_key', 'expert_lead_form')
+                    ->orWhere('section_type', 'expert_lead_form');
+            })
+            ->delete();
+    }
+
     private static function insertHomeSections(int $tenantId, int $pageId, $now): void
     {
         $o = 0;
@@ -732,12 +1035,13 @@ final class MagasExpertBootstrap
         };
 
         $sections = [
-            $mk('expert_hero', 'expert_hero', [
+            $mk('expert_hero', 'expert_hero', array_merge([
+                'hero_eyebrow' => 'B2B PR & narrative · Web3 & emerging tech',
                 'heading' => 'Build trust before the market moves.',
                 'subheading' => 'B2B PR and narrative for Web3 founders, protocol teams and deep-tech builders who need disciplined media outreach, coherent positioning, and credible proof — without losing speed.',
                 'description' => '',
                 'primary_cta_label' => 'Send a brief',
-                'primary_cta_anchor' => '#expert-inquiry',
+                'primary_cta_anchor' => '/contacts#expert-inquiry',
                 'secondary_cta_label' => 'View services',
                 'secondary_cta_anchor' => '/services',
                 'trust_badges' => [
@@ -749,11 +1053,9 @@ final class MagasExpertBootstrap
                 'overlay_dark' => true,
                 'video_trigger_label' => '',
                 'hero_image_slot' => null,
-                'hero_image_url' => '',
-                'hero_image_alt' => self::BRAND.' — PR and communications',
                 'hero_video_url' => '',
                 'hero_video_poster_url' => '',
-            ], 'Hero'),
+            ], self::magasExpertHeroPortraitData($tenantId)), 'Hero'),
             $mk('problem_cards', 'problem_cards', [
                 'section_heading' => 'Where teams feel the pressure first',
                 'section_lead' => 'You are shipping product, managing community pressure, and answering investors — all at once. The site should help the right partners say “yes” faster.',
@@ -812,7 +1114,7 @@ final class MagasExpertBootstrap
                     ['text' => 'English-first outbound'],
                 ],
                 'cta_label' => 'Discuss a roadmap',
-                'cta_anchor' => '#expert-inquiry',
+                'cta_anchor' => '/contacts#expert-inquiry',
                 'cta_goal_prefill' => 'I want a concise PR roadmap for the next milestone.',
                 'cta_repeat_after_trust' => true,
             ], 'Credibility'),
@@ -820,18 +1122,6 @@ final class MagasExpertBootstrap
         if (self::$publishBootstrap && self::$allowPlaceholderPublish) {
             $sections[] = $mk('faq', 'faq', self::faqHomeSectionPresentationData());
         }
-        $sections[] = $mk('expert_lead_form', 'expert_lead_form', [
-                'heading' => 'Request a roadmap — or share a tactical brief',
-                'subheading' => 'Prefer Telegram or LinkedIn? Keep them alongside this form — CRM intake stays consistent.',
-                'form_key' => 'expert_lead',
-                'section_id' => 'expert-inquiry',
-                'sticky_cta_label' => 'Brief',
-                'trust_chips' => [
-                    ['text' => 'Honeypot + rate-limit'],
-                    ['text' => 'Mapped to CRM payload'],
-                    ['text' => 'Privacy checkbox'],
-                ],
-            ], 'Brief form');
 
         foreach ($sections as $row) {
             DB::table('page_sections')->insert($row);

@@ -16,7 +16,7 @@ final class ExpertBrandMediaUrl
     /** Имена файлов из сидера / команды tenant:push-brand-assets-from-docs */
     private const KNOWN_BRAND_FILES = [
         'gallery-1.jpg', 'gallery-2.jpg', 'gallery-3.jpg',
-        'portrait.jpg', 'credentials-bg.jpg', 'process-accent.jpg', 'hero.jpg',
+        'portrait.jpg', 'credentials-bg.jpg', 'process-accent.jpg', 'hero.jpg', 'magas-hero.png', 'magas-hero.jpg',
         'video-intro.mp4',
     ];
 
@@ -28,7 +28,8 @@ final class ExpertBrandMediaUrl
         }
 
         $tenant = \currentTenant();
-        if ($tenant === null || ! in_array($tenant->themeKey(), ['expert_auto', 'advocate_editorial', 'black_duck'], true)) {
+        /** expert_pr хранит тот же {@code site/brand/…}, что семейство expert (Magas bootstrap). Внешние URL не подменяем. */
+        if ($tenant === null || ! in_array($tenant->themeKey(), ['expert_auto', 'advocate_editorial', 'black_duck', 'expert_pr'], true)) {
             return $stored;
         }
 

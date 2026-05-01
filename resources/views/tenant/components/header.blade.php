@@ -2,16 +2,31 @@
     $isExpertAuto = tenant()?->themeKey() === 'expert_auto';
     $isAdvocateEditorial = tenant()?->themeKey() === 'advocate_editorial';
     $isBlackDuck = tenant()?->themeKey() === 'black_duck';
-    $isExpertStyleNav = $isExpertAuto || $isAdvocateEditorial || $isBlackDuck;
+    $isExpertPr = tenant()?->themeKey() === 'expert_pr';
+    $isExpertStyleNav = $isExpertAuto || $isAdvocateEditorial || $isBlackDuck || $isExpertPr;
     $expertNavPrimaryLeadHref = $isBlackDuck
         ? url('/contacts#contact-inquiry')
-        : (route('home').'#expert-inquiry');
+        : ($isExpertPr
+            ? url('/contacts#expert-inquiry')
+            : (route('home').'#expert-inquiry'));
     $headerBrandTitle = $site_name ?? config('app.name');
     if ($isExpertAuto && is_string($headerBrandTitle)) {
         $parts = preg_split('/\s*[—–]\s*/u', $headerBrandTitle, 2);
         $headerBrandTitle = trim((string) ($parts[0] ?? $headerBrandTitle));
         if ($headerBrandTitle === '') {
             $headerBrandTitle = 'Марат Афлятунов';
+        }
+    }
+    $expertPrBrandTagline = null;
+    if ($isExpertPr && is_string($headerBrandTitle)) {
+        $full = trim($headerBrandTitle);
+        $tagParts = preg_split('/\s*[—–]\s*/u', $full, 2);
+        if (isset($tagParts[1]) && trim((string) $tagParts[1]) !== '') {
+            $nm = trim((string) ($tagParts[0] ?? $full));
+            if ($nm !== '') {
+                $headerBrandTitle = $nm;
+                $expertPrBrandTagline = trim((string) $tagParts[1]);
+            }
         }
     }
     /** advocate_editorial: длинное ФИО в шапке — две строки (без truncate), последнее слово на второй строке; суффикс «— адвокат» не в ФИО */
@@ -29,8 +44,8 @@
             ];
         }
     }
-    /** advocate_editorial: длинные ФИО + полное меню + телефон — с xl (1280px), иначе бургер; при переполнении Alpine включает бургер (см. tenantHeader). */
-    $expertDesktopNavMinPx = $isAdvocateEditorial ? 1280 : 768;
+    /** advocate_editorial: длинные ФИО + полное меню + телефон — с xl (1280px), иначе бургер; expert_pr часто бывает длинное EN-меню. */
+    $expertDesktopNavMinPx = $isAdvocateEditorial ? 1280 : ($isExpertPr ? 1024 : 768);
     $expertHeaderShellHeight = $isAdvocateEditorial
         ? 'min-h-[4rem] md:min-h-[5.25rem] lg:min-h-[5.75rem]'
         : ($isExpertStyleNav ? 'h-[3.75rem] md:h-[5rem] lg:h-[5.5rem]' : 'h-[4.5rem] md:h-[5rem] lg:h-[5.5rem]');
@@ -100,6 +115,11 @@
                         <span class="block">{{ $advocateBrandLines[0] }}</span>
                         <span class="block">{{ $advocateBrandLines[1] }}</span>
                     </span>
+                @elseif($isExpertPr && filled($expertPrBrandTagline))
+                    <span class="min-w-0 max-w-[min(100%,14rem)] text-left sm:max-w-[min(100%,22rem)] md:max-w-none">
+                        <span class="block truncate text-[15px] font-bold tracking-tight text-white/96 md:text-[16px] lg:text-[17px]">{{ $headerBrandTitle }}</span>
+                        <span class="mt-0.5 block truncate text-[10px] font-semibold uppercase leading-tight tracking-[0.16em] text-white/72 md:text-[11px] md:tracking-[0.14em]">{{ $expertPrBrandTagline }}</span>
+                    </span>
                 @else
                     <span class="min-w-0 truncate text-[16px] font-bold tracking-wide md:text-[18px] lg:text-[20px] {{ $isAdvocateEditorial ? 'text-stone-900' : 'text-white/95' }}">{{ $headerBrandTitle }}</span>
                 @endif
@@ -111,7 +131,7 @@
                  aria-label="Основное меню">
                 <a href="{{ route('home') }}"
                    @if($isTenantNavHome) aria-current="page" @endif
-                   class="shrink-0 rounded-sm px-0.5 py-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber {{ $isTenantNavHome ? 'font-semibold text-moto-amber' : 'text-stone-800 hover:text-moto-amber' }}">Главная</a>
+                   class="shrink-0 rounded-sm px-0.5 py-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber {{ $isTenantNavHome ? 'font-semibold text-moto-amber' : 'text-stone-800 hover:text-moto-amber' }}">{{ $isExpertPr ? 'Home' : 'Главная' }}</a>
                 @foreach($tenantMainMenuPages ?? [] as $navItem)
                     @php $navItemActive = $tenantNavPathMatches($navItem['url']); @endphp
                     <a href="{{ $navItem['url'] }}"
@@ -123,7 +143,7 @@
             <nav class="expert-header-bar__nav relative z-20 hidden flex-1 min-w-0 items-center justify-center gap-6 text-[14px] font-semibold tracking-wide md:flex lg:gap-10 lg:text-[15px]" aria-label="Основное меню">
                 <a href="{{ route('home') }}"
                    @if($isTenantNavHome) aria-current="page" @endif
-                   class="shrink-0 rounded-sm px-0.5 py-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber {{ $isTenantNavHome ? 'text-moto-amber' : 'text-white/95 hover:text-moto-amber' }}">Главная</a>
+                   class="shrink-0 rounded-sm px-0.5 py-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moto-amber {{ $isTenantNavHome ? 'text-moto-amber' : 'text-white/95 hover:text-moto-amber' }}">{{ $isExpertPr ? 'Home' : 'Главная' }}</a>
                 @foreach($tenantMainMenuPages ?? [] as $navItem)
                     @php $navItemActive = $tenantNavPathMatches($navItem['url']); @endphp
                     <a href="{{ $navItem['url'] }}"
@@ -239,7 +259,7 @@
                     <a href="{{ route('home') }}"
                        @if($isTenantNavHome) aria-current="page" @endif
                        @click="mobileNavOpen = false"
-                       class="flex min-h-11 items-center rounded-lg px-3 py-2 text-base font-medium {{ $isAdvocateEditorial ? ($isTenantNavHome ? 'text-moto-amber bg-stone-900/[0.04]' : 'text-stone-800 hover:bg-stone-900/[0.06]') : ($isTenantNavHome ? 'text-moto-amber bg-white/10' : 'text-white/90 hover:bg-white/10') }}">Главная</a>
+                       class="flex min-h-11 items-center rounded-lg px-3 py-2 text-base font-medium {{ $isAdvocateEditorial ? ($isTenantNavHome ? 'text-moto-amber bg-stone-900/[0.04]' : 'text-stone-800 hover:bg-stone-900/[0.06]') : ($isTenantNavHome ? 'text-moto-amber bg-white/10' : 'text-white/90 hover:bg-white/10') }}">{{ $isExpertPr ? 'Home' : 'Главная' }}</a>
                     @foreach($tenantMainMenuPages ?? [] as $navItem)
                         @php $navItemActive = $tenantNavPathMatches($navItem['url']); @endphp
                         <a href="{{ $navItem['url'] }}"
@@ -268,7 +288,7 @@
                 @endif
                 @if($isExpertStyleNav)
                     <a href="{{ $expertNavPrimaryLeadHref }}" @click="mobileNavOpen = false" class="mt-3 flex min-h-12 items-center justify-center rounded-xl bg-moto-amber px-4 text-[15px] font-bold text-black shadow-lg shadow-moto-amber/15">
-                        {{ $isAdvocateEditorial ? 'Связаться' : 'Записаться' }}
+                        {{ $isAdvocateEditorial ? 'Связаться' : ($isExpertPr ? 'Brief' : 'Записаться') }}
                     </a>
                 @endif
             </div>

@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use Aws\S3\Exception\S3Exception;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\FilesystemAdapter;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -46,12 +45,15 @@ class TenantMediaBackfillFromR2Command extends Command
         }
 
         if (! is_dir($target)) {
-            // $force: use @mkdir so permission failures don't become ErrorException in the console.
-            if (! File::makeDirectory($target, 0775, true, true) && ! is_dir($target)) {
+            if (! $this->ensureDirectoryExists($target) && ! is_dir($target)) {
                 $this->error('Cannot create target directory: '.$this->formatLastFilesystemError('mkdir'));
 
                 return self::FAILURE;
             }
+        }
+
+        if (! $this->assertTargetRootWritable(rtrim($target, DIRECTORY_SEPARATOR))) {
+            return self::FAILURE;
         }
 
         $disk = Storage::disk('r2-public');
@@ -143,7 +145,8 @@ class TenantMediaBackfillFromR2Command extends Command
 
                 $dir = dirname($localPath);
                 if (! is_dir($dir)) {
-                    if (! File::makeDirectory($dir, 0775, true, true) && ! is_dir($dir)) {
+                    error_clear_last();
+                    if (! $this->ensureDirectoryExists($dir) || ! is_dir($dir)) {
                         $failed++;
                         $rows[] = $this->manifestRow(
                             $bucket,
@@ -233,6 +236,70 @@ class TenantMediaBackfillFromR2Command extends Command
         }
 
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * Создать дерево каталогов без проброса предупреждений наружу (в некоторых окружениях mkdir может стать исключением).
+     */
+    private function ensureDirectoryExists(string $absolutePath): bool
+    {
+        $absolutePath = trim($absolutePath);
+        if ($absolutePath === '') {
+            return false;
+        }
+
+        clearstatcache(true, $absolutePath);
+        if (is_dir($absolutePath)) {
+            return true;
+        }
+
+        error_clear_last();
+        $oldMask = umask();
+        umask(0002);
+        try {
+            if (@mkdir($absolutePath, 0775, true) === true || is_dir($absolutePath)) {
+                clearstatcache(true, $absolutePath);
+
+                return is_dir($absolutePath);
+            }
+        } finally {
+            umask($oldMask);
+        }
+
+        clearstatcache(true, $absolutePath);
+
+        return is_dir($absolutePath);
+    }
+
+    /** Быстро отрезает типичную ошибку пайплайна: каталог есть, но нет записи пользователю PHP (deploy vs www-data). */
+    private function assertTargetRootWritable(string $targetRoot): bool
+    {
+        clearstatcache(true, $targetRoot);
+        if (! is_dir($targetRoot)) {
+            return true;
+        }
+        if (is_writable($targetRoot)) {
+            return true;
+        }
+
+        $uidMsg = '?';
+        if (function_exists('posix_geteuid')) {
+            $uid = posix_geteuid();
+            $name = '';
+            if (function_exists('posix_getpwuid')) {
+                $pw = posix_getpwuid($uid);
+                $name = is_array($pw) && isset($pw['name']) ? (string) $pw['name'] : '';
+            }
+            $uidMsg = $name !== '' ? $name.' ('.$uid.')' : (string) $uid;
+        }
+
+        $this->error(
+            'Target directory is not writable by this PHP process (user/euid='.$uidMsg.'): '.$targetRoot.'. '
+            .'Ensure ownership/ACL on MEDIA_ROOT or run artisan as www-data '
+            .'(GitHub Actions: variable MEDIA_BACKFILL_AS_WWW_DATA=1, see docs/operations/tenant-media-local-mirror.md).'
+        );
+
+        return false;
     }
 
     private function isAbsolutePath(string $path): bool

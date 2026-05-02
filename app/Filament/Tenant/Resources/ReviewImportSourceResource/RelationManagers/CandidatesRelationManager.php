@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\ReviewImportSourceResource\RelationManagers;
 
+use App\Filament\Tenant\Resources\ReviewResource\Support\ReviewImportCandidateBulkActions;
 use App\Models\ReviewImportCandidate;
-use App\Reviews\Import\ReviewImportCandidateStatus;
-use App\Services\Reviews\Imports\ReviewCandidateImportService;
+use App\Models\ReviewImportSource;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
@@ -40,57 +38,37 @@ class CandidatesRelationManager extends RelationManager
                     BulkAction::make('import_as_reviews')
                         ->label('Импортировать в отзывы')
                         ->icon('heroicon-o-arrow-down-tray')
-                        ->form([
-                            Toggle::make('publish')
-                                ->label('Опубликовать сразу')
-                                ->default(false),
-                            Select::make('rating')
-                                ->label('Оценка при импорте')
-                                ->options([
-                                    '' => 'Как у кандидата / без оценки',
-                                    '1' => '1',
-                                    '2' => '2',
-                                    '3' => '3',
-                                    '4' => '4',
-                                    '5' => '5',
-                                ])
-                                ->native(true),
-                        ])
+                        ->form(ReviewImportCandidateBulkActions::importFormFields())
                         ->action(function (BulkAction $action, array $data): void {
-                            $publish = (bool) ($data['publish'] ?? false);
-                            $forced = isset($data['rating']) && $data['rating'] !== '' && $data['rating'] !== null
-                                ? (int) $data['rating']
-                                : null;
-                            $records = $action->getSelectedRecords()->filter(
-                                fn (ReviewImportCandidate $c): bool => $c->status !== ReviewImportCandidateStatus::IMPORTED,
-                            );
-                            if ($records->isEmpty()) {
-                                Notification::make()->title('Нет строк для импорта')->warning()->send();
+                            $owner = $this->getOwnerRecord();
+                            if (! $owner instanceof ReviewImportSource) {
+                                Notification::make()->title('Контекст источника недоступен')->danger()->send();
 
                                 return;
                             }
-                            $n = count(app(ReviewCandidateImportService::class)->importCandidates(
-                                $records,
-                                $publish,
-                                $forced,
-                            ));
-                            Notification::make()->title('Импортировано отзывов: '.$n)->success()->send();
+                            ReviewImportCandidateBulkActions::runImport(
+                                $action,
+                                $data,
+                                (int) $owner->tenant_id,
+                                (int) $owner->id,
+                            );
                         }),
                     BulkAction::make('ignore')
                         ->label('Игнорировать')
                         ->color('gray')
                         ->requiresConfirmation()
                         ->action(function (BulkAction $action): void {
-                            foreach ($action->getSelectedRecords() as $c) {
-                                if (! $c instanceof ReviewImportCandidate) {
-                                    continue;
-                                }
-                                if ($c->status === ReviewImportCandidateStatus::IMPORTED) {
-                                    continue;
-                                }
-                                $c->update(['status' => ReviewImportCandidateStatus::IGNORED]);
+                            $owner = $this->getOwnerRecord();
+                            if (! $owner instanceof ReviewImportSource) {
+                                Notification::make()->title('Контекст источника недоступен')->danger()->send();
+
+                                return;
                             }
-                            Notification::make()->title('Отмечено как игнор')->success()->send();
+                            ReviewImportCandidateBulkActions::runIgnore(
+                                $action,
+                                (int) $owner->tenant_id,
+                                (int) $owner->id,
+                            );
                         }),
                 ]),
             ]);

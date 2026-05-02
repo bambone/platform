@@ -10,6 +10,8 @@ use App\Filament\Tenant\Resources\ReviewResource\Support\InteractsWithReviewSect
 use App\Jobs\Reviews\FetchReviewImportPreview;
 use App\Models\ReviewImportSource;
 use App\Models\User;
+use App\Services\Reviews\Imports\ManualReviewCsvParseErrorCode;
+use App\Services\Reviews\Imports\ManualReviewCsvParser;
 use App\Services\Reviews\Imports\ReviewImportPreviewService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -20,7 +22,6 @@ use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 
 /** Страница зарегистрирована на {@see ReviewResource} (nested URL); модель записи — {@see ReviewImportSource}. */
 final class EditReviewImportSource extends EditRecord
@@ -44,7 +45,7 @@ final class EditReviewImportSource extends EditRecord
     protected function resolveRecord(int | string $key): Model
     {
         $record = ReviewImportSource::query()
-            ->where('tenant_id', (int) (currentTenant()->id ?? 0))
+            ->where('tenant_id', (int) (currentTenant()?->id ?? 0))
             ->whereKey($key)
             ->first();
 
@@ -84,7 +85,7 @@ final class EditReviewImportSource extends EditRecord
                     : 'Для этого провайдера нет официальной загрузки текстов; используйте ручной CSV.')
                 ->requiresConfirmation()
                 ->action(function (): void {
-                    FetchReviewImportPreview::dispatch($this->record->id);
+                    FetchReviewImportPreview::dispatch((int) $this->record->id, (int) $this->record->tenant_id);
                     Notification::make()
                         ->title('Загрузка поставлена в очередь')
                         ->success()
@@ -101,11 +102,26 @@ final class EditReviewImportSource extends EditRecord
                         ->label('CSV (первая строка — заголовки)')
                         ->rows(10)
                         ->required()
-                        ->helperText('Колонки: author_name, body, rating, reviewed_at, author_avatar_url, source_url'),
+                        ->helperText('Колонки: author_name, body, rating, reviewed_at, author_avatar_url, source_url. Разделитель: запятая или точка с запятой (авто по первой строке).'),
                 ])
                 ->action(function (array $data): void {
-                    $rows = self::parseManualCsv((string) ($data['csv'] ?? ''));
-                    $n = app(ReviewImportPreviewService::class)->ingestManualRows($this->record, $rows);
+                    $result = app(ManualReviewCsvParser::class)->parse((string) ($data['csv'] ?? ''));
+                    if (! $result->isOk()) {
+                        if ($result->hasErrorCode(ManualReviewCsvParseErrorCode::MISSING_BODY_COLUMN)) {
+                            Notification::make()
+                                ->title('Не найдена колонка body')
+                                ->body('Проверьте заголовки CSV: author_name, body, rating, reviewed_at, author_avatar_url, source_url.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+                        $msg = implode(' ', $result->errors);
+                        Notification::make()->title('CSV не распознан')->body($msg)->danger()->send();
+
+                        return;
+                    }
+                    $n = app(ReviewImportPreviewService::class)->ingestManualRows($this->record, $result->rows);
                     Notification::make()
                         ->title('Добавлено кандидатов: '.$n)
                         ->success()
@@ -116,36 +132,4 @@ final class EditReviewImportSource extends EditRecord
         ];
     }
 
-    /**
-     * @return list<array<string, mixed>>
-     */
-    private static function parseManualCsv(string $raw): array
-    {
-        $lines = preg_split('/\R/u', trim($raw)) ?: [];
-        if ($lines === []) {
-            return [];
-        }
-        $headerLine = array_shift($lines);
-        $headers = str_getcsv((string) $headerLine);
-        $headers = array_map(fn ($h) => Str::slug(trim((string) $h), '_'), $headers);
-        $out = [];
-        foreach ($lines as $line) {
-            if (trim((string) $line) === '') {
-                continue;
-            }
-            $cells = str_getcsv((string) $line);
-            $row = [];
-            foreach ($headers as $i => $key) {
-                if ($key === '') {
-                    continue;
-                }
-                $row[$key] = $cells[$i] ?? null;
-            }
-            if (isset($row['body']) && trim((string) $row['body']) !== '') {
-                $out[] = $row;
-            }
-        }
-
-        return $out;
-    }
 }

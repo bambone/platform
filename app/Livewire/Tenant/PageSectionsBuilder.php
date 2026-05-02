@@ -578,11 +578,15 @@ class PageSectionsBuilder extends Component implements ForcesFullLivewireRender,
         $this->activeTypeId = $typeId;
         $this->editingSectionId = null;
         $this->insertAfterSectionId = $afterSectionId;
+        $dataJson = $blueprint->defaultData();
+        if ($typeId === 'expert_hero') {
+            $dataJson = ExpertHeroBlueprint::normalizeHeroPresentationForEditor($dataJson);
+        }
         $this->sectionFormData = [
             'title' => $blueprint->label(),
             'status' => 'published',
             'is_visible' => true,
-            'data_json' => $blueprint->defaultData(),
+            'data_json' => $dataJson,
         ];
         $this->showEditor = true;
         $this->cacheSchema('sectionEditor', null);
@@ -633,6 +637,7 @@ class PageSectionsBuilder extends Component implements ForcesFullLivewireRender,
         $blueprint = app(PageSectionTypeRegistry::class)->get($typeId);
 
         $existing = is_array($section->data_json) ? $section->data_json : [];
+        $expertHeroStorageSnapshot = $typeId === 'expert_hero' ? $existing : null;
         if ($typeId === 'expert_hero') {
             $tenantCtx = currentTenant();
             if ($tenantCtx !== null && (string) $tenantCtx->slug === MagasHeroDefaults::SLUG) {
@@ -661,7 +666,7 @@ class PageSectionsBuilder extends Component implements ForcesFullLivewireRender,
             $dataJson = ExpertLeadFormBlueprint::normalizeDataJsonForEditor($dataJson);
         }
         if ($typeId === 'expert_hero') {
-            $dataJson = ExpertHeroBlueprint::normalizeHeroPresentationForEditor($dataJson);
+            $dataJson = ExpertHeroBlueprint::normalizeHeroPresentationForEditor($dataJson, $expertHeroStorageSnapshot);
         }
         if ($typeId === 'editorial_gallery') {
             $dataJson = EditorialGalleryBlueprint::normalizePresentationForEditor($dataJson);

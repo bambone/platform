@@ -3,6 +3,7 @@
 namespace App\Filament\Tenant\PageBuilder;
 
 use App\MediaPresentation\Contracts\SlotPresentationProfileInterface;
+use App\MediaPresentation\Profiles\PageHeroCoverPresentationProfile;
 use App\MediaPresentation\Profiles\ServiceProgramCardPresentationProfile;
 use App\MediaPresentation\ViewportFraming;
 use App\MediaPresentation\ViewportKey;
@@ -14,10 +15,17 @@ use Filament\Schemas\Components\Utilities\Get;
  */
 final class FramingCoverFocalEditor
 {
+    public static function focalPreviewFitForSlotId(string $slotId): string
+    {
+        return $slotId === PageHeroCoverPresentationProfile::SLOT_ID
+            ? 'height_fit'
+            : 'cover';
+    }
+
     /**
      * @param  callable(Get):(?string)  $resolveDesktopImageUrl  Absolute URL for desktop frame source
      * @param  callable(Get):(?string)  $resolveMobileImageUrl  Absolute URL for mobile/tablet frames (fallback to desktop)
-     * @param  (callable(Get): bool)|null  $resolveSyncDefault  Sync mobile/desktop focal in preview (if null: {@code data_json.hero_focal_sync_mobile_desktop}, default false)
+     * @param  (callable(Get): bool)|null  $resolveSyncDefault  Sync all viewports in preview (if null: {@code data_json.hero_focal_sync_all_viewports}, legacy {@code hero_focal_sync_mobile_desktop})
      */
     public static function make(
         string $name,
@@ -33,7 +41,7 @@ final class FramingCoverFocalEditor
         return ViewField::make($name)
             ->hiddenLabel()
             ->view('filament.forms.components.service-program-cover-preview')
-            ->viewData(function (Get $get) use ($name, $profile, $wirePathPrefix, $presentationStateKey, $resolveDesktopImageUrl, $resolveMobileImageUrl, $resolveSyncDefault): array {
+            ->viewData(function (Get $get) use ($name, $profile, $wirePathPrefix, $presentationStateKey, $resolveDesktopImageUrl, $resolveMobileImageUrl, $resolveSyncDefault, $slotId): array {
                 $t = currentTenant();
                 $frames = $profile->previewFrames();
                 $safeArea = $profile->safeAreaBottomBand();
@@ -66,8 +74,13 @@ final class FramingCoverFocalEditor
                     $mobileUrl = $desktopUrl;
                 }
 
-                $mobileSourceLabel = 'Фон hero (один URL для всех ширин)';
-                $desktopSourceLabel = 'Фон hero (один URL для всех ширин)';
+                $isHeroSlot = $slotId === PageHeroCoverPresentationProfile::SLOT_ID;
+                $mobileSourceLabel = $isHeroSlot
+                    ? 'Фон hero (один URL для всех ширин)'
+                    : 'Обложка · mobile/tablet';
+                $desktopSourceLabel = $isHeroSlot
+                    ? 'Фон hero (один URL для всех ширин)'
+                    : 'Обложка · desktop';
 
                 $tiles = [];
                 foreach ($frames as $frame) {
@@ -115,10 +128,10 @@ final class FramingCoverFocalEditor
 
                 $syncDefault = $resolveSyncDefault !== null
                     ? (bool) $resolveSyncDefault($get)
-                    : (bool) ($get('data_json.hero_focal_sync_mobile_desktop') ?? false);
+                    : (bool) ($get('data_json.hero_focal_sync_all_viewports') ?? $get('data_json.hero_focal_sync_mobile_desktop') ?? false);
                 /**
-                 * Стабильный ключ DOM / sessionStorage: без focal map и zoom — иначе при каждом commit Livewire
-                 * менял wire:key → полный remount Alpine и вкладка превью слетала на mobile.
+                 * Стабильный ключ DOM / sessionStorage: без focal map, zoom и sync — иначе при каждом commit Livewire
+                 * или переключении «Синхронизировать» менялся wire:key → remount Alpine и активная вкладка слетала.
                  */
                 $viewComponentKey = hash('sha256', (string) json_encode([
                     $tenantId,
@@ -126,14 +139,14 @@ final class FramingCoverFocalEditor
                     $name,
                     $desktopUrl,
                     $mobileUrl,
-                    $syncDefault,
+                    $slotId,
                 ], JSON_UNESCAPED_UNICODE));
                 $previewKey = hash('sha256', (string) json_encode([
                     $viewComponentKey,
+                    $slotId,
+                    $desktopUrl,
+                    $mobileUrl,
                     $map,
-                    $ms,
-                    $ts,
-                    $ds,
                 ], JSON_UNESCAPED_UNICODE));
 
                 $editorConfig = [
@@ -164,16 +177,26 @@ final class FramingCoverFocalEditor
                     'scaleMin' => $profile->framingScaleMin(),
                     'scaleMax' => $profile->framingScaleMax(),
                     'scaleStep' => $profile->framingScaleStep(),
-                    'heightFactorMin' => ServiceProgramCardPresentationProfile::HEIGHT_FACTOR_MIN,
-                    'heightFactorMax' => ServiceProgramCardPresentationProfile::HEIGHT_FACTOR_MAX,
-                    'heightFactorStep' => ServiceProgramCardPresentationProfile::HEIGHT_FACTOR_STEP,
+                    'heightFactorMin' => $slotId === PageHeroCoverPresentationProfile::SLOT_ID
+                        ? 1.0
+                        : ServiceProgramCardPresentationProfile::HEIGHT_FACTOR_MIN,
+                    'heightFactorMax' => $slotId === PageHeroCoverPresentationProfile::SLOT_ID
+                        ? 1.0
+                        : ServiceProgramCardPresentationProfile::HEIGHT_FACTOR_MAX,
+                    'heightFactorStep' => $slotId === PageHeroCoverPresentationProfile::SLOT_ID
+                        ? 1.0
+                        : ServiceProgramCardPresentationProfile::HEIGHT_FACTOR_STEP,
                     'wirePathPrefix' => $wirePathPrefix,
+                    'slotId' => $slotId,
                     'syncDefault' => $syncDefault,
                     'safeAreaBottomPercent' => (float) ($profile->safeAreaBottomBand()['bottomPercent'] ?? 38),
                     'safeAreaLabel' => (string) ($safeArea['label'] ?? ''),
                     'viewportStorageId' => $viewComponentKey,
-                    /** Desktop: геометрия превью «сначала по высоте кадра», как на сайте (object-fit: contain). */
-                    'focalPreviewFit' => 'height_fit',
+                    /**
+                     * Hero (page_hero_cover): height_fit / contain alignment with public CSS.
+                     * Program cards: cover — must not inherit hero-only preview geometry.
+                     */
+                    'focalPreviewFit' => self::focalPreviewFitForSlotId($slotId),
                 ];
 
                 return [

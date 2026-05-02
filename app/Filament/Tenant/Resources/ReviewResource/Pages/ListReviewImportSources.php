@@ -6,6 +6,7 @@ namespace App\Filament\Tenant\Resources\ReviewResource\Pages;
 
 use App\Filament\Tenant\Resources\ReviewImportSourceResource;
 use App\Filament\Tenant\Resources\ReviewResource;
+use App\Filament\Tenant\Resources\ReviewResource\Pages\CreateReviewImportSource;
 use App\Filament\Tenant\Resources\ReviewResource\Support\InteractsWithReviewSectionTabs;
 use App\Models\ReviewImportSource;
 use App\Models\User;
@@ -46,8 +47,9 @@ final class ListReviewImportSources extends ListRecords
     protected function getTableQuery(): Builder|\Illuminate\Database\Eloquent\Relations\Relation|null
     {
         return ReviewImportSource::query()
-            ->where('tenant_id', (int) (currentTenant()->id ?? 0))
+            ->where('tenant_id', (int) (currentTenant()?->id ?? 0))
             ->withCount([
+                // См. ReviewImportCandidateStatus: строковые константы = значения колонки (не PHP BackedEnum, .value неприменим).
                 'candidates as cnt_new' => fn ($q) => $q->where('status', ReviewImportCandidateStatus::NEW),
                 'candidates as cnt_selected' => fn ($q) => $q->where('status', ReviewImportCandidateStatus::SELECTED),
                 'candidates as cnt_imported' => fn ($q) => $q->where('status', ReviewImportCandidateStatus::IMPORTED),
@@ -82,7 +84,7 @@ final class ListReviewImportSources extends ListRecords
             Action::make('add_source')
                 ->label('Добавить источник')
                 ->icon('heroicon-o-plus')
-                ->url(fn (): string => ReviewImportSourceResource::getUrl('create')),
+                ->url(fn (): string => CreateReviewImportSource::getUrl()),
         ];
     }
 }

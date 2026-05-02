@@ -17,7 +17,17 @@ final class PageHeroCoverPresentationProfile
 {
     public const SLOT_ID = 'page_hero_cover';
 
-    public const PICTURE_MOBILE_MAX_PX = 1023;
+    /** Focal map / preview: mobile first, до 767 px (согласовано с CSS expert hero). */
+    public const FRAMING_MOBILE_MAX_PX = 767;
+
+    /** Tablet / средние ширины до 1023 px. */
+    public const FRAMING_TABLET_MAX_PX = 1023;
+
+    /**
+     * Порог «ширины источника» для возможного будущего art direction (один URL, mobile-сегмент);
+     * в текущем PHP-пайплайне hero не используется — не путать с {@see FRAMING_TABLET_MAX_PX}.
+     */
+    public const SOURCE_MOBILE_MAX_PX_FOR_FUTURE_ART_DIRECTION = 1023;
 
     /** User zoom: below 1 zooms out (hero: fit portrait height in block); program cards keep min 1 in their profile. */
     public const FRAMING_SCALE_MIN = 0.5;
@@ -49,6 +59,8 @@ final class PageHeroCoverPresentationProfile
      */
     public static function overlayVariablesMobile(): array
     {
+        // Имена svc-program-* — legacy-контракт общего preview Blade (`service-program-cover-preview`);
+        // для hero это только нижняя «маска»/fade в превью, не карточки программ.
         return [
             'svc-program-mask-fade-start' => '78%',
             'svc-program-mask-fade-mid' => '90%',
@@ -93,14 +105,14 @@ final class PageHeroCoverPresentationProfile
                 'label' => 'Mobile',
                 'width' => 390,
                 'height' => (int) round(390 * 1.25),
-                'maxCssPx' => 1023,
+                'maxCssPx' => self::FRAMING_MOBILE_MAX_PX,
             ],
             [
                 'key' => 'tablet',
                 'label' => 'Tablet',
                 'width' => 768,
                 'height' => (int) round(768 * 0.55),
-                'maxCssPx' => 1023,
+                'maxCssPx' => self::FRAMING_TABLET_MAX_PX,
             ],
             [
                 'key' => 'desktop',
@@ -114,8 +126,11 @@ final class PageHeroCoverPresentationProfile
 
     public static function viewportKeyForWidth(int $widthPx): ViewportKey
     {
-        if ($widthPx <= self::PICTURE_MOBILE_MAX_PX) {
+        if ($widthPx <= self::FRAMING_MOBILE_MAX_PX) {
             return ViewportKey::Mobile;
+        }
+        if ($widthPx <= self::FRAMING_TABLET_MAX_PX) {
+            return ViewportKey::Tablet;
         }
 
         return ViewportKey::Desktop;

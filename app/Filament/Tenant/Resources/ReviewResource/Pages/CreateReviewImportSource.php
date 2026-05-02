@@ -55,9 +55,9 @@ final class CreateReviewImportSource extends CreateRecord
 
         $data['created_by'] = Auth::id();
         $tenant = currentTenant();
-        if ($tenant !== null) {
-            $data['tenant_id'] = $tenant->id;
-        }
+        abort_unless($tenant !== null, 403);
+
+        $data['tenant_id'] = $tenant->id;
 
         if (($data['provider'] ?? '') === 'two_gis') {
             $data['status'] = ReviewImportSourceStatus::UNSUPPORTED;
@@ -72,6 +72,6 @@ final class CreateReviewImportSource extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
-        return EditReviewImportSource::getUrl(['record' => $this->getRecord()]);
+        return ListReviewImportSources::getUrl();
     }
 }

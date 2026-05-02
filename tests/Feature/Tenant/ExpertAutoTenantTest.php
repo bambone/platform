@@ -308,6 +308,52 @@ class ExpertAutoTenantTest extends TestCase
             ->assertSee(RussianTypography::tiePrepositionsToNextWord($heading), false);
     }
 
+    public function test_home_expert_hero_emits_presentation_css_variables_for_tablet(): void
+    {
+        $tenant = $this->createTenantWithActiveDomain('expertherocss', ['theme_key' => 'expert_auto']);
+        $host = $this->tenancyHostForSlug('expertherocss');
+
+        $page = Page::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Главная',
+            'slug' => 'home',
+            'template' => 'default',
+            'status' => 'published',
+            'published_at' => now(),
+            'show_in_main_menu' => false,
+            'main_menu_sort_order' => 0,
+        ]);
+
+        PageSection::query()->create([
+            'tenant_id' => $tenant->id,
+            'page_id' => $page->id,
+            'section_key' => 'expert_hero',
+            'section_type' => 'expert_hero',
+            'title' => 'Hero',
+            'data_json' => [
+                'heading' => 'Заголовок hero css vars',
+                'hero_image_url' => 'https://example.com/preview-hero.jpg',
+                'hero_background_presentation' => [
+                    'version' => 2,
+                    'viewport_focal_map' => [
+                        'mobile' => ['x' => 80, 'y' => 20, 'scale' => 1],
+                        'tablet' => ['x' => 40, 'y' => 55, 'scale' => 1.05],
+                        'desktop' => ['x' => 76, 'y' => 10, 'scale' => 1],
+                    ],
+                ],
+            ],
+            'sort_order' => 10,
+            'is_visible' => true,
+            'status' => 'published',
+        ]);
+
+        $html = $this->getWithHost($host, '/')->assertOk()->getContent();
+        $this->assertStringContainsString('--expert-hero-focal-x-tablet:', $html);
+        $this->assertMatchesRegularExpression('/--expert-hero-focal-x-tablet:\s*40(?:\.0)?%/', $html);
+        $this->assertMatchesRegularExpression('/--expert-hero-focal-y-tablet:\s*55(?:\.0)?%/', $html);
+        $this->assertMatchesRegularExpression('/--expert-hero-scale-tablet:\s*1\.05/', $html);
+    }
+
     public function test_pricing_cards_section_not_rendered_without_programs_or_manual(): void
     {
         $tenant = $this->createTenantWithActiveDomain('expertpricingempty', ['theme_key' => 'expert_auto']);

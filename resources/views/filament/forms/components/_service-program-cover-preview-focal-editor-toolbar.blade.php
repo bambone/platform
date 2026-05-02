@@ -19,10 +19,13 @@
     class="text-[10px] text-gray-500"
 >Height на сайте = mobile: <span class="font-mono" x-text="(local.mobile.heightFactor ?? 1).toFixed(2)"></span></p>
 <p
-    x-show="activeViewport === 'desktop' &amp;&amp; sync"
+    x-show="sync"
     x-cloak
     class="text-[10px] text-gray-500"
->Zoom и height синхронизированы с mobile.</p>
+>
+    <span x-show="heightFactorEnabled()" x-cloak>Zoom синхронизируется между всеми размерами. Height в sync-режиме задаётся через mobile.</span>
+    <span x-show="!heightFactorEnabled()" x-cloak>Позиция и zoom синхронизируются между всеми размерами.</span>
+</p>
 
 <div class="mt-1 space-y-2 border-t border-gray-200/80 pt-3 dark:border-white/10">
     <div x-show="showZoomSliderForActive()" class="flex flex-wrap items-center gap-2">
@@ -100,7 +103,13 @@
                 @click="resetMobile()"
                 x-show="!sync"
             >Сбросить mobile</button>
-            <button type="button" class="fi-btn fi-btn-size-sm fi-color-gray rounded-lg px-2 py-1 text-xs" @click="resetTablet()">Сбросить tablet</button>
+            <button
+                type="button"
+                class="fi-btn fi-btn-size-sm fi-color-gray rounded-lg px-2 py-1 text-xs"
+                @click="resetTablet()"
+                x-show="!sync"
+                x-cloak
+            >Сбросить tablet</button>
             <button
                 type="button"
                 class="fi-btn fi-btn-size-sm fi-color-gray rounded-lg px-2 py-1 text-xs"
@@ -108,9 +117,13 @@
                 x-show="!sync"
             >Сбросить desktop</button>
         </div>
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-2" x-show="!sync" x-cloak>
             <button type="button" class="fi-btn fi-btn-size-sm fi-color-gray rounded-lg px-2 py-1 text-xs" @click="copyToDesktop()">Mobile → desktop</button>
-            <button type="button" class="fi-btn fi-btn-size-sm fi-color-gray rounded-lg px-2 py-1 text-xs" @click="copyToMobile()">Desktop → mobile</button>
+            <button type="button" class="fi-btn fi-btn-size-sm fi-color-gray rounded-lg px-2 py-1 text-xs" @click="copyToMobile()">Desktop → mobile + tablet</button>
+            <button type="button" class="fi-btn fi-btn-size-sm fi-color-gray rounded-lg px-2 py-1 text-xs" @click="copyMobileToTablet()">Mobile → tablet</button>
+            <button type="button" class="fi-btn fi-btn-size-sm fi-color-gray rounded-lg px-2 py-1 text-xs" @click="copyTabletToMobile()">Tablet → mobile</button>
+            <button type="button" class="fi-btn fi-btn-size-sm fi-color-gray rounded-lg px-2 py-1 text-xs" @click="copyTabletToDesktop()">Tablet → desktop</button>
+            <button type="button" class="fi-btn fi-btn-size-sm fi-color-gray rounded-lg px-2 py-1 text-xs" @click="copyDesktopToTablet()">Desktop → tablet</button>
         </div>
         <label class="flex cursor-pointer items-start gap-2">
             <input
@@ -118,7 +131,10 @@
                 class="mt-0.5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 dark:border-white/20 dark:bg-white/5"
                 x-model="previewShowFullImage"
             />
-            <span class="text-[11px]">Весь кадр (contain) — проверка композиции; на сайте остаётся cover.</span>
+            <span class="text-[11px]">
+                <span x-show="config.slotId === 'page_hero_cover'" x-cloak>Весь кадр (contain) — проверка композиции; desktop hero использует fit по высоте.</span>
+                <span x-show="config.slotId !== 'page_hero_cover'" x-cloak>Весь кадр (contain) — проверка композиции; на сайте остаётся cover.</span>
+            </span>
         </label>
         <p class="text-[10px] text-amber-800/90 dark:text-amber-200/70" x-show="previewShowFullImage" x-cloak>
             В режиме contain не двигаем кадр; зона текста/градиент скрыты.

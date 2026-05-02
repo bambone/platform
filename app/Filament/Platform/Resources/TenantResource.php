@@ -13,6 +13,7 @@ use App\Filament\Shared\TimezoneSelect;
 use App\Filament\Support\TenantPushPlatformFormSchema;
 use App\Models\DomainLocalizationPreset;
 use App\Models\Plan;
+use App\Models\TenantPublicSiteTheme;
 use App\Models\TemplatePreset;
 use App\Models\Tenant;
 use App\Models\TenantStorageQuota;
@@ -22,6 +23,8 @@ use App\Scheduling\SchedulingTimezoneOptions;
 use App\Support\Storage\MediaDeliveryMode;
 use App\Support\Storage\MediaWriteMode;
 use App\Support\TenantSlug;
+use App\Support\TenantRegionalContract;
+use Closure;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
@@ -115,16 +118,17 @@ class TenantResource extends Resource
                     ->schema([
                         Select::make('theme_key')
                             ->label('Тема публичного сайта')
-                            ->options([
-                                'default' => 'По умолчанию',
-                                'moto' => 'Мото',
-                                'expert_auto' => 'Инструктор / автошкола (expert_auto)',
-                                'advocate_editorial' => 'Адвокат / персональный бренд (advocate_editorial)',
-                                'black_duck' => 'Детейлинг / Black Duck (black_duck)',
-                            ])
-                            ->default('default')
+                            ->native(true)
+                            ->options(static function (?Tenant $record): array {
+                                $currentKey = $record instanceof Tenant
+                                    ? trim((string) ($record->getAttributes()['theme_key'] ?? ''))
+                                    : '';
+
+                                return TenantPublicSiteTheme::optionsForTenantForm($currentKey !== '' ? $currentKey : null);
+                            })
+                            ->default(fn (): string => TenantPublicSiteTheme::defaultThemeKey())
                             ->required()
-                            ->helperText('Ключ = каталог Blade tenant/themes/{ключ}. Не используйте пустой плейсхолдер «auto» в БД. Примеры: moto, default, expert_auto, black_duck.'),
+                            ->helperText('Каталог и подписи: Платформа → Темы публичных сайтов (ключ совпадает с `tenant/themes/{ключ}` и `tenants.theme_key`). Значение `auto` в БД не используют.'),
                         Select::make('domain_localization_preset_id')
                             ->label('Терминология интерфейса')
                             ->relationship(
@@ -141,13 +145,43 @@ class TenantResource extends Resource
                     ->schema([
                         Select::make('plan_id')
                             ->label('Тариф')
-                            ->relationship('plan', 'name')
-                            ->default(fn (): ?int => Plan::defaultIdForOnboarding())
+                            ->options(static function (?Tenant $record): array {
+                                $currentId = ($record instanceof Tenant && $record->plan_id !== null)
+                                    ? (int) $record->plan_id
+                                    : null;
+
+                                return Plan::query()
+                                    ->where(function (Builder $q) use ($currentId): void {
+                                        $q->where('is_active', true);
+                                        if ($currentId !== null && $currentId !== 0) {
+                                            $q->orWhere('id', $currentId);
+                                        }
+                                    })
+                                    ->orderBy('sort_order')
+                                    ->orderBy('id')
+                                    ->get()
+                                    ->mapWithKeys(static function (Plan $plan): array {
+                                        $label = (string) $plan->name;
+                                        if (! $plan->is_active) {
+                                            $label .= ' (неактивен)';
+                                        }
+
+                                        return [$plan->id => $label];
+                                    })
+                                    ->all();
+                            })
+                            ->searchable()
                             ->preload()
+                            ->required()
+                            ->default(fn (): ?int => Plan::defaultIdForOnboarding())
                             ->helperText('Лимиты и функции. Для Push/PWA в тарифе должна быть отмечена функция «OneSignal Web Push…» (Платформа → Тарифы → редактирование). При создании клиента без выбора подставляется первый доступный активный тариф (как в мастере).'),
                         Select::make('template_preset_id')
                             ->label('Шаблон сайта при создании')
-                            ->options(TemplatePreset::where('is_active', true)->pluck('name', 'id'))
+                            ->options(static fn (): array => TemplatePreset::query()
+                                ->where('is_active', true)
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->all())
                             ->searchable()
                             ->preload()
                             ->visibleOn('create')
@@ -215,19 +249,51 @@ class TenantResource extends Resource
                             ->required()
                             ->default('ru')
                             ->maxLength(10)
-                            ->helperText('Обязательно: код локали (например ru или en-US). Пустое значение сохранить нельзя.'),
+                            ->helperText('Обязательно: код локали (например ru или en-US). Пустое значение сохранить нельзя.')
+                            ->rules([
+                                fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                                    $normalized = TenantRegionalContract::normalizeLocale((string) $value);
+                                    if (! TenantRegionalContract::isValidLocale($normalized)) {
+                                        $fail('Некорректная локаль (латиница, дефис, например ru или en-US).');
+                                    }
+                                },
+                            ])
+                            ->dehydrateStateUsing(fn (?string $state): string => TenantRegionalContract::normalizeLocale((string) $state) ?? ''),
                         TextInput::make('country')
                             ->label('Страна (код)')
-                            ->maxLength(2)
+                            ->maxLength(32)
                             ->placeholder('RU')
-                            ->helperText('Двухбуквенный код ISO, если нужен для настроек.'),
+                            ->helperText('Двухбуквенный код ISO, если нужен для настроек.')
+                            ->rules([
+                                fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                                    if ($value === null || trim((string) $value) === '') {
+                                        return;
+                                    }
+                                    $n = TenantRegionalContract::normalizeCountry((string) $value);
+                                    if (! TenantRegionalContract::isValidCountryOrEmpty($n)) {
+                                        $fail('Страна: две латинские буквы (RU, US) или оставьте пустым.');
+                                    }
+                                },
+                            ])
+                            ->dehydrateStateUsing(fn (?string $state): ?string => ($state !== null && trim($state) !== '')
+                                ? (TenantRegionalContract::normalizeCountry($state) ?? null)
+                                : null),
                         TextInput::make('currency')
                             ->label('Валюта')
                             ->required()
                             ->default('RUB')
-                            ->maxLength(3)
+                            ->maxLength(32)
                             ->placeholder('RUB')
-                            ->helperText('Обязательно: трёхбуквенный код ISO 4217 (например RUB). Пустое значение сохранить нельзя.'),
+                            ->helperText('Обязательно: трёхбуквенный код ISO 4217 (например RUB). Пустое значение сохранить нельзя.')
+                            ->rules([
+                                fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                                    $normalized = TenantRegionalContract::normalizeCurrency((string) $value);
+                                    if (! TenantRegionalContract::isValidCurrency($normalized)) {
+                                        $fail('Валюта: три латинские буквы, например RUB.');
+                                    }
+                                },
+                            ])
+                            ->dehydrateStateUsing(fn (?string $state): string => TenantRegionalContract::normalizeCurrency((string) $state) ?? ''),
                     ])->columns(2),
 
                 TenantPushPlatformFormSchema::section(),
@@ -390,21 +456,29 @@ class TenantResource extends Resource
 
                         return round(((int) $q->used_bytes / $eff) * 100, 1);
                     })
+                    ->formatStateUsing(fn (?float $state): string => $state === null ? '—' : $state.'%')
+                    ->placeholder('—')
                     ->toggleable(),
                 TextColumn::make('storageQuota.status')
                     ->label('Ст. хран.')
                     ->badge()
                     ->color(fn (?string $state): string => match ($state) {
                         'warning_20' => 'warning',
-                        'critical_10' => 'danger',
-                        'exceeded' => 'danger',
-                        default => 'gray',
+                        'critical_10', 'exceeded' => 'danger',
+                        null, '' => 'gray',
+                        default => 'success',
                     })
-                    ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'warning_20' => '20%',
-                        'critical_10' => '10%',
-                        'exceeded' => 'Переполн.',
-                        default => 'OK',
+                    ->formatStateUsing(function (?string $state): string {
+                        if ($state === null || $state === '') {
+                            return '—';
+                        }
+
+                        return match ($state) {
+                            'warning_20' => '20%',
+                            'critical_10' => '10%',
+                            'exceeded' => 'Переполн.',
+                            default => 'OK',
+                        };
                     })
                     ->toggleable(),
             ])

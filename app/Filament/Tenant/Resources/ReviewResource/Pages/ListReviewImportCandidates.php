@@ -6,16 +6,12 @@ namespace App\Filament\Tenant\Resources\ReviewResource\Pages;
 
 use App\Filament\Tenant\Resources\ReviewResource;
 use App\Filament\Tenant\Resources\ReviewResource\Support\InteractsWithReviewSectionTabs;
+use App\Filament\Tenant\Resources\ReviewResource\Support\ReviewImportCandidateBulkActions;
 use App\Models\ReviewImportCandidate;
 use App\Models\ReviewImportSource;
 use App\Models\User;
-use App\Reviews\Import\ReviewImportCandidateStatus;
-use App\Services\Reviews\Imports\ReviewCandidateImportService;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -51,7 +47,7 @@ final class ListReviewImportCandidates extends ListRecords
     protected function getTableQuery(): Builder|\Illuminate\Database\Eloquent\Relations\Relation|null
     {
         return ReviewImportCandidate::query()
-            ->where('tenant_id', (int) (currentTenant()->id ?? 0))
+            ->where('tenant_id', (int) (currentTenant()?->id ?? 0))
             ->with(['source:id,title']);
     }
 
@@ -89,7 +85,7 @@ final class ListReviewImportCandidates extends ListRecords
                 SelectFilter::make('review_import_source_id')
                     ->label('Источник')
                     ->options(fn (): array => ReviewImportSource::query()
-                        ->where('tenant_id', (int) (currentTenant()->id ?? 0))
+                        ->where('tenant_id', (int) (currentTenant()?->id ?? 0))
                         ->orderBy('title')
                         ->get()
                         ->mapWithKeys(fn (ReviewImportSource $s): array => [
@@ -101,57 +97,18 @@ final class ListReviewImportCandidates extends ListRecords
                     BulkAction::make('import_as_reviews')
                         ->label('Импортировать в отзывы')
                         ->icon('heroicon-o-arrow-down-tray')
-                        ->form([
-                            Toggle::make('publish')
-                                ->label('Опубликовать сразу')
-                                ->default(false),
-                            Select::make('rating')
-                                ->label('Оценка при импорте')
-                                ->options([
-                                    '' => 'Как у кандидата / без оценки',
-                                    '1' => '1',
-                                    '2' => '2',
-                                    '3' => '3',
-                                    '4' => '4',
-                                    '5' => '5',
-                                ])
-                                ->native(true),
-                        ])
+                        ->form(ReviewImportCandidateBulkActions::importFormFields())
                         ->action(function (BulkAction $action, array $data): void {
-                            $publish = (bool) ($data['publish'] ?? false);
-                            $forced = isset($data['rating']) && $data['rating'] !== '' && $data['rating'] !== null
-                                ? (int) $data['rating']
-                                : null;
-                            $records = $action->getSelectedRecords()->filter(
-                                fn (ReviewImportCandidate $c): bool => $c->status !== ReviewImportCandidateStatus::IMPORTED,
-                            );
-                            if ($records->isEmpty()) {
-                                Notification::make()->title('Нет строк для импорта')->warning()->send();
-
-                                return;
-                            }
-                            $n = count(app(ReviewCandidateImportService::class)->importCandidates(
-                                $records,
-                                $publish,
-                                $forced,
-                            ));
-                            Notification::make()->title('Импортировано отзывов: '.$n)->success()->send();
+                            $tenantId = (int) (currentTenant()?->id ?? 0);
+                            ReviewImportCandidateBulkActions::runImport($action, $data, $tenantId);
                         }),
                     BulkAction::make('ignore')
                         ->label('Игнорировать')
                         ->color('gray')
                         ->requiresConfirmation()
                         ->action(function (BulkAction $action): void {
-                            foreach ($action->getSelectedRecords() as $c) {
-                                if (! $c instanceof ReviewImportCandidate) {
-                                    continue;
-                                }
-                                if ($c->status === ReviewImportCandidateStatus::IMPORTED) {
-                                    continue;
-                                }
-                                $c->update(['status' => ReviewImportCandidateStatus::IGNORED]);
-                            }
-                            Notification::make()->title('Отмечено как игнор')->success()->send();
+                            $tenantId = (int) (currentTenant()?->id ?? 0);
+                            ReviewImportCandidateBulkActions::runIgnore($action, $tenantId);
                         }),
                 ]),
             ]);

@@ -13,7 +13,7 @@
  * @property {string} [wirePathPrefix]
  * @property {string} [viewportStorageId] — id для sessionStorage; без него — inst-N на инстанс.
  * @property {string} [previewEngine]
- * @property {'cover'|'height_fit'} [focalPreviewFit] — для hero desktop: базовая геометрия «по высоте кадра».
+ * @property {'cover'|'height_fit'} [focalPreviewFit] — hero desktop: локальная геометрия «fit по высоте кадра» в превью; это не всегда совпадает с полным object-fit:contain во всех пропорциях исходника.
  */
 const EPS = 1e-6;
 
@@ -81,7 +81,7 @@ export function coverDisplaySize(iw, ih, frameW, frameH) {
     return { scale, dispW: iw * scale, dispH: ih * scale };
 }
 
-/** Базовый масштаб: полная высота изображения = высота кадра (как object-fit:contain по высоте); по ширине может не хватать — края на сайте размываются. */
+/** Дисплейный масштаб превью: высота изображения вписана в высоту кадра (аналог частного случая crop/cover-движения); при сверхшироком источнике расходится с «полным» object-fit:contain по обеим осям. */
 export function heightFitDisplaySize(iw, ih, frameW, frameH) {
     if (iw <= 0 || ih <= 0 || frameW <= 0 || frameH <= 0) {
         return { scale: 1, dispW: frameW, dispH: frameH };
@@ -443,7 +443,7 @@ function registerServiceProgramCoverFocalEditor() {
             return 'cover';
         },
 
-        /** Класс object-fit для превью: desktop hero согласован с public CSS (contain + боковой wash). */
+        /** Класс object-fit превью: hero desktop в режиме height_fit — object-contain; иначе object-cover для карточек. */
         previewObjectFitClass(key) {
             if (this.previewShowFullImage) {
                 return 'object-contain';
@@ -622,11 +622,7 @@ function registerServiceProgramCoverFocalEditor() {
         },
 
         showZoomSliderForActive() {
-            if (this.activeViewport === 'mobile' || this.activeViewport === 'tablet') {
-                return true;
-            }
-
-            return !this.sync;
+            return true;
         },
 
         showHeightSliderForActive() {
@@ -661,6 +657,7 @@ function registerServiceProgramCoverFocalEditor() {
             const eh = dispH * us;
             const slackX = Math.abs(w - ew) >= EPS;
             const slackY = Math.abs(h - eh) >= EPS;
+            const fitPhrase = mode === 'height_fit' ? 'после вписывания по высоте' : 'после cover-fit';
             if (slackX && slackY) {
                 return '';
             }
@@ -668,7 +665,7 @@ function registerServiceProgramCoverFocalEditor() {
                 return 'Нет запаса для сдвига по обеим осям — измените zoom или смените источник.';
             }
             if (!slackX) {
-                return 'По горизонтали нет запаса (после cover-fit) — уменьшите или увеличьте zoom, либо другой источник.';
+                return `По горизонтали нет запаса (${fitPhrase}) — уменьшите или увеличьте zoom, либо другой источник.`;
             }
             return 'По вертикали нет запаса — измените zoom или используйте другой источник.';
         },
@@ -757,15 +754,24 @@ function registerServiceProgramCoverFocalEditor() {
             const com = focalForCommit(f.x, f.y);
             if (key === 'tablet') {
                 this.local.tablet = { ...this.local.tablet, x: com.x, y: com.y, s: this.local.tablet.s };
+                if (this.sync) {
+                    const s = this.local.tablet.s;
+                    this.local.mobile = { ...this.local.mobile, x: com.x, y: com.y, s };
+                    this.local.desktop = { ...this.local.desktop, x: com.x, y: com.y, s };
+                }
             } else if (key === 'desktop') {
                 this.local.desktop = { ...this.local.desktop, x: com.x, y: com.y, s: this.local.desktop.s };
                 if (this.sync) {
-                    this.local.mobile = { ...this.local.mobile, x: com.x, y: com.y, s: this.local.mobile.s };
+                    const s = this.local.desktop.s;
+                    this.local.mobile = { ...this.local.mobile, x: com.x, y: com.y, s };
+                    this.local.tablet = { ...this.local.tablet, x: com.x, y: com.y, s };
                 }
             } else {
                 this.local.mobile = { ...this.local.mobile, x: com.x, y: com.y, s: this.local.mobile.s };
                 if (this.sync) {
-                    this.local.desktop = { ...this.local.desktop, x: com.x, y: com.y, s: this.local.desktop.s };
+                    const s = this.local.mobile.s;
+                    this.local.tablet = { ...this.local.tablet, x: com.x, y: com.y, s };
+                    this.local.desktop = { ...this.local.desktop, x: com.x, y: com.y, s };
                 }
             }
         },
@@ -1132,14 +1138,20 @@ function registerServiceProgramCoverFocalEditor() {
             const s = Number.isFinite(v) ? scaleForCommit(v, min, max, step) : min;
             if (key === 'tablet') {
                 this.local.tablet = { ...this.local.tablet, s };
+                if (this.sync) {
+                    this.local.mobile = { ...this.local.mobile, s };
+                    this.local.desktop = { ...this.local.desktop, s };
+                }
             } else if (key === 'desktop') {
                 this.local.desktop = { ...this.local.desktop, s };
                 if (this.sync) {
                     this.local.mobile = { ...this.local.mobile, s };
+                    this.local.tablet = { ...this.local.tablet, s };
                 }
             } else {
                 this.local.mobile = { ...this.local.mobile, s };
                 if (this.sync) {
+                    this.local.tablet = { ...this.local.tablet, s };
                     this.local.desktop = { ...this.local.desktop, s };
                 }
             }
@@ -1209,14 +1221,20 @@ function registerServiceProgramCoverFocalEditor() {
             }
             if (key === 'tablet') {
                 this.local.tablet = { ...this.local.tablet, s };
+                if (this.sync) {
+                    this.local.mobile = { ...this.local.mobile, s };
+                    this.local.desktop = { ...this.local.desktop, s };
+                }
             } else if (key === 'desktop') {
                 this.local.desktop = { ...this.local.desktop, s };
                 if (this.sync) {
                     this.local.mobile = { ...this.local.mobile, s };
+                    this.local.tablet = { ...this.local.tablet, s };
                 }
             } else {
                 this.local.mobile = { ...this.local.mobile, s };
                 if (this.sync) {
+                    this.local.tablet = { ...this.local.tablet, s };
                     this.local.desktop = { ...this.local.desktop, s };
                 }
             }
@@ -1248,15 +1266,24 @@ function registerServiceProgramCoverFocalEditor() {
             const nf = focalFromTranslate(ntx, nty, w, h, n.iw, n.ih, us, min, mode);
             if (key === 'tablet') {
                 this.local.tablet = { ...this.local.tablet, x: nf.x, y: nf.y, s: this.local.tablet.s };
+                if (this.sync) {
+                    const s = this.local.tablet.s;
+                    this.local.mobile = { ...this.local.mobile, x: nf.x, y: nf.y, s };
+                    this.local.desktop = { ...this.local.desktop, x: nf.x, y: nf.y, s };
+                }
             } else if (key === 'desktop') {
                 this.local.desktop = { ...this.local.desktop, x: nf.x, y: nf.y, s: this.local.desktop.s };
                 if (this.sync) {
-                    this.local.mobile = { ...this.local.mobile, x: nf.x, y: nf.y, s: this.local.mobile.s };
+                    const s = this.local.desktop.s;
+                    this.local.mobile = { ...this.local.mobile, x: nf.x, y: nf.y, s };
+                    this.local.tablet = { ...this.local.tablet, x: nf.x, y: nf.y, s };
                 }
             } else {
                 this.local.mobile = { ...this.local.mobile, x: nf.x, y: nf.y, s: this.local.mobile.s };
                 if (this.sync) {
-                    this.local.desktop = { ...this.local.desktop, x: nf.x, y: nf.y, s: this.local.desktop.s };
+                    const s = this.local.mobile.s;
+                    this.local.tablet = { ...this.local.tablet, x: nf.x, y: nf.y, s };
+                    this.local.desktop = { ...this.local.desktop, x: nf.x, y: nf.y, s };
                 }
             }
             clearTimeout(this._nudgeDebounce);
@@ -1268,8 +1295,14 @@ function registerServiceProgramCoverFocalEditor() {
             this.local.mobile = { x: d.x, y: d.y, s: d.s, heightFactor: d.heightFactor ?? 1 };
             this.local.tablet = { ...this.local.tablet, heightFactor: d.heightFactor ?? 1 };
             if (this.sync) {
-                const dd = this.config.defaults.desktop;
-                this.local.desktop = { x: dd.x, y: dd.y, s: dd.s, heightFactor: dd.heightFactor ?? 1 };
+                this.local.tablet = { ...this.local.tablet, x: d.x, y: d.y, s: d.s };
+                this.local.desktop = {
+                    ...this.local.desktop,
+                    x: d.x,
+                    y: d.y,
+                    s: d.s,
+                    heightFactor: this.config.defaults.desktop.heightFactor ?? 1,
+                };
             }
             this.queueCommit();
         },
@@ -1278,9 +1311,14 @@ function registerServiceProgramCoverFocalEditor() {
             const d = this.config.defaults.desktop;
             this.local.desktop = { x: d.x, y: d.y, s: d.s, heightFactor: d.heightFactor ?? 1 };
             if (this.sync) {
-                const md = this.config.defaults.mobile;
-                this.local.mobile = { x: md.x, y: md.y, s: md.s, heightFactor: md.heightFactor ?? 1 };
-                this.local.tablet = { ...this.local.tablet, heightFactor: md.heightFactor ?? 1 };
+                this.local.mobile = {
+                    ...this.local.mobile,
+                    x: d.x,
+                    y: d.y,
+                    s: d.s,
+                    heightFactor: this.config.defaults.mobile.heightFactor ?? 1,
+                };
+                this.local.tablet = { ...this.local.tablet, x: d.x, y: d.y, s: d.s, heightFactor: this.local.mobile.heightFactor };
             }
             this.queueCommit();
         },
@@ -1303,17 +1341,76 @@ function registerServiceProgramCoverFocalEditor() {
                 s: mdT.s,
                 heightFactor: this.local.mobile?.heightFactor ?? 1,
             };
+            if (this.sync) {
+                this.local.mobile = { ...this.local.mobile, x: mdT.x, y: mdT.y, s: mdT.s };
+                this.local.desktop = { ...this.local.desktop, x: mdT.x, y: mdT.y, s: mdT.s };
+            }
             this.queueCommit();
         },
 
         copyToDesktop() {
-            this.local.desktop = { ...this.local.mobile };
+            this.local.desktop = {
+                ...this.local.desktop,
+                x: this.local.mobile.x,
+                y: this.local.mobile.y,
+                s: this.local.mobile.s,
+            };
             this.queueCommit();
         },
 
         copyToMobile() {
-            this.local.mobile = { ...this.local.desktop };
-            this.local.tablet = { ...this.local.tablet, heightFactor: this.local.mobile.heightFactor };
+            this.local.mobile = {
+                ...this.local.mobile,
+                x: this.local.desktop.x,
+                y: this.local.desktop.y,
+                s: this.local.desktop.s,
+            };
+            this.local.tablet = {
+                ...this.local.tablet,
+                x: this.local.desktop.x,
+                y: this.local.desktop.y,
+                s: this.local.desktop.s,
+            };
+            this.queueCommit();
+        },
+
+        copyMobileToTablet() {
+            this.local.tablet = {
+                ...this.local.tablet,
+                x: this.local.mobile.x,
+                y: this.local.mobile.y,
+                s: this.local.mobile.s,
+            };
+            this.queueCommit();
+        },
+
+        copyTabletToMobile() {
+            this.local.mobile = {
+                ...this.local.mobile,
+                x: this.local.tablet.x,
+                y: this.local.tablet.y,
+                s: this.local.tablet.s,
+            };
+            this.queueCommit();
+        },
+
+        copyDesktopToTablet() {
+            this.local.tablet = {
+                ...this.local.tablet,
+                x: this.local.desktop.x,
+                y: this.local.desktop.y,
+                s: this.local.desktop.s,
+            };
+            this.queueCommit();
+        },
+
+        copyTabletToDesktop() {
+            this.local.desktop = {
+                ...this.local.desktop,
+                x: this.local.tablet.x,
+                y: this.local.tablet.y,
+                s: this.local.tablet.s,
+            };
             this.queueCommit();
         },
 

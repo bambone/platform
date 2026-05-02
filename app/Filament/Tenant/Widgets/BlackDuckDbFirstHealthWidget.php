@@ -22,7 +22,7 @@ class BlackDuckDbFirstHealthWidget extends Widget
     {
         $t = currentTenant();
 
-        return $t !== null && (string) ($t->theme_key ?? '') === 'black_duck';
+        return $t !== null && $t->themeKey() === 'black_duck';
     }
 
     /**
@@ -30,7 +30,7 @@ class BlackDuckDbFirstHealthWidget extends Widget
      */
     public function getFlagsProperty(): array
     {
-        $tid = (int) (currentTenant()->id ?? 0);
+        $tid = (int) (currentTenant()?->id ?? 0);
         if ($tid < 1) {
             return ['media_empty_db' => false, 'service_catalog_degraded' => false];
         }

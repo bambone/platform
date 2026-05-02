@@ -23,7 +23,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Support\HtmlString;
 
@@ -91,21 +90,25 @@ final class ExpertHeroBlueprint extends ExpertSectionBlueprint
             'hero_video_url' => '',
             'hero_video_poster_url' => '',
             'video_trigger_label' => '',
-            'hero_focal_sync_mobile_desktop' => false,
+            'hero_focal_sync_all_viewports' => false,
             'hero_background_presentation' => PresentationData::empty()->toArray(),
         ];
     }
 
     /**
-     * @param  array<string, mixed>  $dataJson
+     * @param  array<string, mixed>  $dataJson  merged blueprint defaults + section data (editor state)
+     * @param  array<string, mixed>|null  $storageSnapshot  raw {@code data_json} from DB (before merge), for legacy {@code hero_focal_sync_mobile_desktop}
      * @return array<string, mixed>
      */
-    public static function normalizeHeroPresentationForEditor(array $dataJson): array
+    public static function normalizeHeroPresentationForEditor(array $dataJson, ?array $storageSnapshot = null): array
     {
         $defaults = (new self)->defaultData();
         $merged = array_replace_recursive($defaults, $dataJson);
         $hp = is_array($merged['hero_background_presentation'] ?? null) ? $merged['hero_background_presentation'] : [];
-        $map = is_array($hp['viewport_focal_map'] ?? null) ? $hp['viewport_focal_map'] : [];
+        $rawMap = is_array($hp['viewport_focal_map'] ?? null) ? $hp['viewport_focal_map'] : [];
+        $hadTablet = array_key_exists(ViewportKey::Tablet->value, $rawMap);
+        $hadMobile = array_key_exists(ViewportKey::Mobile->value, $rawMap);
+        $map = $rawMap;
         $sMin = PageHeroCoverPresentationProfile::FRAMING_SCALE_MIN;
         $sMax = PageHeroCoverPresentationProfile::FRAMING_SCALE_MAX;
         $sStep = PageHeroCoverPresentationProfile::FRAMING_SCALE_STEP;
@@ -126,8 +129,25 @@ final class ExpertHeroBlueprint extends ExpertSectionBlueprint
             }
             $map[$vk] = $vf->toArray();
         }
+        // Legacy hero: только mobile+desktop → tablet исторически шёл по mobile; не подставляем tablet default 50/50.
+        if (! $hadTablet && $hadMobile) {
+            $map[ViewportKey::Tablet->value] = $map[ViewportKey::Mobile->value];
+        }
         $hp['viewport_focal_map'] = $map;
         $merged['hero_background_presentation'] = PresentationData::fromArray($hp, $sMin, $sMax, $sStep)->toArray();
+
+        if (is_array($storageSnapshot)) {
+            if (array_key_exists('hero_focal_sync_all_viewports', $storageSnapshot)) {
+                $merged['hero_focal_sync_all_viewports'] = (bool) ($merged['hero_focal_sync_all_viewports'] ?? false);
+            } else {
+                $merged['hero_focal_sync_all_viewports'] = (bool) ($storageSnapshot['hero_focal_sync_mobile_desktop'] ?? false);
+            }
+        } elseif (array_key_exists('hero_focal_sync_all_viewports', $dataJson)) {
+            $merged['hero_focal_sync_all_viewports'] = (bool) ($merged['hero_focal_sync_all_viewports'] ?? false);
+        } else {
+            $merged['hero_focal_sync_all_viewports'] = (bool) ($merged['hero_focal_sync_mobile_desktop'] ?? false);
+        }
+        unset($merged['hero_focal_sync_mobile_desktop']);
 
         return $merged;
     }
@@ -162,12 +182,12 @@ final class ExpertHeroBlueprint extends ExpertSectionBlueprint
             TenantPublicImagePicker::make('data_json.hero_image_url')
                 ->label('Фото hero')
                 ->uploadPublicSiteSubdirectory('site/page-builder/hero')
-                ->helperText('Выберите файл из медиатеки или загрузите новый. Один источник для всех ширин; разные кадры для mobile и desktop задаются ниже (кадрирование и «Синхронизировать»).')
+                ->helperText('Выберите файл из медиатеки или загрузите новый. Один источник для всех ширин; разные кадры для mobile, tablet и desktop задаются ниже (кадрирование и «Синхронизировать все размеры»).')
                 ->live()
                 ->columnSpanFull(),
-            Toggle::make('data_json.hero_focal_sync_mobile_desktop')
-                ->label('Синхронизировать mobile и desktop')
-                ->helperText('Включите, чтобы одно перетаскивание меняло оба кадра. Выключите — для портретов в широком баннере: отдельный фокус и zoom для узкого и широкого экрана; в превью появятся кнопки «Копировать mobile → desktop».')
+            Toggle::make('data_json.hero_focal_sync_all_viewports')
+                ->label('Синхронизировать все размеры')
+                ->helperText('Включите, чтобы mobile, tablet и desktop менялись вместе. Выключите — настроить каждый размер отдельно.')
                 ->default(false)
                 ->live()
                 ->columnSpanFull(),
@@ -212,7 +232,7 @@ final class ExpertHeroBlueprint extends ExpertSectionBlueprint
 
                     return TenantPublicAssetResolver::resolveForTenantModel($raw !== '' ? $raw : null, $t);
                 },
-                resolveSyncDefault: fn (Get $get): bool => (bool) ($get('data_json.hero_focal_sync_mobile_desktop') ?? false),
+                resolveSyncDefault: fn (Get $get): bool => (bool) ($get('data_json.hero_focal_sync_all_viewports') ?? $get('data_json.hero_focal_sync_mobile_desktop') ?? false),
             ),
             Grid::make(['default' => 1, 'lg' => 3])
                 ->extraAttributes([
